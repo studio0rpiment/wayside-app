@@ -39,8 +39,8 @@ const ConfigurableHorizontalPanel: React.FC<ConfigurableHorizontalPanelProps> = 
   // Process image paths if they exist and remove empty image sources
   if (config.contentImage) {
     if (!config.contentImage.src || config.contentImage.src === '') {
-      // Remove the contentImage property if src is empty
-      delete config.contentImage;
+      // Delete contentImage if src is empty
+      // delete config.contentImage;
     } else if (!config.contentImage.src.startsWith('http')) {
       config.contentImage.src = getAssetPath(config.contentImage.src);
     }
@@ -49,35 +49,31 @@ const ConfigurableHorizontalPanel: React.FC<ConfigurableHorizontalPanelProps> = 
   // Also handle video sources
   if (config.contentVideo) {
     if (!config.contentVideo.src || config.contentVideo.src === '') {
-      // Remove the contentVideo property if src is empty
-      delete config.contentVideo;
+      // Delete contentVideo if src is empty
+      // delete config.contentVideo;
     } else if (!config.contentVideo.src.startsWith('http')) {
       config.contentVideo.src = getAssetPath(config.contentVideo.src);
     }
   }
-  
-  // Handle background image
-  if (config.backgroundImage) {
-    if (!config.backgroundImage || config.backgroundImage === '') {
-      // Remove empty background image
-      config.backgroundImage = null;
-    } else if (typeof config.backgroundImage === 'string' && !config.backgroundImage.startsWith('http')) {
-      config.backgroundImage = getAssetPath(config.backgroundImage);
-    }
+
+  // Process background image
+  let processedBackgroundImage: string | null = null;
+  if (typeof config.backgroundImage === 'string' && config.backgroundImage.trim() !== '') {
+    processedBackgroundImage = config.backgroundImage.startsWith('http')
+      ? config.backgroundImage
+      : getAssetPath(config.backgroundImage);
   }
-  
-  // Handle background video
-  if (config.backgroundVideo) {
-    if (!config.backgroundVideo || config.backgroundVideo === '') {
-      // Remove empty background video
-      config.backgroundVideo = null;
-    } else if (typeof config.backgroundVideo === 'string' && !config.backgroundVideo.startsWith('http')) {
-      config.backgroundVideo = getAssetPath(config.backgroundVideo);
-    }
+
+  // Process background video
+  let processedBackgroundVideo: string | null = null;
+  if (typeof config.backgroundVideo === 'string' && config.backgroundVideo.trim() !== '') {
+    processedBackgroundVideo = config.backgroundVideo.startsWith('http')
+      ? config.backgroundVideo
+      : getAssetPath(config.backgroundVideo);
   }
   
   // Process colors to ensure CSS variables work
-  const processColor = (colorValue: string) => {
+  const processColor = (colorValue: string | undefined | null): string | null => {
     if (!colorValue) return null;
     // If it's already a CSS variable reference like var(--color-blue)
     if (colorValue.startsWith('var(--color-')) {
@@ -114,15 +110,12 @@ const ConfigurableHorizontalPanel: React.FC<ConfigurableHorizontalPanelProps> = 
         fullHeight={config.fullHeight !== undefined ? config.fullHeight : true}
         contentImage={config.contentImage as { src: string; alt?: string; width?: string | number; height?: string | number; position?: "left" | "above" | "right" | "below"; caption?: string; className?: string; } | undefined}
         contentVideo={config.contentVideo as { src: string; autoPlay?: boolean; loop?: boolean; muted?: boolean; controls?: boolean; width?: string | number; height?: string | number; position?: "left" | "above" | "right" | "below"; caption?: string; className?: string; } | undefined}
-        backgroundImage={config.backgroundImage || null} /* Use null instead of empty string */
-        backgroundVideo={config.backgroundVideo || null} /* Use null instead of empty string */
+        backgroundImage={processedBackgroundImage || undefined}
+        backgroundVideo={processedBackgroundVideo || undefined}
         className={config.className}
         titleClassName={config.titleClassName}
         animateIn={config.animateIn}
-        animationType={config.animationType as ("fade" | "slide" | "scale" | "custom" | undefined)}
-        animationDuration={config.animationDuration}
-      >
-        {children}
+        >
       </ContentContainer>
     </HorizontalPanel>
   );
