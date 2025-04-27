@@ -18,7 +18,7 @@ const HorizontalSection: React.FC<HorizontalSectionProps> = ({
   id,
   children,
   className = '',
-  background = '#333',
+  background = 'var(--color-dark)',
   height = '100vh',
   duration = 1,
   scrub = 0.5,

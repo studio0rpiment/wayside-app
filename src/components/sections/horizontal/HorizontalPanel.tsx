@@ -29,7 +29,7 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        color: 'white',
+        color: 'var(--color-light)',
         flexShrink: 0
       }}
     >

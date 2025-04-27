@@ -203,8 +203,8 @@
         "alignment": "center",
         "verticalAlignment": "center",
         "contentImage": {
-          "src": "/path/to/panel-image.jpg",
-          "alt": "Panel visual",
+          "src": "",
+          "alt": "",
           "position": "below",
           "width": "60%",
           "className": "mt-8 rounded-lg overflow-hidden"

@@ -4,17 +4,40 @@
 
 :root {
   /* Colors */
-  --color-primary: #1a1a2e;
-  --color-secondary: #16213e;
-  --color-accent: #e94560;
-  --color-light: #f7f7f7;
-  --color-dark: #0f3460;
+  --color-blue: #4889C8;
+  --color-green: #009449;
+  --color-pink: #BE69A9;
+  --color-light: #FFFFF0;
+  --color-dark: #36454F;
+
+  /* 
+  COLOR CURRENTLY IN USE
+  Blue: #4889C8
+  Green: #009449
+  Pink: #BE69A9
+  Ivory: #FFFFF0
+  Charcoal Black: #36454F
+
+  OTHER OPTIONS FOR WHITE + BLACK
+  Porcelain: #FFFEFC
+  Ebony: #282C35
+
+  Black: #000000
+  White: #FFFFFF 
+  */
+
+
+  /* Font families */
+  --font-macula-solid: "macula-solid", sans-serif;
+  --font-macula-line: "macula-line", sans-serif;
+  --font-rigby: "rigby", sans-serif;
   
   /* Font settings */
   --font-weight: 400;
   --font-width: 100;
   --font-slant: 0;
   --font-optical-size: 16;
+  --font-bold-weight: 700;
   
   /* Animation */
   --transition-speed: 0.4s;
@@ -56,5 +79,30 @@
   
   .horizontal-panel {
     @apply h-full w-screen flex-shrink-0;
+  }
+  
+  /* Font utility classes */
+  .font-macula-solid {
+    font-family: var(--font-macula-solid);
+    font-weight: 500;
+    font-style: normal;
+  }
+  
+  .font-macula-line {
+    font-family: var(--font-macula-line);
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+  .font-rigby {
+    font-family: var(--font-rigby);
+    font-weight: var(--font-weight);
+    font-style: normal;
+  }
+  
+  .font-rigby-bold {
+    font-family: var(--font-rigby);
+    font-weight: var(--font-bold-weight);
+    font-style: normal;
   }
 }
