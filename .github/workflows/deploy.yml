@@ -28,5 +28,5 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages  # The branch to deploy the production site
-          folder: build      # The build output folder
+          folder: dist      # The build output folder
 
