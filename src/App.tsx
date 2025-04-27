@@ -8,6 +8,7 @@ import SnappingCarousel from './components/carousel/SnappingCarousel';
 import SnappingCard from './components/carousel/SnappingCard';
 import ContentContainer from './components/common/ContentContainer';
 import ContentConfigHelper from './utils/ContentConfigHelper';
+import { getAssetPath } from './utils/assetPaths';
 import './App.css';
 
 // Register ScrollTrigger globally - this is important!
@@ -32,7 +33,7 @@ function App() {
           fullHeight={true}
           alignment="center"
           verticalAlignment="center"
-          backgroundImage="/src/assets/images/react.svg"
+          backgroundImage={getAssetPath("src/assets/images/react.svg")}
           hasShadow={true }
           borderRadius="0"
           glassmorphism={true}

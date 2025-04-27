@@ -11,6 +11,21 @@ export function getAssetPath(path: string): string {
     if (!path) return import.meta.env.BASE_URL || '/';
 
   
+    // Handle /src/ paths for production builds
+    if (path.includes('/src/') || path.startsWith('src/')) {
+      // In production, source files are bundled and won't be available at /src/
+      // Extract just the filename and path after /src/
+      const srcPattern = /(?:\/src\/|^src\/)(.*)/;
+      const match = path.match(srcPattern);
+      if (match) {
+        const assetPath = match[1]; // This is the path after /src/
+        // Get the base URL from Vite
+        const baseUrl = import.meta.env.BASE_URL || '/';
+        const base = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+        return base + assetPath;
+      }
+    }
+    
     // Remove any leading slash
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     
