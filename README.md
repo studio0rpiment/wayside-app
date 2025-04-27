@@ -1,1 +1,1 @@
-# WAYSIDE>AT app develop repository
+# WAYSIDE.AT app development repository
