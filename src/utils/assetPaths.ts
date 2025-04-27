@@ -8,6 +8,8 @@ export function getAssetPath(path: string): string {
     if (path.startsWith('http') || path.startsWith('data:')) {
       return path;
     }
+    if (!path) return import.meta.env.BASE_URL || '/';
+
   
     // Remove any leading slash
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;

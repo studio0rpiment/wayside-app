@@ -11,6 +11,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 // Import ScrollProvider
 import { ScrollProvider } from './context/ScrollContext'
 
+console.log('Base URL:', import.meta.env.BASE_URL);
+
+
 // Register ScrollTrigger with GSAP
 gsap.registerPlugin(ScrollTrigger)
 
