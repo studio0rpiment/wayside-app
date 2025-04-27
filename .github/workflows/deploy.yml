@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -29,3 +31,4 @@ jobs:
         with:
           branch: gh-pages  # The branch to deploy the production site
           folder: dist      # The build output folder
+          token: ${{ secrets.GITHUB_TOKEN }}
