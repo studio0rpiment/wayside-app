@@ -8,8 +8,8 @@
         "title": "Welcome to Our Experience",
         "subtitle": "Scroll to explore interactive sections",
         "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam feugiat magna at odio tempus, nec fermentum sapien malesuada.",
-        "backgroundColor": "#1a1a2e",
-        "textColor": "#ffffff",
+        "backgroundColor": "var(--color-dark)",
+        "textColor": "var(--color-light)",
         "width": "100%",
         "height": "100vh",
         "padding": "3rem",
@@ -45,8 +45,8 @@
         "title": "Interactive Feature",
         "subtitle": "Discover the possibilities",
         "content": "This feature allows you to interact with various elements in an intuitive way.",
-        "backgroundColor": "#ffffff",
-        "textColor": "#333333",
+        "backgroundColor": "var(--color-light)",
+        "textColor": "var(--color-dark)",
         "width": "100%",
         "height": "auto",
         "padding": "2rem",
@@ -132,8 +132,8 @@
         "title": "Typography in Motion",
         "subtitle": "Variable fonts demonstration",
         "content": "Experience how typography can transform through motion and interaction.",
-        "backgroundColor": "#0f0f0f",
-        "textColor": "#ffffff",
+        "backgroundColor": "var(--color-dark)",
+        "textColor": "var(--color-light)",
         "padding": "5rem 2rem",
         "fullWidth": true,
         "alignment": "center",
@@ -160,8 +160,8 @@
       "configuration": {
         "title": "Slide Title",
         "subtitle": "Supporting information",
-        "backgroundColor": "#4a2545",
-        "textColor": "#ffffff",
+        "backgroundColor": "var(--color-pink)",
+        "textColor": "var(--color-light)",
         "width": "90%",
         "height": "80%",
         "padding": "2.5rem",
@@ -193,8 +193,8 @@
       "configuration": {
         "title": "Horizontal Panel",
         "content": "This panel appears during horizontal scrolling sections.",
-        "backgroundColor": "#2d4059",
-        "textColor": "#ffffff",
+        "backgroundColor": "var(--color-blue)",
+        "textColor": "var(--color-light)",
         "width": "100vw",
         "height": "100%",
         "padding": "3rem",
@@ -241,8 +241,8 @@
       "configuration": {
         "title": "Ready to Get Started?",
         "subtitle": "Join thousands of satisfied customers today",
-        "backgroundColor": "#0a2540",
-        "textColor": "#ffffff",
+        "backgroundColor": "var(--color-blue)",
+        "textColor": "var(--color-light)",
         "width": "100%",
         "padding": "6rem 2rem",
         "fullWidth": true,
@@ -267,8 +267,8 @@
         "title": "What Our Customers Say",
         "content": "\"This product has completely transformed our workflow. The interface is intuitive and the support team is incredible.\"",
         "subtitle": "John Smith, CEO at Tech Innovators",
-        "backgroundColor": "#ffffff",
-        "textColor": "#333333",
+        "backgroundColor": "var(--color-light)",
+        "textColor": "var(--color-dark)",
         "width": "100%",
         "height": "auto",
         "padding": "3rem",
@@ -361,30 +361,30 @@
       "id": "primary",
       "name": "Primary Palette",
       "colors": {
-        "background": "#ffffff",
-        "text": "#333333",
-        "accent": "#3498db",
-        "highlight": "#f39c12"
+        "background": "var(--color-light)",
+        "text": "var(--color-dark)",
+        "accent": "var(--color-blue)",
+        "highlight": "var(--color-green)"
       }
     },
     {
       "id": "dark",
       "name": "Dark Mode",
       "colors": {
-        "background": "#121212",
-        "text": "#f5f5f5",
-        "accent": "#bb86fc",
-        "highlight": "#03dac6"
+        "background": "var(--color-dark)",
+        "text": "var(--color-light)",
+        "accent": "var(--color-blue)",
+        "highlight": "var(--color-pink)"
       }
     },
     {
       "id": "vibrant",
       "name": "Vibrant",
       "colors": {
-        "background": "#8e44ad",
-        "text": "#ffffff",
-        "accent": "#f1c40f",
-        "highlight": "#e74c3c"
+        "background": "var(--color-pink)",
+        "text": "var(--color-light)",
+        "accent": "var(--color-blue)",
+        "highlight": "var(--color-green)"
       }
     }
   ],
