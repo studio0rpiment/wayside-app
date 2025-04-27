@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Colors */
+  --color-primary: #1a1a2e;
+  --color-secondary: #16213e;
+  --color-accent: #e94560;
+  --color-light: #f7f7f7;
+  --color-dark: #0f3460;
+  
+  /* Font settings */
+  --font-weight: 400;
+  --font-width: 100;
+  --font-slant: 0;
+  --font-optical-size: 16;
+  
+  /* Animation */
+  --transition-speed: 0.4s;
+}
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    @apply bg-light text-dark;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+  }
+}
+
+@layer components {
+  .section-content {
+    @apply px-4 py-8 md:px-8 md:py-12 w-full max-w-7xl mx-auto z-10 relative;
+  }
+  
+  /* Vertical sections */
+  .vertical-section {
+    @apply min-h-screen w-full relative;
+  }
+  
+  /* Horizontal section */
+  .horizontal-container {
+    @apply h-screen w-full overflow-hidden relative;
+  }
+  
+  .horizontal-content {
+    @apply flex flex-row flex-nowrap absolute h-full;
+    will-change: transform;
+  }
+  
+  .horizontal-panel {
+    @apply h-full w-screen flex-shrink-0;
+  }
+}

@@ -1,0 +1,462 @@
+{
+  "contentTemplates": [
+    {
+      "id": "hero",
+      "name": "Hero Section",
+      "description": "Full-width hero with image background and large title",
+      "configuration": {
+        "title": "Welcome to Our Experience",
+        "subtitle": "Scroll to explore interactive sections",
+        "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam feugiat magna at odio tempus, nec fermentum sapien malesuada.",
+        "backgroundColor": "#1a1a2e",
+        "textColor": "#ffffff",
+        "width": "100%",
+        "height": "100vh",
+        "padding": "3rem",
+        "fullWidth": true,
+        "fullHeight": true,
+        "alignment": "center",
+        "verticalAlignment": "center",
+        "backgroundImage": "/path/to/hero-bg.jpg",
+        "hasShadow": false,
+        "borderRadius": "0",
+        "glassmorphism": true,
+        "animateIn": true,
+        "animationType": "fade",
+        "animationDuration": 0.8,
+        "animationDelay": 0.2,
+        "fontFamily": "'Inter Variable', sans-serif",
+        "variableFontSettings": {
+          "wght": 800,
+          "wdth": 100
+        },
+        "fontAnimatesOnScroll": true,
+        "fontAnimationRange": [0.1, 0.6],
+        "titleClassName": "text-5xl md:text-7xl font-black tracking-tight mb-6",
+        "subtitleClassName": "text-xl md:text-2xl font-light mb-10 opacity-80",
+        "className": "hero-container relative z-10"
+      }
+    },
+    {
+      "id": "feature-card",
+      "name": "Feature Card",
+      "description": "Card with image, title, and description for features section",
+      "configuration": {
+        "title": "Interactive Feature",
+        "subtitle": "Discover the possibilities",
+        "content": "This feature allows you to interact with various elements in an intuitive way.",
+        "backgroundColor": "#ffffff",
+        "textColor": "#333333",
+        "width": "100%",
+        "height": "auto",
+        "padding": "2rem",
+        "fullWidth": false,
+        "borderRadius": "1rem",
+        "hasShadow": true,
+        "alignment": "left",
+        "contentImage": {
+          "src": "/path/to/feature-image.jpg",
+          "alt": "Feature preview",
+          "position": "above",
+          "width": "100%",
+          "height": "auto",
+          "caption": "Interactive demonstration"
+        },
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "interactive": true,
+        "hoverEffect": "lift",
+        "className": "feature-card transform transition duration-300 ease-in-out"
+      }
+    },
+    {
+      "id": "video-showcase",
+      "name": "Video Showcase",
+      "description": "Large video with text overlay",
+      "configuration": {
+        "title": "Watch Our Story",
+        "subtitle": "How we created this experience",
+        "backgroundColor": "transparent",
+        "textColor": "#ffffff",
+        "width": "100%",
+        "height": "80vh",
+        "padding": "0",
+        "fullWidth": true,
+        "backgroundVideo": "/path/to/background-video.mp4",
+        "glassmorphism": true,
+        "alignment": "center",
+        "verticalAlignment": "center",
+        "contentClassName": "w-full max-w-4xl p-8 backdrop-blur-sm bg-black/40 rounded-xl",
+        "titleClassName": "text-4xl font-bold mb-4",
+        "className": "video-showcase overflow-hidden relative",
+        "scrollParallax": true,
+        "parallaxStrength": 0.2
+      }
+    },
+    {
+      "id": "split-content",
+      "name": "Split Content Section",
+      "description": "Text on one side, media on the other",
+      "configuration": {
+        "title": "Discover More",
+        "subtitle": "Explore our capabilities",
+        "content": "Our platform combines cutting-edge technology with intuitive design to create memorable experiences.",
+        "backgroundColor": "#f5f5f7",
+        "textColor": "#333",
+        "width": "100%",
+        "height": "auto",
+        "padding": "4rem",
+        "fullWidth": true,
+        "contentImage": {
+          "src": "/path/to/side-image.jpg",
+          "alt": "Platform capabilities illustration",
+          "position": "right",
+          "width": "45%",
+          "className": "rounded-xl overflow-hidden shadow-lg"
+        },
+        "alignment": "left",
+        "titleClassName": "text-3xl font-bold mb-4",
+        "textClassName": "text-lg leading-relaxed max-w-prose",
+        "animateIn": true,
+        "animationType": "fade",
+        "scrollTrigger": true,
+        "className": "split-section py-16"
+      }
+    },
+    {
+      "id": "typography-showcase",
+      "name": "Typography Showcase",
+      "description": "Section highlighting variable font capabilities",
+      "configuration": {
+        "title": "Typography in Motion",
+        "subtitle": "Variable fonts demonstration",
+        "content": "Experience how typography can transform through motion and interaction.",
+        "backgroundColor": "#0f0f0f",
+        "textColor": "#ffffff",
+        "padding": "5rem 2rem",
+        "fullWidth": true,
+        "alignment": "center",
+        "verticalAlignment": "center",
+        "fontFamily": "'Fraunces Variable', serif",
+        "variableFontSettings": {
+          "wght": 400,
+          "wdth": 100,
+          "opsz": 14,
+          "slnt": 0
+        },
+        "fontAnimatesOnScroll": true,
+        "fontAnimationRange": [0.2, 0.8],
+        "titleClassName": "text-6xl mb-6",
+        "subtitleClassName": "text-2xl mb-12 opacity-70",
+        "contentClassName": "max-w-3xl mx-auto",
+        "className": "typography-showcase min-h-[70vh] flex items-center justify-center"
+      }
+    },
+    {
+      "id": "carousel-card",
+      "name": "Carousel Card",
+      "description": "Card designed specifically for carousel sections",
+      "configuration": {
+        "title": "Slide Title",
+        "subtitle": "Supporting information",
+        "backgroundColor": "#4a2545",
+        "textColor": "#ffffff",
+        "width": "90%",
+        "height": "80%",
+        "padding": "2.5rem",
+        "borderRadius": "1.5rem",
+        "hasShadow": true,
+        "alignment": "center",
+        "contentVideo": {
+          "src": "/path/to/card-video.mp4",
+          "autoPlay": true,
+          "loop": true,
+          "muted": true,
+          "controls": false,
+          "position": "below",
+          "width": "100%"
+        },
+        "fontFamily": "'Inter Variable', sans-serif",
+        "variableFontSettings": {
+          "wght": 700
+        },
+        "titleClassName": "text-3xl font-bold mb-2",
+        "subtitleClassName": "text-xl opacity-75 mb-6",
+        "className": "carousel-content-card"
+      }
+    },
+    {
+      "id": "horizontal-panel",
+      "name": "Horizontal Panel Content",
+      "description": "Content designed for horizontal scrolling panels",
+      "configuration": {
+        "title": "Horizontal Panel",
+        "content": "This panel appears during horizontal scrolling sections.",
+        "backgroundColor": "#2d4059",
+        "textColor": "#ffffff",
+        "width": "100vw",
+        "height": "100%",
+        "padding": "3rem",
+        "fullWidth": true,
+        "fullHeight": true,
+        "alignment": "center",
+        "verticalAlignment": "center",
+        "contentImage": {
+          "src": "/path/to/panel-image.jpg",
+          "alt": "Panel visual",
+          "position": "below",
+          "width": "60%",
+          "className": "mt-8 rounded-lg overflow-hidden"
+        },
+        "scrollParallax": true,
+        "parallaxStrength": 0.15,
+        "titleClassName": "text-4xl font-bold mb-6",
+        "contentClassName": "flex flex-col items-center justify-center",
+        "className": "horizontal-panel-content"
+      }
+    },
+    {
+      "id": "statistics-section",
+      "name": "Statistics Display",
+      "description": "Section for displaying key statistics or numbers",
+      "configuration": {
+        "backgroundColor": "#f8f9fa",
+        "textColor": "#212529",
+        "width": "100%",
+        "padding": "5rem 2rem",
+        "fullWidth": true,
+        "alignment": "center",
+        "content": "<div class='grid grid-cols-1 md:grid-cols-3 gap-10'><div class='stat-item'><h3 class='text-5xl font-bold mb-2'>98%</h3><p>Customer Satisfaction</p></div><div class='stat-item'><h3 class='text-5xl font-bold mb-2'>24/7</h3><p>Support Available</p></div><div class='stat-item'><h3 class='text-5xl font-bold mb-2'>15+</h3><p>Years Experience</p></div></div>",
+        "animateIn": true,
+        "scrollTrigger": true,
+        "fontFamily": "'Inter Variable', sans-serif",
+        "className": "statistics-section py-16"
+      }
+    },
+    {
+      "id": "cta-section",
+      "name": "Call to Action",
+      "description": "Prominent call to action section",
+      "configuration": {
+        "title": "Ready to Get Started?",
+        "subtitle": "Join thousands of satisfied customers today",
+        "backgroundColor": "#0a2540",
+        "textColor": "#ffffff",
+        "width": "100%",
+        "padding": "6rem 2rem",
+        "fullWidth": true,
+        "alignment": "center",
+        "verticalAlignment": "center",
+        "content": "<div class='mt-10'><a href='#contact' class='px-8 py-4 bg-white text-blue-900 rounded-full text-xl font-medium hover:bg-opacity-90 transition'>Contact Us Now</a></div>",
+        "glassmorphism": false,
+        "borderRadius": "0",
+        "animateIn": true,
+        "animationType": "fade",
+        "titleClassName": "text-5xl font-bold mb-4",
+        "subtitleClassName": "text-xl max-w-2xl mx-auto",
+        "contentClassName": "flex flex-col items-center",
+        "className": "cta-section"
+      }
+    },
+    {
+      "id": "testimonial-card",
+      "name": "Testimonial Card",
+      "description": "Customer testimonial with image and quote",
+      "configuration": {
+        "title": "What Our Customers Say",
+        "content": "\"This product has completely transformed our workflow. The interface is intuitive and the support team is incredible.\"",
+        "subtitle": "John Smith, CEO at Tech Innovators",
+        "backgroundColor": "#ffffff",
+        "textColor": "#333333",
+        "width": "100%",
+        "height": "auto",
+        "padding": "3rem",
+        "borderRadius": "1rem",
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/path/to/customer-avatar.jpg",
+          "alt": "Customer profile",
+          "position": "above",
+          "width": "80px",
+          "height": "80px",
+          "className": "rounded-full mx-auto mb-6"
+        },
+        "alignment": "center",
+        "titleClassName": "sr-only",
+        "textClassName": "text-xl italic font-light leading-relaxed mb-6",
+        "subtitleClassName": "text-sm font-semibold",
+        "className": "testimonial-card max-w-2xl mx-auto"
+      }
+    }
+  ],
+  "contentLayouts": [
+    {
+      "id": "single-column",
+      "name": "Single Column",
+      "description": "Full width single column layout",
+      "className": "w-full max-w-5xl mx-auto px-4"
+    },
+    {
+      "id": "two-column",
+      "name": "Two Column",
+      "description": "Two equal columns",
+      "className": "grid grid-cols-1 md:grid-cols-2 gap-8"
+    },
+    {
+      "id": "three-column",
+      "name": "Three Column",
+      "description": "Three equal columns",
+      "className": "grid grid-cols-1 md:grid-cols-3 gap-6"
+    },
+    {
+      "id": "asymmetric",
+      "name": "Asymmetric Columns",
+      "description": "One large column with smaller side column",
+      "className": "grid grid-cols-1 md:grid-cols-3 gap-8",
+      "childClassNames": {
+        "main": "col-span-2",
+        "side": "col-span-1"
+      }
+    }
+  ],
+  "mediaAssets": {
+    "images": [
+      {
+        "id": "hero-bg",
+        "path": "/assets/images/hero-background.jpg",
+        "alt": "Hero background image",
+        "type": "background"
+      },
+      {
+        "id": "feature-1",
+        "path": "/assets/images/feature-1.jpg",
+        "alt": "Feature one illustration",
+        "type": "content"
+      },
+      {
+        "id": "profile-avatar",
+        "path": "/assets/images/profile-avatar.jpg",
+        "alt": "User profile picture",
+        "type": "avatar"
+      }
+    ],
+    "videos": [
+      {
+        "id": "intro-video",
+        "path": "/assets/videos/intro.mp4",
+        "poster": "/assets/images/video-poster.jpg",
+        "type": "background"
+      },
+      {
+        "id": "product-demo",
+        "path": "/assets/videos/product-demo.mp4",
+        "poster": "/assets/images/demo-poster.jpg",
+        "type": "content"
+      }
+    ]
+  },
+  "colorPalettes": [
+    {
+      "id": "primary",
+      "name": "Primary Palette",
+      "colors": {
+        "background": "#ffffff",
+        "text": "#333333",
+        "accent": "#3498db",
+        "highlight": "#f39c12"
+      }
+    },
+    {
+      "id": "dark",
+      "name": "Dark Mode",
+      "colors": {
+        "background": "#121212",
+        "text": "#f5f5f5",
+        "accent": "#bb86fc",
+        "highlight": "#03dac6"
+      }
+    },
+    {
+      "id": "vibrant",
+      "name": "Vibrant",
+      "colors": {
+        "background": "#8e44ad",
+        "text": "#ffffff",
+        "accent": "#f1c40f",
+        "highlight": "#e74c3c"
+      }
+    }
+  ],
+  "typographySettings": [
+    {
+      "id": "heading-large",
+      "fontFamily": "'Inter Variable', sans-serif",
+      "className": "text-5xl md:text-6xl font-bold tracking-tight",
+      "variableFontSettings": {
+        "wght": 800,
+        "wdth": 100
+      }
+    },
+    {
+      "id": "heading-medium",
+      "fontFamily": "'Inter Variable', sans-serif",
+      "className": "text-3xl md:text-4xl font-semibold",
+      "variableFontSettings": {
+        "wght": 600,
+        "wdth": 100
+      }
+    },
+    {
+      "id": "body-text",
+      "fontFamily": "'Inter Variable', sans-serif",
+      "className": "text-base md:text-lg leading-relaxed",
+      "variableFontSettings": {
+        "wght": 400,
+        "wdth": 100
+      }
+    },
+    {
+      "id": "caption",
+      "fontFamily": "'Inter Variable', sans-serif",
+      "className": "text-sm opacity-75",
+      "variableFontSettings": {
+        "wght": 400,
+        "wdth": 100
+      }
+    }
+  ],
+  "animationOptions": [
+    {
+      "id": "fade-in",
+      "type": "fade",
+      "duration": 0.8,
+      "delay": 0.2,
+      "scrollTrigger": true
+    },
+    {
+      "id": "slide-up",
+      "type": "slide",
+      "duration": 0.6,
+      "delay": 0,
+      "scrollTrigger": true
+    },
+    {
+      "id": "scale-in",
+      "type": "scale",
+      "duration": 0.5,
+      "delay": 0.1,
+      "scrollTrigger": true
+    },
+    {
+      "id": "stagger-children",
+      "type": "custom",
+      "customAnimation": {
+        "autoAlpha": 1,
+        "y": 0,
+        "stagger": 0.1
+      },
+      "scrollTrigger": true
+    }
+  ]
+}
