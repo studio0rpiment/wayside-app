@@ -41,7 +41,7 @@ function App() {
           animationDuration={0.8}
           titleClassName="text-5xl md:text-7xl font-black tracking-tight mb-6"
           subtitleClassName="text-xl md:text-2xl font-light mb-10 opacity-80"
-          className="hero-container relative z-10"
+          className="hero-container relative z-100"
         />
       </VerticalSection>
       
