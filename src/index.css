@@ -11,12 +11,6 @@
   --color-dark: #36454F;
 
   /* 
-  COLOR CURRENTLY IN USE
-  Blue: #4889C8
-  Green: #009449
-  Pink: #BE69A9
-  Ivory: #FFFFF0
-  Charcoal Black: #36454F
 
   OTHER OPTIONS FOR WHITE + BLACK
   Porcelain: #FFFEFC
@@ -41,6 +35,69 @@
   
   /* Animation */
   --transition-speed: 0.4s;
+}
+
+
+/* Base gradient classes */
+.bg-gradient-blue-pink-green {
+  background-image: linear-gradient(to right, var(--color-blue), var(--color-pink), var(--color-green));
+}
+
+.bg-gradient-green-blue-pink {
+  background-image: linear-gradient(to right, var(--color-green), var(--color-blue), var(--color-pink));
+}
+
+.bg-gradient-pink-green-blue {
+  background-image: linear-gradient(to right, var(--color-pink), var(--color-green), var(--color-blue));
+}
+
+.bg-gradient-diagonal {
+  background-image: linear-gradient(45deg, var(--color-blue), var(--color-pink), var(--color-green));
+}
+
+.bg-gradient-radial {
+  background-image: radial-gradient(circle, var(--color-blue), var(--color-pink), var(--color-green));
+}
+
+/* Text gradient base class */
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Combined text gradient classes (for convenience) */
+.text-gradient-blue-pink-green {
+  background-image: linear-gradient(to right, var(--color-blue), var(--color-pink), var(--color-green));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-green-blue-pink {
+  background-image: linear-gradient(to right, var(--color-green), var(--color-blue), var(--color-pink));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-pink-green-blue {
+  background-image: linear-gradient(to right, var(--color-pink), var(--color-green), var(--color-blue));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-diagonal {
+  background-image: linear-gradient(45deg, var(--color-blue), var(--color-pink), var(--color-green));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 @layer base {

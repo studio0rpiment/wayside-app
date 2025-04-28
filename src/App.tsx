@@ -10,6 +10,7 @@ import SnappingCard from './components/carousel/SnappingCard';
 // Import ContentContainerProps along with the component
 import ContentContainer, { ContentContainerProps } from './components/common/ContentContainer';
 import ContentConfigHelper from './utils/ContentConfigHelper';
+import GradientElement from './utils/GradientElement'
 import { getAssetPath } from './utils/assetPaths';
 import './App.css';
 
@@ -22,10 +23,25 @@ function App() {
   return (
     <div className="App">
 
-      <VerticalSection id="vert1" title="" color={'var(--color-dark)'}  >
-      <ContentContainer 
-         {...headerConfig} />
-      </VerticalSection>
+    
+<GradientElement 
+             color="gradient(var(--color-dark), var(--color-pink), var(--color-blue), var(--color-dark), var(--color-green))" 
+             gradientType="blocks"
+            
+             blockSize={200} //
+             
+       
+       
+         
+         
+      >
+        <VerticalSection id="vert1" title="" color='gradient(var(--color-dark), var(--color-pink), var(--color-blue))' >
+          <ContentContainer 
+            {...headerConfig} />
+        </VerticalSection>
+        
+      </GradientElement>
+     
       <VerticalSection id="vert2" title="Vertical 2" color="var(--color-green)">
   
      

@@ -5,6 +5,7 @@
       "name": "Header Section",
       "description": "Simple header with logo",
       "configuration": {
+        "title": "WAYSIDE.AT",
         "backgroundColor": "transparent",
         "textColor": "var(--color-blue)",
         "padding": "0rem",
@@ -23,6 +24,7 @@
           "height": "auto",
           "position": "above"
         },
+        "titleClassName": "text-5xl md:text-7xl font-black tracking-tight mb-6",
         "position": "fixed",
         "zIndex": 50,
         "className": "header-container"
