@@ -5,7 +5,7 @@
       "name": "Header Section",
       "description": "Simple header with logo",
       "configuration": {
-        "title": "WAYSIDE.AT",
+        "title": "",
         "backgroundColor": "transparent",
         "textColor": "var(--color-blue)",
         "padding": "0rem",

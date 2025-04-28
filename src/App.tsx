@@ -29,11 +29,6 @@ function App() {
              gradientType="blocks"
             
              blockSize={200} //
-             
-       
-       
-         
-         
       >
         <VerticalSection id="vert1" title="" color='gradient(var(--color-dark), var(--color-pink), var(--color-blue))' >
           <ContentContainer 
@@ -42,17 +37,16 @@ function App() {
         
       </GradientElement>
      
-      <VerticalSection id="vert2" title="Vertical 2" color="var(--color-green)">
+      {/* <VerticalSection id="vert2" title="Vertical 2" color="var(--color-green)">
   
      
-      </VerticalSection>
+      </VerticalSection> */}
       
       {/* Horizontal Section */}
-      <HorizontalSection id="horz1" background="var(--color-dark)">
-        {/* Standard panel */}
-        <HorizontalPanel title="Horizontal 1" color="var(--color-blue)" />
+      {/* <HorizontalSection id="horz1" background="var(--color-dark)">
         
-        {/* Configurable panel using the template from contentConfigurations.json */}
+        <HorizontalPanel title="Horizontal 1" color="var(--color-blue)" />
+
         <ConfigurableHorizontalPanel 
           templateId="horizontal-panel"
           configOverrides={{
@@ -61,7 +55,7 @@ function App() {
           }}
         />
         
-        {/* Panel with custom overrides */}
+        
         <ConfigurableHorizontalPanel 
           templateId="horizontal-panel"
           configOverrides={{
@@ -73,7 +67,7 @@ function App() {
           }}
         />
         
-        {/* Using a different template for a horizontal panel */}
+      
         <ConfigurableHorizontalPanel 
           templateId="cta-section"
           configOverrides={{
@@ -82,12 +76,12 @@ function App() {
           }}
         />
       </HorizontalSection>
-      
+       */}
       {/* Another Vertical Section */}
-      <VerticalSection id="vert3" title="Vertical 3" color="var(--color-pink)" />
+      {/* <VerticalSection id="vert3" title="Vertical 3" color="var(--color-pink)" /> */}
       
       {/* Snapping Carousel Section */}
-      <SnappingCarousel 
+      {/* <SnappingCarousel 
         id="carousel1" 
         title="Our Projects" 
         background="var(--color-dark)"
@@ -111,10 +105,10 @@ function App() {
         <SnappingCard title="Project 5" subtitle="Marketing Campaign" color="var(--color-blue)" index={5} height="80%">
           <p>Card 5 Content</p>
         </SnappingCard>
-      </SnappingCarousel>
+      </SnappingCarousel> */}
       
       {/* Final Vertical Section */}
-      <VerticalSection id="vert4" title="Vertical 4" color="var(--color-green)" />
+      {/* <VerticalSection id="vert4" title="Vertical 4" color="var(--color-green)" /> */}
     </div>
   );
 }
