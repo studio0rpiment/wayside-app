@@ -44,7 +44,7 @@ const SimplifiedCarousel: React.FC<CarouselProps> = ({
         start: 'top top',
         end: () => `+=${section.offsetWidth}`,
         invalidateOnRefresh: true,
-        markers: true,
+        markers: false,
       }
     });
     

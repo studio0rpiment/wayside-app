@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import VerticalSection from './components/sections/vertical/VerticalSection';
@@ -7,44 +7,28 @@ import HorizontalPanel from './components/sections/horizontal/HorizontalPanel';
 import ConfigurableHorizontalPanel from './components/sections/horizontal/ConfigurableHorizontalPanel';
 import SnappingCarousel from './components/carousel/SnappingCarousel';
 import SnappingCard from './components/carousel/SnappingCard';
-import ContentContainer from './components/common/ContentContainer';
+// Import ContentContainerProps along with the component
+import ContentContainer, { ContentContainerProps } from './components/common/ContentContainer';
 import ContentConfigHelper from './utils/ContentConfigHelper';
 import { getAssetPath } from './utils/assetPaths';
 import './App.css';
 
-// Register ScrollTrigger globally - this is important!
-gsap.registerPlugin(ScrollTrigger);
+
 
 function App() {
+  // Fetch the config and assert its type to match ContentContainerProps
+  const headerConfig = ContentConfigHelper.getTemplateById('header') as ContentContainerProps;
+
   return (
     <div className="App">
-      {/* Vertical Sections */}
-      <VerticalSection id="vert1" title="Vertical 1" color="var(--color-blue)" />
+
+      <VerticalSection id="vert1" title="" color={'var(--color-dark)'}  >
+      <ContentContainer 
+         {...headerConfig} />
+      </VerticalSection>
       <VerticalSection id="vert2" title="Vertical 2" color="var(--color-green)">
-        {/* Hero section using ContentContainer with hero template */}
-        <ContentContainer 
-          title="Welcome to Our Interactive Experience" 
-          subtitle="Scroll to explore the possibilities"
-          backgroundColor="var(--color-dark)"
-          textColor="var(--color-light)"
-          width="100%"
-          height="100vh"
-          padding="3rem"
-          fullWidth={true}
-          fullHeight={true}
-          alignment="center"
-          verticalAlignment="center"
-          backgroundImage={""}
-          hasShadow={true }
-          borderRadius="0"
-          glassmorphism={true}
-          animateIn={true}
-          animationType="fade"
-          animationDuration={0.8}
-          titleClassName="text-5xl md:text-7xl font-black tracking-tight mb-6"
-          subtitleClassName="text-xl md:text-2xl font-light mb-10 opacity-80"
-          className="hero-container relative z-10"
-        />
+  
+     
       </VerticalSection>
       
       {/* Horizontal Section */}

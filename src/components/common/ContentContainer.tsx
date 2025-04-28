@@ -2,8 +2,10 @@ import React, { useRef, useEffect, useState, ReactNode } from 'react';
 import classNames from 'classnames';
 import { gsap } from 'gsap';
 import { useScroll } from '../../context/ScrollContext';
+import { getAssetPath } from '../../utils/assetPaths.ts';
 
-interface ContentContainerProps {
+
+export interface ContentContainerProps {
   // Content
   title?: string;
   subtitle?: string;
@@ -110,7 +112,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
   textColor = 'black',
   width = '100%',
   height = 'auto',
-  padding = '2rem',
+  padding = '0',
   margin = '0',
   className = '',
   
@@ -380,10 +382,13 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
       'text-center': alignment === 'center', 
       'text-right': alignment === 'right',
       
-      // Tailwind classes for content positioning
-      'items-start': verticalAlignment === 'top',
-      'items-center': verticalAlignment === 'center',
-      'items-end': verticalAlignment === 'bottom',
+      // Vertical alignment (using justify for column flexbox)
+    'justify-start': verticalAlignment === 'top',
+    'justify-center': verticalAlignment === 'center',
+    'justify-end': verticalAlignment === 'bottom',
+    
+      // Flex container settings
+      'flex flex-col': true,
     },
     className
   );
@@ -419,12 +424,15 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
     opacity,
     position: 'relative',
     overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+   
     ...getVariableFontStyle(),
   };
   
   // Add background image if provided
   if (backgroundImage) {
-    containerStyle.backgroundImage = `url(${backgroundImage})`;
+    containerStyle.backgroundImage = `url(${getAssetPath(backgroundImage)})`;
     containerStyle.backgroundSize = 'cover';
     containerStyle.backgroundPosition = 'center';
   }
@@ -435,6 +443,18 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
   if (fontSize) containerStyle.fontSize = fontSize;
   if (lineHeight) containerStyle.lineHeight = lineHeight;
   if (letterSpacing) containerStyle.letterSpacing = letterSpacing;
+
+  // Create a specific style for the content wrapper
+const contentWrapperStyle: React.CSSProperties = {
+  // Position the content at top, center, or bottom
+  marginTop: verticalAlignment === 'top' ? 0 : 
+            verticalAlignment === 'center' ? 'auto' : 0,
+  marginBottom: verticalAlignment === 'bottom' ? 0 : 
+               verticalAlignment === 'center' ? 'auto' : 0,
+  display: 'flex',
+  flexDirection: 'column',
+  width: '100%'
+};
   
   return (
     <div 
@@ -447,7 +467,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <video
             className="w-full h-full object-cover"
-            src={backgroundVideo}
+            src={getAssetPath(backgroundVideo)}
             autoPlay
             loop
             muted
@@ -465,6 +485,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
       <div 
         ref={contentRef}
         className={contentLayoutClass}
+        style={contentWrapperStyle}
       >
         {/* If content media is positioned above text */}
         {((contentImage?.position === 'above' || contentVideo?.position === 'above')) && (
@@ -473,7 +494,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
               <figure className={classNames('media-figure', contentImage.className)}>
                 <img 
                   ref={imageRef}
-                  src={contentImage.src} 
+                  src={getAssetPath(contentImage.src)}
                   alt={contentImage.alt || title || 'Content image'} 
                   style={{
                     width: contentImage.width || '100%',
@@ -491,7 +512,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
               <figure className={classNames('media-figure', contentVideo.className)}>
                 <video
                   ref={videoRef}
-                  src={contentVideo.src}
+                  src={getAssetPath(contentVideo.src)}
                   autoPlay={contentVideo.autoPlay}
                   loop={contentVideo.loop}
                   muted={contentVideo.muted}
@@ -544,7 +565,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
               <figure className={classNames('media-figure', contentImage.className)}>
                 <img 
                   ref={imageRef}
-                  src={contentImage.src} 
+                  src={getAssetPath(contentImage.src)} 
                   alt={contentImage.alt || title || 'Content image'} 
                   style={{
                     width: contentImage.width || '100%',
@@ -562,7 +583,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
               <figure className={classNames('media-figure', contentVideo.className)}>
                 <video
                   ref={videoRef}
-                  src={contentVideo.src}
+                  src={getAssetPath(contentVideo.src)}
                   autoPlay={contentVideo.autoPlay}
                   loop={contentVideo.loop}
                   muted={contentVideo.muted}
@@ -588,7 +609,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
         <figure className={classNames('media-figure', contentImage.className)}>
           <img 
             ref={imageRef}
-            src={contentImage.src} 
+            src={getAssetPath(contentImage.src)}
             alt={contentImage.alt || title || 'Content image'} 
             style={{
               width: contentImage.width || '30%',
@@ -606,7 +627,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
         <figure className={classNames('media-figure', contentImage.className)}>
           <img 
             ref={imageRef}
-            src={contentImage.src} 
+            src={getAssetPath(contentImage.src)}
             alt={contentImage.alt || title || 'Content image'} 
             style={{
               width: contentImage.width || '30%',
@@ -624,7 +645,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
         <figure className={classNames('media-figure', contentVideo.className)}>
           <video
             ref={videoRef}
-            src={contentVideo.src}
+            src={getAssetPath(contentVideo.src)}
             autoPlay={contentVideo.autoPlay}
             loop={contentVideo.loop}
             muted={contentVideo.muted}
@@ -646,7 +667,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
         <figure className={classNames('media-figure', contentVideo.className)}>
           <video
             ref={videoRef}
-            src={contentVideo.src}
+            src={getAssetPath(contentVideo.src)}
             autoPlay={contentVideo.autoPlay}
             loop={contentVideo.loop}
             muted={contentVideo.muted}

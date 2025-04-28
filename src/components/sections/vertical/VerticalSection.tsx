@@ -5,13 +5,12 @@ import classNames from 'classnames';
 
 interface VerticalSectionProps {
   id: string;
-  title: string;
+  title?: string; // Made optional
   color: string;
   children?: ReactNode;
   className?: string;
   height?: string | number;
   minHeight?: string | number;
-  contentWidth?: string | number;
   fullHeight?: boolean;
 }
 
@@ -21,21 +20,17 @@ const VerticalSection: React.FC<VerticalSectionProps> = ({
   color,
   children,
   className = '',
-  height, // Optional explicit height
-  minHeight = '100vh', // Default minimum height
-  contentWidth = 'max-w-6xl', // Default content width
-  fullHeight = true, // Default to full viewport height
+  height,
+  minHeight = '100vh',
+  fullHeight = true,
 }) => {
-  // Use a simple ref instead of the context hook
   const sectionRef = useRef<HTMLElement>(null);
   
-  // Set up ScrollTrigger for animation if needed
   useEffect(() => {
     if (!sectionRef.current) return;
     
     const section = sectionRef.current;
     
-    // Create a simple ScrollTrigger for this section
     const trigger = ScrollTrigger.create({
       trigger: section,
       start: 'top 80%',
@@ -55,7 +50,7 @@ const VerticalSection: React.FC<VerticalSectionProps> = ({
       ref={sectionRef}
       id={id}
       className={classNames(
-        'vertical-section w-full flex flex-col items-center justify-center',
+        'vertical-section w-full',
         fullHeight && !height ? 'min-h-screen' : '',
         className
       )}
@@ -63,13 +58,12 @@ const VerticalSection: React.FC<VerticalSectionProps> = ({
         backgroundColor: color,
         height: height,
         minHeight: !height ? minHeight : undefined,
+        maxWidth: '100vw'
       }}
       data-section-id={id}
     >
-      <div className={classNames("section-content px-4 py-8 md:px-8 md:py-12 w-full mx-auto", contentWidth)}>
-        <h2 className="text-6xl font-bold text-white mb-8">{title}</h2>
-        {children}
-      </div>
+       {children}
+
     </section>
   );
 };

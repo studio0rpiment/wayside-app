@@ -57,7 +57,7 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
         start: 'top top',
         end: () => `+=${section.offsetWidth}`,
         invalidateOnRefresh: true,
-        markers: true,
+        markers: false,
         snap: {
           snapTo: snapPoints, // Snap to these points
           duration: { min: 0.1, max: 0.3 }, // Snap duration
