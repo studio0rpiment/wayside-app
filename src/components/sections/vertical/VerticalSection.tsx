@@ -56,7 +56,7 @@ const VerticalSection: React.FC<VerticalSectionProps> = ({
       )}
       style={{ 
         backgroundColor: color,
-        height: height,
+        height: 'auto',
         minHeight: !height ? minHeight : undefined,
         maxWidth: '100vw'
       }}

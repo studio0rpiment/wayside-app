@@ -61,15 +61,13 @@ const SnappingCard: React.FC<CardProps> = ({
         )}
         
         <div className="card-content flex-grow overflow-auto">
-          {children || (
-            <p className="text-xl">Card {index || ''} Content</p>
-          )}
+          { children }
         </div>
         
         {/* Card number indicator */}
         {index !== undefined && (
           <div className="bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm absolute bottom-4 right-4">
-            {index}
+            {/* {index} */}
           </div>
         )}
       </div>

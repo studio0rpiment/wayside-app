@@ -8,7 +8,7 @@
   --color-green: #009449;
   --color-pink: #BE69A9;
   --color-light: #FFFFF0;
-  --color-dark: #36454F;
+  --color-dark: #282C35;
 
   /* 
 
@@ -109,24 +109,39 @@
   }
 
   body {
-    font-family: system-ui, -apple-system, sans-serif;
-    line-height: 1.6;
+    font-family: rigby, sans-serif;
   }
 }
 
-.ar-subtitle {
+/*  */
+
+
+[data-component="buttonToOnboarding"] h4,
+[data-component="buttonToOnboarding"] .subtitle,
+.button-component h4,
+div[class*="button-component"] .subtitle {
+  font-size: 1.3rem !important;
   text-align: center !important;
+  /* white-space: pre-line; */
+}
+
+[data-component="info-card"] .content,
+.info-card,
+*[class ="content"] {
+  font-size: 1rem;
+  text-align: left;
+  white-space: pre-line;
 }
 
 [data-component="hero"] .subtitle,
 .hero-container,
-*[class*="subtitle"] {
+*[class ="subtitle"] {
   font-size: 1rem;
   text-align: center !important;
   width: 100% !important;
-  
-
 }
+
+
 
 @layer components {
   .section-content {

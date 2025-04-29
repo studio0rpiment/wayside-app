@@ -30,34 +30,7 @@
         "className": "header-container"
       }
     },
-    {
-      "id": "footer",
-      "name": "Footer Section",
-      "description": "Simple footer with logo",
-      "configuration": {
-        "backgroundColor": "var(--color-dark)",
-        "textColor": "var(--color-blue)",
-        "width": "100vw",
-        "height": "60px",
-        "padding": "1rem",
-        "fullWidth": true,
-        "fullHeight": false,
-        "alignment": "center",
-        "verticalAlignment": "center",
-        "backgroundImage": "",
-        "hasShadow": true,
-        "borderRadius": "0",
-        "glassmorphism": true,
-        "logoImage": {
-          "src": "/path/to/logo.png",
-          "alt": "Site Logo",
-          "width": "auto",
-          "height": "40px",
-          "position": "above"
-        },
-        "className": "footer-container"
-      }
-    },
+   
     {
       "id": "hero",
       "name": "Hero Section",
@@ -95,36 +68,92 @@
       }
     },
     {
-      "id": "feature-card",
-      "name": "Feature Card",
-      "description": "Card with image, title, and description for features section",
+      "id": "info-card",
+      "name": "Info Card",
+      "description": "Card with description of Project",
       "configuration": {
-        "title": "Interactive Feature",
-        "subtitle": "Discover the possibilities",
-        "content": "This feature allows you to interact with various elements in an intuitive way.",
-        "backgroundColor": "var(--color-light)",
-        "textColor": "var(--color-dark)",
-        "width": "100%",
+        "title": "",
+        "subtitle": "",
+        "content": "Wayside is an AR app designed by Andrew Kastner, an artist-in-residence at Kenilworth Aquatic Gardens in partnership with Capital Fringe. \n\n  His residency has been focused on researching the history and climate change impacts to the park and transforming them into artistic interpretations within three themes: time, seasons, and moments.\n\nThe goal is simple: to connect visitors to the park's rich history, present challenges, and future prospects in a more sensory, open-ended way.Andrew is a stroke survivor living with aphasia, the confusion of language. He built this as a \"post linguistic\" experience, encouraging others to navigate using symbols in place of words when possible.",
+        "backgroundColor": "var(--color-dark)",
+        "textColor": "var(--color-light)",
+        "fontFamily": "'rigby', sans-serif",
+        "margin": "1rem 1rem 0rem 1rem",
+        "width": "auto",
         "height": "auto",
-        "padding": "2rem",
+        "padding": "1.5rem",
         "fullWidth": false,
-        "borderRadius": "1rem",
+        "borderRadius": "3rem",
         "hasShadow": true,
         "alignment": "left",
-        "contentImage": {
-          "src": "/path/to/feature-image.jpg",
-          "alt": "Feature preview",
-          "position": "above",
-          "width": "100%",
-          "height": "auto",
-          "caption": "Interactive demonstration"
-        },
         "animateIn": true,
         "animationType": "slide",
         "scrollTrigger": true,
+        "interactive": false,
+        "hoverEffect": "lift",
+        "className": "info-card transform transition duration-100 ease-in-out"
+      }
+    },
+    {
+      "id": "kenilworthLogo",
+      "name": "Kenilworth Logo",
+      "description": "Display the kenliworth logo",
+      "configuration": {
+        "backgroundColor": "var(--color-light)",
+        "textColor": "",
+        "width": "auto",
+        "height": "auto",
+        "margin": "1rem",
+        "padding": "1.5rem",
+        "borderRadius": "3rem",
+        "fullWidth": false,
+        "alignment": "center",
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/logos/Kenilworth.png",
+          "alt": "Kenilworth Aquatic Gardens Logo",
+          "position": "above",
+          "width": "100%",
+          "className": "kenilworthLogo shadow-lg transform transition duration-100 ease-in-out"
+        },
+        
+        "className": "split-section py-16"
+      }
+    },
+    {
+      "id": "buttonToOnboarding",
+      "name": "Button",
+      "description": "Button that goes to onboarding",
+      "configuration": {
+        "subtitle": "Click Me",
+        "backgroundColor": "var(--color-dark)",
+        "textColor": "var(--color-pink)",
+        "width": "auto",
+        "padding": "1rem 2rem",
+        "borderRadius": "0.5rem",
+        "hasShadow": true,
+        "targetId": "",
+        "href": "",
+        "openInNewTab": false,
         "interactive": true,
         "hoverEffect": "lift",
-        "className": "feature-card transform transition duration-300 ease-in-out"
+        "alignment": "center",
+        "contentImage_HOLDER": {
+          "note": "to activate the contentImage take _HOLDER off",
+          "src": "",
+          "alt": "Button icon",
+          "position": "above",
+          "width": "24px",
+          "height": "24px"
+        },
+        "fontFamily": "'rigby', sans-serif",
+        
+         "backgroundImage": "",
+        "titleClassName": "font-bold",
+        "className": "button-component cursor-pointer"
       }
     },
     {
@@ -317,6 +346,34 @@
       }
     },
     {
+      "id": "footer",
+      "name": "Footer Section",
+      "description": "Simple footer with logo",
+      "configuration": {
+        "backgroundColor": "var(--color-dark)",
+        "textColor": "var(--color-blue)",
+        "width": "100vw",
+        "height": "60px",
+        "padding": "1rem",
+        "fullWidth": true,
+        "fullHeight": false,
+        "alignment": "center",
+        "verticalAlignment": "center",
+        "backgroundImage": "",
+        "hasShadow": true,
+        "borderRadius": "0",
+        "glassmorphism": true,
+        "logoImage": {
+          "src": "/path/to/logo.png",
+          "alt": "Site Logo",
+          "width": "auto",
+          "height": "40px",
+          "position": "above"
+        },
+        "className": "footer-container"
+      }
+    },
+    {
       "id": "testimonial-card",
       "name": "Testimonial Card",
       "description": "Customer testimonial with image and quote",
@@ -345,8 +402,41 @@
         "subtitleClassName": "text-sm font-semibold",
         "className": "testimonial-card max-w-2xl mx-auto"
       }
+    },
+    {
+      "id": "button",
+      "name": "Button",
+      "description": "Interactive button with configurable styling",
+      "configuration": {
+        "title": "Click Me",
+        "backgroundColor": "var(--color-blue)",
+        "textColor": "var(--color-light)",
+        "width": "auto",
+        "padding": "1rem 2rem",
+        "borderRadius": "0.5rem",
+        "hasShadow": true,
+        "targetId": "",
+        "href": "",
+        "openInNewTab": false,
+        "interactive": true,
+        "hoverEffect": "lift",
+        "alignment": "center",
+        "contentImage": {
+          "src": "",
+          "alt": "Button icon",
+          "position": "above",
+          "width": "24px",
+          "height": "24px"
+        },
+        "backgroundImage": "",
+        "titleClassName": "font-bold",
+        "className": "button-component cursor-pointer"
+      }
     }
   ],
+
+ 
+
   "contentLayouts": [
     {
       "id": "single-column",

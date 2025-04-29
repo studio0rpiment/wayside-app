@@ -13,6 +13,7 @@ export interface ContentContainerProps {
   children?: ReactNode;
   
   // Styling and Layout
+  id?: string;
   backgroundColor?: string;
   backgroundImage?: string;
   textColor?: string;
@@ -97,6 +98,7 @@ export interface ContentContainerProps {
   // Interactive Behavior
   interactive?: boolean;
   hoverEffect?: 'none' | 'scale' | 'glow' | 'lift';
+  onClick?: () => void;
 }
 
 const ContentContainer: React.FC<ContentContainerProps> = ({
@@ -107,6 +109,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
   children,
   
   // Styling and Layout
+  id,
   backgroundColor = 'white',
   backgroundImage,
   textColor = 'black',
@@ -164,6 +167,8 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
   // Interactive Behavior
   interactive = false,
   hoverEffect = 'none',
+  onClick,
+  
 }) => {
   // Refs for animation targets
   const containerRef = useRef<HTMLDivElement>(null);
@@ -461,8 +466,11 @@ const contentWrapperStyle: React.CSSProperties = {
   return (
     <div 
       ref={containerRef}
+      id={id}
       className={containerClasses}
       style={containerStyle}
+      onClick={onClick}
+      data-component={id}
     >
       {/* Background video if provided */}
       {backgroundVideo && (
