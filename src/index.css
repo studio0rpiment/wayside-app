@@ -114,6 +114,20 @@
   }
 }
 
+.ar-subtitle {
+  text-align: center !important;
+}
+
+[data-component="hero"] .subtitle,
+.hero-container,
+*[class*="subtitle"] {
+  font-size: 1rem;
+  text-align: center !important;
+  width: 100% !important;
+  
+
+}
+
 @layer components {
   .section-content {
     @apply px-4 py-8 md:px-8 md:py-12 w-full max-w-7xl mx-auto z-10 relative;

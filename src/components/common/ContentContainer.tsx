@@ -158,7 +158,7 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
   // Content Formatting
   contentClassName = '',
   titleClassName = '',
-  subtitleClassName = '',
+  subtitleClassName = '!text-center mb-0 opacity-80',
   textClassName = '',
   
   // Interactive Behavior
@@ -408,6 +408,8 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
       'flex flex-col-reverse': contentImage?.position === 'above' || contentVideo?.position === 'above',
       'flex flex-row-reverse gap-4': contentImage?.position === 'left' || contentVideo?.position === 'left',
       'flex flex-row gap-4': contentImage?.position === 'right' || contentVideo?.position === 'right',
+
+
     },
     contentClassName
   );
@@ -544,10 +546,13 @@ const contentWrapperStyle: React.CSSProperties = {
           )}
           
           {subtitle && (
-            <h4 className={classNames('opacity-80 mb-4', subtitleClassName || 'text-lg')}>
+            <h4 className={classNames('!text-center text-xl md:text-2xl font-light mb-0 opacity-80', subtitleClassName || 'text-lg')}>
               {subtitle}
             </h4>
           )}
+
+
+
           
           {content && (
             <div className={classNames('content-text', textClassName)}>

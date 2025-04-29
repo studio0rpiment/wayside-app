@@ -19,6 +19,7 @@ import './App.css';
 function App() {
   // Fetch the config and assert its type to match ContentContainerProps
   const headerConfig = ContentConfigHelper.getTemplateById('header') as ContentContainerProps;
+  const heroConfig = ContentConfigHelper.getTemplateById('hero') as ContentContainerProps;
 
   return (
     <div className="App">
@@ -31,8 +32,12 @@ function App() {
              blockSize={200} //
       >
         <VerticalSection id="vert1" title="" color='gradient(var(--color-dark), var(--color-pink), var(--color-blue))' >
-          <ContentContainer 
-            {...headerConfig} />
+
+          <ContentContainer {...headerConfig} />
+          <ContentContainer {...heroConfig} />
+
+
+
         </VerticalSection>
         
       </GradientElement>

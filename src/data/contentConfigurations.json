@@ -5,7 +5,7 @@
       "name": "Header Section",
       "description": "Simple header with logo",
       "configuration": {
-        "title": "",
+        
         "backgroundColor": "transparent",
         "textColor": "var(--color-blue)",
         "padding": "0rem",
@@ -64,35 +64,34 @@
       "description": "",
       "configuration": {
         "title": "",
-        "subtitle": "",
+        "subtitle": "An Augmented Reality (AR) view of Kenliworth Aquatic Gardens" ,        
         "content": "",
-        "backgroundColor": "var(--color-dark)",
-        "textColor": "var(--color-blue)",
+        "backgroundColor": "transparent",
+        "textColor": "var(--color-light)",
         "width": "100vw",
         "height": "flex",
-        "padding": "0rem",
+        "padding": "0rem 1rem 0rem 1rem",
         "fullWidth": true,
         "fullHeight": false,
         "alignment": "center",
         "verticalAlignment": "top",
         "backgroundImage": "",
-        "hasShadow": false,
+        "hasShadow": true,
         "borderRadius": "0",
-        "glassmorphism": true,
-        "animateIn": true,
+        "glassmorphism": false,
+        "animateIn": false,
         "animationType": "fade",
         "animationDuration": 0.8,
         "animationDelay": 0.2,
-        "fontFamily": "'Inter Variable', sans-serif",
+        "fontFamily": "'rigby', sans-serif",
         "variableFontSettings": {
           "wght": 800,
           "wdth": 100
         },
         "fontAnimatesOnScroll": true,
         "fontAnimationRange": [0.1, 0.6],
-        "titleClassName": "text-5xl md:text-7xl font-black tracking-tight mb-6",
-        "subtitleClassName": "text-xl md:text-2xl font-light mb-10 opacity-80",
-        "className": "hero-container relative z-10"
+        "subtitleClassName": "",
+        "className": "hero-container relative z-10 text-center opacity-0"
       }
     },
     {
