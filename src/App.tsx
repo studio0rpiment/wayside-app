@@ -6,6 +6,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 // Route components
 import Home from './components/routes/Home';
 import Onboarding from './components/routes/Onboarding';
+import { PermissionsProvider } from './context/PermissionsContext';
+
 
 
 
@@ -15,14 +17,27 @@ import './App.css';
 
 function App() {
   return (
+   
+
+
     <div className="App">
-      <Router>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-        </Routes>
-      </Router>
+      <PermissionsProvider> 
+
+          <Router>
+              <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/onboarding" element={<Onboarding onComplete={function (): void {
+              throw new Error('Function not implemented.');
+            } } />} />
+              </Routes>
+          </Router>
+
+
+      </PermissionsProvider>
     </div>
+
+
+    
   );
 }
 

@@ -11,6 +11,7 @@ interface CarouselProps {
   className?: string;
   height?: string | number;
   cardHeight?: string | number;
+  currentCard?: string | number;
 }
 
 const SnappingCarousel: React.FC<CarouselProps> = ({
