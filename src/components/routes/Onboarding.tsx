@@ -13,26 +13,27 @@ const Onboarding: React.FC = () => {
       >
         <SnappingCarousel 
           id="carousel1" 
-          title="" 
+          title="onboarding" 
+        
           background=""
         >
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={1} height="80%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={1} height="90%">
             {/* Card 1 content */}
           </SnappingCard>
           
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={2} height="80%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={2} height="90%">
             {/* Card 2 content */}
           </SnappingCard>
           
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={3} height="80%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={3} height="90%">
             {/* Card 3 content */}
           </SnappingCard>
           
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={4} height="80%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={4} height="90%">
             {/* Card 4 content */}
           </SnappingCard>
           
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={5} height="80%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={5} height="90%">
             {/* Card 5 content */}
           </SnappingCard>
         </SnappingCarousel>

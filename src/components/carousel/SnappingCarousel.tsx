@@ -117,6 +117,8 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
       ref={triggerRef} 
       className={classNames("carousel-trigger", className)}
       style={{ 
+        fontFamily: "'rigby', sans-serif",
+        
         height: height, 
         width: '100%', 
         position: 'relative',
@@ -125,8 +127,13 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
       }}
     >
       {title && (
-        <div className="carousel-title p-6 text-center">
-          <h2 className="text-4xl font-bold text-white mb-6">{title}</h2>
+        <div className="carousel-title"
+          style={{
+            padding: '1rem 0rem 0rem 1rem',
+            fontSize: '1.3rem',
+          }}
+        >
+              {title}
         </div>
       )}
       
@@ -145,6 +152,36 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
       >
         {children}
       </section>
+      <div 
+      className='scrollup flex items-center justify-center'
+      style={{
+        position: 'absolute',
+        bottom: '10px',
+        width: '100%',
+        textAlign: 'center',
+        fontSize: '1rem',
+        fontWeight: 'bold',
+        color: '#333',
+        padding: '10px 0',
+      }}
+    >
+          <p>  
+          <span className="mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 15l-6-6-6 6"/>
+                  </svg>
+                </span>
+            Swipe Up to Continue 
+                <span className="mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 15l-6-6-6 6"/>
+                  </svg>
+            </span>
+            
+            </p>
+
+        </div>
+
     </div>
   );
 };
