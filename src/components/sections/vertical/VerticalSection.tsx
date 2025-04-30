@@ -12,6 +12,7 @@ interface VerticalSectionProps {
   height?: string | number;
   minHeight?: string | number;
   fullHeight?: boolean;
+  isScrollLocked?: boolean;
 }
 
 const VerticalSection: React.FC<VerticalSectionProps> = ({
@@ -23,6 +24,7 @@ const VerticalSection: React.FC<VerticalSectionProps> = ({
   height,
   minHeight = '100vh',
   fullHeight = true,
+  isScrollLocked = false, // Default to false for normal scrolling
 }) => {
   const sectionRef = useRef<HTMLElement>(null);
   
@@ -44,6 +46,56 @@ const VerticalSection: React.FC<VerticalSectionProps> = ({
       trigger.kill();
     };
   }, [id]);
+
+  // Scroll locking functionality
+  useEffect(() => {
+    if (!isScrollLocked) return;
+    
+    // Handle wheel events
+    const preventDownScroll = (e: WheelEvent) => {
+      if (e.deltaY > 0) { // Scrolling down
+        e.preventDefault();
+        const rect = sectionRef.current?.getBoundingClientRect();
+        // Only prevent if we're at or near the bottom of this section
+        if (rect && Math.abs(rect.bottom - window.innerHeight) < 50) {
+          window.scrollTo({
+            top: sectionRef.current?.offsetTop || 0,
+            behavior: 'auto'
+          });
+        }
+      }
+    };
+    
+    // Handle touch events for mobile
+    let touchStartY = 0;
+    const touchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY;
+    };
+    
+    const touchMove = (e: TouchEvent) => {
+      const touchY = e.touches[0].clientY;
+      const direction = touchStartY - touchY;
+      
+      if (direction > 0) { // Scrolling down
+        const rect = sectionRef.current?.getBoundingClientRect();
+        // Only prevent if we're at or near the bottom of this section
+        if (rect && Math.abs(rect.bottom - window.innerHeight) < 50) {
+          e.preventDefault();
+        }
+      }
+    };
+    
+    // Add event listeners with passive: false to allow preventDefault
+    window.addEventListener('wheel', preventDownScroll, { passive: false });
+    window.addEventListener('touchstart', touchStart, { passive: true });
+    window.addEventListener('touchmove', touchMove, { passive: false });
+    
+    return () => {
+      window.removeEventListener('wheel', preventDownScroll);
+      window.removeEventListener('touchstart', touchStart);
+      window.removeEventListener('touchmove', touchMove);
+    };
+  }, [isScrollLocked]);
   
   return (
     <section

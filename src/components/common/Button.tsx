@@ -8,6 +8,8 @@ export interface ButtonProps extends Omit<ContentContainerProps, 'children'> {
   targetAction?: string; // Custom action to trigger
   openInNewTab?: boolean;
   buttonClassName?: string;
+  unlockScrolling?: boolean;
+  onUnlock?: () => void; // Callback to notify parent component to unlock scrolling
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -16,6 +18,8 @@ const Button: React.FC<ButtonProps> = ({
   targetAction,
   openInNewTab,
   buttonClassName = '',
+  unlockScrolling = false,
+  onUnlock,
   
   // ContentContainer props passed through
   title,
@@ -32,19 +36,27 @@ const Button: React.FC<ButtonProps> = ({
   ...otherProps
 }) => {
   const handleClick = () => {
-    if (targetId) {
-      // Scroll to target element
-      const targetElement = document.getElementById(targetId);
-      if (targetElement) {
-        targetElement.scrollIntoView({ behavior: 'smooth' });
-      }
-    } else if (href) {
-      if (openInNewTab) {
-        window.open(href, '_blank');
-      } else {
-        window.location.href = href;
-      }
+    // If this button should unlock scrolling, call the callback
+    if (unlockScrolling && onUnlock) {
+      onUnlock();
     }
+    
+    // Handle navigation after a small delay (allows unlock to take effect first)
+    setTimeout(() => {
+      if (targetId) {
+        // Scroll to target element
+        const targetElement = document.getElementById(targetId);
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else if (href) {
+        if (openInNewTab) {
+          window.open(href, '_blank');
+        } else {
+          window.location.href = href;
+        }
+      }
+    }, 50);
     
     // Custom action handling could be added here
   };
