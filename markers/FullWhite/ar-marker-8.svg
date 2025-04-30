@@ -1,0 +1,31 @@
+<svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- White background for the entire expanded SVG -->
+  <rect x="0" y="0" width="600" height="600" fill="white"/>
+  
+  <!-- Original 4x4 AR marker pattern shifted by 100px -->
+  <g transform="translate(100, 100)">
+    <!-- Top row -->
+    <rect x="0" y="0" width="100" height="100" fill="white"/>
+    <rect x="100" y="0" width="100" height="100" fill="black"/>
+    <rect x="200" y="0" width="100" height="100" fill="black"/>
+    <rect x="300" y="0" width="100" height="100" fill="white"/>
+    
+    <!-- Row 2 -->
+    <rect x="0" y="100" width="100" height="100" fill="black"/>
+    <rect x="100" y="100" width="100" height="100" fill="white"/>
+    <rect x="200" y="100" width="100" height="100" fill="white"/>
+    <rect x="300" y="100" width="100" height="100" fill="black"/>
+    
+    <!-- Row 3 -->
+    <rect x="0" y="200" width="100" height="100" fill="black"/>
+    <rect x="100" y="200" width="100" height="100" fill="white"/>
+    <rect x="200" y="200" width="100" height="100" fill="white"/>
+    <rect x="300" y="200" width="100" height="100" fill="black"/>
+    
+    <!-- Bottom row -->
+    <rect x="0" y="300" width="100" height="100" fill="white"/>
+    <rect x="100" y="300" width="100" height="100" fill="black"/>
+    <rect x="200" y="300" width="100" height="100" fill="black"/>
+    <rect x="300" y="300" width="100" height="100" fill="white"/>
+  </g>
+</svg>
