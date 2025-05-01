@@ -188,6 +188,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     setCurrentARExperience(null);
   }, []);
 
+  // Handle launching the AR demo experience
+  const handleLaunchAR = useCallback(() => {
+    setShowARExperience(true);
+  }, []);
+
   // Content for each card in the carousel (simplified to 3 cards)
   const renderCardContent = useCallback((index: number) => {
     switch (index) {
@@ -237,10 +242,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               backgroundColor: 'rgba(0, 0, 0, 0.1)',
               borderRadius: '8px'
             }}>
-              {!currentARExperience ? (
+              {!showARExperience ? (
                 <button 
                   className="primary-button"
-                  onClick={() => setCurrentARExperience('demo')}
+                  onClick={handleLaunchAR}
                 >
                   Launch AR Demo
                 </button>
@@ -259,7 +264,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       default:
         return null;
     }
-  }, [currentARExperience, handleCompleteOnboarding, allPermissionsGranted, setCurrentStep]);
+  }, [showARExperience, handleLaunchAR, handleCompleteOnboarding, allPermissionsGranted]);
+
 
   // Memoize the Debug Button component to avoid re-rendering it
   const MemoizedDebugButton = useMemo(() => {
@@ -297,9 +303,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       </GradientElement>
       
       {/* Render AR experience through Portal when active */}
-      {currentARExperience === 'demo' && (
-        <DemoExperience onClose={handleCloseARExperience} />
-      )}
+   {showARExperience && <DemoExperience onClose={() => setShowARExperience(false)} />}
     </div>
   );
 };
