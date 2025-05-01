@@ -7,7 +7,7 @@ interface DemoExperienceProps {
 
 const DemoExperience: React.FC<DemoExperienceProps> = ({ 
   onClose, 
-  markerUrl = window.location.origin + '/wayside-app/marker-patterns/pattern-ar-marker-5.patt'
+  markerUrl = window.location.origin + '/wayside-app/marker-patterns/pattern-ar-marker-4.patt'
 }) => {
   useEffect(() => {
     console.log("DemoExperience mounted - creating AR container");
