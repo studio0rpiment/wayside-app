@@ -3,6 +3,7 @@ import GradientElement from '../../utils/GradientElement';
 import SnappingCarousel from '../carousel/SnappingCarousel';
 import SnappingCard from '../carousel/SnappingCard';
 import PermissionsStatus from '../common/PermissionsStatus';
+import ARDemoComponent from '../common/ARDemoComponent';
 import { 
   PermissionType, 
   PermissionStatus, 
@@ -166,9 +167,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         );
       case 3:
         return (
-          <div className="card-content ready">
-            <h2>You're All Set!</h2>
-            <p>Your AR experience is ready to explore. Enjoy your visit to the park!</p>
+          <div className="card-content ready" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <h2>Test Your AR Experience</h2>
+            <p>Try pointing your camera at Marker #5 to see augmented reality in action!</p>
+            
+            <div style={{ flex: 1, minHeight: '60vh', marginBottom: '1rem', position: 'relative' }}>
+              <ARDemoComponent markerPatternUrl="/src/data/marker-patterns/pattern-ar-marker-5.patt" />
+            </div>
             
             <button className="primary-button" onClick={handleCompleteOnboarding}>
               Start Experience
@@ -208,7 +213,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             {renderCardContent(2)}
           </SnappingCard>
           
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={3} height="90%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={3} height="100%">
             {renderCardContent(3)}
           </SnappingCard>
         </SnappingCarousel>
