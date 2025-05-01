@@ -40,6 +40,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   // State to track if the AR experience is ready to be shown
   const [showARExperience, setShowARExperience] = useState(false);
   
+  // State to track which AR experience to show
+  const [currentARExperience, setCurrentARExperience] = useState<string | null>(null);
+  
   // Memoize the value of allGranted to use as a dependency
   const allPermissionsGranted = useMemo(() => 
     permissionsState?.allGranted, 
@@ -49,6 +52,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   // Initialize permissions when the component mounts
   useEffect(() => {
     // Ensure we show at least the welcome screen
+    console.log(`Current step changed to: ${currentStep}`);
     if (currentStep === 0) {
       initialize();
     }
@@ -69,9 +73,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     }
   }, [allPermissionsGranted, completeOnboarding, permissionsState, currentStep]);
 
-  // Disable GSAP ScrollTrigger when on the AR demo card
+  // Disable GSAP ScrollTrigger when AR experience is launched
   useEffect(() => {
-    if (currentStep === 2) {
+    if (currentARExperience) {
       console.log('Disabling GSAP ScrollTrigger for AR experience');
       
       // Get all ScrollTrigger instances
@@ -94,16 +98,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         console.log(`Disabled ${disabledTriggers.length} ScrollTrigger instances`);
       }
       
-      // Wait a short time before showing the AR experience to ensure DOM is stable
-      const timer = setTimeout(() => {
-        setShowARExperience(true);
-      }, 500);
-      
-      // Re-enable triggers when leaving this card or unmounting
+      // Re-enable triggers when AR experience is closed
       return () => {
-        clearTimeout(timer);
-        setShowARExperience(false);
-        
         console.log('Re-enabling GSAP ScrollTrigger instances');
         disabledTriggers.forEach(trigger => {
           if (trigger && typeof trigger.enable === 'function') {
@@ -111,10 +107,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           }
         });
       };
-    } else {
-      setShowARExperience(false);
     }
-  }, [currentStep]);
+  }, [currentARExperience]);
 
   // Handle requesting permissions
   const handleRequestPermission = useCallback(async (type: PermissionType) => {
@@ -189,6 +183,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     onComplete();
   }, [completeOnboarding, onComplete]);
 
+  // Handle closing the AR experience
+  const handleCloseARExperience = useCallback(() => {
+    setCurrentARExperience(null);
+  }, []);
+
   // Content for each card in the carousel (simplified to 3 cards)
   const renderCardContent = useCallback((index: number) => {
     switch (index) {
@@ -231,23 +230,23 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               flex: 1, 
               minHeight: '60vh', 
               marginBottom: '1rem', 
-              position: 'relative', 
-              overflow: 'hidden', 
-              borderRadius: '8px',
-              contain: 'strict' // Isolate DOM manipulations
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              borderRadius: '8px'
             }}>
-              {/* Only render AR experience when we're on this step and GSAP is disabled */}
-              {currentStep === 2 && showARExperience ? (
-                <DemoExperience />
+              {!currentARExperience ? (
+                <button 
+                  className="primary-button"
+                  onClick={() => setCurrentARExperience('demo')}
+                >
+                  Launch AR Demo
+                </button>
               ) : (
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  height: '100%',
-                  backgroundColor: 'rgba(0, 0, 0, 0.1)'
-                }}>
-                  <p>Preparing AR experience...</p>
+                <div style={{textAlign: 'center', color: 'white', backgroundColor: 'rgba(0, 0, 0, 0.5)', padding: '20px', borderRadius: '8px'}}>
+                  AR Experience Running
                 </div>
               )}
             </div>
@@ -260,7 +259,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       default:
         return null;
     }
-  }, [setCurrentStep, handleCompleteOnboarding, allPermissionsGranted, currentStep, showARExperience]);
+  }, [currentARExperience, handleCompleteOnboarding, allPermissionsGranted, setCurrentStep]);
 
   // Memoize the Debug Button component to avoid re-rendering it
   const MemoizedDebugButton = useMemo(() => {
@@ -296,6 +295,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         </SnappingCarousel>
         
       </GradientElement>
+      
+      {/* Render AR experience through Portal when active */}
+      {currentARExperience === 'demo' && (
+        <DemoExperience onClose={handleCloseARExperience} />
+      )}
     </div>
   );
 };
