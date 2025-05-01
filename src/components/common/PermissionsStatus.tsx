@@ -148,40 +148,63 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
     };
     
     if (compact) {
+      // Minimal letter + circle indicator
+      const permissionLetter = 
+        type === PermissionType.CAMERA ? "C" :
+        type === PermissionType.LOCATION ? "L" : 
+        type === PermissionType.ORIENTATION ? "M" : "";
+      
       return (
-        <Chip
-          icon={undefined}
-          label={
-            type === PermissionType.CAMERA ? "CAMERA" :
-            type === PermissionType.LOCATION ? "LOCATION" : 
-            type === PermissionType.ORIENTATION ? "MOTION" : 
-            isGranted ? "Granted" : "Required"
-          }
-          color={isGranted ? "primary" : "error"}
-          size="small"
-          variant="filled"
-          deleteIcon={isGranted ? <CheckCircleOutlineIcon /> : <CancelOutlinedIcon />}
-          onDelete={() => handleRequestPermission(type)}
-          sx={{ 
+        <Box
+          onClick={() => handleRequestPermission(type)}
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
             m: 0.5,
-            fontWeight: 'bold',
-            ...(isGranted 
-              ? getGradientForType(type) 
-              : { backgroundColor: 'var(--color-pink)' }),
-            '& .MuiChip-label': {
-              color: 'var(--color-light)',
-            },
-            '& .MuiChip-icon': {
-              color: 'var(--color-light)',
-            },
-            '& .MuiChip-deleteIcon': {
-              color: 'var(--color-light)',
-              '&:hover': {
-                color: isGranted ? 'inherit' : 'var(--color-light)'
-              }
+            cursor: 'pointer',
+            position: 'relative',
+            backgroundColor: 'transparent',
+            '&:hover': {
+              opacity: 0.8,
             }
           }}
-        />
+        >
+          {/* Letter */}
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 'bold',
+              color: 'var(--color-light)',
+              fontSize: '0.75rem',
+              textShadow: '0 1px 1px rgba(0,0,0,0.5)',
+              lineHeight: 1,
+              zIndex: 2,
+            }}
+          >
+            {permissionLetter}
+          </Typography>
+          
+          {/* Status indicator - filled circle with thin white outline */}
+          <Box 
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              width: '16px',
+              height: '16px',
+              borderRadius: '50%',
+              transform: 'translate(-50%, -50%)',
+              border: '0.5px solid var(--color-dark)',
+              boxShadow: '0 0 2px rgba(0,0,0,0.3)',
+              backgroundColor: isGranted ? 'var(--color-green)' : 'var(--color-pink)',
+              zIndex: 1,
+            }}
+          />
+        </Box>
       );
     }
     
@@ -298,7 +321,16 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
   return (
     <Box className={className}>
       {compact ? (
-        <Stack direction="row" spacing={0.5} flexWrap="wrap">
+        <Stack 
+          direction="column" 
+          spacing={0.5} 
+          sx={{ 
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            zIndex: 10
+          }}
+        >
           {showCamera && renderPermissionStatus(PermissionType.CAMERA, 'Camera')}
           {showLocation && renderPermissionStatus(PermissionType.LOCATION, 'Location')}
           {showOrientation && renderPermissionStatus(PermissionType.ORIENTATION, 'Orientation')}

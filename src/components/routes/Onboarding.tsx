@@ -52,8 +52,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       completeOnboarding();
       
       // Ensure we show the final card if all permissions are granted
-      if (currentStep < 4) {
-        setCurrentStep(4);
+      if (currentStep < 2) {
+        setCurrentStep(2);
       }
     }
   }, [allPermissionsGranted, completeOnboarding, permissionsState, currentStep]);
@@ -86,10 +86,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         granted = await requestPermission(type);
       }
       
-      // Only advance to the next step if permission was granted
-      if (granted) {
-        setCurrentStep(prev => prev + 1);
-      }
+      // No longer automatically advancing steps since we have a consolidated permissions card
+      // We'll rely on the Continue button and the useEffect that checks allPermissionsGranted
     } catch (error) {
       console.error("Error requesting permission:", error);
     }
@@ -134,7 +132,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     onComplete();
   }, [completeOnboarding, onComplete]);
 
-  // Content for each card in the carousel
+  // Content for each card in the carousel (simplified to 3 cards)
   const renderCardContent = useCallback((index: number) => {
     switch (index) {
       case 1:
@@ -149,55 +147,28 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         );
       case 2:
         return (
-          <div className="card-content camera-permission">
-            <h2>Camera Access</h2>
-            <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-              <PermissionsStatus showCamera={true} showLocation={false} showOrientation={false} compact={true} />
+          <div className="card-content permissions">
+            <h2>Required Permissions</h2>
+            <p>The following permissions are needed for the AR experience:</p>
+            
+            <div className="permissions-summary" style={{ margin: '1rem 0' }}>
+              <PermissionsStatus />
             </div>
-            <p>{getPermissionExplanation(PermissionType.CAMERA)}</p>
-            <button className="primary-button" onClick={() => handleRequestPermission(PermissionType.CAMERA)}>
-              Allow Camera
+            
+            <button 
+              className="primary-button" 
+              onClick={() => setCurrentStep(2)}
+              disabled={!allPermissionsGranted}
+            >
+              Continue
             </button>
           </div>
         );
       case 3:
         return (
-          <div className="card-content location-permission">
-            <h2>Location Access</h2>
-            <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-              <PermissionsStatus showCamera={false} showLocation={true} showOrientation={false} compact={true} />
-            </div>
-            <p>{getPermissionExplanation(PermissionType.LOCATION)}</p>
-            <button className="primary-button" onClick={() => handleRequestPermission(PermissionType.LOCATION)}>
-              Allow Location
-            </button>
-          </div>
-        );
-      case 4:
-        return (
-          <div className="card-content orientation-permission">
-            <h2>Device Orientation</h2>
-            <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-              <PermissionsStatus showCamera={false} showLocation={false} showOrientation={true} compact={true} />
-            </div>
-            <p>{getPermissionExplanation(PermissionType.ORIENTATION)}</p>
-            <button className="primary-button" onClick={() => handleRequestPermission(PermissionType.ORIENTATION)}>
-              Allow Orientation
-            </button>
-          </div>
-        );
-      case 5:
-        return (
           <div className="card-content ready">
             <h2>You're All Set!</h2>
             <p>Your AR experience is ready to explore. Enjoy your visit to the park!</p>
-            
-            <div className="permissions-summary" style={{ margin: '1.5rem 0' }}>
-              <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--color-light)' }}>
-                Permissions Status:
-              </h3>
-              <PermissionsStatus />
-            </div>
             
             <button className="primary-button" onClick={handleCompleteOnboarding}>
               Start Experience
@@ -207,7 +178,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       default:
         return null;
     }
-  }, [handleRequestPermission, handleCompleteOnboarding]);
+  }, [setCurrentStep, handleCompleteOnboarding, allPermissionsGranted]);
 
   // Memoize the Debug Button component to avoid re-rendering it
   const MemoizedDebugButton = useMemo(() => {
@@ -239,14 +210,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           
           <SnappingCard title="" subtitle="" color="var(--color-dark)" index={3} height="90%">
             {renderCardContent(3)}
-          </SnappingCard>
-          
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={4} height="90%">
-            {renderCardContent(4)}
-          </SnappingCard>
-          
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={5} height="90%">
-            {renderCardContent(5)}
           </SnappingCard>
         </SnappingCarousel>
         
