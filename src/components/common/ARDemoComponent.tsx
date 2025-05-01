@@ -6,51 +6,32 @@ interface ARDemoComponentProps {
 }
 
 const ARDemoComponent: React.FC<ARDemoComponentProps> = ({ markerPatternUrl }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [orientation, setOrientation] = useState<{ alpha: number; beta: number; gamma: number } | null>(null);
   const [markerDetected, setMarkerDetected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<'waiting'|'available'|'unavailable'>('waiting');
 
-  // Initialize camera
+  // Listen for messages from the iframe
   useEffect(() => {
-    if (!videoRef.current) return;
-
-    const initCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: false
-        });
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-          
-          // Clear any previous camera errors when we successfully get a stream
-          if (error && error.includes('Camera access failed')) {
-            setError(null);
-          }
-        }
-      } catch (err) {
-        console.error('Error accessing camera:', err);
-        setError('Camera access failed. Please check your permissions.');
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data === 'markerFound') {
+        console.log('Marker found message received from iframe');
+        setMarkerDetected(true);
+      } else if (event.data === 'markerLost') {
+        console.log('Marker lost message received from iframe');
+        setMarkerDetected(false);
       }
     };
 
-    initCamera();
-
-    // Cleanup function
+    window.addEventListener('message', handleMessage);
+    
     return () => {
-      const stream = videoRef.current?.srcObject as MediaStream | null;
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      window.removeEventListener('message', handleMessage);
     };
-  }, [error]);
+  }, []);
 
   // Get location data
   useEffect(() => {
@@ -126,24 +107,6 @@ const ARDemoComponent: React.FC<ARDemoComponentProps> = ({ markerPatternUrl }) =
     };
   }, []);
 
-  // Simulate marker detection (in a real app, this would use AR.js)
-  useEffect(() => {
-    let detectionInterval: number;
-    
-    const simulateMarkerDetection = () => {
-      // This is a placeholder for real marker detection
-      // In a complete implementation, this would use AR.js marker detection
-      const randomDetection = Math.random() > 0.7;
-      setMarkerDetected(randomDetection);
-    };
-
-    detectionInterval = window.setInterval(simulateMarkerDetection, 2000);
-
-    return () => {
-      window.clearInterval(detectionInterval);
-    };
-  }, [markerPatternUrl]);
-
   return (
     <Box 
       ref={containerRef}
@@ -155,31 +118,20 @@ const ARDemoComponent: React.FC<ARDemoComponentProps> = ({ markerPatternUrl }) =
         flexDirection: 'column'
       }}
     >
-      {/* Camera feed */}
+      {/* AR scene in an iframe */}
       <Box sx={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
-        <video 
-          ref={videoRef}
+        <iframe
+          ref={iframeRef}
+          src="/ar-scene.html"
           style={{
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
-            transform: 'scaleX(-1)'  // Mirror the camera
+            border: 'none',
+            overflow: 'hidden'
           }}
-          playsInline
-          muted
-        />
-        
-        {/* Canvas overlay for AR (would be used with AR.js) */}
-        <canvas 
-          ref={canvasRef}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none'
-          }}
+          allow="camera; geolocation; accelerometer; gyroscope; magnetometer"
+          allowFullScreen
+          title="AR Experience"
         />
 
         {/* Marker detection indicator */}
@@ -194,7 +146,9 @@ const ARDemoComponent: React.FC<ARDemoComponentProps> = ({ markerPatternUrl }) =
               backgroundColor: 'rgba(0, 0, 0, 0.7)',
               color: 'white',
               borderRadius: '0.5rem',
-              textAlign: 'center'
+              textAlign: 'center',
+              pointerEvents: 'none',
+              zIndex: 1000
             }}
           >
             <Typography variant="h6">Marker Detected!</Typography>
