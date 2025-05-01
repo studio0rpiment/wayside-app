@@ -6,7 +6,7 @@ import './index.css'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ScrollProvider } from './context/ScrollContext'
-import { PermissionsProvider } from './context/PermissionsContext'
+import { PermissionsProvider } from './context/PermissionsContext.tsx'
 
 console.log('Base URL:', import.meta.env.BASE_URL);
 
@@ -17,11 +17,11 @@ ScrollTrigger.defaults({
   markers: false });
   
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <PermissionsProvider>
       <ScrollProvider>
         <App />
       </ScrollProvider>
     </PermissionsProvider>
-  </React.StrictMode>,
+  // </React.StrictMode>,
 )

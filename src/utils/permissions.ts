@@ -106,6 +106,8 @@ export async function initPermissions(options: PermissionOptions = {}): Promise<
 export async function checkAllPermissions(
   requiredPermissions: PermissionType[] = []
 ): Promise<PermissionsState> {
+  console.log('🔍 Checking permissions for:', requiredPermissions);
+
   const results: Record<PermissionType, PermissionStatus> = {
     [PermissionType.CAMERA]: PermissionStatus.UNKNOWN,
     [PermissionType.LOCATION]: PermissionStatus.UNKNOWN,
@@ -130,6 +132,8 @@ export async function checkAllPermissions(
           results[type] = await checkMicrophonePermission();
           break;
       }
+      console.log(`🎯 Permission status for ${type}:`, status);
+
       return results[type];
     })
   );

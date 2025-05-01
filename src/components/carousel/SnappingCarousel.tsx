@@ -22,6 +22,7 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
   className = '',
   height = '100vh',
   cardHeight = '80%',
+  currentCard,
 }) => {
   const sectionRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -40,7 +41,6 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
     // Get all cards
     let cards = gsap.utils.toArray<HTMLElement>(`#${id} .carousel-card`);
     const cardCount = cards.length;
-    console.log(`${id} - Found ${cardCount} cards`);
 
     // Calculate snap points - one for each card
     const snapPoints = [];
@@ -74,6 +74,20 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
       ease: "none",
       duration: 1
     });
+    
+    // Use currentCard prop if provided to navigate to specific card
+    if (currentCard !== undefined && cardCount > 0) {
+      const cardIndex = typeof currentCard === 'string' ? parseInt(currentCard, 10) - 1 : currentCard - 1;
+      if (cardIndex >= 0 && cardIndex < cardCount) {
+        const progress = cardIndex / (cardCount - 1);
+        // Set the scroll position after a slight delay to ensure ScrollTrigger is ready
+        setTimeout(() => {
+          if (tl.scrollTrigger) {
+            tl.scrollTrigger.scroll(progress);
+          }
+        }, 100);
+      }
+    }
     
     // Apply a scale effect to centered cards
     cards.forEach((card, i) => {
@@ -111,7 +125,7 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
         }
       });
     };
-  }, [id, cardHeight]);
+  }, [id, cardHeight, currentCard]);
   
   return (
     <div 

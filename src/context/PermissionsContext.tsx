@@ -35,6 +35,9 @@ interface PermissionsContextType {
   
   // Method to complete onboarding
   completeOnboarding: () => void;
+  
+  // Method to manually update permission state
+  updatePermissionState: (type: PermissionType, status: PermissionStatus) => void;
 }
 
 // Create the context with a default value
@@ -55,7 +58,8 @@ const PermissionsContext = createContext<PermissionsContextType>({
   isPermissionGranted: () => false,
   startOnboardingFlow: () => {},
   showOnboarding: false,
-  completeOnboarding: () => {}
+  completeOnboarding: () => {},
+  updatePermissionState: () => {} // Add default implementation
 });
 
 // Props for the provider component
@@ -73,16 +77,47 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
     PermissionType.ORIENTATION
   ]
 }) => {
+  console.log("🚀 PermissionsProvider mounted");
+  
   const [permissionsState, setPermissionsState] = useState<PermissionsState | null>(null);
   const [initialized, setInitialized] = useState<boolean>(false);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
+  // Auto-initialize permissions when provider mounts
+  useEffect(() => {
+    // Use a flag in localStorage to ensure consistent behavior across browsers
+    const isFirstRun = !localStorage.getItem('permissions-initialized');
+    
+    // Initialize permissions
+    initialize().then(state => {
+      // Mark as initialized
+      localStorage.setItem('permissions-initialized', 'true');
+      
+      // Set explicit first-time user flag for new users
+      if (isFirstRun) {
+        setPermissionsState(prevState => 
+          prevState ? {...prevState, isFirstTimeUser: true} : prevState
+        );
+      }
+    }).catch(error => {
+      console.error("Error initializing permissions:", error);
+    });
+  }, []);
+
   // Method to initialize permissions
   const initialize = async (): Promise<PermissionsState> => {
+    // If already initialized, return the current state
+    if (initialized && permissionsState) {
+      return permissionsState;
+    }
+
     const state = await initPermissions({
       requiredPermissions,
       onStatusChange: (newState) => {
-        setPermissionsState(newState);
+        // Only update if there are actual changes
+        if (JSON.stringify(newState) !== JSON.stringify(permissionsState)) {
+          setPermissionsState(newState);
+        }
       },
       // Disable default UI since we're handling it with our own components
       showUI: false 
@@ -96,6 +131,43 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
     setShowOnboarding(needsOnboarding);
     
     return state;
+  };
+
+  // Method to manually update permission state
+  const updatePermissionState = (type: PermissionType, status: PermissionStatus) => {
+    if (!permissionsState) return;
+    
+    // Skip update if the status hasn't changed
+    if (permissionsState.results[type] === status) return;
+    
+    const updatedResults = {
+      ...permissionsState.results,
+      [type]: status
+    };
+    
+    // Recalculate if all required permissions are granted
+    const allGranted = requiredPermissions.every(
+      perm => updatedResults[perm] === PermissionStatus.GRANTED
+    );
+    
+    // Skip update if nothing changed
+    if (allGranted === permissionsState.allGranted && 
+        permissionsState.results[type] === status) {
+      return;
+    }
+    
+    const updatedState: PermissionsState = {
+      ...permissionsState,
+      results: updatedResults,
+      allGranted
+    };
+    
+    setPermissionsState(updatedState);
+    
+    // If all permissions are now granted, we can hide onboarding
+    if (allGranted && !permissionsState.allGranted) {
+      setShowOnboarding(false);
+    }
   };
 
   // Request a specific permission
@@ -117,30 +189,11 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
         break;
     }
     
-    // Update our state after permission request
-    if (permissionsState) {
-      const newState = { 
-        ...permissionsState,
-        results: {
-          ...permissionsState.results,
-          [type]: granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED
-        }
-      };
-      
-      // Recalculate if all required permissions are granted
-      newState.allGranted = requiredPermissions.every(
-        perm => newState.results[perm] === PermissionStatus.GRANTED
-      );
-      
-      setPermissionsState(newState);
-      
-      // If all permissions are now granted, we can hide onboarding
-      if (newState.allGranted) {
-        setShowOnboarding(false);
-      }
-      
-      return granted;
-    }
+    // Use the optimized updatePermissionState to avoid redundant renders
+    updatePermissionState(
+      type, 
+      granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED
+    );
     
     return granted;
   };
@@ -153,11 +206,13 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
 
   // Start the onboarding flow
   const startOnboardingFlow = () => {
+    console.log('🚀 Starting onboarding flow');
     setShowOnboarding(true);
   };
 
   // Complete the onboarding flow
   const completeOnboarding = () => {
+    console.log('🎉 Completing onboarding flow');
     setShowOnboarding(false);
   };
 
@@ -170,13 +225,14 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
     isPermissionGranted,
     startOnboardingFlow,
     showOnboarding,
-    completeOnboarding
+    completeOnboarding,
+    updatePermissionState // Add the new function to the context value
   };
 
-  return React.createElement(
-    PermissionsContext.Provider, 
-    { value: contextValue }, 
-    children
+  return (
+    <PermissionsContext.Provider value={contextValue}>
+      {children}
+    </PermissionsContext.Provider>
   );
 };
 
@@ -184,7 +240,7 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
 export const usePermissions = () => {
   const context = useContext(PermissionsContext);
   
-  if (context === undefined) {
+  if (!context) {
     throw new Error('usePermissions must be used within a PermissionsProvider');
   }
   

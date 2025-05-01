@@ -246,26 +246,25 @@
       "configuration": {
         "title": "Slide Title",
         "subtitle": "Supporting information",
-        "backgroundColor": "var(--color-pink)",
+        "backgroundColor": "transparent",
         "textColor": "var(--color-light)",
         "width": "90%",
         "height": "80%",
-        "padding": "2.5rem",
+        "padding": "1rem",
+        "margin": "1rem",
         "borderRadius": "1.5rem",
         "hasShadow": true,
         "alignment": "center",
-        "contentVideo": {
-          "src": "/path/to/card-video.mp4",
-          "autoPlay": true,
-          "loop": true,
-          "muted": true,
-          "controls": false,
-          "position": "below",
-          "width": "100%"
+        "contentImage": {
+          "src": "/picto/lock.png",
+          "alt": "lock",
+          "position": "above",
+          "width": "60%",
+          "className": "mt-8 rounded-lg overflow-hidden"
         },
-        "fontFamily": "'Inter Variable', sans-serif",
+        "fontFamily": "'rigby', sans-serif",
         "variableFontSettings": {
-          "wght": 700
+          "wght": 400
         },
         "titleClassName": "text-3xl font-bold mb-2",
         "subtitleClassName": "text-xl opacity-75 mb-6",

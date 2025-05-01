@@ -45,7 +45,7 @@ const SnappingCard: React.FC<CardProps> = ({
           backgroundColor: color,
           display: 'flex',
           flexDirection: 'column',
-          padding: '2rem',
+          padding: '0rem',
           position: 'relative',
           borderRadius: '1rem',
           boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
@@ -75,4 +75,5 @@ const SnappingCard: React.FC<CardProps> = ({
   );
 };
 
-export default SnappingCard;
+// Memoize the component to prevent unnecessary re-renders
+export default React.memo(SnappingCard);
