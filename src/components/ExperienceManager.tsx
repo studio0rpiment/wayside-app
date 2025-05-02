@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import CubeExperience from './experiences/CubeExperience';
 import WaterRiseExperience from './experiences/WaterRiseExperience';
 import LotusExperience from './experiences/LotusExperience';
+import MacExperience from './experiences/MacExperience';
 // import WaterRiseExperience from './experiences/WaterRiseExperience'; 
 // We'll import these when they're ready
 // import LotusExperience from './experiences/LotusExperience';
@@ -60,7 +61,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     switch (experienceType) {
       case 'cube':
         return <CubeExperience onClose={onClose} onNext={nextHandler} />;
-        
+
       case 'waterRise':
         return <WaterRiseExperience onClose={onClose} onNext={nextHandler} />;
         
@@ -69,8 +70,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
       case 'mac':
         // Temporary fallback until MacExperience is implemented
-        console.warn('MacExperience not yet implemented, using CubeExperience as fallback');
-        return <CubeExperience onClose={onClose} onNext={nextHandler} />;
+       
+        return <MacExperience onClose={onClose} onNext={nextHandler} />;
       default:
         console.warn(`Unknown experience type: ${experienceType}, defaulting to cube`);
         return <CubeExperience onClose={onClose} onNext={nextHandler} />;
