@@ -37,6 +37,13 @@
   --transition-speed: 0.4s;
 }
 
+body, html {
+  font-family: var(--font-rigby);
+  
+}
+body * {
+  font-family: inherit;
+}
 
 /* Base gradient classes */
 .bg-gradient-blue-pink-green {
@@ -116,7 +123,14 @@
 /*  */
 
 
-
+[data-component="onboarding-card-permisions"] .content,
+.carousel-content-card,
+*[class ="content"] {
+  
+  font-size: 1.3rem;
+  text-align: center;
+  white-space: pre-line;
+}
 
 [data-component="buttonToOnboarding"] h4,
 [data-component="buttonToOnboarding"] .subtitle,

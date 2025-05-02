@@ -10,6 +10,8 @@ import {
   getPermissionExplanation 
 } from '../../utils/permissions';
 import { usePermissions } from '../../context/PermissionsContext';
+import ContentContainer, { ContentContainerProps } from '../common/ContentContainer';
+import ContentConfigHelper from '../../utils/ContentConfigHelper';
 
 // Define global types for GSAP
 declare global {
@@ -149,32 +151,32 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   }, [requestPermission, updatePermissionState]);
 
   // Debug button component for development - memoized to prevent re-renders
-  const DebugButton = useCallback(() => (
-    <button 
-      onClick={() => {
-        // Test location API directly
-        if ('geolocation' in navigator) {
-          navigator.geolocation.getCurrentPosition(
-            () => {},
-            () => {}
-          );
-        }
-      }}
-      style={{
-        position: 'absolute',
-        top: 60,
-        right: 10,
-        padding: '8px 16px',
-        background: '#4CAF50',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        zIndex: 9999
-      }}
-    >
-      Debug Permissions
-    </button>
-  ), []);
+  // const DebugButton = useCallback(() => (
+  //   <button 
+  //     onClick={() => {
+  //       // Test location API directly
+  //       if ('geolocation' in navigator) {
+  //         navigator.geolocation.getCurrentPosition(
+  //           () => {},
+  //           () => {}
+  //         );
+  //       }
+  //     }}
+  //     style={{
+  //       position: 'absolute',
+  //       top: 60,
+  //       right: 10,
+  //       padding: '8px 16px',
+  //       background: '#4CAF50',
+  //       color: 'white',
+  //       border: 'none',
+  //       borderRadius: '4px',
+  //       zIndex: 9999
+  //     }}
+  //   >
+  //     Debug Permissions
+  //   </button>
+  // ), []);
 
   // Function to handle completion of onboarding and navigation
   // This is explicitly called by the "Start Experience" button
@@ -204,16 +206,61 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   }, []);
 
   // Content for each card in the carousel (simplified to 3 cards)
+    const permConfig1 = ContentConfigHelper.getTemplateById('onboarding-card-permisions') as ContentContainerProps;
+    const arCam = ContentConfigHelper.getTemplateById('arCam') as ContentContainerProps;
+
   const renderCardContent = useCallback((index: number) => {
     switch (index) {
       case 1:
         return (
-          <div className="card-content welcome">
-            <h1>Welcome to the Park AR Experience</h1>
-            <p>Explore interactive augmented reality features throughout the park!</p>
-            <button className="primary-button" onClick={() => setCurrentStep(1)}>
-              Get Started
-            </button>
+       <div className="card-content welcome">
+        {/* <h1>Welcome to Wayside.AT</h1>
+        //   //   <p>First, point your camera at the target on the sign in front of you. Try it now!</p> */}
+        <button className="primary-button go-to-next-card" 
+            style={{ 
+              position: 'absolute',
+              color: 'var(--color-light)',
+              fontSize: '1rem',
+              bottom: '0',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginBottom: '4rem',
+              padding: '.5rem',
+              backgroundColor: 'var(--color-dark)',
+              borderRadius: '8px',
+              fontFamily: 'rigby, sans-serif'
+            }}
+            onClick={() => {
+              // Update the step in state
+              setCurrentStep(prevStep => prevStep + 1);
+              
+              // Direct scroll manipulation as a fallback
+              setTimeout(() => {
+                // Get the ScrollTrigger instance for the carousel
+                const gsap = window.gsap;
+                if (gsap && gsap.ScrollTrigger) {
+                  const allTriggers = gsap.ScrollTrigger.getAll();
+                  const carouselTrigger = allTriggers.find(
+                    (                    trigger: { vars: { trigger: { classList: { contains: (arg0: string) => any; }; }; }; }) => trigger.vars.trigger && 
+                    trigger.vars.trigger.classList.contains('carousel-trigger')
+                  );
+                  
+                  // If we found the trigger, manually scroll to the next card
+                  if (carouselTrigger) {
+                    // Get all cards and calculate the next card's position
+                    const cards = document.querySelectorAll('#carousel1 .carousel-card');
+                    const cardCount = cards.length;
+                    const nextIndex = 1; // Go to the second card (index 1)
+                    const progress = nextIndex / (cardCount - 1);
+                    
+                    // Set the scroll position
+                    carouselTrigger.scroll(progress);
+                  }
+                }
+              }, 100);
+            }}>
+            CONTINUE
+          </button>
           </div>
         );
       case 2:
@@ -226,25 +273,35 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <PermissionsStatus />
             </div>
             
-            <button 
+            {/* <button 
               className="primary-button" 
               onClick={() => setCurrentStep(2)}
               disabled={!allPermissionsGranted}
             >
               Continue
-            </button>
+            </button> */}
           </div>
         );
         case 3:
           return (
-            <div className="card-content ready" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div className="card-content ready" 
+            style={{ 
+              height: 'auto', 
+              display: 'flex', 
+              margin: '1rem', 
+              textAlign: 'center',
+              flexDirection: 'column' }}>
               <h2>Camera and AR Demo</h2>
-              <p>This demo shows how the camera and AR elements will work in the app.</p>
+
+              <ContentContainer {...arCam} />
+
+              <p>First, point your camera at the target on the sign in front of you. Try it now!.</p>
               
               <div style={{ 
                 flex: 1, 
-                minHeight: '60vh', 
-                marginBottom: '1rem', 
+                minHeight: 'auto', 
+                margin: '1rem', 
+                padding: '1rem',
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
@@ -255,6 +312,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 {!currentARExperience ? (
                   <button 
                     className="primary-button"
+                    style={{margin: '1rem', 
+                      padding: '1rem', fontSize: '1rem'}}
                     onClick={() => {
                       setCurrentARExperience('demo');
                       setShowARExperience(true);
@@ -263,15 +322,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     Launch AR Demo
                   </button>
                 ) : (
-                  <div style={{textAlign: 'center', color: 'white', backgroundColor: 'rgba(0, 0, 0, 0.5)', padding: '20px', borderRadius: '8px'}}>
+                  <div style={{textAlign: 'center', color: 'var(--color-light)', backgroundColor: 'rgba(0, 0, 0, 0.5)', padding: '1rem', borderRadius: '8px'}}>
                     AR Experience Running (Step {arStep})
                   </div>
                 )}
               </div>
               
-              <button className="primary-button" onClick={handleCompleteOnboarding}>
+              {/* <button className="primary-button" onClick={handleCompleteOnboarding}>
                 Start Experience
-              </button>
+              </button> */}
             </div>
           );
       default:
@@ -281,13 +340,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
 
   // Memoize the Debug Button component to avoid re-rendering it
-  const MemoizedDebugButton = useMemo(() => {
-    return process.env.NODE_ENV === 'development' ? <DebugButton /> : null;
-  }, [DebugButton]);
+  // const MemoizedDebugButton = useMemo(() => {
+  //   return process.env.NODE_ENV === 'development' ? <DebugButton /> : null;
+  // }, [DebugButton]);
 
   return (
     <div className="onboarding-route">
-      {MemoizedDebugButton}
+      {/* {MemoizedDebugButton} */}
 
       <GradientElement 
         color="gradient(var(--color-dark), var(--color-pink), var(--color-blue), var(--color-dark), var(--color-green))" 
@@ -301,7 +360,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           currentCard={currentStep + 1} // +1 because card indices start at 1
         >
           <SnappingCard title="" subtitle="" color="var(--color-dark)" index={1} height="90%">
-            {renderCardContent(1)}
+
+          <ContentContainer {...permConfig1} />
+
+            {/* {renderCardContent(1)} */}
+            
+
           </SnappingCard>
           
           <SnappingCard title="" subtitle="" color="var(--color-dark)" index={2} height="90%">

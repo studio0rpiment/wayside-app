@@ -4,7 +4,6 @@ import * as THREE from 'three';
 interface CubeExperienceProps {
   onClose: () => void;
   onNext?: () => void;
-  
 }
 
 const CubeExperience: React.FC<CubeExperienceProps> = ({ onClose, onNext }) => {
@@ -23,25 +22,22 @@ const CubeExperience: React.FC<CubeExperienceProps> = ({ onClose, onNext }) => {
     container.style.zIndex = '1001'; // Above the AR.js scene
     document.body.appendChild(container);
 
-    // Add close button
-    const closeButton = document.createElement('button');
-    closeButton.textContent = 'Close';
-    closeButton.style.position = 'absolute';
-    closeButton.style.top = '20px';
-    closeButton.style.right = '20px';
-    closeButton.style.padding = '12px 20px';
-    closeButton.style.background = 'rgba(255, 255, 255, 0.8)';
-    closeButton.style.border = 'none';
-    closeButton.style.borderRadius = '5px';
-    closeButton.style.fontSize = '16px';
-    closeButton.style.cursor = 'pointer';
-    closeButton.style.zIndex = '1002';
-    
-    closeButton.addEventListener('click', () => {
-      onClose();
-    });
-    
-    container.appendChild(closeButton);
+    // Create instructions div
+    const instructions = document.createElement('div');
+    instructions.style.position = 'absolute';
+    instructions.style.bottom = '20px';
+    instructions.style.left = '50%';
+    instructions.style.transform = 'translateX(-50%)';
+    instructions.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    instructions.style.color = 'white';
+    instructions.style.padding = '12px 20px';
+    instructions.style.borderRadius = '8px';
+    instructions.style.textAlign = 'center';
+    instructions.style.fontFamily = 'var(--font-rigby)';
+    instructions.style.fontWeight = '400';
+    instructions.style.zIndex = '1002'; // Above the Three.js scene
+    instructions.innerHTML = 'Tap the red cube to continue';
+    container.appendChild(instructions);
 
     // Initialize Three.js components with transparency
     const scene = new THREE.Scene();
@@ -102,10 +98,6 @@ const CubeExperience: React.FC<CubeExperienceProps> = ({ onClose, onNext }) => {
             onNext(); // This will trigger the navigation
           }
         }, 300);
-        // Call onNext if provided
-        // if (onNext) {
-        //   onNext();
-        // }
       }
     };
     
@@ -135,16 +127,11 @@ const CubeExperience: React.FC<CubeExperienceProps> = ({ onClose, onNext }) => {
           // Change color to green
           (cube.material as THREE.MeshBasicMaterial).color.set(0x00ff00);
 
-           setTimeout(() => {
-              if (onNext) {
-                onNext(); // This will trigger the navigation
-              }
-            }, 300);
-
-          // Call onNext if provided
-          // if (onNext) {
-          //   onNext();
-          // }
+          setTimeout(() => {
+            if (onNext) {
+              onNext(); // This will trigger the navigation
+            }
+          }, 300);
         }
       }
     };

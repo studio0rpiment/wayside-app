@@ -157,6 +157,135 @@
       }
     },
     {
+      "id": "onboarding-card-permisions",
+      "name": "Onboarding Card Permissions",
+      "description": "Card designed specifically for carousel sections",
+      "configuration": {
+        "title": "Discover 3D Art as you walk the path",
+        "subtitle": "",
+        "backgroundColor": "transparent",
+        "textColor": "var(--color-light)",
+        "width": "auto",
+        "height": "auto",
+        "padding": "2rem",
+        "margin": "1rem",
+        "borderRadius": "0rem",
+        "hasShadow": true,
+        "alignment": "center",
+        "contentImage": {
+          "src": "/picto/lock.png",
+          "alt": "lock",
+          "position": "above",
+          "width": "70%",
+          "className": "m-8 rounded-lg overflow-hidden"
+          
+        },
+        "fontFamily": "'rigby', sans-serif",
+        "variableFontSettings": {
+          "wght": 400
+        },
+        "titleClassName": "text-3xl font-bold mb-2",
+        "subtitleClassName": "text-xl opacity-75 mb-6",
+        "className": "carousel-content-card items-center justify-center"
+      }
+    },
+    {
+      "id": "arCam",
+      "name": "cameraDemo",
+      "description": "Display the camera pictogram",
+      "configuration": {
+        "backgroundColor": "transparent",
+        "textColor": "",
+        "width": "auto",
+        "height": "auto",
+        "margin": "1rem",
+        "padding": "1rem",
+        "textAlign": "center",
+        "borderRadius": "3rem",
+        "fullWidth": false,
+        "alignment": "center",
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/picto/ar-camera.png",
+          "alt": "ar-camera",
+          "position": "above",
+          "width": "100%",
+          "className": "ar-camera-pict shadow-lg transform transition duration-100 ease-in-out"
+        },
+        
+        "className": "split-section py-16"
+      }
+    },
+
+    {
+      "id": "mapBase1",
+      "name": "mapBase1",
+      "description": "Display the map",
+      "configuration": {
+        "backgroundColor": "transparent",
+        "textColor": "",
+        "content": "",
+        "width": "auto",
+        "height": "auto",
+        "margin": "0rem",
+        "padding": "0rem",
+        "textAlign": "center",
+        "borderRadius": "0rem",
+        "fullWidth": true,
+        "alignment": "center",
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/img/mapBase1.jpg",
+          "alt": "mapBase1",
+          "position": "above",
+          "width": "100%",
+          "className": "ar-camera-pict shadow-lg transform transition duration-100 ease-in-out"
+        },
+        
+        "className": "mapBase1 py-16"
+      }
+    },
+    {
+      "id": "mapBase2",
+      "name": "mapBase2",
+      "description": "Display the map",
+      "configuration": {
+        "backgroundColor": "transparent",
+        "textColor": "",
+        "content": "",
+        "width": "auto",
+        "height": "auto",
+        "margin": "0rem",
+        "padding": "0rem",
+        "textAlign": "center",
+        "borderRadius": "0rem",
+        "fullWidth": true,
+        "alignment": "center",
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/img/mapBase2.jpg",
+          "alt": "mapBase2",
+          "position": "above",
+          "width": "100%",
+          "height": "100%",
+          "className": "ar-camera-pict shadow-lg transform transition duration-100 ease-in-out"
+        },
+        
+        "className": "mapBase1 py-16"
+      }
+    },
+
+
+    {
       "id": "video-showcase",
       "name": "Video Showcase",
       "description": "Large video with text overlay",
@@ -239,38 +368,7 @@
         "className": "typography-showcase min-h-[70vh] flex items-center justify-center"
       }
     },
-    {
-      "id": "carousel-card",
-      "name": "Carousel Card",
-      "description": "Card designed specifically for carousel sections",
-      "configuration": {
-        "title": "Slide Title",
-        "subtitle": "Supporting information",
-        "backgroundColor": "transparent",
-        "textColor": "var(--color-light)",
-        "width": "90%",
-        "height": "80%",
-        "padding": "1rem",
-        "margin": "1rem",
-        "borderRadius": "1.5rem",
-        "hasShadow": true,
-        "alignment": "center",
-        "contentImage": {
-          "src": "/picto/lock.png",
-          "alt": "lock",
-          "position": "above",
-          "width": "60%",
-          "className": "mt-8 rounded-lg overflow-hidden"
-        },
-        "fontFamily": "'rigby', sans-serif",
-        "variableFontSettings": {
-          "wght": 400
-        },
-        "titleClassName": "text-3xl font-bold mb-2",
-        "subtitleClassName": "text-xl opacity-75 mb-6",
-        "className": "carousel-content-card"
-      }
-    },
+  
     {
       "id": "horizontal-panel",
       "name": "Horizontal Panel Content",

@@ -8,6 +8,8 @@ import Home from './components/routes/Home';
 import Onboarding from './components/routes/Onboarding';
 import Map from './components/routes/Map';
 import WaterLevel from './components/routes/WaterLevel';
+import Lotus from './components/routes/Lotus';
+import Mac from './components/routes/Mac';
 import { PermissionsProvider } from './context/PermissionsContext.tsx';
 import AppThemeProvider from './theme/ThemeProvider';
 
@@ -43,6 +45,8 @@ function App() {
               <Route path="/onboarding" element={<OnboardingWrapper />} />
               <Route path="/map" element={<Map />} />
               <Route path="/water-level" element={<WaterLevel />} />
+              <Route path="/lotus" element={<Lotus />} />
+              <Route path="/mac" element={<Mac />} />
             </Routes>
           </Router>
         </PermissionsProvider>

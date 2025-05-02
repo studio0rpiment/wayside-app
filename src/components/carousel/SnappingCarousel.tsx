@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, ReactNode } from 'react';
+import React, { useRef, useEffect, ReactNode, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import classNames from 'classnames';
@@ -26,7 +26,10 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
 }) => {
   const sectionRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
+  const [cardCount, setCardCount] = useState(0);
   
+  // Setup the initial timeline and scroll triggers
   useEffect(() => {
     // Register ScrollTrigger if not already registered
     if (!ScrollTrigger) {
@@ -40,13 +43,14 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
     
     // Get all cards
     let cards = gsap.utils.toArray<HTMLElement>(`#${id} .carousel-card`);
-    const cardCount = cards.length;
+    const count = cards.length;
+    setCardCount(count);
 
     // Calculate snap points - one for each card
     const snapPoints = [];
-    for (let i = 0; i < cardCount; i++) {
+    for (let i = 0; i < count; i++) {
       // Create snap points at each card position (0 to 1 range)
-      snapPoints.push(i / (cardCount - 1));
+      snapPoints.push(i / (count - 1));
     }
     
     // Create the timeline for scrolling
@@ -68,6 +72,9 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
       }
     });
     
+    // Store the timeline in a ref for later use
+    timelineRef.current = tl;
+    
     // Animate all cards horizontally
     tl.to(cards, {
       x: () => -section.offsetWidth + window.innerWidth,
@@ -75,23 +82,9 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
       duration: 1
     });
     
-    // Use currentCard prop if provided to navigate to specific card
-    if (currentCard !== undefined && cardCount > 0) {
-      const cardIndex = typeof currentCard === 'string' ? parseInt(currentCard, 10) - 1 : currentCard - 1;
-      if (cardIndex >= 0 && cardIndex < cardCount) {
-        const progress = cardIndex / (cardCount - 1);
-        // Set the scroll position after a slight delay to ensure ScrollTrigger is ready
-        setTimeout(() => {
-          if (tl.scrollTrigger) {
-            tl.scrollTrigger.scroll(progress);
-          }
-        }, 100);
-      }
-    }
-    
     // Apply a scale effect to centered cards
     cards.forEach((card, i) => {
-      const progress = i / (cardCount - 1);
+      const progress = i / (count - 1);
       
       // Create a separate timeline for each card's scale effect
       gsap.timeline({
@@ -125,7 +118,19 @@ const SnappingCarousel: React.FC<CarouselProps> = ({
         }
       });
     };
-  }, [id, cardHeight, currentCard]);
+  }, [id, cardHeight]);
+  
+  // Handle currentCard changes separately from the initial setup
+  useEffect(() => {
+    if (currentCard !== undefined && cardCount > 0 && timelineRef.current?.scrollTrigger) {
+      const cardIndex = typeof currentCard === 'string' ? parseInt(currentCard, 10) - 1 : currentCard - 1;
+      if (cardIndex >= 0 && cardIndex < cardCount) {
+        const progress = cardIndex / (cardCount - 1);
+        // Navigate to the specified card
+        timelineRef.current.scrollTrigger.scroll(progress);
+      }
+    }
+  }, [currentCard, cardCount]);
   
   return (
     <div 

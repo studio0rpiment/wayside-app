@@ -3,14 +3,19 @@ import React, { useEffect } from 'react';
 interface MarkerDetectorProps {
   onMarkerDetected: () => void;
   markerUrl: string;
+  instructionsText?: string;
+  loadingText?: string;
 }
 
 const MarkerDetector: React.FC<MarkerDetectorProps> = ({ 
   onMarkerDetected,
-  markerUrl 
+  markerUrl,
+  instructionsText = 'Point your camera at the marker',
+  loadingText = 'Looking for marker...'
 }) => {
   useEffect(() => {
     console.log("MarkerDetector mounted - creating AR container");
+    console.log("Using marker URL:", markerUrl);
     
     // Create container for the AR experience
     const container = document.createElement('div');
@@ -84,6 +89,8 @@ const MarkerDetector: React.FC<MarkerDetectorProps> = ({
                 border-radius: 5px;
                 text-align: center;
                 z-index: 1001;
+                font-family: var(--font-rigby), sans-serif;
+                font-weight: 400;
               }
             </style>
             
@@ -97,12 +104,12 @@ const MarkerDetector: React.FC<MarkerDetectorProps> = ({
             <!-- Loading indicator -->
             <div class="loading" id="loading">
               <div class="spinner"></div>
-              <div>Looking for marker...</div>
+              <div>${loadingText}</div>
             </div>
             
             <!-- Instructions -->
             <div class="instructions" id="instructions">
-              Point your camera at the marker
+              ${instructionsText}
             </div>
             
             <!-- A-Frame scene - just for marker detection -->
@@ -190,7 +197,7 @@ const MarkerDetector: React.FC<MarkerDetectorProps> = ({
         document.body.removeChild(container);
       }
     };
-  }, [markerUrl, onMarkerDetected]);
+  }, [markerUrl, onMarkerDetected, instructionsText, loadingText]);
   
   // Component doesn't render anything directly
   return null;
