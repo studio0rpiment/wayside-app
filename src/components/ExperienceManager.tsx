@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
 import WaterRiseExperience from './experiences/WaterRiseExperience';
+import LotusExperience from './experiences/LotusExperience';
 // import WaterRiseExperience from './experiences/WaterRiseExperience'; 
 // We'll import these when they're ready
 // import LotusExperience from './experiences/LotusExperience';
@@ -59,13 +60,13 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     switch (experienceType) {
       case 'cube':
         return <CubeExperience onClose={onClose} onNext={nextHandler} />;
+        
       case 'waterRise':
         return <WaterRiseExperience onClose={onClose} onNext={nextHandler} />;
         
       case 'lotus':
-        // Temporary fallback until LotusExperience is implemented
-        console.warn('LotusExperience not yet implemented, using CubeExperience as fallback');
-        return <CubeExperience onClose={onClose} onNext={nextHandler} />;
+        return <LotusExperience onClose={onClose} onNext={nextHandler} />;
+
       case 'mac':
         // Temporary fallback until MacExperience is implemented
         console.warn('MacExperience not yet implemented, using CubeExperience as fallback');
