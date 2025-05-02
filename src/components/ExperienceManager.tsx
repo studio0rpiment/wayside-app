@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
+import WaterRiseExperience from './experiences/WaterRiseExperience';
 // import WaterRiseExperience from './experiences/WaterRiseExperience'; 
 // We'll import these when they're ready
 // import LotusExperience from './experiences/LotusExperience';
@@ -12,9 +13,9 @@ import CubeExperience from './experiences/CubeExperience';
 // Define marker pattern mapping
 const markerPatterns = {
   cube: window.location.origin + '/wayside-app/marker-patterns/pattern-ar-marker-2.patt',
-  waterRise: window.location.origin + '/wayside-app/marker-patterns/pattern-marker-9.patt',
-  lotus: window.location.origin + '/wayside-app/marker-patterns/pattern-marker-5.patt',
-  mac: window.location.origin + '/wayside-app/marker-patterns/pattern-marker-4.patt'
+  waterRise: window.location.origin + '/wayside-app/marker-patterns/pattern-ar-marker-9.patt',
+  lotus: window.location.origin + '/wayside-app/marker-patterns/pattern-ar-marker-5.patt',
+  mac: window.location.origin + '/wayside-app/marker-patterns/pattern-ar-marker-4.patt'
 };
 
 // Define experience types
@@ -59,9 +60,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       case 'cube':
         return <CubeExperience onClose={onClose} onNext={nextHandler} />;
       case 'waterRise':
-        // return <WaterRiseExperience onClose={onClose} onNext={nextHandler} />;
-        console.warn('LotusExperience not yet implemented, using CubeExperience as fallback');
-        return <CubeExperience onClose={onClose} onNext={nextHandler} />;
+        return <WaterRiseExperience onClose={onClose} onNext={nextHandler} />;
+        
       case 'lotus':
         // Temporary fallback until LotusExperience is implemented
         console.warn('LotusExperience not yet implemented, using CubeExperience as fallback');

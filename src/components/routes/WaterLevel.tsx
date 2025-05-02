@@ -36,9 +36,9 @@ const WaterLevel: React.FC = () => {
       }}>
         <PermissionsStatus 
           compact={true} 
-          showCamera={showExperience} // Show camera status when experience is active
+          showCamera={true} // Show camera status when experience is active
           showLocation={true}
-          showOrientation={false}
+          showOrientation={true}
         />
       </div>
 
