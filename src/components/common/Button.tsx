@@ -10,6 +10,9 @@ export interface ButtonProps extends Omit<ContentContainerProps, 'children'> {
   buttonClassName?: string;
   unlockScrolling?: boolean;
   onUnlock?: () => void; // Callback to notify parent component to unlock scrolling
+  width?: string | number; // Added width property
+  textSize?: string | number; // Added textSize property
+  style?: React.CSSProperties; // Added style property for additional custom styling
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -20,6 +23,9 @@ const Button: React.FC<ButtonProps> = ({
   buttonClassName = '',
   unlockScrolling = false,
   onUnlock,
+  width,
+  textSize,
+  style,
   
   // ContentContainer props passed through
   title,
@@ -61,6 +67,13 @@ const Button: React.FC<ButtonProps> = ({
     // Custom action handling could be added here
   };
   
+  // Build custom style object
+  const customStyle: React.CSSProperties = {
+    ...(width !== undefined && { width }),
+    ...(textSize !== undefined && { fontSize: textSize }),
+    ...style // Merge any additional styles
+  };
+  
   return (
     <ContentContainer
       title={title}
@@ -75,6 +88,7 @@ const Button: React.FC<ButtonProps> = ({
       hoverEffect={hoverEffect}
       className={classNames('cursor-pointer', className, buttonClassName)}
       onClick={handleClick}
+      style={customStyle} // Apply our custom styles
       {...otherProps}
     />
   );

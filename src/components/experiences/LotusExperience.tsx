@@ -128,10 +128,21 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
     continueButton.style.zIndex = '1002';
     continueButton.innerHTML = 'Continue';
     continueButton.onclick = () => {
+
+        window.location.href = window.location.origin + '/wayside-app/#/map';
+
+
       if (onNext) {
         onNext();
       }
     };
+    
+    continueButton.addEventListener('touchstart', () => {
+        if (onNext) {
+          window.location.href = window.location.origin + '/wayside-app/#/map';
+          onNext();
+        }
+      }, { passive: false });
     container.appendChild(continueButton);
 
     // Initialize Three.js components with transparency

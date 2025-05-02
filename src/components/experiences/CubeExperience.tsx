@@ -127,8 +127,16 @@ const CubeExperience: React.FC<CubeExperienceProps> = ({ onClose, onNext }) => {
           // Change color to green
           (cube.material as THREE.MeshBasicMaterial).color.set(0x00ff00);
 
+         
+
           setTimeout(() => {
+
+            window.location.href = window.location.origin + '/wayside-app/#/map';
+
             if (onNext) {
+
+              // {getAssetPath('#/map')}
+
               onNext(); // This will trigger the navigation
             }
           }, 300);

@@ -92,9 +92,18 @@ const MacExperience: React.FC<McDowneyEraExperienceProps> = ({ onClose, onNext }
     continueButton.innerHTML = 'Continue';
     continueButton.onclick = () => {
       if (onNext) {
+
+            window.location.href = window.location.origin + '/wayside-app/#/map';
+
         onNext();
       }
     };
+    continueButton.addEventListener('touchstart', () => {
+        if (onNext) {
+          window.location.href = window.location.origin + '/wayside-app/#/map';
+          onNext();
+        }
+      }, { passive: false });
     container.appendChild(continueButton);
 
     // Initialize Three.js components with transparency

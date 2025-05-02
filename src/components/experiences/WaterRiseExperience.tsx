@@ -271,10 +271,19 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({ onClose, onNe
 
     // Setup continue button click handler
     continueButton.addEventListener('click', function() {
+        window.location.href = window.location.origin + '/wayside-app/#/map';
+
+
       if (onNext) {
         onNext();
       }
     });
+    continueButton.addEventListener('touchstart', () => {
+        if (onNext) {
+          window.location.href = window.location.origin + '/wayside-app/#/map';
+          onNext();
+        }
+      }, { passive: false });
 
     // Handle window resize
     const handleResize = () => {

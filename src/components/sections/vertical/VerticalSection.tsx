@@ -13,6 +13,10 @@ interface VerticalSectionProps {
   minHeight?: string | number;
   fullHeight?: boolean;
   isScrollLocked?: boolean;
+  backgroundImage?: string; // Changed to string type for URL or path
+  backgroundSize?: string; // Added for control over background sizing
+  backgroundPosition?: string; // Added for control over background positioning
+  backgroundRepeat?: string; // Added for control over background repeating
 }
 
 const VerticalSection: React.FC<VerticalSectionProps> = ({
@@ -25,6 +29,10 @@ const VerticalSection: React.FC<VerticalSectionProps> = ({
   minHeight = '100vh',
   fullHeight = true,
   isScrollLocked = false, // Default to false for normal scrolling
+  backgroundImage,
+  backgroundSize = 'cover',
+  backgroundPosition = 'center center',
+  backgroundRepeat = 'no-repeat',
 }) => {
   const sectionRef = useRef<HTMLElement>(null);
   
@@ -97,6 +105,11 @@ const VerticalSection: React.FC<VerticalSectionProps> = ({
     };
   }, [isScrollLocked]);
   
+  // Prepare background image style
+  const backgroundImageStyle = backgroundImage 
+    ? `url(${backgroundImage})` 
+    : '';
+  
   return (
     <section
       ref={sectionRef}
@@ -110,12 +123,15 @@ const VerticalSection: React.FC<VerticalSectionProps> = ({
         backgroundColor: color,
         height: 'auto',
         minHeight: !height ? minHeight : undefined,
-        maxWidth: '100vw'
+        maxWidth: '100vw',
+        backgroundImage: backgroundImageStyle,
+        backgroundSize: backgroundImage ? backgroundSize : undefined,
+        backgroundPosition: backgroundImage ? backgroundPosition : undefined,
+        backgroundRepeat: backgroundImage ? backgroundRepeat : undefined
       }}
       data-section-id={id}
     >
        {children}
-
     </section>
   );
 };
