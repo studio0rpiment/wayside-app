@@ -3,7 +3,7 @@ import GradientElement from '../../utils/GradientElement';
 import SnappingCarousel from '../carousel/SnappingCarousel';
 import SnappingCard from '../carousel/SnappingCard';
 import PermissionsStatus from '../common/PermissionsStatus';
-import DemoExperience from '../experiences/DemoExperience';
+import DemoExperience from '../DemoExperience';
 import { 
   PermissionType, 
   PermissionStatus, 
@@ -42,6 +42,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   
   // State to track which AR experience to show
   const [currentARExperience, setCurrentARExperience] = useState<string | null>(null);
+  
+  // Track AR step progression
+  const [arStep, setARStep] = useState(1);
   
   // Memoize the value of allGranted to use as a dependency
   const allPermissionsGranted = useMemo(() => 
@@ -186,11 +189,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   // Handle closing the AR experience
   const handleCloseARExperience = useCallback(() => {
     setCurrentARExperience(null);
+    setShowARExperience(false);
   }, []);
 
   // Handle launching the AR demo experience
   const handleLaunchAR = useCallback(() => {
     setShowARExperience(true);
+  }, []);
+  
+  // Handler for when the AR box is clicked
+  const handleNextARStep = useCallback(() => {
+    // setARStep(prevStep => prevStep + 1);
+    // You could also add additional logic here based on the step
   }, []);
 
   // Content for each card in the carousel (simplified to 3 cards)
@@ -225,42 +235,45 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             </button>
           </div>
         );
-      case 3:
-        return (
-          <div className="card-content ready" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <h2>Camera and AR Demo</h2>
-            <p>This demo shows how the camera and AR elements will work in the app.</p>
-            
-            <div style={{ 
-              flex: 1, 
-              minHeight: '60vh', 
-              marginBottom: '1rem', 
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(0, 0, 0, 0.1)',
-              borderRadius: '8px'
-            }}>
-              {!showARExperience ? (
-                <button 
-                  className="primary-button"
-                  onClick={handleLaunchAR}
-                >
-                  Launch AR Demo
-                </button>
-              ) : (
-                <div style={{textAlign: 'center', color: 'white', backgroundColor: 'rgba(0, 0, 0, 0.5)', padding: '20px', borderRadius: '8px'}}>
-                  AR Experience Running
-                </div>
-              )}
+        case 3:
+          return (
+            <div className="card-content ready" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <h2>Camera and AR Demo</h2>
+              <p>This demo shows how the camera and AR elements will work in the app.</p>
+              
+              <div style={{ 
+                flex: 1, 
+                minHeight: '60vh', 
+                marginBottom: '1rem', 
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                borderRadius: '8px'
+              }}>
+                {!currentARExperience ? (
+                  <button 
+                    className="primary-button"
+                    onClick={() => {
+                      setCurrentARExperience('demo');
+                      setShowARExperience(true);
+                    }}
+                  >
+                    Launch AR Demo
+                  </button>
+                ) : (
+                  <div style={{textAlign: 'center', color: 'white', backgroundColor: 'rgba(0, 0, 0, 0.5)', padding: '20px', borderRadius: '8px'}}>
+                    AR Experience Running (Step {arStep})
+                  </div>
+                )}
+              </div>
+              
+              <button className="primary-button" onClick={handleCompleteOnboarding}>
+                Start Experience
+              </button>
             </div>
-            
-            <button className="primary-button" onClick={handleCompleteOnboarding}>
-              Start Experience
-            </button>
-          </div>
-        );
+          );
       default:
         return null;
     }
@@ -303,9 +316,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       </GradientElement>
       
       {/* Render AR experience through Portal when active */}
-   {showARExperience && <DemoExperience onClose={() => setShowARExperience(false)} />}
+   {showARExperience && (
+     <DemoExperience 
+       onClose={() => setShowARExperience(false)} 
+       onNext={handleNextARStep}
+      
+     />
+   )}
     </div>
-  );
+  ); 
 };
 
 export default Onboarding;

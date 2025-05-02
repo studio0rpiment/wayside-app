@@ -1,17 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 
-interface DemoExperienceProps {
-  onClose: () => void;
-  markerUrl?: string; // Optional, for custom marker URL
+interface MarkerDetectorProps {
+  onMarkerDetected: () => void;
+  markerUrl: string;
 }
 
-const DemoExperience: React.FC<DemoExperienceProps> = ({ 
-  onClose, 
-  markerUrl = window.location.origin + '/wayside-app/marker-patterns/pattern-ar-marker-4.patt'
+const MarkerDetector: React.FC<MarkerDetectorProps> = ({ 
+  onMarkerDetected,
+  markerUrl 
 }) => {
   useEffect(() => {
-    console.log("DemoExperience mounted - creating AR container");
-    console.log("Using marker URL:", markerUrl);
+    console.log("MarkerDetector mounted - creating AR container");
     
     // Create container for the AR experience
     const container = document.createElement('div');
@@ -46,30 +45,6 @@ const DemoExperience: React.FC<DemoExperienceProps> = ({
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <style>
               body { margin: 0; overflow: hidden; }
-              .close-button {
-                position: absolute;
-                top: 20px;
-                right: 20px;
-                z-index: 1001;
-                padding: 12px 20px;
-                background: rgba(255, 255, 255, 0.8);
-                border: none;
-                border-radius: 5px;
-                font-size: 16px;
-                cursor: pointer;
-              }
-              .instructions {
-                position: absolute;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                padding: 10px 20px;
-                background-color: rgba(0, 0, 0, 0.7);
-                color: white;
-                border-radius: 5px;
-                text-align: center;
-                z-index: 1001;
-              }
               .loading {
                 position: fixed;
                 top: 0;
@@ -98,6 +73,18 @@ const DemoExperience: React.FC<DemoExperienceProps> = ({
                 0% { transform: rotate(0deg); }
                 100% { transform: rotate(360deg); }
               }
+              .instructions {
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 10px 20px;
+                background-color: rgba(0, 0, 0, 0.7);
+                color: white;
+                border-radius: 5px;
+                text-align: center;
+                z-index: 1001;
+              }
             </style>
             
             <!-- Loading A-Frame -->
@@ -110,68 +97,67 @@ const DemoExperience: React.FC<DemoExperienceProps> = ({
             <!-- Loading indicator -->
             <div class="loading" id="loading">
               <div class="spinner"></div>
-              <div>Initializing camera...</div>
+              <div>Looking for marker...</div>
             </div>
             
-            <!-- A-Frame scene -->
+            <!-- Instructions -->
+            <div class="instructions" id="instructions">
+              Point your camera at the marker
+            </div>
+            
+            <!-- A-Frame scene - just for marker detection -->
             <a-scene 
               embedded 
               arjs="sourceType: webcam; debugUIEnabled: false;"
               vr-mode-ui="enabled: false"
               renderer="logarithmicDepthBuffer: true; precision: medium;"
             >
-              <!-- Using dual markers - both Hiro and your custom marker -->
-              <a-marker preset="hiro">
-                <a-box position="0 0.5 0" color="red" scale="0.5 0.5 0.5">
-                  <a-animation attribute="rotation" to="0 360 0" dur="2000" repeat="indefinite" easing="linear"></a-animation>
-                </a-box>
-                <a-text value="Hiro Marker" position="0 1.25 0" align="center" color="white" scale="0.8 0.8 0.8"></a-text>
-              </a-marker>
+              <!-- Camera -->
+              <a-entity camera look-controls></a-entity>
               
-              <a-marker type="pattern" url="${markerUrl}">
-                <a-box position="0 0.5 0" color="blue" scale="0.5 0.5 0.5">
-                  <a-animation attribute="rotation" to="0 360 0" dur="2000" repeat="indefinite" easing="linear"></a-animation>
-                </a-box>
-                <a-text value="Custom Marker" position="0 1.25 0" align="center" color="white" scale="0.8 0.8 0.8"></a-text>
-              </a-marker>
-              
-              <a-entity camera></a-entity>
+              <!-- Marker that will trigger our Three.js scene -->
+              <a-marker 
+                id="ar-marker" 
+                type="pattern" 
+                url="${markerUrl}"
+                emitevents="true"
+              ></a-marker>
             </a-scene>
             
-            <!-- Close button -->
-            <button class="close-button" id="close-button">Close</button>
-            
-            <!-- Instructions -->
-            <div class="instructions">
-              Point your camera at either marker to see AR content
-            </div>
-            
             <script>
-              // Handle close button click
-              document.getElementById('close-button').addEventListener('click', function() {
-                window.parent.postMessage('close-ar', '*');
-              });
-              
               // Remove loading screen when camera is ready
               document.addEventListener('DOMContentLoaded', function() {
-                // Get the scene and loading element
                 const scene = document.querySelector('a-scene');
                 const loading = document.getElementById('loading');
                 
                 if (scene && loading) {
-                  // Listen for camera setup
-                  scene.addEventListener('camera-set-active', function() {
-                    console.log('Camera is active');
+                  scene.addEventListener('loaded', function() {
+                    console.log('Scene loaded');
                     loading.style.display = 'none';
                   });
                   
-                  // Fallback: Remove loading after a timeout (5 seconds)
+                  // Fallback timeout
                   setTimeout(function() {
                     if (loading.style.display !== 'none') {
                       console.log('Timeout: removing loading screen');
                       loading.style.display = 'none';
                     }
-                  }, 5000);
+                  }, 2000);
+                }
+                
+                // Setup marker detection - this is the key part
+                const marker = document.getElementById('ar-marker');
+                
+                if (marker) {
+                  marker.addEventListener('markerFound', function() {
+                    console.log('Marker found!');
+                    
+                    // IMPORTANT: We don't remove anything here, just notify the parent
+                    document.getElementById('instructions').style.display = 'none';
+                    
+                    // Send message to parent window that marker was found
+                    window.parent.postMessage('marker-found', '*');
+                  });
                 }
               });
             </script>
@@ -186,11 +172,12 @@ const DemoExperience: React.FC<DemoExperienceProps> = ({
     
     // Listen for messages from the iframe
     const handleMessage = (event: MessageEvent) => {
-      if (event.data === 'close-ar') {
-        if (document.body.contains(container)) {
-          document.body.removeChild(container);
-        }
-        onClose();
+      if (event.data === 'marker-found') {
+        console.log('Marker found message received from iframe');
+        
+        // KEEP THE CAMERA RUNNING - Don't remove the container!
+        // Just notify the parent component
+        onMarkerDetected();
       }
     };
     
@@ -203,10 +190,10 @@ const DemoExperience: React.FC<DemoExperienceProps> = ({
         document.body.removeChild(container);
       }
     };
-  }, [onClose, markerUrl]);
+  }, [markerUrl, onMarkerDetected]);
   
-  // This component doesn't render anything in the React tree
+  // Component doesn't render anything directly
   return null;
 };
 
-export default DemoExperience;
+export default MarkerDetector;
