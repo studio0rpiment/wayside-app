@@ -5,8 +5,9 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <link rel="stylesheet" href="https://use.typekit.net/nek5kyt.css">
     
-    <!-- Add manifest for PWA support -->
-    <link rel="manifest" href="/manifest.json">
+    <!-- Disable WebXR to prevent CORS issues with dpdb.json -->
+    <meta name="webxr" content="notallowed" />
+ 
     <meta name="theme-color" content="#000000">
     
     <!-- A-Frame -->
@@ -38,36 +39,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wayside App</title>
     
-    <!-- Service Worker Registration -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-              console.log('Service Worker registered with scope:', registration.scope);
-            })
-            .catch(error => {
-              console.error('Service Worker registration failed:', error);
-            });
-        });
-      }
-    </script>
-    
-    <!-- Offline notification -->
-    <script>
-      window.addEventListener('online', () => {
-        document.getElementById('offline-message').style.display = 'none';
-      });
-      
-      window.addEventListener('offline', () => {
-        document.getElementById('offline-message').style.display = 'block';
-      });
-    </script>
   </head>
   <body>
-    <div id="offline-message" style="display: none; background-color: #333; color: white; text-align: center; padding: 10px; position: fixed; top: 0; left: 0; right: 0; z-index: 9999;">
-      You are currently offline. The app will continue to work with cached content.
-    </div>
+ 
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
   </body>
