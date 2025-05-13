@@ -451,8 +451,8 @@ const Map: React.FC = () => {
                 <p><strong>Time Period:</strong> {modalState.pointData.modalContent.year}</p>
               )}
               
-              {modalState.pointData.modalContent.additionalInfo?.duration && (
-                <p><strong>Duration:</strong> {modalState.pointData.modalContent.additionalInfo.duration}</p>
+              {modalState.pointData.modalContent.additionalInfo?.heading && (
+                <p><strong>Heading:</strong> {modalState.pointData.modalContent.additionalInfo.heading}</p>
               )}
             </div>
             

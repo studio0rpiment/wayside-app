@@ -55,13 +55,13 @@ export const routePointsData: RoutePointCollection = {
         'modalContent': {
           'title': '2030-2105',
           'description': 'Experience the future of the Anacostia River as it might look in the years 2030-2105.',
-          'imageUrl': getAssetPath('img/previews/2030-2105-preview.jpg'),
+          'imageUrl': getAssetPath('icons/2030-2105.svg'),
           'experienceRoute': '/2030-2105',
           'buttonText': 'START AR EXPERIENCE',
           'year': '2030-2105',
           'additionalInfo': {
             'theme': 'Future projections',
-            'duration': '3 minutes'
+            'heading': '3 minutes'
           }
         }
       },
@@ -79,12 +79,12 @@ export const routePointsData: RoutePointCollection = {
         'modalContent': {
           'title': 'Mac',
           'description': 'Explore the history and ecological significance of Mac in the Anacostia watershed.',
-          'imageUrl': getAssetPath('img/previews/mac-preview.jpg'),
+          'imageUrl': getAssetPath('icons/mac.svg'),
           'experienceRoute': '/mac',
           'buttonText': 'START AR EXPERIENCE',
           'additionalInfo': {
             'theme': 'Local ecology',
-            'duration': '2 minutes'
+            'heading': '2 minutes'
           }
         }
       },
@@ -102,12 +102,12 @@ export const routePointsData: RoutePointCollection = {
         'modalContent': {
           'title': 'Lotus',
           'description': 'Discover the significance of lotus plants in the Anacostia ecosystem.',
-          'imageUrl': getAssetPath('img/previews/lotus-preview.jpg'),
+          'imageUrl': getAssetPath('icons/lotus.svg'),
           'experienceRoute': '/lotus',
           'buttonText': 'START AR EXPERIENCE',
           'additionalInfo': {
             'theme': 'Native flora',
-            'duration': '2 minutes'
+            'heading': '2 minutes'
           }
         }
       },
@@ -125,12 +125,12 @@ export const routePointsData: RoutePointCollection = {
         'modalContent': {
           'title': 'Van Ulteen',
           'description': 'Learn about the Van Ulteen area and its historical significance to the region.',
-          'imageUrl': getAssetPath('img/previews/vanulteen-preview.jpg'),
+          'imageUrl': getAssetPath('icons/vanulteen.svg'),
           'experienceRoute': '/vanulteen',
           'buttonText': 'START AR EXPERIENCE',
           'additionalInfo': {
             'theme': 'Local history',
-            'duration': '3 minutes'
+            'heading': '3 minutes'
           }
         }
       },
@@ -148,12 +148,12 @@ export const routePointsData: RoutePointCollection = {
         'modalContent': {
           'title': 'Helen\'s',
           'description': 'Explore the story of Helen and her contributions to the Anacostia community.',
-          'imageUrl': getAssetPath('img/previews/helen_s-preview.jpg'),
+          'imageUrl': getAssetPath('icons/helen_s.svg'),
           'experienceRoute': '/helen_s',
           'buttonText': 'START AR EXPERIENCE',
           'additionalInfo': {
             'theme': 'Community history',
-            'duration': '2 minutes'
+            'heading': '2 minutes'
           }
         }
       },
@@ -171,12 +171,12 @@ export const routePointsData: RoutePointCollection = {
         'modalContent': {
           'title': 'Lily',
           'description': 'Discover the water lilies of the Anacostia and their role in the ecosystem.',
-          'imageUrl': getAssetPath('img/previews/lily-preview.jpg'),
+          'imageUrl': getAssetPath('icons/lily.svg'),
           'experienceRoute': '/lily',
           'buttonText': 'START AR EXPERIENCE',
           'additionalInfo': {
             'theme': 'Aquatic plants',
-            'duration': '2 minutes'
+            'heading': '2 minutes'
           }
         }
       },
@@ -194,13 +194,13 @@ export const routePointsData: RoutePointCollection = {
         'modalContent': {
           'title': '1968',
           'description': 'Experience the Anacostia River as it was in 1968, exploring the historical context and environmental conditions.',
-          'imageUrl': getAssetPath('img/previews/1968-preview.jpg'),
+          'imageUrl': getAssetPath('icons/1968.svg'),
           'experienceRoute': '/1968',
           'buttonText': 'START AR EXPERIENCE',
           'year': '1968',
           'additionalInfo': {
             'theme': 'Historical perspective',
-            'duration': '3 minutes'
+            'heading': '3 minutes'
           }
         }
       },
@@ -218,12 +218,12 @@ export const routePointsData: RoutePointCollection = {
         'modalContent': {
           'title': 'Cattail',
           'description': 'Learn about cattails and their importance to the wetland ecosystem of the Anacostia.',
-          'imageUrl': getAssetPath('img/previews/cattail-preview.jpg'),
+          'imageUrl': getAssetPath('icons/cattail.svg'),
           'experienceRoute': '/cattail',
           'buttonText': 'START AR EXPERIENCE',
           'additionalInfo': {
             'theme': 'Native flora',
-            'duration': '2 minutes'
+            'heading': '2 minutes'
           }
         }
       },
@@ -241,13 +241,13 @@ export const routePointsData: RoutePointCollection = {
         'modalContent': {
           'title': '2200 BC',
           'description': 'Journey back to 2200 BC to see how the Anacostia River and surrounding lands appeared to indigenous peoples.',
-          'imageUrl': getAssetPath('img/previews/2200_bc-preview.jpg'),
+          'imageUrl': getAssetPath('icons/2200_bc.svg'),
           'experienceRoute': '/2200_bc',
           'buttonText': 'START AR EXPERIENCE',
           'year': '2200 BC',
           'additionalInfo': {
             'theme': 'Ancient history',
-            'duration': '4 minutes'
+            'heading': '4 minutes'
           }
         }
       },
