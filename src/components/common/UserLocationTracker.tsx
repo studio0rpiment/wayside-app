@@ -1,24 +1,23 @@
-// UserLocationTracker.tsx
-import React, { useEffect, useRef, useState } from 'react';
+// Modified UserLocationTracker.tsx to fix the infinite loop
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType, PermissionStatus } from '../../utils/permissions';
 
-// Props interface
 interface UserLocationTrackerProps {
   map: mapboxgl.Map | null;
   onPositionUpdate?: (position: [number, number]) => void;
 }
 
-// Component
 const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({ map, onPositionUpdate }) => {
-  // State and refs
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const checkTimerRef = useRef<number | null>(null);
   const { permissionsState } = usePermissions();
   
-  // Create pulsing dot function
-  const createPulsingDot = (): HTMLElement => {
+  // Create pulsing dot function - memoize to prevent recreating on each render
+  const createPulsingDot = useCallback((): HTMLElement => {
     const el = document.createElement('div');
     el.className = 'user-location-dot';
     
@@ -84,46 +83,94 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({ map, onPositi
     }
     
     return el;
-  };
+  }, []);
+  
+  // Handle marker updates in a separate, memoized function
+  const updateMarker = useCallback((position: [number, number]) => {
+    if (!map) return;
+    
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setLngLat(position);
+    } else {
+      try {
+        const el = createPulsingDot();
+        const marker = new mapboxgl.Marker({
+          element: el,
+          anchor: 'center'
+        })
+          .setLngLat(position)
+          .addTo(map);
+        
+        userMarkerRef.current = marker;
+      } catch (error) {
+        console.error('Error creating pulsing dot marker:', error);
+      }
+    }
+  }, [map, createPulsingDot]);
+  
+  // Check if the marker needs to be recreated
+  const checkMarkerVisibility = useCallback(() => {
+    if (!userPosition || !userMarkerRef.current) return;
+    
+    const el = userMarkerRef.current.getElement();
+    const pulseRing = el.querySelector('.pulse-ring');
+    
+    if (!pulseRing || getComputedStyle(pulseRing).animation === 'none') {
+      // Cleanup old marker first
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+      
+      // Create a new marker - use the existing updateMarker function
+      updateMarker(userPosition);
+    }
+  }, [userPosition, updateMarker]);
   
   // Effect for watching user location when permission is granted
   useEffect(() => {
-    // Only proceed if map is loaded and location permission is granted
     const hasLocationPermission = permissionsState?.results[PermissionType.LOCATION] === PermissionStatus.GRANTED;
     
     if (map && hasLocationPermission) {
-      // console.log('Location permission granted, watching position');
+      // Clear previous watch if it exists
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
       
-      
-
-      // Start watching the user's position
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const newPosition: [number, number] = [position.coords.longitude, position.coords.latitude];
           setUserPosition(newPosition);
           
-          // Call the callback if it exists
           if (onPositionUpdate) {
             onPositionUpdate(newPosition);
           }
-          
-        //  console.log('User position updated:', newPosition);
         },
         (error) => {
           console.error('Error getting location:', error);
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const newPosition: [number, number] = [position.coords.longitude, position.coords.latitude];
+              setUserPosition(newPosition);
+              if (onPositionUpdate) onPositionUpdate(newPosition);
+            },
+            (fallbackError) => console.error('Fallback location error:', fallbackError),
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
         },
         {
           enableHighAccuracy: true,
-          maximumAge: 10000, // Accept positions up to 10 seconds old
-          timeout: 5000     // Wait up to 5 seconds for a position
+          maximumAge: 5000,
+          timeout: 10000
         }
       );
       
-      // Clean up the watcher when the component unmounts or permissions change
+      watchIdRef.current = watchId;
+      
       return () => {
-        navigator.geolocation.clearWatch(watchId);
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
         
-        // Also remove the marker if it exists on permission change
         if (userMarkerRef.current) {
           userMarkerRef.current.remove();
           userMarkerRef.current = null;
@@ -131,70 +178,58 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({ map, onPositi
       };
     }
   }, [map, permissionsState, onPositionUpdate]);
-
-  useEffect(() => {
-  // Feature detection for WebSockets
-  if (typeof WebSocket !== 'undefined') {
-    const originalWebSocket = window.WebSocket;
-    
-    // Override WebSocket to add error handling
-    window.WebSocket = function(url: string | URL, protocols?: string | string[]) {
-      const socket = new originalWebSocket(url, protocols);
-      
-      socket.addEventListener('error', (error) => {
-        console.warn('WebSocket connection error:', error);
-        // Implement fallback behavior if needed
-      });
-      
-      return socket;
-    } as any;
-    
-    // Restore original WebSocket on cleanup
-    return () => {
-      window.WebSocket = originalWebSocket;
-    };
-  }
-}, []);
-
+  
   // Effect for updating the user marker when position changes
   useEffect(() => {
-    if (map && userPosition) {
-      // If we already have a marker, just update its position
-      if (userMarkerRef.current) {
-        userMarkerRef.current.setLngLat(userPosition);
-      } else {
-        // Create a new marker with the pulsing dot
-        const el = createPulsingDot();
-        const marker = new mapboxgl.Marker({
-          element: el,
-          anchor: 'center'
-        })
-          .setLngLat(userPosition)
-          .addTo(map);
-        
-        userMarkerRef.current = marker;
-      }
+    if (!map || !userPosition) return;
+    
+    // Update the marker position
+    updateMarker(userPosition);
+    
+    // Set up a periodic check for marker visibility
+    if (checkTimerRef.current) {
+      window.clearTimeout(checkTimerRef.current);
     }
-  }, [map, userPosition]);
+    
+    // Schedule a single check after 1 second
+    checkTimerRef.current = window.setTimeout(() => {
+      checkMarkerVisibility();
+      checkTimerRef.current = null;
+    }, 1000);
+    
+    return () => {
+      if (checkTimerRef.current) {
+        window.clearTimeout(checkTimerRef.current);
+        checkTimerRef.current = null;
+      }
+    };
+  }, [map, userPosition, updateMarker, checkMarkerVisibility]);
   
   // Cleanup on unmount
   useEffect(() => {
     return () => { 
-      // Remove the user marker if it exists
       if (userMarkerRef.current) {
         userMarkerRef.current.remove();
         userMarkerRef.current = null;
       }
 
-      // Remove any added style elements
       const pulseStyle = document.getElementById('pulse-animation');
       if (pulseStyle) {
         document.head.removeChild(pulseStyle);
       }
+      
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      
+      if (checkTimerRef.current) {
+        window.clearTimeout(checkTimerRef.current);
+        checkTimerRef.current = null;
+      }
     };
   }, []);
   
-  // The component doesn't render anything visible directly
   return null;
 };
 

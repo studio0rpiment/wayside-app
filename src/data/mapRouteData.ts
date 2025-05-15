@@ -206,7 +206,9 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.9466543197632, 38.911568397422]
+         'coordinates': [-76.9466543197632, 38.911568397422]
+       // fake coordinate for testing 
+      //  'coordinates': [-76.939864, 38.957814]
       }
     },
     {

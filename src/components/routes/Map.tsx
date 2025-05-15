@@ -9,6 +9,7 @@ import { routePointsData, getIconPath } from '../../data/mapRouteData';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType, PermissionStatus } from '../../utils/permissions';
 import UserLocationTracker from '../common/UserLocationTracker';
+import GeofenceDebugger from '../debug/GeofenceDebugger'
 
 // Browser detection utilities
 const isFirefoxBrowser = (): boolean => {
@@ -222,7 +223,7 @@ const Map: React.FC = () => {
       }), 'bottom-right');
 
       // Add navigation controls (optional)
-      newMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      // newMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
       // Save the map instance to state
       setMap(newMap);
@@ -431,8 +432,14 @@ const Map: React.FC = () => {
                   
         {/* Minimal permission status indicators */}
         <div style={{ position: 'absolute', bottom: '20px', left: '20px', zIndex: 10 }}>
+        
           <PermissionsStatus compact={true} />
+          
         </div>
+          <GeofenceDebugger userPosition={userPosition} radius={3} />
+
+
+       
         
         {/* Firefox warning (only shown in Firefox) */}
         {isFirefox && (
