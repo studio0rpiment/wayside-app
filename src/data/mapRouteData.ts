@@ -119,14 +119,14 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
-        'iconName': 'vanulteen',
+        'iconName': 'volunteers',
         'iconScale': 1,
-        'title': 'Van Ulteen',
+        'title': 'Volunteers',
         'modalContent': {
           'title': 'Van Ulteen',
-          'description': 'Learn about the Van Ulteen area and its historical significance to the region.',
-          'imageUrl': getAssetPath('icons/vanulteen.svg'),
-          'experienceRoute': '/vanulteen',
+          'description': 'Volunteers continue to play an important role in the Kenilworth Aquatic Gardens ',
+          'imageUrl': getAssetPath('icons/volunteers.svg'),
+          'experienceRoute': '/volunteers',
           'buttonText': 'START AR EXPERIENCE',
           'additionalInfo': {
             'theme': 'Local history',
