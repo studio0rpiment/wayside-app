@@ -12,8 +12,10 @@ import Lotus from './components/routes/Lotus';
 import Mac from './components/routes/Mac';
 import { PermissionsProvider } from './context/PermissionsContext.tsx';
 import AppThemeProvider from './theme/ThemeProvider';
+import GeofenceNotificationSystem from './components/common/GeofenceNotificationSystem';
 
 import './App.css';
+
 
 // Wrapper component to provide navigation functionality
 function OnboardingWrapper() {
@@ -26,6 +28,16 @@ function OnboardingWrapper() {
   };
   
   return <Onboarding onComplete={handleComplete} />;
+}
+
+// Wrapper that adds the notification system to routes that need it
+function NotificationWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      {children}
+      <GeofenceNotificationSystem />
+    </>
+  );
 }
 
 function App() {
@@ -43,7 +55,11 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/onboarding" element={<OnboardingWrapper />} />
-              <Route path="/map" element={<Map />} />
+              <Route path="/map" element={
+                <NotificationWrapper>
+                  <Map />
+                </NotificationWrapper>
+              } />
               <Route path="/water-level" element={<WaterLevel />} />
               <Route path="/lotus" element={<Lotus />} />
               <Route path="/mac" element={<Mac />} />

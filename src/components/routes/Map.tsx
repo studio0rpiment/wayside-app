@@ -10,6 +10,7 @@ import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType, PermissionStatus } from '../../utils/permissions';
 import UserLocationTracker from '../common/UserLocationTracker';
 import GeofenceDebugger from '../debug/GeofenceDebugger'
+import ExperienceModal from '../common/ExperienceModal';
 
 // Browser detection utilities
 const isFirefoxBrowser = (): boolean => {
@@ -474,99 +475,14 @@ const Map: React.FC = () => {
             Arc browser detected - telemetry blocking active.
           </div>
         )}
-        
-        {/* Modal/Popup for AR Experience Entry */}
-        {modalState.isOpen && modalState.pointData && (
-          <div 
-            className="experience-modal"
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'var(--color-dark)',
-              color: 'var(--color-light)',
-              padding: '20px',
-              borderRadius: '12px',
-              width: '80%',
-              maxWidth: '400px',
-              zIndex: 100,
-              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5)'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h2 style={{ margin: 0, fontSize: '24px' }}>{modalState.pointData.title}</h2>
-              <button 
-                onClick={closeModal}
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  color: 'var(--color-light)', 
-                  fontSize: '24px',
-                  cursor: 'pointer' 
-                }}
-              >
-                ×
-              </button>
-            </div>
-            
-            {modalState.pointData.modalContent.imageUrl && (
-              <div style={{ marginBottom: '15px' }}>
-                <img 
-                  src={modalState.pointData.modalContent.imageUrl} 
-                  alt={modalState.pointData.title}
-                  style={{ width: '100%', borderRadius: '8px' }}
-                />
-              </div>
-            )}
-            
-            <div style={{ marginBottom: '15px' }}>
-              <p>{modalState.pointData.modalContent.description}</p>
-              
-              {modalState.pointData.modalContent.year && (
-                <p><strong>Time Period:</strong> {modalState.pointData.modalContent.year}</p>
-              )}
-              
-              {modalState.pointData.modalContent.additionalInfo?.heading && (
-                <p><strong>Heading:</strong> {modalState.pointData.modalContent.additionalInfo.heading}</p>
-              )}
-            </div>
-            
-            <button
-              onClick={() => navigateToExperience(modalState.pointData.modalContent.experienceRoute)}
-              style={{
-                width: '100%',
-                padding: '12px',
-                backgroundColor: 'var(--color-blue)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontFamily: 'var(--font-rigby)',
-                fontWeight: '400',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              {modalState.pointData.modalContent.buttonText}
-            </button>
-          </div>
-        )}
-        
-        {/* Optional overlay for modal background */}
-        {modalState.isOpen && (
-          <div 
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              zIndex: 90
-            }}
-            onClick={closeModal}
-          />
-        )}
+        {/* new modal as component*/}
+        <ExperienceModal
+          isOpen={modalState.isOpen}
+          pointData={modalState.pointData}
+          onClose={closeModal}
+          userPosition={userPosition}
+        />
+       
       </VerticalSection>
     </div>
   );

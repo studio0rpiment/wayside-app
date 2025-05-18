@@ -8,6 +8,13 @@ interface GeofenceDebuggerProps {
   radius?: number;
 }
 
+// GeofenceDebugger.tsx - Add this export function
+export function simulateGeofenceEntry(geofenceData: any, callback: (data: any) => void) {
+  if (callback && geofenceData) {
+    callback(geofenceData);
+  }
+}
+
 const GeofenceDebugger: React.FC<GeofenceDebuggerProps> = ({ 
   userPosition, 
   radius = 3 
@@ -22,6 +29,8 @@ const GeofenceDebugger: React.FC<GeofenceDebuggerProps> = ({
       setGeofenceResults(results);
     }
   }, [userPosition, customRadius]);
+
+  
   
   return (
     <div 

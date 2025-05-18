@@ -1,80 +1,71 @@
-// geoUtils.ts
+// src/utils/geoUtils.ts
+import { Feature, Point } from 'geojson';
 
-/**
- * Calculate the distance between two points on Earth using the Haversine formula
- * @param point1 First point as [longitude, latitude]
- * @param point2 Second point as [longitude, latitude]
- * @returns Distance in meters
- */
-export const calculateDistance = (
-  point1: [number, number], 
+interface GeofenceResult {
+  id: string;
+  title: string;
+  distance: number;
+  properties: any;
+  experienceType?: string;
+}
+
+export function calculateDistance(
+  point1: [number, number],
   point2: [number, number]
-): number => {
-  const [lon1, lat1] = point1;
-  const [lon2, lat2] = point2;
-  
-  // Convert latitude and longitude from degrees to radians
-  const radLat1 = (lat1 * Math.PI) / 180;
-  const radLat2 = (lat2 * Math.PI) / 180;
-  const radLon1 = (lon1 * Math.PI) / 180;
-  const radLon2 = (lon2 * Math.PI) / 180;
-  
-  // Differences in coordinates
-  const dLat = radLat2 - radLat1;
-  const dLon = radLon2 - radLon1;
-  
-  // Haversine formula
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(radLat1) * Math.cos(radLat2) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  
-  // Earth's radius in meters
-  const R = 6371000;
-  
-  // Distance in meters
-  return R * c;
-};
+): number {
+  // Implementation of haversine formula to calculate distance between two points
+  const R = 6371000; // Earth radius in meters
+  const φ1 = (point1[1] * Math.PI) / 180;
+  const φ2 = (point2[1] * Math.PI) / 180;
+  const Δφ = ((point2[1] - point1[1]) * Math.PI) / 180;
+  const Δλ = ((point2[0] - point1[0]) * Math.PI) / 180;
 
-/**
- * Check if a position is inside any of the geofences
- * @param userPosition User's position as [longitude, latitude]
- * @param geofencePoints Array of geofence points
- * @param radius Radius in meters
- * @returns An object with information about which geofences the user is inside
- */
-export const checkGeofences = (
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+
+  return distance;
+}
+
+export function checkGeofences(
   userPosition: [number, number],
-  geofencePoints: typeof import('../data/mapRouteData').routePointsData.features,
-  radius: number = 3
+  geofenceFeatures: Feature[],
+  radius: number
 ): {
-  isInsideAny: boolean;
-  insideGeofences: Array<{
-    id: string;
-    title: string;
-    distance: number;
-  }>
-} => {
-  if (!userPosition) {
-    return { isInsideAny: false, insideGeofences: [] };
-  }
-  
-  const insideGeofences = geofencePoints
-    .map(point => {
-      const distance = calculateDistance(userPosition, point.geometry.coordinates);
-      return {
-        id: point.properties.iconName,
-        title: point.properties.title,
-        distance,
-        isInside: distance <= radius
-      };
-    })
-    .filter(point => point.isInside)
-    .map(({ id, title, distance }) => ({ id, title, distance }));
-  
-  return {
-    isInsideAny: insideGeofences.length > 0,
-    insideGeofences
-  };
-};
+  insideGeofences: GeofenceResult[];
+  outsideGeofences: GeofenceResult[];
+} {
+  const insideGeofences: GeofenceResult[] = [];
+  const outsideGeofences: GeofenceResult[] = [];
+
+  geofenceFeatures.forEach(feature => {
+    // Ensure feature is a point
+    if (feature.geometry.type !== 'Point') return;
+
+    const coordinates = feature.geometry.coordinates as [number, number];
+    const distance = calculateDistance(userPosition, coordinates);
+
+    const result: GeofenceResult = {
+      id: feature.properties?.iconName || feature.id || `geofence-${Math.random()}`,
+      title: feature.properties?.title || 'Unnamed Location',
+      distance,
+      properties: feature.properties || {},
+      experienceType: feature.properties?.experienceType
+    };
+
+    // Check if user is within radius
+    if (distance <= radius) {
+      insideGeofences.push(result);
+    } else {
+      outsideGeofences.push(result);
+    }
+  });
+
+  // Sort by distance, closest first
+  insideGeofences.sort((a, b) => a.distance - b.distance);
+  outsideGeofences.sort((a, b) => a.distance - b.distance);
+
+  return { insideGeofences, outsideGeofences };
+}
