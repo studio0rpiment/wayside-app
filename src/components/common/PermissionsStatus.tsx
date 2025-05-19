@@ -15,11 +15,14 @@ import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import ScreenRotationOutlinedIcon from '@mui/icons-material/ScreenRotationOutlined';
+import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
+
 
 interface PermissionsStatusProps {
   showCamera?: boolean;
   showLocation?: boolean;
   showOrientation?: boolean;
+  showNotification?: boolean;
   compact?: boolean;
   onRequestPermission?: (type: PermissionType) => void;
   className?: string;
@@ -29,6 +32,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
   showCamera = true,
   showLocation = true,
   showOrientation = true,
+  showNotification = true, 
   compact = false,
   onRequestPermission,
   className = '',
@@ -83,6 +87,9 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
         return <LocationOnOutlinedIcon fontSize={compact ? "small" : "medium"} />;
       case PermissionType.ORIENTATION:
         return <ScreenRotationOutlinedIcon fontSize={compact ? "small" : "medium"} />;
+      case PermissionType.NOTIFICATION:
+        return <NotificationsOutlinedIcon fontSize={compact ? "small" : "medium"} />; 
+
       default:
         return null;
     }
@@ -150,9 +157,10 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
     if (compact) {
       // Minimal letter + circle indicator
       const permissionLetter = 
-        type === PermissionType.CAMERA ? "C" :
-        type === PermissionType.LOCATION ? "L" : 
-        type === PermissionType.ORIENTATION ? "M" : "";
+        type === PermissionType.CAMERA ? "C" : 
+        type === PermissionType.LOCATION ? "L" :
+        type === PermissionType.ORIENTATION ? "M" :
+        type === PermissionType.NOTIFICATION ? "N" : "";
       
       return (
         <Box
@@ -281,6 +289,8 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
             {type === PermissionType.CAMERA && "CAMERA ACCESS"}
             {type === PermissionType.LOCATION && "LOCATION"}
             {type === PermissionType.ORIENTATION && "MOTION"}
+            {type === PermissionType.NOTIFICATION && "NOTIFICATIONS"}
+
           </Typography>
           
           <Typography 
@@ -300,6 +310,8 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               {type === PermissionType.CAMERA && "Wayside.at is an augmented reality experience and needs your camera to see the world."}
               {type === PermissionType.LOCATION && "We use geolocation for certain features such as the real-time map."}
               {type === PermissionType.ORIENTATION && "We need access to your device's gyroscope."}
+              {type === PermissionType.NOTIFICATION && "Receive alerts when you enter experience areas, even when the app is in the background."}
+
             </span>
             <Box component="span" sx={{ 
               display: 'inline-block',
@@ -334,6 +346,8 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
           {showCamera && renderPermissionStatus(PermissionType.CAMERA, 'Camera')}
           {showLocation && renderPermissionStatus(PermissionType.LOCATION, 'Location')}
           {showOrientation && renderPermissionStatus(PermissionType.ORIENTATION, 'Orientation')}
+          {showNotification && renderPermissionStatus(PermissionType.NOTIFICATION, 'Notification')}
+
         </Stack>
       ) : (
         <Card 
@@ -357,6 +371,8 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               {showCamera && renderPermissionStatus(PermissionType.CAMERA, 'Camera')}
               {showLocation && renderPermissionStatus(PermissionType.LOCATION, 'Location')}
               {showOrientation && renderPermissionStatus(PermissionType.ORIENTATION, 'Orientation')}
+              {showNotification && renderPermissionStatus(PermissionType.NOTIFICATION, 'Notification')}
+
             </Stack>
           </CardContent>
         </Card>

@@ -7,7 +7,8 @@ import {
   requestCameraPermission,
   requestLocationPermission,
   requestOrientationPermission,
-  requestMicrophonePermission
+  requestMicrophonePermission,
+  requestNotificationPermission
 } from '../utils/permissions';
 
 // Define the context shape
@@ -50,6 +51,7 @@ const PermissionsContext = createContext<PermissionsContextType>({
       [PermissionType.LOCATION]: PermissionStatus.UNKNOWN,
       [PermissionType.ORIENTATION]: PermissionStatus.UNKNOWN,
       [PermissionType.MICROPHONE]: PermissionStatus.UNKNOWN,
+      [PermissionType.NOTIFICATION]: PermissionStatus.UNKNOWN,
     },
     allGranted: false,
     isFirstTimeUser: false
@@ -187,6 +189,9 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
       case PermissionType.MICROPHONE:
         granted = await requestMicrophonePermission();
         break;
+      case PermissionType.NOTIFICATION:
+      granted = await requestNotificationPermission();
+      break;
     }
     
     // Use the optimized updatePermissionState to avoid redundant renders

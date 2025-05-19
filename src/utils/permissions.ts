@@ -7,7 +7,8 @@ export enum PermissionType {
   CAMERA = 'camera',
   LOCATION = 'location',
   ORIENTATION = 'orientation',
-  MICROPHONE = 'microphone'
+  MICROPHONE = 'microphone',
+  NOTIFICATION = 'notification' 
 }
 
 /**
@@ -113,28 +114,38 @@ export async function checkAllPermissions(
     [PermissionType.LOCATION]: PermissionStatus.UNKNOWN,
     [PermissionType.ORIENTATION]: PermissionStatus.UNKNOWN,
     [PermissionType.MICROPHONE]: PermissionStatus.UNKNOWN,
+    [PermissionType.NOTIFICATION]: PermissionStatus.UNKNOWN,
   };
   
   // Check each required permission
   const permissionChecks = await Promise.all(
     requiredPermissions.map(async (type) => {
+      let status: PermissionStatus;
+      
       switch (type) {
         case PermissionType.CAMERA:
-          results[type] = await checkCameraPermission();
+          status = await checkCameraPermission();
           break;
         case PermissionType.LOCATION:
-          results[type] = await checkLocationPermission();
+          status = await checkLocationPermission();
           break;
         case PermissionType.ORIENTATION:
-          results[type] = await checkOrientationPermission();
+          status = await checkOrientationPermission();
           break;
         case PermissionType.MICROPHONE:
-          results[type] = await checkMicrophonePermission();
+          status = await checkMicrophonePermission();
           break;
+        case PermissionType.NOTIFICATION:
+          status = await checkNotificationPermission();
+          break;
+        default:
+          status = PermissionStatus.UNKNOWN;
       }
+      
+      results[type] = status;
       console.log(`🎯 Permission status for ${type}:`, status);
 
-      return results[type];
+      return status;
     })
   );
 
@@ -258,6 +269,31 @@ export async function checkMicrophonePermission(): Promise<PermissionStatus> {
 }
 
 /**
+ * Check notification permission status
+ */
+export async function checkNotificationPermission(): Promise<PermissionStatus> {
+  try {
+    // Check if Notification API is available
+    if (!('Notification' in window)) {
+      console.log('Notifications not supported in this browser');
+      return PermissionStatus.UNKNOWN;
+    }
+    
+    // Direct check of Notification permission status
+    if (Notification.permission === 'granted') {
+      return PermissionStatus.GRANTED;
+    } else if (Notification.permission === 'denied') {
+      return PermissionStatus.DENIED;
+    } else {
+      return PermissionStatus.PROMPT;
+    }
+  } catch (error) {
+    console.error('Error checking notification permission:', error);
+    return PermissionStatus.UNKNOWN;
+  }
+}
+
+/**
  * Request camera permission
  */
 export async function requestCameraPermission(): Promise<boolean> {
@@ -323,6 +359,26 @@ export async function requestMicrophonePermission(): Promise<boolean> {
 }
 
 /**
+ * Request notification permission
+ */
+export async function requestNotificationPermission(): Promise<boolean> {
+  try {
+    // Check if Notification API is available
+    if (!('Notification' in window)) {
+      console.log('Notifications not supported in this browser');
+      return false;
+    }
+    
+    // Request permission
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return false;
+  }
+}
+
+/**
  * Request all required permissions in sequence
  * This ensures proper UX for permission dialogs
  */
@@ -334,6 +390,7 @@ export async function requestAllPermissions(
     [PermissionType.LOCATION]: PermissionStatus.UNKNOWN,
     [PermissionType.ORIENTATION]: PermissionStatus.UNKNOWN,
     [PermissionType.MICROPHONE]: PermissionStatus.UNKNOWN,
+    [PermissionType.NOTIFICATION]: PermissionStatus.UNKNOWN,
   };
   
   // Request each permission in sequence
@@ -352,6 +409,9 @@ export async function requestAllPermissions(
         break;
       case PermissionType.MICROPHONE:
         granted = await requestMicrophonePermission();
+        break;
+      case PermissionType.NOTIFICATION:
+        granted = await requestNotificationPermission();
         break;
     }
     
@@ -413,6 +473,8 @@ export function getPermissionExplanation(type: PermissionType): string {
       return 'Device orientation helps position AR elements correctly as you move your device.';
     case PermissionType.MICROPHONE:
       return 'Microphone access enables interactive audio features in the AR experience.';
+    case PermissionType.NOTIFICATION:
+      return 'Notification permission allows us to alert you when you enter experience areas, even when the app is in the background.';
     default:
       return 'This permission is needed for the AR experience to work properly.';
   }

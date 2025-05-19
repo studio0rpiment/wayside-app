@@ -402,6 +402,31 @@ const Map: React.FC = () => {
 
   const [notificationRadius, setNotificationRadius] = useState(3);
 
+  useEffect(() => {
+  // Check for showExperience query parameter when Map component mounts
+  const params = new URLSearchParams(window.location.search);
+  const experienceId = params.get('showExperience');
+  
+  if (experienceId) {
+    // Find the point data for this experience
+    const pointFeature = routePointsData.features.find(
+      feature => feature.properties.iconName === experienceId
+    );
+    
+    if (pointFeature) {
+      // Show the modal with this point data
+      setModalState({
+        isOpen: true,
+        pointData: pointFeature.properties
+      });
+      
+      // Clear the URL parameter (optional, prevents modal reopening on refresh)
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }
+}, []);
+
 
   return (
     <div className="map-route">
