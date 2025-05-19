@@ -400,6 +400,9 @@ const Map: React.FC = () => {
     }
   }, [mapContainerRef, navigate, isFirefoxZoomLimited, isFirefox, isArc]);
 
+  const [notificationRadius, setNotificationRadius] = useState(3);
+
+
   return (
     <div className="map-route">
       <VerticalSection 
@@ -437,7 +440,11 @@ const Map: React.FC = () => {
           <PermissionsStatus compact={true} />
           
         </div>
-          <GeofenceDebugger userPosition={userPosition} radius={3} />
+          <GeofenceDebugger 
+            userPosition={userPosition} 
+            radius={3} 
+            onRadiusChange={setNotificationRadius} 
+          />
 
 
        
@@ -481,6 +488,7 @@ const Map: React.FC = () => {
           pointData={modalState.pointData}
           onClose={closeModal}
           userPosition={userPosition}
+          radius={window.geofenceDebuggerRadius}
         />
        
       </VerticalSection>

@@ -28,6 +28,15 @@ interface ExperienceModalProps {
   onClose: () => void;
   isNotification?: boolean;
   userPosition?: [number, number] | null;
+  // Add custom radius prop
+  radius?: number;
+}
+
+// Declare the global for TypeScript
+declare global {
+  interface Window {
+    geofenceDebuggerRadius?: number;
+  }
 }
 
 const ExperienceModal: React.FC<ExperienceModalProps> = ({
@@ -35,14 +44,39 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   pointData,
   onClose,
   isNotification = false,
-  userPosition = null
+  userPosition = null,
+  // Default to the window global radius, or fall back to 50
+  radius
 }) => {
   const navigate = useNavigate();
   const [isWithinGeofence, setIsWithinGeofence] = useState(false);
   const [distance, setDistance] = useState<number | null>(null);
   const [direction, setDirection] = useState<number | null>(null);
+  
+  // Use the global radius or provided radius or default
+  const [currentRadius, setCurrentRadius] = useState(
+    radius || window.geofenceDebuggerRadius || 3
+  );
+  
+  // Sync with the global radius
+  useEffect(() => {
+    // Update from props if provided
+    if (radius) {
+      setCurrentRadius(radius);
+    }
+    // Otherwise check for global updates
+    else {
+      const checkRadiusInterval = setInterval(() => {
+        if (window.geofenceDebuggerRadius && window.geofenceDebuggerRadius !== currentRadius) {
+          setCurrentRadius(window.geofenceDebuggerRadius);
+        }
+      }, 1000); // Check every second
+      
+      return () => clearInterval(checkRadiusInterval);
+    }
+  }, [radius, currentRadius]);
 
-  // Check if user is within the geofence
+  // Check if user is within the geofence using the current radius
   useEffect(() => {
     if (!isOpen || !pointData || !userPosition) {
       setIsWithinGeofence(false);
@@ -59,9 +93,11 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       return;
     }
 
-    // Check if user is within geofence (use smaller radius for experience activation)
-    const geofenceRadius = 50; // meters
-    const results = checkGeofences(userPosition, [pointFeature], geofenceRadius);
+    // Use the synchronized radius for geofence checking
+    const results = checkGeofences(userPosition, [pointFeature], currentRadius);
+    
+    // Debug output
+    console.log(`ExperienceModal checking geofence with radius: ${currentRadius}m`);
     
     // Update state
     setIsWithinGeofence(results.insideGeofences.length > 0);
@@ -79,7 +115,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     } else if (results.insideGeofences.length > 0) {
       setDistance(results.insideGeofences[0].distance);
     }
-  }, [isOpen, pointData, userPosition, isWithinGeofence]);
+  }, [isOpen, pointData, userPosition, isWithinGeofence, currentRadius]);
 
   const handleExperienceStart = () => {
     if (pointData && pointData.modalContent) {
@@ -136,7 +172,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
             <img 
               src={pointData.modalContent.imageUrl} 
               alt={pointData.title}
-              style={{ width: '100%', borderRadius: '8px' }}
+              style={{ width: '50%', borderRadius: '8px' }}
             />
           </div>
         )}
@@ -200,6 +236,11 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
               )}
               <div style={{ marginTop: '8px' }}>
                 <strong>{distance !== null ? `${distance.toFixed(0)}m away` : 'Distance unknown'}</strong>
+                {currentRadius && (
+                  <span style={{ fontSize: '0.8em', opacity: 0.8, marginLeft: '5px' }}>
+                    (Range: {currentRadius}m)
+                  </span>
+                )}
               </div>
             </div>
             <p style={{ margin: '0', color: 'var(--color-light)', opacity: 0.8 }}>

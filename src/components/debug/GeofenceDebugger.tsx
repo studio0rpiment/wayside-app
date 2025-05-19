@@ -6,6 +6,8 @@ import { routePointsData } from '../../data/mapRouteData';
 interface GeofenceDebuggerProps {
   userPosition: [number, number] | null;
   radius?: number;
+  onRadiusChange?: (radius: number) => void; // New callback prop
+
 }
 
 // GeofenceDebugger.tsx - Add this export function
@@ -15,13 +17,34 @@ export function simulateGeofenceEntry(geofenceData: any, callback: (data: any) =
   }
 }
 
+// Extend the Window interface to include geofenceDebuggerRadius
+declare global {
+  interface Window {
+    geofenceDebuggerRadius?: number;
+  }
+}
+
+window.geofenceDebuggerRadius = 3;
+
+
 const GeofenceDebugger: React.FC<GeofenceDebuggerProps> = ({ 
   userPosition, 
-  radius = 3 
+  radius = 3,
+  onRadiusChange
 }) => {
   const [geofenceResults, setGeofenceResults] = useState<ReturnType<typeof checkGeofences> | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [customRadius, setCustomRadius] = useState(radius);
+
+    useEffect(() => {
+    // Update global radius
+    window.geofenceDebuggerRadius = customRadius;
+    
+    // Call callback if provided
+    if (onRadiusChange) {
+      onRadiusChange(customRadius);
+    }
+  }, [customRadius, onRadiusChange]);
   
   useEffect(() => {
     if (userPosition) {
