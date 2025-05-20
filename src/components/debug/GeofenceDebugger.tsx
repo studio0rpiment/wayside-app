@@ -35,15 +35,20 @@ const GeofenceDebugger: React.FC<GeofenceDebuggerProps> = ({
   const [geofenceResults, setGeofenceResults] = useState<ReturnType<typeof checkGeofences> | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [customRadius, setCustomRadius] = useState(radius);
+  const [updateCount, setUpdateCount] = useState(0)
 
     useEffect(() => {
-    // Update global radius
+
+          if (updateCount > 10) return;
+    // Update global radius only when new
+  if (window.geofenceDebuggerRadius !== customRadius) {
     window.geofenceDebuggerRadius = customRadius;
     
     // Call callback if provided
     if (onRadiusChange) {
       onRadiusChange(customRadius);
     }
+  }
   }, [customRadius, onRadiusChange]);
   
   useEffect(() => {

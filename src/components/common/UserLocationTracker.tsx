@@ -178,6 +178,8 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({ map, onPositi
       };
     }
   }, [map, permissionsState, onPositionUpdate]);
+
+  const hasScheduledCheckRef = useRef(false);
   
   // Effect for updating the user marker when position changes
   useEffect(() => {
@@ -191,11 +193,14 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({ map, onPositi
       window.clearTimeout(checkTimerRef.current);
     }
     
-    // Schedule a single check after 1 second
+   if (!hasScheduledCheckRef.current) {
+    hasScheduledCheckRef.current = true;
     checkTimerRef.current = window.setTimeout(() => {
       checkMarkerVisibility();
       checkTimerRef.current = null;
+      hasScheduledCheckRef.current = false;
     }, 1000);
+  }
     
     return () => {
       if (checkTimerRef.current) {
