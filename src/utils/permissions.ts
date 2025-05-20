@@ -54,7 +54,8 @@ const DEFAULT_OPTIONS: PermissionOptions = {
   requiredPermissions: [
     PermissionType.CAMERA,
     PermissionType.LOCATION,
-    PermissionType.ORIENTATION
+    PermissionType.ORIENTATION,
+    PermissionType.NOTIFICATION
   ],
   showUI: true,
   onStatusChange: () => {}
