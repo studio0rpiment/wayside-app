@@ -10,9 +10,10 @@ import { getAssetPath } from '../utils/assetPaths';
 // Interface for AR anchor point configuration
 export interface ArAnchorPoint {
   coordinates: [number, number];  // Precise AR position [longitude, latitude]
-  elevation?: number;            // Height above sea level in meters
+  elevation?: number;            // Height above sea level in meters (from height map)
   orientation?: number;          // Facing direction in degrees (0 = North, 90 = East)
   scale?: number;                // Size adjustment factor
+  heightMapScale?: number;       // Scale factor for height map elevation adjustments
   alignToTerrain?: boolean;      // Whether to align to ground level
   snapToUser?: boolean;          // Whether to snap to user's position when activated
 }
@@ -75,12 +76,13 @@ export const routePointsData: RoutePointCollection = {
             'heading': '3 minutes'
           }
         },
-            // Add AR anchor point
+        // Add AR anchor point with height map elevation
         'arAnchor': {
-          'coordinates': [-76.9418102502823, 38.91331316705603],  // Same as geometry coordinates
-          'elevation': 2.0,        // 2 meters above ground
+          'coordinates': [-76.9418102502823, 38.91331316705603],
+          'elevation': 2.0,        // Light gray area - low elevation
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true
         }
       },
@@ -106,12 +108,13 @@ export const routePointsData: RoutePointCollection = {
             'heading': '2 minutes'
           }
         },
-              // Add AR anchor point
+        // Add AR anchor point with height map elevation
         'arAnchor': {
-          'coordinates': [-76.94238424301149, 38.91251174709548],  // Same as geometry coordinates
-          'elevation': 2.0,        // 2 meters above ground
+          'coordinates': [-76.94238424301149, 38.91251174709548],
+          'elevation': 4.0,        // Medium gray area - elevated
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true
         }
       },
@@ -137,12 +140,13 @@ export const routePointsData: RoutePointCollection = {
             'heading': '2 minutes'
           }
         },
-              // Add AR anchor point
+        // Add AR anchor point with height map elevation
         'arAnchor': {
           'coordinates': [-76.94290995597841, 38.912261301501985], 
-          'elevation': 2.0,        // 2 meters above ground
+          'elevation': 2.5,        // Light-medium gray - water/pond area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true
         }
       },
@@ -168,12 +172,13 @@ export const routePointsData: RoutePointCollection = {
             'heading': '3 minutes'
           }
         },
-              // Add AR anchor point
+        // Add AR anchor point with height map elevation
         'arAnchor': {
-          'coordinates': [-76.94419205188753, 38.91246583213616],  // Same as geometry coordinates
-          'elevation': 2.0,        // 2 meters above ground
+          'coordinates': [-76.94419205188753, 38.91246583213616],
+          'elevation': 5.0,        // Medium-dark gray - elevated area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true
         }
       },
@@ -199,12 +204,13 @@ export const routePointsData: RoutePointCollection = {
             'heading': '2 minutes'
           }
         },
-              // Add AR anchor point
+        // Add AR anchor point with height map elevation
         'arAnchor': {
-          'coordinates': [-76.94354832172395, 38.913334037246614],  // Same as geometry coordinates
-          'elevation': 2.0,        // 2 meters above ground
+          'coordinates': [-76.94354832172395, 38.913334037246614],
+          'elevation': 3.0,        // Light-medium gray area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true
         }
       },
@@ -230,12 +236,13 @@ export const routePointsData: RoutePointCollection = {
             'heading': '2 minutes'
           }
         },
-              // Add AR anchor point
+        // Add AR anchor point with height map elevation
         'arAnchor': {
-          'coordinates': [-76.94476068019867, 38.91345925826118],  // Same as geometry coordinates
-          'elevation': 2.0,        // 2 meters above ground
+          'coordinates': [-76.94476068019867, 38.91345925826118],
+          'elevation': 3.5,        // Medium gray - slightly elevated
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true
         }
       },
@@ -262,12 +269,13 @@ export const routePointsData: RoutePointCollection = {
             'heading': '3 minutes'
           }
         },
-              // Add AR anchor point
+        // Add AR anchor point with height map elevation
         'arAnchor': {
-          'coordinates': [-76.9466543197632, 38.911568397422],  // Same as geometry coordinates
-          'elevation': 2.0,        // 2 meters above ground
+          'coordinates': [-76.9466543197632, 38.911568397422],
+          'elevation': 6.0,        // Darker area - higher elevation (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true
         }
       },
@@ -295,12 +303,13 @@ export const routePointsData: RoutePointCollection = {
             'heading': '2 minutes'
           }
         },
-              // Add AR anchor point
+        // Add AR anchor point with height map elevation
         'arAnchor': {
-          'coordinates': [-76.94748044013978, 38.911981636211536],  // Same as geometry coordinates
-          'elevation': 2.0,        // 2 meters above ground
+          'coordinates': [-76.94748044013978, 38.911981636211536],
+          'elevation': 7.0,        // Dark area - elevated terrain (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true
         }
       },
@@ -327,12 +336,13 @@ export const routePointsData: RoutePointCollection = {
             'heading': '4 minutes'
           }
         },
-              // Add AR anchor point
+        // Add AR anchor point with height map elevation
         'arAnchor': {
-          'coordinates': [-76.94825828075409, 38.91204424793947],  // Same as geometry coordinates
-          'elevation': 2.0,        // 2 meters above ground
+          'coordinates': [-76.94825828075409, 38.91204424793947],
+          'elevation': 8.0,        // Very dark area - highest elevation (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true
         }
       },
@@ -398,6 +408,7 @@ export const getArAnchorForPoint = (
   elevation: number;
   orientation: number;
   scale: number;
+  heightMapScale: number;
 } | null => {
   const point = getPointByName(pointId);
   if (!point || !point.properties.arAnchor) return null;
@@ -410,10 +421,14 @@ export const getArAnchorForPoint = (
     ? userPosition 
     : anchor.coordinates;
   
+  // Apply height map scale to elevation
+  const scaledElevation = (anchor.elevation || 0) * (anchor.heightMapScale || 1.0);
+  
   return {
     position,
-    elevation: anchor.elevation || 0,
+    elevation: scaledElevation,
     orientation: anchor.orientation || 0,
-    scale: anchor.scale || point.properties.iconScale || 1.0
+    scale: anchor.scale || point.properties.iconScale || 1.0,
+    heightMapScale: anchor.heightMapScale || 1.0
   };
 };

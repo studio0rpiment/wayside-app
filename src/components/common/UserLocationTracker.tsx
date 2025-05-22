@@ -2,12 +2,15 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 
+
+
 interface UserLocationTrackerProps {
   map: mapboxgl.Map;
   userPosition: [number, number] | null;
   heading?: number | null;
   accuracy?: number | null;
 }
+
 
 const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({ 
   map, 

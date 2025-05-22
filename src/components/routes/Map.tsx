@@ -12,6 +12,8 @@ import GeofenceDebugger from '../debug/GeofenceDebugger';
 import ExperienceModal from '../common/ExperienceModal';
 import MapWrapper from './MapWrapper';
 import { useGeofenceContext } from '../../context/GeofenceContext'; 
+import { testCoordinateConversion } from '../../utils/geoArUtils'
+
 // Interface for the modal state
 interface ModalState {
   isOpen: boolean;
@@ -39,6 +41,7 @@ const Map: React.FC = () => {
   isTracking,
   startTracking,
   stopTracking,
+  userPosition: geofenceUserPosition, 
   isInsideGeofence,
   getDistanceTo,
   getDistanceToPoint, // Add this new function
@@ -182,6 +185,18 @@ const Map: React.FC = () => {
       }
     }
   }, []); // Empty dependency array - only run once
+
+  useEffect(() => {
+  // Test the coordinate conversion
+  testCoordinateConversion();
+ 
+}, []); // Run once when component mounts
+
+useEffect(() => {
+  if (geofenceUserPosition) {
+    setUserPosition(geofenceUserPosition);
+  }
+}, [geofenceUserPosition]);
   
   // Get modal geofence info
   const modalGeofenceInfo = getModalGeofenceInfo();
@@ -210,7 +225,7 @@ const Map: React.FC = () => {
         {mapLoaded && mapRef.current && (
           <UserLocationTracker 
             map={mapRef.current} 
-            userPosition={userPosition}
+            userPosition={geofenceUserPosition}
             // heading={heading} // Add this when we have heading from the hook
             // accuracy={accuracy} // Add this when we have accuracy from the hook
           />
