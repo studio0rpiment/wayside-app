@@ -11,7 +11,7 @@ import UserLocationTracker from '../common/UserLocationTracker';
 import GeofenceDebugger from '../debug/GeofenceDebugger';
 import ExperienceModal from '../common/ExperienceModal';
 import MapWrapper from './MapWrapper';
-
+import { useGeofenceContext } from '../../context/GeofenceContext'; 
 // Interface for the modal state
 interface ModalState {
   isOpen: boolean;
@@ -26,13 +26,31 @@ const Map: React.FC = () => {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   
+  // Use the centralized geofence manager
+  // const geofenceManager = useGeofenceManager(routePointsData, {
+  //   debugMode: true, // Enable debugging
+  //   autoStart: true  // Start automatically
+  // });
+    const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
+
+
+ const {
+  activeGeofences,
+  isTracking,
+  startTracking,
+  stopTracking,
+  isInsideGeofence,
+  getDistanceTo,
+  getDistanceToPoint, // Add this new function
+  getCurrentRadius
+} = useGeofenceContext();;
+  
   // State that should trigger UI updates
   const [mapLoaded, setMapLoaded] = useState(false);
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
     pointData: null
   });
-  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [notificationRadius, setNotificationRadius] = useState(3);
   
   const { permissionsState } = usePermissions();
@@ -93,16 +111,54 @@ const Map: React.FC = () => {
     setMapLoaded(false);
   }, []);
   
-  const handlePositionUpdate = useCallback((position: [number, number]) => {
-    setUserPosition(position);
-  }, []);
-  
   const closeModal = useCallback(() => {
     setModalState({
       isOpen: false,
       pointData: null
     });
   }, []);
+  
+  // Helper functions to get geofence info for the current modal point
+  const getModalGeofenceInfo = useCallback(() => {
+    if (!modalState.pointData || !modalState.pointData.iconName) {
+      return {
+        isInside: false,
+        distance: null,
+        direction: null
+      };
+    }
+    
+    const pointId = modalState.pointData.iconName;
+    const isInside = isInsideGeofence(pointId);
+
+    let distance = getDistanceTo(pointId);
+    if (distance === null) {
+    // If not in active geofences, calculate distance directly
+    distance = getDistanceToPoint(pointId);
+  }
+    
+    // Calculate direction if we have user position and point coordinates
+    let direction = null;
+    if (userPosition) {
+      // Find the point's coordinates
+      const pointFeature = routePointsData.features.find(
+        feature => feature.properties.iconName === pointId
+      );
+      
+      if (pointFeature) {
+        const pointCoords = pointFeature.geometry.coordinates;
+        const dx = pointCoords[0] - userPosition[0];
+        const dy = pointCoords[1] - userPosition[1];
+        direction = Math.atan2(dy, dx) * (180 / Math.PI);
+      }
+    }
+    
+    return {
+      isInside,
+      distance,
+      direction
+    };
+  }, [modalState.pointData, isInsideGeofence, getDistanceTo,getDistanceToPoint, userPosition]);
   
   // Check for URL parameters on mount - only run once
   useEffect(() => {
@@ -127,6 +183,9 @@ const Map: React.FC = () => {
     }
   }, []); // Empty dependency array - only run once
   
+  // Get modal geofence info
+  const modalGeofenceInfo = getModalGeofenceInfo();
+  
   return (
     <div className="map-route">
       <VerticalSection 
@@ -147,11 +206,13 @@ const Map: React.FC = () => {
           />
         </div>
         
-        {/* User location tracker - only render when map is loaded */}
+        {/* User location tracker - now only handles visual representation */}
         {mapLoaded && mapRef.current && (
           <UserLocationTracker 
             map={mapRef.current} 
-            onPositionUpdate={handlePositionUpdate} 
+            userPosition={userPosition}
+            // heading={heading} // Add this when we have heading from the hook
+            // accuracy={accuracy} // Add this when we have accuracy from the hook
           />
         )}
         
@@ -161,19 +222,17 @@ const Map: React.FC = () => {
         </div>
         
         {/* Geofence debugger */}
-        <GeofenceDebugger 
-          userPosition={userPosition} 
-          radius={3} 
-          onRadiusChange={setNotificationRadius} 
-        />
+        <GeofenceDebugger  />
         
-        {/* Experience modal */}
+        {/* Experience modal with centralized geofence data */}
         <ExperienceModal
           isOpen={modalState.isOpen}
           pointData={modalState.pointData}
           onClose={closeModal}
-          userPosition={userPosition}
-          radius={window.geofenceDebuggerRadius}
+          isInsideGeofence={modalGeofenceInfo.isInside}
+          distanceToGeofence={modalGeofenceInfo.distance}
+          directionToGeofence={modalGeofenceInfo.direction}
+          currentRadius={getCurrentRadius()}
         />
       </VerticalSection>
     </div>

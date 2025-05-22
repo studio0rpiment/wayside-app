@@ -16,7 +16,23 @@ export default defineConfig({
   server: {
     hmr: {
       overlay: true,
-      timeout: 5000
+      timeout: 5000,
+    },
+    // Add CORS headers
+    cors: {
+      origin: '*',
+      methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+      credentials: true,
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Custom-Header',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Service-Worker-Allowed': '/'
     }
+    
   }
 })

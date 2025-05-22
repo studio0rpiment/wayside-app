@@ -7,8 +7,18 @@ import { getAssetPath } from '../utils/assetPaths';
  * This file exports GeoJSON data for use with Mapbox GL JS
  */
 
+// Interface for AR anchor point configuration
+export interface ArAnchorPoint {
+  coordinates: [number, number];  // Precise AR position [longitude, latitude]
+  elevation?: number;            // Height above sea level in meters
+  orientation?: number;          // Facing direction in degrees (0 = North, 90 = East)
+  scale?: number;                // Size adjustment factor
+  alignToTerrain?: boolean;      // Whether to align to ground level
+  snapToUser?: boolean;          // Whether to snap to user's position when activated
+}
+
 // Interface for modal/popup content
-interface ModalContent {
+export interface ModalContent {
   title: string;
   description: string;
   imageUrl?: string;
@@ -19,15 +29,16 @@ interface ModalContent {
 }
 
 // Interface for route point properties
-interface RoutePointProperties {
+export interface RoutePointProperties {
   iconName: string;
   iconScale: number;
   title: string;
   modalContent: ModalContent;
+  arAnchor?: ArAnchorPoint;
 }
 
 // Interface for GeoJSON feature with specific properties
-interface RoutePointFeature {
+export interface RoutePointFeature {
   type: 'Feature';
   properties: RoutePointProperties;
   geometry: {
@@ -37,7 +48,7 @@ interface RoutePointFeature {
 }
 
 // Interface for GeoJSON feature collection
-interface RoutePointCollection {
+export interface RoutePointCollection {
   type: 'FeatureCollection';
   features: RoutePointFeature[];
 }
@@ -63,6 +74,14 @@ export const routePointsData: RoutePointCollection = {
             'theme': 'Future projections',
             'heading': '3 minutes'
           }
+        },
+            // Add AR anchor point
+        'arAnchor': {
+          'coordinates': [-76.9418102502823, 38.91331316705603],  // Same as geometry coordinates
+          'elevation': 2.0,        // 2 meters above ground
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'alignToTerrain': true
         }
       },
       'geometry': {
@@ -86,6 +105,14 @@ export const routePointsData: RoutePointCollection = {
             'theme': 'Local ecology',
             'heading': '2 minutes'
           }
+        },
+              // Add AR anchor point
+        'arAnchor': {
+          'coordinates': [-76.94238424301149, 38.91251174709548],  // Same as geometry coordinates
+          'elevation': 2.0,        // 2 meters above ground
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'alignToTerrain': true
         }
       },
       'geometry': {
@@ -109,6 +136,14 @@ export const routePointsData: RoutePointCollection = {
             'theme': 'Native flora',
             'heading': '2 minutes'
           }
+        },
+              // Add AR anchor point
+        'arAnchor': {
+          'coordinates': [-76.94290995597841, 38.912261301501985], 
+          'elevation': 2.0,        // 2 meters above ground
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'alignToTerrain': true
         }
       },
       'geometry': {
@@ -132,6 +167,14 @@ export const routePointsData: RoutePointCollection = {
             'theme': 'Local history',
             'heading': '3 minutes'
           }
+        },
+              // Add AR anchor point
+        'arAnchor': {
+          'coordinates': [-76.94419205188753, 38.91246583213616],  // Same as geometry coordinates
+          'elevation': 2.0,        // 2 meters above ground
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'alignToTerrain': true
         }
       },
       'geometry': {
@@ -155,6 +198,14 @@ export const routePointsData: RoutePointCollection = {
             'theme': 'Community history',
             'heading': '2 minutes'
           }
+        },
+              // Add AR anchor point
+        'arAnchor': {
+          'coordinates': [-76.94354832172395, 38.913334037246614],  // Same as geometry coordinates
+          'elevation': 2.0,        // 2 meters above ground
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'alignToTerrain': true
         }
       },
       'geometry': {
@@ -178,6 +229,14 @@ export const routePointsData: RoutePointCollection = {
             'theme': 'Aquatic plants',
             'heading': '2 minutes'
           }
+        },
+              // Add AR anchor point
+        'arAnchor': {
+          'coordinates': [-76.94476068019867, 38.91345925826118],  // Same as geometry coordinates
+          'elevation': 2.0,        // 2 meters above ground
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'alignToTerrain': true
         }
       },
       'geometry': {
@@ -202,6 +261,14 @@ export const routePointsData: RoutePointCollection = {
             'theme': 'Historical perspective',
             'heading': '3 minutes'
           }
+        },
+              // Add AR anchor point
+        'arAnchor': {
+          'coordinates': [-76.9466543197632, 38.911568397422],  // Same as geometry coordinates
+          'elevation': 2.0,        // 2 meters above ground
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'alignToTerrain': true
         }
       },
       'geometry': {
@@ -227,6 +294,14 @@ export const routePointsData: RoutePointCollection = {
             'theme': 'Native flora',
             'heading': '2 minutes'
           }
+        },
+              // Add AR anchor point
+        'arAnchor': {
+          'coordinates': [-76.94748044013978, 38.911981636211536],  // Same as geometry coordinates
+          'elevation': 2.0,        // 2 meters above ground
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'alignToTerrain': true
         }
       },
       'geometry': {
@@ -251,6 +326,14 @@ export const routePointsData: RoutePointCollection = {
             'theme': 'Ancient history',
             'heading': '4 minutes'
           }
+        },
+              // Add AR anchor point
+        'arAnchor': {
+          'coordinates': [-76.94825828075409, 38.91204424793947],  // Same as geometry coordinates
+          'elevation': 2.0,        // 2 meters above ground
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'alignToTerrain': true
         }
       },
       'geometry': {
@@ -304,4 +387,33 @@ export const getPointByName = (name: string): RoutePointFeature | undefined => {
   return routePointsData.features.find(
     feature => feature.properties.iconName === name || feature.properties.title === name
   );
+};
+
+//helper function to get AR anchor information for a point
+export const getArAnchorForPoint = (
+  pointId: string, 
+  userPosition?: [number, number]
+): {
+  position: [number, number];
+  elevation: number;
+  orientation: number;
+  scale: number;
+} | null => {
+  const point = getPointByName(pointId);
+  if (!point || !point.properties.arAnchor) return null;
+  
+  const anchor = point.properties.arAnchor;
+  
+  // If anchor is configured to snap to user and we have user position,
+  // use the user's position but keep the orientation
+  const position = anchor.snapToUser && userPosition 
+    ? userPosition 
+    : anchor.coordinates;
+  
+  return {
+    position,
+    elevation: anchor.elevation || 0,
+    orientation: anchor.orientation || 0,
+    scale: anchor.scale || point.properties.iconScale || 1.0
+  };
 };

@@ -1,64 +1,44 @@
 // GeofenceDebugger.tsx
 import React, { useState, useEffect } from 'react';
-import { checkGeofences } from '../../utils/geoUtils';
+import { useGeofenceContext } from '../../context/GeofenceContext'; // Add this import
 import { routePointsData } from '../../data/mapRouteData';
 
 interface GeofenceDebuggerProps {
-  userPosition: [number, number] | null;
-  radius?: number;
-  onRadiusChange?: (radius: number) => void; // New callback prop
-
+  // Remove the old props since we'll get them from context
+  // userPosition: [number, number] | null;
+  // radius?: number;
+  // onRadiusChange?: (radius: number) => void;
 }
 
-// GeofenceDebugger.tsx - Add this export function
-export function simulateGeofenceEntry(geofenceData: any, callback: (data: any) => void) {
-  if (callback && geofenceData) {
-    callback(geofenceData);
-  }
-}
-
-// Extend the Window interface to include geofenceDebuggerRadius
-declare global {
-  interface Window {
-    geofenceDebuggerRadius?: number;
-  }
-}
-
-window.geofenceDebuggerRadius = 3;
-
-
-const GeofenceDebugger: React.FC<GeofenceDebuggerProps> = ({ 
-  userPosition, 
-  radius = 3,
-  onRadiusChange
-}) => {
-  const [geofenceResults, setGeofenceResults] = useState<ReturnType<typeof checkGeofences> | null>(null);
+// Remove the props and get data from context
+const GeofenceDebugger: React.FC<GeofenceDebuggerProps> = () => {
+  // Get data from context instead of props
+  const {
+    userPosition,
+    activeGeofences,
+    getCurrentRadius
+  } = useGeofenceContext();
+  
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [customRadius, setCustomRadius] = useState(radius);
-  const [updateCount, setUpdateCount] = useState(0)
+  const [customRadius, setCustomRadius] = useState(getCurrentRadius());
+  const [updateCount, setUpdateCount] = useState(0);
 
-    useEffect(() => {
-
-          if (updateCount > 10) return;
-    // Update global radius only when new
-  if (window.geofenceDebuggerRadius !== customRadius) {
-    window.geofenceDebuggerRadius = customRadius;
-    
-    // Call callback if provided
-    if (onRadiusChange) {
-      onRadiusChange(customRadius);
-    }
-  }
-  }, [customRadius, onRadiusChange]);
-  
   useEffect(() => {
-    if (userPosition) {
-      const results = checkGeofences(userPosition, routePointsData.features, customRadius);
-      setGeofenceResults(results);
+    if (updateCount > 10) return;
+    
+    // Update global radius only when new
+    if (window.geofenceDebuggerRadius !== customRadius) {
+      window.geofenceDebuggerRadius = customRadius;
     }
-  }, [userPosition, customRadius]);
-
+  }, [customRadius]);
   
+  // Update customRadius when context radius changes
+  useEffect(() => {
+    const contextRadius = getCurrentRadius();
+    if (contextRadius !== customRadius) {
+      setCustomRadius(contextRadius);
+    }
+  }, [getCurrentRadius(), customRadius]);
   
   return (
     <div 
@@ -120,22 +100,20 @@ const GeofenceDebugger: React.FC<GeofenceDebuggerProps> = ({
                 Lat: {userPosition[1].toFixed(6)}
               </div>
               
-              {geofenceResults && (
-                <div>
-                  <strong>Any Experience ({geofenceResults.insideGeofences.length}):</strong>
-                  {geofenceResults.insideGeofences.length > 0 ? (
-                    <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
-                      {geofenceResults.insideGeofences.map(fence => (
-                        <li key={fence.id}>
-                          {fence.title} ({fence.distance.toFixed(2)}m)
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p style={{ margin: '5px 0' }}>Not inside any experience</p>
-                  )}
-                </div>
-              )}
+              <div>
+                <strong>Active Geofences ({activeGeofences.length}):</strong>
+                {activeGeofences.length > 0 ? (
+                  <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                    {activeGeofences.map(fence => (
+                      <li key={fence.id}>
+                        {fence.title} ({fence.distance.toFixed(2)}m)
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ margin: '5px 0' }}>Not inside any geofence</p>
+                )}
+              </div>
             </>
           ) : (
             <p>Waiting for user position...</p>

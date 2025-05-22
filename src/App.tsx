@@ -15,9 +15,12 @@ import { PermissionsProvider } from './context/PermissionsContext.tsx';
 import AppThemeProvider from './theme/ThemeProvider';
 import GeofenceNotificationSystem from './components/common/GeofenceNotificationSystem';
 import { registerServiceWorker } from './utils/serviceWorkerRegistration';
+ // Adjust path as needed
+
 
 
 import './App.css';
+import { GeofenceProvider } from './context/GeofenceContext.tsx';
 
 registerServiceWorker();
 
@@ -61,9 +64,11 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/onboarding" element={<OnboardingWrapper />} />
               <Route path="/map" element={
-                <NotificationWrapper>
-                  <Map />
-                </NotificationWrapper>
+                <GeofenceProvider>
+                  <GeofenceNotificationSystem>
+                    <Map />
+                  </GeofenceNotificationSystem>
+                </GeofenceProvider>
               } />
               <Route path="/water-level" element={<WaterLevel />} />
               <Route path="/lotus" element={<Lotus />} />
