@@ -5,6 +5,7 @@ import { gpsToThreeJsPosition } from '../../utils/geoArUtils';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 
+
 interface ArCameraProps {
   userPosition: [number, number];
   anchorPosition: [number, number];
@@ -12,8 +13,15 @@ interface ArCameraProps {
   coordinateScale?: number;
   onArObjectPlaced?: (position: THREE.Vector3) => void;
   onOrientationUpdate?: (orientation: { alpha: number; beta: number; gamma: number }) => void;
+  onSceneReady?: (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => void; 
+  onModelRotate?: (deltaX: number, deltaY: number) => void;
+  onModelScale?: (scaleFactor: number) => void;
+  onModelReset?: () => void;
+  onSwipeUp?: () => void;
+  onSwipeDown?: () => void;
   children?: React.ReactNode;
 }
+
 
 const ArCameraComponent: React.FC<ArCameraProps> = ({
   userPosition,
@@ -22,6 +30,12 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   coordinateScale = 1.0,
   onArObjectPlaced,
   onOrientationUpdate,
+  onSceneReady,
+  onModelRotate,
+  onModelScale,
+  onModelReset,
+  onSwipeUp,
+  onSwipeDown,
   children
 }) => {
   // Refs for DOM elements and Three.js objects
@@ -32,6 +46,17 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  const touchStartY = useRef(0);
+  const touchEndY = useRef(0);
+  const lastTapTime = useRef(0);
+  const lastTouchX = useRef(0);
+  const lastTouchY = useRef(0);
+  const initialPinchDistance = useRef(0);
+
+  // Touch constants
+  const minSwipeDistance = 50;
+  const doubleTapDelay = 300;
   
   // State
   const [isInitialized, setIsInitialized] = useState(false);
@@ -41,6 +66,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     beta: number;
     gamma: number;
   } | null>(null);
+
+  // Debug/testing override state
+  const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
+    // Initialize from global if available, otherwise false
+    return typeof (window as any).arTestingOverride === 'boolean'
+      ? (window as any).arTestingOverride
+      : false;
+  });
   
   // Permission handling - use existing system
   const { isPermissionGranted, requestPermission } = usePermissions();
@@ -123,6 +156,11 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
+
+    if (onSceneReady) {
+    onSceneReady(scene, camera);
+    console.log('📡 AR scene exposed to parent component');
+  }
     
     console.log('✅ Three.js scene initialized');
     return true;
@@ -268,17 +306,131 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
         console.warn('⚠️ Device orientation not available or permission denied');
       }
       
+       
+        
       // Place AR object
       placeArObject();
       
       // Start animation loop
       animate();
+
+        window.addEventListener('touchstart', handleTouchStart, { passive: false });
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', handleTouchEnd, { passive: false });
       
       setIsInitialized(true);
       console.log('✅ AR Camera fully initialized');
     };
     
     initialize();
+
+    // Add these touch handlers in ArCameraComponent
+const handleTouchStart = (event: TouchEvent) => {
+  if (event.touches.length === 1) {
+    // Single touch: store positions for rotation
+    touchStartY.current = event.touches[0].clientY;
+    lastTouchX.current = event.touches[0].clientX;
+    lastTouchY.current = event.touches[0].clientY;
+  } else if (event.touches.length === 2) {
+    // Two finger pinch: store initial distance
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+    initialPinchDistance.current = Math.hypot(
+      touch2.clientX - touch1.clientX,
+      touch2.clientY - touch1.clientY
+    );
+  }
+  
+  // Multi-tap detection
+  const now = new Date().getTime();
+  const timeSince = now - lastTapTime.current;
+  
+  if (timeSince < doubleTapDelay && timeSince > 0) {
+    // This is a multi-tap - check if it's double or triple
+    const timeSinceFirst = now - (lastTapTime.current - doubleTapDelay);
+    
+    if (timeSinceFirst < doubleTapDelay * 2) {
+      // Triple tap: reset model
+      console.log('👆 Triple tap detected - reset');
+      if (onModelReset) {
+        onModelReset();
+      }
+      lastTapTime.current = 0; // Reset to prevent further detection
+    } else {
+      // Double tap: next model
+      console.log('👆 Double tap detected - next model');
+      if (onSwipeUp) {
+        onSwipeUp();
+      }
+    }
+    event.preventDefault();
+  }
+  
+  lastTapTime.current = now;
+};
+
+const handleTouchMove = (event: TouchEvent) => {
+  if (event.touches.length === 1) {
+    // Single finger drag: rotate model
+    const currentX = event.touches[0].clientX;
+    const currentY = event.touches[0].clientY;
+    
+    const deltaX = currentX - lastTouchX.current;
+    const deltaY = currentY - lastTouchY.current;
+    
+    // Only rotate if significant movement
+    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+      if (onModelRotate) {
+        onModelRotate(deltaX * 0.01, deltaY * 0.01);
+      }
+    }
+    
+    lastTouchX.current = currentX;
+    lastTouchY.current = currentY;
+    
+  } else if (event.touches.length === 2) {
+    // Two finger pinch: scale model
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+    const currentDistance = Math.hypot(
+      touch2.clientX - touch1.clientX,
+      touch2.clientY - touch1.clientY
+    );
+    
+    const scaleChange = currentDistance / initialPinchDistance.current;
+    
+    if (scaleChange > 0.1 && scaleChange < 10) {
+      if (onModelScale) {
+        onModelScale(scaleChange);
+      }
+    }
+  }
+  
+  event.preventDefault();
+};
+
+const handleTouchEnd = (event: TouchEvent) => {
+
+  console.log('👆 Touch ended');
+  // touchEndY.current = event.changedTouches[0].clientY;
+  // const deltaY = touchStartY.current - touchEndY.current;
+  
+  // Only handle swipe if it's a significant VERTICAL swipe
+//   if (Math.abs(deltaY) > minSwipeDistance) {
+//     if (deltaY > 0) {
+//       // Swipe up
+//       if (onSwipeUp) {
+//         onSwipeUp();
+//       }
+//     } else {
+//       // Swipe down  
+//       if (onSwipeDown) {
+//         onSwipeDown();
+//       }
+//     }
+//     event.preventDefault();
+//   }
+};
     
     // Add resize listener
     window.addEventListener('resize', handleResize);
@@ -293,6 +445,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       // Remove event listeners
       window.removeEventListener('deviceorientation', handleDeviceOrientation);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
       
       // Cleanup Three.js
       if (rendererRef.current) {
@@ -421,28 +576,56 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
         </div>
       )}
       
-      {/* Debug info (development only) */}
-      {process.env.NODE_ENV === 'development' && deviceOrientation && (
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          color: 'white',
-          padding: '10px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          zIndex: 1003,
-          fontFamily: 'monospace'
-        }}>
-          <div>α: {deviceOrientation.alpha?.toFixed(1)}°</div>
-          <div>β: {deviceOrientation.beta?.toFixed(1)}°</div>
-          <div>γ: {deviceOrientation.gamma?.toFixed(1)}°</div>
-          <div>GPS: [{userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}]</div>
-          <div>Scale: {coordinateScale}x</div>
-        </div>
-      )}
-      
+          {/* Minimal Debug Panel */}
+     
+            {process.env.NODE_ENV === 'development' && (
+              <div style={{
+                position: 'absolute',
+                top: '10px',
+                left: '10px',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                padding: '10px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                zIndex: 1003,
+                pointerEvents: 'auto',
+                fontFamily: 'monospace'
+              }}>
+                    <div style={{ color: 'yellow' }}>🎥 AR CAMERA DEBUG</div> 
+
+               
+                {deviceOrientation ? (
+                  <>
+                    <div>α: {deviceOrientation.alpha?.toFixed(1)}°</div>
+                    <div>β: {deviceOrientation.beta?.toFixed(1)}°</div>
+                    <div>γ: {deviceOrientation.gamma?.toFixed(1)}°</div>
+                  </>
+                ) : (
+                  <div>Orientation: Desktop</div>
+                )}
+                
+                <div>Scale: {coordinateScale}x</div>
+                <div>User: [{userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}]</div>
+                <div>Anchor: [{anchorPosition[0].toFixed(6)}, {anchorPosition[1].toFixed(6)}]</div>
+                <div>Elevation: {anchorElevation}m</div>
+                <div>Scale: {coordinateScale}x</div>
+
+            
+              <div 
+                onClick={() => {
+                  const newValue = !arTestingOverride;
+                  (window as any).arTestingOverride = newValue;
+                  setArTestingOverride(newValue); // <- Update state to trigger re-render
+                  console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
+                    }}
+                  style={{ cursor: 'pointer', userSelect: 'none', marginTop: '5px' }}
+                  >
+              Override: {arTestingOverride ? '✅' : '❌'}  {/* <- Use state instead of global */}
+            </div>
+              </div>
+            )}
+                  
       {/* Loading indicator - show permission request instead of error */}
       {!isInitialized && !cameraError && (
         <div style={{

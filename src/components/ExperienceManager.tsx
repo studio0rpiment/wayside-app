@@ -42,6 +42,9 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   const [arInitialized, setArInitialized] = useState(false);
   const [arObjectPosition, setArObjectPosition] = useState<THREE.Vector3 | null>(null);
   const [experienceReady, setExperienceReady] = useState(false);
+
+  const [arScene, setArScene] = useState<THREE.Scene | null>(null);
+  const [arCamera, setArCamera] = useState<THREE.PerspectiveCamera | null>(null);
   
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -71,7 +74,44 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       console.log('📱 Device orientation:', orientation);
     }
   };
-  
+
+  const handleArSceneReady = (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
+  console.log('🎯 AR scene received in ExperienceManager');
+  setArScene(scene);
+  setArCamera(camera);
+};
+
+    // Update the handlers in ExperienceManager to call the lotus handlers
+    const handleModelRotate = (deltaX: number, deltaY: number) => {
+      if ((window as any).lotusHandleRotate) {
+        (window as any).lotusHandleRotate(deltaX, deltaY);
+      }
+    };
+
+    const handleModelScale = (scaleFactor: number) => {
+      if ((window as any).lotusHandleScale) {
+        (window as any).lotusHandleScale(scaleFactor);
+      }
+    };
+
+    const handleModelReset = () => {
+      if ((window as any).lotusHandleReset) {
+        (window as any).lotusHandleReset();
+      }
+    };
+
+    const handleSwipeUp = () => {
+      if ((window as any).lotusHandleSwipeUp) {
+        (window as any).lotusHandleSwipeUp();
+      }
+    };
+
+    const handleSwipeDown = () => {
+      if ((window as any).lotusHandleSwipeDown) {
+        (window as any).lotusHandleSwipeDown();
+      }
+    };
+      
   // Handle experience completion
   const handleExperienceComplete = () => {
     if (onExperienceComplete) {
@@ -94,8 +134,15 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     const experienceProps = {
       onClose: handleExperienceComplete,
       onNext: handleExperienceComplete,
-      arPosition: arObjectPosition, // New prop for AR positioning
-      coordinateScale
+      arPosition: arObjectPosition, 
+      arScene: arScene ?? undefined,          
+      arCamera: arCamera ?? undefined, 
+      coordinateScale,
+      onModelRotate: handleModelRotate,
+      onModelScale: handleModelScale,
+      onModelReset: handleModelReset,
+      onSwipeUp: handleSwipeUp,
+      onSwipeDown: handleSwipeDown
     };
     
     switch (experienceType) {
@@ -108,6 +155,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         
       case 'lotus':
         return <LotusExperience {...experienceProps} />;
+   
+
 
       case 'mac':
         return <MacExperience {...experienceProps} />;
@@ -154,6 +203,12 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         coordinateScale={coordinateScale}
         onArObjectPlaced={handleArObjectPlaced}
         onOrientationUpdate={handleOrientationUpdate}
+        onSceneReady={handleArSceneReady} 
+        onModelRotate={handleModelRotate}
+        onModelScale={handleModelScale}
+        onModelReset={handleModelReset}
+        onSwipeUp={handleSwipeUp}
+        onSwipeDown={handleSwipeDown}
       />
       
       {/* Experience Overlay */}
@@ -214,7 +269,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       )}
       
       {/* Debug Info (Development Only) */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div style={{
           position: 'absolute',
           top: '70px',
@@ -238,7 +293,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           <div>AR Ready: {arInitialized ? '✅' : '⏳'}</div>
           <div>Experience: {experienceReady ? '✅' : '⏳'}</div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
+import { getAssetPath } from '../../utils/assetPaths';
 
 // Import these separately to avoid the Vite optimization issue
 import { GLTFLoader as GLTFLoaderModule } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -8,9 +9,30 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 interface LotusExperienceProps {
   onClose: () => void;
   onNext?: () => void;
+  arPosition?: THREE.Vector3;
+  arScene?: THREE.Scene;
+  arCamera?: THREE.PerspectiveCamera;
+  coordinateScale?: number;
+  onModelRotate?: (deltaX: number, deltaY: number) => void;
+  onModelScale?: (scaleFactor: number) => void;
+  onModelReset?: () => void;
+  onSwipeUp?: () => void;
+  onSwipeDown?: () => void;
 }
 
-const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) => {
+const LotusExperience: React.FC<LotusExperienceProps> = ({ 
+  onClose, 
+  onNext,
+  arPosition,
+  arScene,
+  arCamera,
+  coordinateScale = 1.0,
+  onModelRotate,
+  onModelScale,
+  onModelReset,
+  onSwipeUp,
+  onSwipeDown
+}) => {
   // Use refs instead of state for better handling in event listeners
   const currentModelIndexRef = useRef(0);
   const modelsRef = useRef<THREE.Group[]>([]);
@@ -19,25 +41,59 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
   const controlsRef = useRef<OrbitControls | null>(null);
   const instructionsRef = useRef<HTMLDivElement | null>(null);
   
-  // Touch and double-tap handling refs
-  const touchStartY = useRef(0);
-  const touchEndY = useRef(0);
-  const lastTapTime = useRef(0);
-  const minSwipeDistance = 50; // Minimum distance for a swipe in pixels
-  const doubleTapDelay = 300; // Max milliseconds between taps for a double-tap
-  
   // Store initial camera position for reset
-  const initialCameraPos = useRef(new THREE.Vector3(0, 0, 2));
+  const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
   const initialModelRotation = useRef(new THREE.Euler(0, 0, 0));
   
   // Define stage names
   const stageNames = ["Seed Pod", "New Pod", "Bloom", "Fully Grown"];
-  
-  // Function to change models - defined outside the main useEffect
+
+  // Add state to track override status
+  const [arTestingOverride, setArTestingOverride] = useState(() => {  
+    return (window as any).arTestingOverride ?? true;
+  });
+
+  // Define isArMode at the component level
+  const isArMode = !!(arScene && arCamera && arPosition);
+
+  // Model interaction handlers
+  const handleRotateModel = (deltaX: number, deltaY: number) => {
+    const currentModel = modelsRef.current[currentModelIndexRef.current];
+    if (currentModel) {
+      currentModel.rotation.y += deltaX;
+      currentModel.rotation.x += deltaY;
+      console.log('🔄 Model rotated:', currentModel.rotation.x, currentModel.rotation.y);
+    }
+  };
+
+  const handleScaleModel = (scaleFactor: number) => {
+    const currentModel = modelsRef.current[currentModelIndexRef.current];
+    if (currentModel) {
+      const newScale = Math.max(0.5, Math.min(5.0, scaleFactor));
+      currentModel.scale.set(newScale, newScale, newScale);
+      console.log('📏 Model scaled:', newScale);
+    }
+  };
+
+  const handleResetModel = () => {
+    const currentModel = modelsRef.current[currentModelIndexRef.current];
+    if (currentModel) {
+      currentModel.rotation.copy(initialModelRotation.current);
+      currentModel.scale.set(2, 2, 2);
+      console.log('🔄 Model reset');
+    }
+  };
+
+  const handleNextModel = () => {
+    console.log('➡️ Lotus: Next model');
+    const nextIndex = currentModelIndexRef.current < 3 ? currentModelIndexRef.current + 1 : 0;
+    switchToModel(nextIndex);
+  };
+
+  // Function to change models
   const switchToModel = (index: number) => {
     console.log(`Switching to model index: ${index}`);
     
-    // Store the new index
     currentModelIndexRef.current = index;
     
     // Remove all models from the scene
@@ -50,7 +106,6 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
       
       // Add only the current model
       if (modelsRef.current[index]) {
-        // Reset model rotation when switching
         modelsRef.current[index].rotation.copy(initialModelRotation.current);
         sceneRef.current.add(modelsRef.current[index]);
         
@@ -61,32 +116,83 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
       }
     }
   };
-  
-  // Function to reset camera and controls
-  const resetView = () => {
-    if (cameraRef.current && controlsRef.current) {
-      // Reset camera position
-      cameraRef.current.position.copy(initialCameraPos.current);
-      cameraRef.current.lookAt(0, 0, 0);
-      
-      // Reset controls
-      controlsRef.current.reset();
-      
-      // Reset current model rotation
-      const currentModel = modelsRef.current[currentModelIndexRef.current];
-      if (currentModel) {
-        currentModel.rotation.copy(initialModelRotation.current);
-      }
-      
-      console.log("View reset to initial position");
-    }
-  };
-  
+
+  // Setup handler connections
   useEffect(() => {
-    // Create reference to track if component is mounted
+    console.log('🔗 Setting up lotus handlers');
+    
+    if (onModelRotate) {
+      (window as any).lotusHandleRotate = handleRotateModel;
+      console.log('✅ Rotation handler set');
+    }
+    if (onModelScale) {
+      (window as any).lotusHandleScale = handleScaleModel;
+      console.log('✅ Scale handler set');
+    }
+    if (onModelReset) {
+      (window as any).lotusHandleReset = handleResetModel;
+      console.log('✅ Reset handler set');
+    }
+    if (onSwipeUp) {
+      (window as any).lotusHandleSwipeUp = handleNextModel;
+      console.log('✅ Next model handler set');
+    }
+    
+    return () => {
+      console.log('🧹 Cleaning up lotus handlers');
+      delete (window as any).lotusHandleRotate;
+      delete (window as any).lotusHandleScale;
+      delete (window as any).lotusHandleReset;
+      delete (window as any).lotusHandleSwipeUp;
+    };
+  }, [onModelRotate, onModelScale, onModelReset, onSwipeUp]);
+
+  // Listen for override changes
+  useEffect(() => {
+    const checkOverride = () => {
+      const currentOverride = (window as any).arTestingOverride ?? true;
+      if (currentOverride !== arTestingOverride) {
+        setArTestingOverride(currentOverride);
+        console.log('🎯 LotusExperience override changed:', currentOverride);
+        
+        const currentModel = modelsRef.current[currentModelIndexRef.current];
+        console.log('🎯 Current model:', currentModel);
+        console.log('🎯 Is AR mode:', isArMode);
+        console.log('🎯 AR position:', arPosition);
+        
+        if (currentModel && isArMode && arPosition) {
+          if (currentOverride) {
+            console.log('🎯 Setting override position (0, 0, -5)');
+            currentModel.position.set(0, 0, -5);
+          } else {
+            console.log('🎯 Setting anchor position:', arPosition);
+            currentModel.position.copy(arPosition);
+          }
+          
+          // Force visual update
+          currentModel.visible = false;
+          setTimeout(() => {
+            if (currentModel) {
+              currentModel.visible = true;
+            }
+          }, 50);
+          
+          console.log('🎯 Model position after change:', currentModel.position);
+        }
+      }
+    };
+    
+    const interval = setInterval(checkOverride, 100);
+    return () => clearInterval(interval);
+  }, [arTestingOverride, isArMode, arPosition]);
+
+  // Main effect for model loading and scene setup
+  useEffect(() => {
     let isMounted = true;
     
-    // Create container for the Three.js scene
+    console.log('🎯 LotusExperience mode:', isArMode ? 'AR' : 'Standalone');
+    
+    // Create container for standalone mode
     const container = document.createElement('div');
     container.id = 'threejs-container';
     container.style.position = 'fixed';
@@ -94,10 +200,13 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
     container.style.left = '0';
     container.style.width = '100%';
     container.style.height = '100%';
-    container.style.zIndex = '1001'; // Above the AR.js scene
-    document.body.appendChild(container);
+    container.style.zIndex = '1001';
+    
+    if (!isArMode) {
+      document.body.appendChild(container);
+    }
 
-    // Create instructions div
+    // Create instructions
     const instructions = document.createElement('div');
     instructions.style.position = 'absolute';
     instructions.style.bottom = '20px';
@@ -110,8 +219,8 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
     instructions.style.textAlign = 'center';
     instructions.style.fontFamily = 'var(--font-rigby)';
     instructions.style.fontWeight = '400';
-    instructions.style.zIndex = '1002'; // Above the Three.js scene
-    instructions.innerHTML = 'Swipe up for next stage, down for previous. Double-tap to reset view.';
+    instructions.style.zIndex = '1002';
+    instructions.innerHTML = 'Double-tap for next stage, triple-tap to reset. Drag to rotate, pinch to scale.';
     container.appendChild(instructions);
     instructionsRef.current = instructions;
 
@@ -127,77 +236,88 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
     continueButton.style.border = 'none';
     continueButton.style.zIndex = '1002';
     continueButton.innerHTML = 'Continue';
+
     continueButton.onclick = () => {
-
-        window.location.href = window.location.origin + '/wayside-app/#/map';
-
-
       if (onNext) {
         onNext();
       }
     };
     
     continueButton.addEventListener('touchstart', () => {
-        if (onNext) {
-          window.location.href = window.location.origin + '/wayside-app/#/map';
-          onNext();
-        }
-      }, { passive: false });
+      if (onNext) {
+        onNext();
+      }
+    }, { passive: false });
+
     container.appendChild(continueButton);
 
-    // Initialize Three.js components with transparency
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-    
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.copy(initialCameraPos.current);
-    cameraRef.current = camera;
-    
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: true, 
-      alpha: true,
-      premultipliedAlpha: false
-    });
-    
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 0); // Transparent background
-    container.appendChild(renderer.domElement);
+    // Initialize Three.js components
+    let scene: THREE.Scene;
+    let camera: THREE.PerspectiveCamera;
+    let renderer: THREE.WebGLRenderer | null = null;
+    let controls: OrbitControls | null = null;
 
-    // Add OrbitControls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.25;
-    controls.screenSpacePanning = false;
-    controls.minDistance = 0.5;
-    controls.maxDistance = 10;
-    controls.maxPolarAngle = Math.PI / 1.5;
-    controls.target.set(0, 0, 0);
-    controlsRef.current = controls;
+    if (isArMode) {
+      // AR Mode: Use provided scene and camera
+      scene = arScene!;
+      camera = arCamera!;
+      sceneRef.current = scene;
+      cameraRef.current = camera;
+      console.log('🎯 Using AR scene and camera');
+    } else {
+      // Standalone Mode: Create own scene/camera/renderer
+      scene = new THREE.Scene();
+      sceneRef.current = scene;
+      
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.copy(initialCameraPos.current);
+      cameraRef.current = camera;
+      
+      renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        alpha: true,
+        premultipliedAlpha: false
+      });
+      
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 0);
+      container.appendChild(renderer.domElement);
 
-    // Add lighting to the scene
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambientLight);
+      // Add OrbitControls only in standalone mode
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.25;
+      controls.screenSpacePanning = false;
+      controls.minDistance = 0.5;
+      controls.maxDistance = 10;
+      controls.maxPolarAngle = Math.PI / 1.5;
+      controls.target.set(0, 0, 0);
+      controlsRef.current = controls;
+      
+      // Add lighting only in standalone mode
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(1, 1, 1).normalize();
-    scene.add(directionalLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(1, 1, 1).normalize();
+      scene.add(directionalLight);
+    }
 
-    // Define lotus model URLs with correct paths
+    // Define lotus model URLs
     const lotusModels = [
-      window.location.origin + '/wayside-app/models/Lotus_SeedPod.glb',
-      window.location.origin + '/wayside-app/models/Lotus_NewPod.glb',
-      window.location.origin + '/wayside-app/models/Lotus_Bloom.glb',
-      window.location.origin + '/wayside-app/models/Lotus_Grown.glb'
+      getAssetPath('models/Lotus_SeedPod.glb'),
+      getAssetPath('models/Lotus_NewPod.glb'),
+      getAssetPath('models/Lotus_Bloom.glb'),
+      getAssetPath('models/Lotus_Grown.glb')
     ];
 
-    // Create loader instance manually to avoid Vite optimization issues
+    // Create loader
     const loader = new GLTFLoaderModule();
     
-    // Track loading progress
     let modelsLoaded = 0;
     const totalModels = lotusModels.length;
     
-    // Create a loading indicator
+    // Create loading indicator
     const loadingDiv = document.createElement('div');
     loadingDiv.style.position = 'absolute';
     loadingDiv.style.top = '50%';
@@ -227,22 +347,33 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
           model.position.y = -center.y;
           model.position.z = -center.z;
           
-          // Scale model to a reasonable size (changed to 2 as requested)
+          // Scale model appropriately
           const size = box.getSize(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z);
           if (maxDim > 0) {
-            const scale = 2 / maxDim; // Initial scale of 2
+            const scale = (isArMode ? 2 : 8) / maxDim;
             model.scale.set(scale, scale, scale);
           }
           
-          // Initial position
-          model.position.z = -0.5; // Moved closer to camera for better visibility
+          // Position based on mode
+          if (isArMode && arPosition) {
+            const currentOverride = (window as any).arTestingOverride ?? true;
+            
+            if (currentOverride) {
+              model.position.set(0, 0, -5);
+              console.log('🎯 Model positioned at TESTING override location:', model.position);
+            } else {
+              model.position.copy(arPosition);
+              console.log('🎯 Model positioned at AR anchor location:', arPosition);
+            }
+          } else {
+            model.position.set(0, 0, -3);
+          }
           
           // Make all materials transparent
           model.traverse((child) => {
             if (child instanceof THREE.Mesh) {
               if (child.material) {
-                // Handle array of materials
                 if (Array.isArray(child.material)) {
                   child.material.forEach(material => {
                     material.transparent = true;
@@ -251,7 +382,6 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
                     material.side = THREE.DoubleSide;
                   });
                 } else {
-                  // Handle single material
                   child.material.transparent = true;
                   child.material.opacity = 1.0;
                   child.material.alphaTest = 0.5;
@@ -272,11 +402,9 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
           const percentage = Math.round((modelsLoaded / totalModels) * 100);
           loadingDiv.innerHTML = `Loading models... ${percentage}%`;
           
-          // If all models are loaded, remove the loading div
+          // If all models are loaded, remove the loading div and show first model
           if (modelsLoaded === totalModels) {
             container.removeChild(loadingDiv);
-            
-            // Show the first model
             switchToModel(0);
           }
           
@@ -287,7 +415,6 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
         },
         (error) => {
           console.error(`Error loading model ${modelUrl}:`, error);
-          // Update loading indicator even on error
           modelsLoaded++;
           const percentage = Math.round((modelsLoaded / totalModels) * 100);
           loadingDiv.innerHTML = `Loading models... ${percentage}%<br>Error loading ${modelUrl.split('/').pop()}`;
@@ -297,64 +424,14 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
 
     // Handle window resize
     const handleResize = () => {
-      if (isMounted && camera) {
-        // Update camera aspect ratio
+      if (isMounted && camera && renderer) {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-        
-        // Update renderer size
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
     };
     
     window.addEventListener('resize', handleResize);
-    
-    // Handle touch start events
-    const handleTouchStart = (event: TouchEvent) => {
-      touchStartY.current = event.touches[0].clientY;
-      
-      // Check for double-tap
-      const now = new Date().getTime();
-      const timeSince = now - lastTapTime.current;
-      
-      if (timeSince < doubleTapDelay && timeSince > 0) {
-        // Double tap detected
-        resetView();
-        event.preventDefault();
-      }
-      
-      lastTapTime.current = now;
-    };
-    
-    // Handle touch end events for swipe detection
-    const handleTouchEnd = (event: TouchEvent) => {
-      touchEndY.current = event.changedTouches[0].clientY;
-      const deltaY = touchStartY.current - touchEndY.current;
-      
-      // Only handle swipe if it's a significant vertical swipe
-      if (Math.abs(deltaY) > minSwipeDistance) {
-        // Vertical swipe detected
-        if (deltaY > 0) {
-          // Swipe up - next model
-          console.log('Swipe up detected!');
-          const nextIndex = currentModelIndexRef.current < 3 ? currentModelIndexRef.current + 1 : 0;
-          switchToModel(nextIndex);
-          
-          event.preventDefault();
-        } else {
-          // Swipe down - previous model
-          console.log('Swipe down detected!');
-          const prevIndex = currentModelIndexRef.current > 0 ? currentModelIndexRef.current - 1 : 3;
-          switchToModel(prevIndex);
-          
-          event.preventDefault();
-        }
-      }
-    };
-    
-    // Add event listeners
-    window.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd, { passive: false });
     
     // Animation loop
     const animate = function () {
@@ -362,42 +439,38 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({ onClose, onNext }) =>
       
       requestAnimationFrame(animate);
       
-      // Update controls
       if (controls) {
         controls.update();
       }
       
-      // Render scene
-      renderer.render(scene, camera);
+      if (renderer) {
+        renderer.render(scene, camera);
+      }
     };
     
     animate();
     
-    // Cleanup function when component unmounts
+    // Cleanup function
     return () => {
       isMounted = false;
       
-      // Remove event listeners
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchend', handleTouchEnd);
       
-      // Dispose of OrbitControls
       if (controls) {
         controls.dispose();
       }
       
-      // Clean up Three.js resources
-      renderer.dispose();
+      if (renderer) {
+        renderer.dispose();
+      }
       
-      // Remove container
       if (document.body.contains(container)) {
         document.body.removeChild(container);
       }
     };
-  }, [onClose, onNext]);
+  }, [onClose, onNext, isArMode, arPosition, arScene, arCamera]);
 
-  return null; // Component renders nothing directly
+  return null;
 };
 
 export default LotusExperience;

@@ -27,6 +27,8 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
     userPosition,
     activeGeofences,
     isTracking,
+    startTracking,    
+    stopTracking, 
     getCurrentRadius
   } = useGeofenceContext();
   
@@ -197,16 +199,21 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
         <div style={{
           position: 'fixed',
           top: '10px',
-          right: '10px',
+          left: '10px',
           backgroundColor: 'rgba(0, 0, 0, 0.8)',
           color: 'white',
           padding: '8px',
           borderRadius: '4px',
           fontSize: '10px',
           zIndex: 99,
-          pointerEvents: 'none'
+          pointerEvents: 'auto'
         }}>
-          <div>Tracking: {isTracking ? '✅' : '❌'}</div>
+          <div 
+            onClick={() => isTracking ? stopTracking() : startTracking()}
+            style={{ cursor: 'pointer', userSelect: 'none' }}  
+            >
+            Tracking: {isTracking ? '✅' : '❌'}
+          </div>
           <div>Active: {activeGeofences.length}</div>
           <div>Notified: {notifiedGeofences.length}</div>
           <div>Radius: {getCurrentRadius()}m</div>
