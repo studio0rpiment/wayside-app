@@ -10,31 +10,6 @@
  
     <meta name="theme-color" content="#000000">
     
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-
-    <!-- AR.js for A-Frame with Marker Tracking -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
-    <script>
-      AFRAME.registerComponent('cursor-listener', {
-        init: function() {
-          this.el.addEventListener('click', function(evt) {
-            console.log('Box was clicked at:', evt);
-            this.setAttribute('color', 'green');
-          });
-          
-          // Add mouseenter/mouseleave for better feedback
-          this.el.addEventListener('mouseenter', function() {
-            console.log('Cursor entered box');
-          });
-          
-          this.el.addEventListener('mouseleave', function() {
-            console.log('Cursor left box');
-          });
-        }
-      });
-    </script>
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wayside App</title>
