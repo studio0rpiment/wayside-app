@@ -50,7 +50,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
 
-  // Listen for override changes
+  // Listen for override changes - SAME AS LOTUS EXPERIENCE
   useEffect(() => {
     const checkOverride = () => {
       const currentOverride = (window as any).arTestingOverride ?? true;
@@ -122,7 +122,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     instructions.style.fontFamily = 'var(--font-rigby)';
     instructions.style.fontWeight = '400';
     instructions.style.zIndex = '1002';
-    instructions.innerHTML = 'Explore the volunteer community scene. Tap continue when ready.';
+    instructions.innerHTML = 'Explore the historic Volunteersintosh computer. Tap continue when ready.';
     container.appendChild(instructions);
 
     // Create continue button
@@ -218,11 +218,11 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     loadingDiv.style.padding = '20px';
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = 'Loading Volunteers Experience...';
+    loadingDiv.innerHTML = 'Loading Volunteers ';
     container.appendChild(loadingDiv);
 
     // Load the model
-    const modelPath = getAssetPath('models/volunteers.glb');
+    const modelPath = getAssetPath('models/Volunteers.glb');
     console.log('🎯 Loading Volunteers model:', modelPath);
 
     loader.load(
@@ -298,7 +298,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
       (error) => {
         console.error('❌ Error loading Volunteers model:', error);
         if (container.contains(loadingDiv)) {
-          loadingDiv.innerHTML = 'Error loading Volunteers Experience<br>Model file may be missing';
+          loadingDiv.innerHTML = 'Error loading Volunteers Model file may be missing';
         }
       }
     );
@@ -354,7 +354,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   return (
     <>
       {/* Debug Panel for Volunteers Experience */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div style={{
           position: 'absolute',
           top: '10px',
@@ -368,7 +368,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
           pointerEvents: 'auto',
           fontFamily: 'monospace'
         }}>
-          <div style={{ color: 'yellow' }}>👥 VOLUNTEERS DEBUG</div>
+          <div style={{ color: 'yellow' }}>🖥️ Volunteers DEBUG</div>
           <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
           {arPosition && (
             <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
@@ -411,7 +411,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
             Override: {arTestingOverride ? '✅ (0,0,-5)' : '❌ (AR Anchor)'}
           </div>
         </div>
-      )}
+      )} */}
     </>
   );
 };

@@ -50,7 +50,7 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
 
-  // Listen for override changes
+  // Listen for override changes - SAME AS LOTUS EXPERIENCE
   useEffect(() => {
     const checkOverride = () => {
       const currentOverride = (window as any).arTestingOverride ?? true;
@@ -122,7 +122,7 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
     instructions.style.fontFamily = 'var(--font-rigby)';
     instructions.style.fontWeight = '400';
     instructions.style.zIndex = '1002';
-    instructions.innerHTML = 'Explore Helen\'s story. Tap continue when ready.';
+    instructions.innerHTML = 'Explore the historic HelenSintosh computer. Tap continue when ready.';
     container.appendChild(instructions);
 
     // Create continue button
@@ -218,12 +218,12 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
     loadingDiv.style.padding = '20px';
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = 'Loading Helen\'s Experience...';
+    loadingDiv.innerHTML = 'Loading HelenS Computer...';
     container.appendChild(loadingDiv);
 
     // Load the model
-    const modelPath = getAssetPath('models/helen_s.glb');
-    console.log('🎯 Loading Helen S model:', modelPath);
+    const modelPath = getAssetPath('models/HelenS.glb');
+    console.log('🎯 Loading HelenS model:', modelPath);
 
     loader.load(
       modelPath,
@@ -254,10 +254,10 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
           
           if (currentOverride) {
             model.position.set(0, 0, -5);
-            console.log('🎯 Helen S positioned at TESTING override location:', model.position);
+            console.log('🎯 HelenS positioned at TESTING override location:', model.position);
           } else {
             model.position.copy(arPosition);
-            console.log('🎯 Helen S positioned at AR anchor location:', arPosition);
+            console.log('🎯 HelenS positioned at AR anchor location:', arPosition);
           }
         } else {
           model.position.set(0, 0, -3);
@@ -290,15 +290,15 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
         // Remove loading indicator
         container.removeChild(loadingDiv);
         
-        console.log('✅ Helen S model loaded successfully');
+        console.log('✅ HelenS model loaded successfully');
       },
       (xhr) => {
-        console.log(`Helen S model ${(xhr.loaded / xhr.total) * 100}% loaded`);
+        console.log(`HelenS model ${(xhr.loaded / xhr.total) * 100}% loaded`);
       },
       (error) => {
-        console.error('❌ Error loading Helen S model:', error);
+        console.error('❌ Error loading HelenS model:', error);
         if (container.contains(loadingDiv)) {
-          loadingDiv.innerHTML = 'Error loading Helen\'s Experience<br>Model file may be missing';
+          loadingDiv.innerHTML = 'Error loading HelenS Model file may be missing';
         }
       }
     );
@@ -353,8 +353,8 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
 
   return (
     <>
-      {/* Debug Panel for Helen S Experience */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* Debug Panel for HelenS Experience */}
+      {/* {process.env.NODE_ENV === 'development' && (
         <div style={{
           position: 'absolute',
           top: '10px',
@@ -364,10 +364,11 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
           padding: '10px',
           borderRadius: '4px',
           fontSize: '12px',
+          zIndex: 1003,
           pointerEvents: 'auto',
           fontFamily: 'monospace'
         }}>
-          <div style={{ color: 'yellow' }}>👩 HELEN S DEBUG</div>
+          <div style={{ color: 'yellow' }}>🖥️ HelenS DEBUG</div>
           <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
           {arPosition && (
             <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
@@ -410,7 +411,7 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
             Override: {arTestingOverride ? '✅ (0,0,-5)' : '❌ (AR Anchor)'}
           </div>
         </div>
-      )}
+      )} */}
     </>
   );
 };

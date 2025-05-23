@@ -4,9 +4,19 @@ import ArCameraComponent from '../components/ar/ArCameraComponent';
 
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
+
 import WaterRiseExperience from './experiences/WaterRiseExperience';
-import LotusExperience from './experiences/LotusExperience';
+import Experience1968 from './experiences/Experience1968';
+import BC2200Experience from './experiences/BC2200Experience';
+
+import HelenSExperience from './experiences/HelenSExperience';
+import VolunteersExperience from './experiences/VolunteersExperience';
 import MacExperience from './experiences/MacExperience';
+
+import LilyExperience from './experiences/LilyExperience';
+import CattailExperience from './experiences/CattailExperience';
+import LotusExperience from './experiences/LotusExperience';
+
 
 // Define experience types (same as before)
 export type ExperienceType = 'cube' | 'waterRise' | 'lotus' | 'mac' | '2030-2105' | '1968' | '2200_bc' | 'volunteers' | 'helen_s' | 'lily' | 'cattail';
@@ -181,30 +191,26 @@ const registerSwipeDownHandler = (handler: () => void) => {
       case 'cube':
         return <CubeExperience {...experienceProps} />;
 
-      case 'waterRise':
       case '2030-2105':
         return <WaterRiseExperience {...experienceProps} />;
-        
-      case 'lotus':
-        return <LotusExperience {...experienceProps} />;
-   
-
-
-      case 'mac':
-        return <MacExperience {...experienceProps} />;
-        
-      // Add mappings for your other experience types
       case '1968':
-        return <CubeExperience {...experienceProps} />; // Placeholder
-        
+        return <Experience1968 {...experienceProps} />
       case '2200_bc':
-        return <CubeExperience {...experienceProps} />; // Placeholder
+        return <BC2200Experience {...experienceProps} />
         
+      case 'helen_s':  
+        return <HelenSExperience {...experienceProps} />;
       case 'volunteers':
-      case 'helen_s':
+        return <VolunteersExperience {...experienceProps} />;
+      case 'mac':
+        return <MacExperience {...experienceProps} />
+
       case 'lily':
+         return <LilyExperience {...experienceProps} />
       case 'cattail':
-        return <CubeExperience {...experienceProps} />; // Placeholder
+        return <CattailExperience {...experienceProps} />
+      case 'lotus':
+        return <LotusExperience {...experienceProps} />
         
       default:
         console.warn(`Unknown experience type: ${experienceType}, defaulting to cube`);
