@@ -6,6 +6,8 @@ import { getAssetPath } from '../../utils/assetPaths';
 import { GLTFLoader as GLTFLoaderModule } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+const SHOW_DEBUG_PANEL = true;
+
 interface VolunteersExperienceProps {
   onClose: () => void;
   onNext?: () => void;
@@ -468,7 +470,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   return (
     <>
       {/* Debug Panel for Volunteers Experience */}
-      {process.env.NODE_ENV === 'development' && (
+      {SHOW_DEBUG_PANEL && (
         <div style={{
           position: 'absolute',
           bottom: '10px',

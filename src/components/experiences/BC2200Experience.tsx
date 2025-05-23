@@ -2,6 +2,9 @@ import React from 'react';
 import * as THREE from 'three';
 import SingleModelExperience from './SingleModelExperience.tsx';
 
+const SHOW_DEBUG_PANEL = true;
+
+
 interface BC2200ExperienceProps {
   onClose: () => void;
   onNext?: () => void;

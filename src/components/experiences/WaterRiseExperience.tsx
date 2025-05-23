@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import * as THREE from 'three';
 
+const SHOW_DEBUG_PANEL = true;
+
 interface WaterRiseExperienceProps {
   onClose: () => void;
   onNext?: () => void;

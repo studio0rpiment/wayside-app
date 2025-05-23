@@ -6,6 +6,7 @@ import { getAssetPath } from '../../utils/assetPaths';
 import { GLTFLoader as GLTFLoaderModule } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+
 interface SingleModelExperienceProps {
   onClose: () => void;
   onNext?: () => void;

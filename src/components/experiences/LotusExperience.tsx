@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
-import { getAssetPath } from '../../utils/assetPaths';
+import { getAssetPath } from '../../utils/assetPaths'
+
+const SHOW_DEBUG_PANEL = true;;
 
 // Import these separately to avoid the Vite optimization issue
 import { GLTFLoader as GLTFLoaderModule } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -554,7 +556,7 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({
       )}
 
       {/* Debug Panel for Lotus Experience */}
-      {process.env.NODE_ENV === 'development' && (
+      {SHOW_DEBUG_PANEL && (
         <div style={{
           position: 'absolute',
           top: '180px',
