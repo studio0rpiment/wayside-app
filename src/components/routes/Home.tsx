@@ -18,20 +18,23 @@ const Home: React.FC = () => {
   return (
     <div className="home-route">
       <GradientElement 
-        color="gradient(var(--color-dark), var(--color-pink), var(--color-blue), var(--color-dark), var(--color-green))" 
+        color="gradient(var(--color-dark)" 
         gradientType="blocks"
         blockSize={200}
       >
         <VerticalSection 
           id="vert1" 
           title="" 
-          color='gradient(var(--color-dark), var(--color-pink), var(--color-blue))'
+          color='transparent'
+          // color='gradient(var(--color-dark), var(--color-pink), var(--color-blue))'
         >
-          <ContentContainer {...headerConfig} />
+          <div style={{ textDecoration: 'none', margin: '1rem 1rem 1rem 1rem' }}>
+            <ContentContainer {...headerConfig} />
+          </div>
           <ContentContainer {...heroConfig} />
-          <ContentContainer {...infoConfig} />
+          {/* <ContentContainer {...infoConfig} /> */}
           <ContentContainer {...kenConfig} />
-          <Link to="/onboarding" style={{ textDecoration: 'none' }}>
+          <Link to="/onboarding" style={{ textDecoration: 'none', "margin": "1rem 1rem 1rem 1rem", }}>
             <Button {...buttonConfig} />
           </Link>
         </VerticalSection>

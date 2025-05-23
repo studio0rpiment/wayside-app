@@ -9,7 +9,7 @@
         "backgroundColor": "transparent",
         "textColor": "var(--color-blue)",
         "padding": "0rem",
-        "fullWidth": true,
+        "fullWidth": false,
         "fullHeight": false,
         "alignment": "left",
         "verticalAlignment": "top",
@@ -20,7 +20,7 @@
         "contentImage": {
           "src": "/logos/wayside-cl.png",
           "alt": "Site Logo",
-          "width": "100vw",
+          "width": "100%",
           "height": "auto",
           "position": "above"
         },
@@ -103,7 +103,7 @@
         "textColor": "",
         "width": "auto",
         "height": "auto",
-        "margin": "1rem",
+        "margin": "5rem 1rem 5rem 1rem",
         "padding": "1.5rem",
         "borderRadius": "3rem",
         "fullWidth": false,
@@ -128,12 +128,15 @@
       "name": "Button",
       "description": "Button that goes to onboarding",
       "configuration": {
-        "subtitle": "Click Me",
-        "backgroundColor": "var(--color-dark)",
-        "textColor": "var(--color-pink)",
+        "subtitle": "ONBOARDING",
+        "backgroundColor": "var(--color-pink)",
+        "textColor": "var(--color-dark)",
+        "height": "auto",
         "width": "auto",
-        "padding": "1rem 2rem",
-        "borderRadius": "0.5rem",
+        "fullWidth": false,
+        
+        "padding": "1rem",
+        "borderRadius": "3rem",
         "hasShadow": true,
         "targetId": "",
         "href": "",
@@ -146,8 +149,8 @@
           "src": "",
           "alt": "Button icon",
           "position": "above",
-          "width": "24px",
-          "height": "24px"
+          "width": "100%",
+          "height": ""
         },
         "fontFamily": "'rigby', sans-serif",
         

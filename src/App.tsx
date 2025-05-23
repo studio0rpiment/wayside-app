@@ -7,9 +7,6 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Home from './components/routes/Home';
 import Onboarding from './components/routes/Onboarding';
 import Map from './components/routes/Map';
-import WaterLevel from './components/routes/WaterLevel';
-import Lotus from './components/routes/Lotus';
-import Mac from './components/routes/Mac';
 import ServiceWorkerDebugger from './components/routes/debug-sw.tsx';
 import { PermissionsProvider } from './context/PermissionsContext.tsx';
 import AppThemeProvider from './theme/ThemeProvider';
@@ -70,9 +67,7 @@ function App() {
                   </GeofenceNotificationSystem>
                 </GeofenceProvider>
               } />
-              <Route path="/water-level" element={<WaterLevel />} />
-              <Route path="/lotus" element={<Lotus />} />
-              <Route path="/mac" element={<Mac />} />
+ 
               <Route path="/debug-sw" element={<ServiceWorkerDebugger />} />
             </Routes>
           </Router>
