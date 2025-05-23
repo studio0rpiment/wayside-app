@@ -5,6 +5,7 @@ import { gpsToThreeJsPosition } from '../../utils/geoArUtils';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 
+const SHOW_DEBUG_PANEL = true;
 
 interface ArCameraProps {
   userPosition: [number, number];
@@ -561,7 +562,7 @@ const handleTouchEnd = (event: TouchEvent) => {
       
           {/* Minimal Debug Panel */}
      
-            {process.env.NODE_ENV === 'development' && (
+            {SHOW_DEBUG_PANEL && (
               <div style={{
                 position: 'absolute',
                 top: '10px',
