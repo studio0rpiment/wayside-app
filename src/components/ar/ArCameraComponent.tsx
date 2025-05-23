@@ -581,9 +581,11 @@ const handleTouchEnd = (event: TouchEvent) => {
                
                 {deviceOrientation ? (
                   <>
-                    <div>α: {deviceOrientation.alpha?.toFixed(1)}°</div>
-                    <div>β: {deviceOrientation.beta?.toFixed(1)}°</div>
-                    <div>γ: {deviceOrientation.gamma?.toFixed(1)}°</div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <span>α: {deviceOrientation.alpha?.toFixed(1)}°</span>
+                        <span>β: {deviceOrientation.beta?.toFixed(1)}°</span>
+                        <span>γ: {deviceOrientation.gamma?.toFixed(1)}°</span>
+                      </div>
                   </>
                 ) : (
                   <div>Orientation: Desktop</div>
