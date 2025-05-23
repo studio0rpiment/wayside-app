@@ -1,55 +1,100 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
+import { getAssetPath } from '../../utils/assetPaths';
 
 // Import these separately to avoid the Vite optimization issue
 import { GLTFLoader as GLTFLoaderModule } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-interface McDowneyEraExperienceProps {
+interface MacExperienceProps {
   onClose: () => void;
   onNext?: () => void;
+  arPosition?: THREE.Vector3;
+  arScene?: THREE.Scene;
+  arCamera?: THREE.PerspectiveCamera;
+  coordinateScale?: number;
+  onModelRotate?: (handler: (deltaX: number, deltaY: number) => void) => void;
+  onModelScale?: (handler: (scaleFactor: number) => void) => void;
+  onModelReset?: (handler: () => void) => void;
+  onSwipeUp?: (handler: () => void) => void;
+  onSwipeDown?: (handler: () => void) => void;
 }
 
-const MacExperience: React.FC<McDowneyEraExperienceProps> = ({ onClose, onNext }) => {
-  // Use refs for better handling in event listeners
+const MacExperience: React.FC<MacExperienceProps> = ({ 
+  onClose, 
+  onNext,
+  arPosition,
+  arScene,
+  arCamera,
+  coordinateScale = 1.0,
+  onModelRotate,
+  onModelScale,
+  onModelReset,
+  onSwipeUp,
+  onSwipeDown
+}) => {
+  // Refs for Three.js objects
   const modelRef = useRef<THREE.Group | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
-  const instructionsRef = useRef<HTMLDivElement | null>(null);
-  
-  // Touch and double-tap handling refs
-  const lastTapTime = useRef(0);
-  const doubleTapDelay = 300; // Max milliseconds between taps for a double-tap
   
   // Store initial camera position for reset
-  const initialCameraPos = useRef(new THREE.Vector3(0, 0, 2));
-  const initialModelRotation = useRef(new THREE.Euler(0, 0, 0));
+  const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
   
-  // Function to reset camera and controls
-  const resetView = () => {
-    if (cameraRef.current && controlsRef.current) {
-      // Reset camera position
-      cameraRef.current.position.copy(initialCameraPos.current);
-      cameraRef.current.lookAt(0, 0, 0);
-      
-      // Reset controls
-      controlsRef.current.reset();
-      
-      // Reset model rotation
-      if (modelRef.current) {
-        modelRef.current.rotation.copy(initialModelRotation.current);
-      }
-      
-      console.log("View reset to initial position");
-    }
-  };
-  
+  // State to track override status
+  const [arTestingOverride, setArTestingOverride] = useState(() => {  
+    return (window as any).arTestingOverride ?? true;
+  });
+
+  // Define isArMode at the component level
+  const isArMode = !!(arScene && arCamera && arPosition);
+
+  // Listen for override changes - SAME AS LOTUS EXPERIENCE
   useEffect(() => {
-    // Create reference to track if component is mounted
+    const checkOverride = () => {
+      const currentOverride = (window as any).arTestingOverride ?? true;
+      if (currentOverride !== arTestingOverride) {
+        setArTestingOverride(currentOverride);
+        console.log('🎯 MacExperience override changed:', currentOverride);
+        
+        console.log('🎯 Current model:', modelRef.current);
+        console.log('🎯 Is AR mode:', isArMode);
+        console.log('🎯 AR position:', arPosition);
+        
+        if (modelRef.current && isArMode && arPosition) {
+          if (currentOverride) {
+            console.log('🎯 Setting override position (0, 0, -5)');
+            modelRef.current.position.set(0, 0, -5);
+          } else {
+            console.log('🎯 Setting anchor position:', arPosition);
+            modelRef.current.position.copy(arPosition);
+          }
+          
+          // Force visual update
+          modelRef.current.visible = false;
+          setTimeout(() => {
+            if (modelRef.current) {
+              modelRef.current.visible = true;
+            }
+          }, 50);
+          
+          console.log('🎯 Model position after change:', modelRef.current.position);
+        }
+      }
+    };
+    
+    const interval = setInterval(checkOverride, 100);
+    return () => clearInterval(interval);
+  }, [arTestingOverride, isArMode, arPosition]);
+
+  // Main effect for model loading and scene setup
+  useEffect(() => {
     let isMounted = true;
     
-    // Create container for the Three.js scene
+    console.log('🎯 MacExperience mode:', isArMode ? 'AR' : 'Standalone');
+    
+    // Create container for standalone mode
     const container = document.createElement('div');
     container.id = 'threejs-container';
     container.style.position = 'fixed';
@@ -57,10 +102,13 @@ const MacExperience: React.FC<McDowneyEraExperienceProps> = ({ onClose, onNext }
     container.style.left = '0';
     container.style.width = '100%';
     container.style.height = '100%';
-    container.style.zIndex = '1001'; // Above the AR.js scene
-    document.body.appendChild(container);
+    container.style.zIndex = '1001';
+    
+    if (!isArMode) {
+      document.body.appendChild(container);
+    }
 
-    // Create instructions div
+    // Create instructions
     const instructions = document.createElement('div');
     instructions.style.position = 'absolute';
     instructions.style.bottom = '20px';
@@ -73,10 +121,9 @@ const MacExperience: React.FC<McDowneyEraExperienceProps> = ({ onClose, onNext }
     instructions.style.textAlign = 'center';
     instructions.style.fontFamily = 'var(--font-rigby)';
     instructions.style.fontWeight = '400';
-    instructions.style.zIndex = '1002'; // Above the Three.js scene
-    instructions.innerHTML = 'Drag to rotate model. Pinch to zoom. Double-tap to reset view.';
+    instructions.style.zIndex = '1002';
+    instructions.innerHTML = 'Explore the historic Macintosh computer. Tap continue when ready.';
     container.appendChild(instructions);
-    instructionsRef.current = instructions;
 
     // Create continue button
     const continueButton = document.createElement('button');
@@ -90,66 +137,77 @@ const MacExperience: React.FC<McDowneyEraExperienceProps> = ({ onClose, onNext }
     continueButton.style.border = 'none';
     continueButton.style.zIndex = '1002';
     continueButton.innerHTML = 'Continue';
+
     continueButton.onclick = () => {
       if (onNext) {
-
-            window.location.href = window.location.origin + '/wayside-app/#/map';
-
         onNext();
       }
     };
+    
     continueButton.addEventListener('touchstart', () => {
-        if (onNext) {
-          window.location.href = window.location.origin + '/wayside-app/#/map';
-          onNext();
-        }
-      }, { passive: false });
+      if (onNext) {
+        onNext();
+      }
+    }, { passive: false });
+
     container.appendChild(continueButton);
 
-    // Initialize Three.js components with transparency
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-    
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.copy(initialCameraPos.current);
-    cameraRef.current = camera;
-    
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: true, 
-      alpha: true,
-      premultipliedAlpha: false
-    });
-    
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 0); // Transparent background
-    container.appendChild(renderer.domElement);
+    // Initialize Three.js components
+    let scene: THREE.Scene;
+    let camera: THREE.PerspectiveCamera;
+    let renderer: THREE.WebGLRenderer | null = null;
+    let controls: OrbitControls | null = null;
 
-    // Add OrbitControls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.25;
-    controls.screenSpacePanning = false;
-    controls.minDistance = 0.5;
-    controls.maxDistance = 10;
-    controls.maxPolarAngle = Math.PI / 1.5;
-    controls.target.set(0, 0, 0);
-    controlsRef.current = controls;
+    if (isArMode) {
+      // AR Mode: Use provided scene and camera
+      scene = arScene!;
+      camera = arCamera!;
+      sceneRef.current = scene;
+      cameraRef.current = camera;
+      console.log('🎯 MacExperience using AR scene and camera');
+    } else {
+      // Standalone Mode: Create own scene/camera/renderer
+      scene = new THREE.Scene();
+      sceneRef.current = scene;
+      
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.copy(initialCameraPos.current);
+      cameraRef.current = camera;
+      
+      renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        alpha: true,
+        premultipliedAlpha: false
+      });
+      
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 0);
+      container.appendChild(renderer.domElement);
 
-    // Add lighting to the scene
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambientLight);
+      // Add OrbitControls only in standalone mode
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.25;
+      controls.screenSpacePanning = false;
+      controls.minDistance = 0.5;
+      controls.maxDistance = 10;
+      controls.maxPolarAngle = Math.PI / 1.5;
+      controls.target.set(0, 0, 0);
+      controlsRef.current = controls;
+      
+      // Add lighting only in standalone mode
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(1, 1, 1).normalize();
-    scene.add(directionalLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(1, 1, 1).normalize();
+      scene.add(directionalLight);
+    }
 
-    // Define model URL with correct path
-    const modelUrl = window.location.origin + '/wayside-app/models/mcdowneyera1.glb';
-
-    // Create loader instance manually to avoid Vite optimization issues
+    // Create loader
     const loader = new GLTFLoaderModule();
     
-    // Create a loading indicator
+    // Create loading indicator
     const loadingDiv = document.createElement('div');
     loadingDiv.style.position = 'absolute';
     loadingDiv.style.top = '50%';
@@ -160,40 +218,55 @@ const MacExperience: React.FC<McDowneyEraExperienceProps> = ({ onClose, onNext }
     loadingDiv.style.padding = '20px';
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = 'Loading model...';
+    loadingDiv.innerHTML = 'Loading Mac Computer...';
     container.appendChild(loadingDiv);
 
     // Load the model
+    const modelPath = getAssetPath('models/mac.glb');
+    console.log('🎯 Loading Mac model:', modelPath);
+
     loader.load(
-      modelUrl,
+      modelPath,
       (gltf) => {
         if (!isMounted) return;
 
         const model = gltf.scene;
+        modelRef.current = model;
         
         // Center the model
         const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
-        model.position.x = -center.x - 0.5 ;
+        model.position.x = -center.x;
         model.position.y = -center.y;
         model.position.z = -center.z;
         
-        // Scale model to a reasonable size (scale of 2 as requested)
+        // Scale model appropriately
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
         if (maxDim > 0) {
-          const scale = 2 / maxDim; // Initial scale of 2
+          const scale = (isArMode ? 2 : 8) / maxDim;
           model.scale.set(scale, scale, scale);
         }
         
-        // Initial position
-        model.position.z = -0.5; // Moved closer to camera for better visibility
+        // Position based on mode
+        if (isArMode && arPosition) {
+          const currentOverride = (window as any).arTestingOverride ?? true;
+          
+          if (currentOverride) {
+            model.position.set(0, 0, -5);
+            console.log('🎯 Mac positioned at TESTING override location:', model.position);
+          } else {
+            model.position.copy(arPosition);
+            console.log('🎯 Mac positioned at AR anchor location:', arPosition);
+          }
+        } else {
+          model.position.set(0, 0, -3);
+        }
         
         // Make all materials transparent
         model.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             if (child.material) {
-              // Handle array of materials
               if (Array.isArray(child.material)) {
                 child.material.forEach(material => {
                   material.transparent = true;
@@ -202,7 +275,6 @@ const MacExperience: React.FC<McDowneyEraExperienceProps> = ({ onClose, onNext }
                   material.side = THREE.DoubleSide;
                 });
               } else {
-                // Handle single material
                 child.material.transparent = true;
                 child.material.opacity = 1.0;
                 child.material.alphaTest = 0.5;
@@ -212,60 +284,35 @@ const MacExperience: React.FC<McDowneyEraExperienceProps> = ({ onClose, onNext }
           }
         });
         
-        // Store the model reference
-        modelRef.current = model;
-        
-        // Store the initial rotation
-        initialModelRotation.current = model.rotation.clone();
-        
         // Add model to scene
         scene.add(model);
         
         // Remove loading indicator
         container.removeChild(loadingDiv);
         
-        console.log(`Loaded model: ${modelUrl}`);
+        console.log('✅ Mac model loaded successfully');
       },
       (xhr) => {
-        console.log(`${modelUrl} ${(xhr.loaded / xhr.total) * 100}% loaded`);
+        console.log(`Mac model ${(xhr.loaded / xhr.total) * 100}% loaded`);
       },
       (error) => {
-        console.error(`Error loading model ${modelUrl}:`, error);
-        loadingDiv.innerHTML = `Error loading model.<br>Please try again.`;
+        console.error('❌ Error loading Mac model:', error);
+        if (container.contains(loadingDiv)) {
+          loadingDiv.innerHTML = 'Error loading Mac Model file may be missing';
+        }
       }
     );
 
     // Handle window resize
     const handleResize = () => {
-      if (isMounted && camera) {
-        // Update camera aspect ratio
+      if (isMounted && camera && renderer) {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-        
-        // Update renderer size
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
     };
     
     window.addEventListener('resize', handleResize);
-    
-    // Handle touch start events for double-tap detection
-    const handleTouchStart = (event: TouchEvent) => {
-      // Check for double-tap
-      const now = new Date().getTime();
-      const timeSince = now - lastTapTime.current;
-      
-      if (timeSince < doubleTapDelay && timeSince > 0) {
-        // Double tap detected
-        resetView();
-        event.preventDefault();
-      }
-      
-      lastTapTime.current = now;
-    };
-    
-    // Add event listeners
-    window.addEventListener('touchstart', handleTouchStart, { passive: false });
     
     // Animation loop
     const animate = function () {
@@ -273,41 +320,100 @@ const MacExperience: React.FC<McDowneyEraExperienceProps> = ({ onClose, onNext }
       
       requestAnimationFrame(animate);
       
-      // Update controls
       if (controls) {
         controls.update();
       }
       
-      // Render scene
-      renderer.render(scene, camera);
+      if (renderer) {
+        renderer.render(scene, camera);
+      }
     };
     
     animate();
     
-    // Cleanup function when component unmounts
+    // Cleanup function
     return () => {
       isMounted = false;
       
-      // Remove event listeners
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('touchstart', handleTouchStart);
       
-      // Dispose of OrbitControls
       if (controls) {
         controls.dispose();
       }
       
-      // Clean up Three.js resources
-      renderer.dispose();
+      if (renderer) {
+        renderer.dispose();
+      }
       
-      // Remove container
       if (document.body.contains(container)) {
         document.body.removeChild(container);
       }
     };
-  }, [onClose, onNext]);
+  }, [isArMode]);
 
-  return null; // Component renders nothing directly
+  return (
+    <>
+      {/* Debug Panel for Mac Experience */}
+      {/* {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '10px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          zIndex: 1003,
+          pointerEvents: 'auto',
+          fontFamily: 'monospace'
+        }}>
+          <div style={{ color: 'yellow' }}>🖥️ MAC DEBUG</div>
+          <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
+          {arPosition && (
+            <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
+          )}
+          {modelRef.current && (
+            <div style={{ color: 'cyan' }}>
+              Model Pos: [{modelRef.current.position.x.toFixed(3)}, {modelRef.current.position.y.toFixed(3)}, {modelRef.current.position.z.toFixed(3)}]
+            </div>
+          )}
+          <div>Scale: {coordinateScale}x</div>
+          
+          <div 
+            onClick={() => {
+              const newValue = !arTestingOverride;
+              (window as any).arTestingOverride = newValue;
+              setArTestingOverride(newValue);
+              console.log('🎯 AR Override toggled:', newValue ? 'ON' : 'OFF');
+              
+              // Immediately update model position if we have the model
+              if (modelRef.current && isArMode && arPosition) {
+                if (newValue) {
+                  console.log('🎯 Immediately setting override position (0, 0, -5)');
+                  modelRef.current.position.set(0, 0, -5);
+                } else {
+                  console.log('🎯 Immediately setting anchor position:', arPosition);
+                  modelRef.current.position.copy(arPosition);
+                }
+                console.log('🎯 Model position updated to:', modelRef.current.position);
+              }
+            }}
+            style={{ 
+              cursor: 'pointer', 
+              userSelect: 'none', 
+              marginTop: '5px',
+              padding: '2px 4px',
+              backgroundColor: arTestingOverride ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)',
+              borderRadius: '2px'
+            }}
+          >
+            Override: {arTestingOverride ? '✅ (0,0,-5)' : '❌ (AR Anchor)'}
+          </div>
+        </div>
+      )} */}
+    </>
+  );
 };
 
 export default MacExperience;

@@ -52,6 +52,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       setArInitialized(false);
       setArObjectPosition(null);
       setExperienceReady(false);
+      setCurrentGestureHandlers({});
     }
   }, [isOpen]);
   
@@ -82,35 +83,66 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 };
 
     // Update the handlers in ExperienceManager to call the lotus handlers
-    const handleModelRotate = (deltaX: number, deltaY: number) => {
-      if ((window as any).lotusHandleRotate) {
-        (window as any).lotusHandleRotate(deltaX, deltaY);
-      }
-    };
+ // State to store the current experience's gesture handlers
+const [currentGestureHandlers, setCurrentGestureHandlers] = useState<{
+  rotate?: (deltaX: number, deltaY: number) => void;
+  scale?: (scaleFactor: number) => void;
+  reset?: () => void;
+  swipeUp?: () => void;
+  swipeDown?: () => void;
+}>({});
 
-    const handleModelScale = (scaleFactor: number) => {
-      if ((window as any).lotusHandleScale) {
-        (window as any).lotusHandleScale(scaleFactor);
-      }
-    };
+// These become the bridge functions that call the stored handlers
+const handleModelRotate = (deltaX: number, deltaY: number) => {
+  if (currentGestureHandlers.rotate) {
+    currentGestureHandlers.rotate(deltaX, deltaY);
+  }
+};
 
-    const handleModelReset = () => {
-      if ((window as any).lotusHandleReset) {
-        (window as any).lotusHandleReset();
-      }
-    };
+const handleModelScale = (scaleFactor: number) => {
+  if (currentGestureHandlers.scale) {
+    currentGestureHandlers.scale(scaleFactor);
+  }
+};
 
-    const handleSwipeUp = () => {
-      if ((window as any).lotusHandleSwipeUp) {
-        (window as any).lotusHandleSwipeUp();
-      }
-    };
+const handleModelReset = () => {
+  if (currentGestureHandlers.reset) {
+    currentGestureHandlers.reset();
+  }
+};
 
-    const handleSwipeDown = () => {
-      if ((window as any).lotusHandleSwipeDown) {
-        (window as any).lotusHandleSwipeDown();
-      }
-    };
+const handleSwipeUp = () => {
+  if (currentGestureHandlers.swipeUp) {
+    currentGestureHandlers.swipeUp();
+  }
+};
+
+const handleSwipeDown = () => {
+  if (currentGestureHandlers.swipeDown) {
+    currentGestureHandlers.swipeDown();
+  }
+};
+
+// Registration functions that experiences will call
+const registerRotateHandler = (handler: (deltaX: number, deltaY: number) => void) => {
+  setCurrentGestureHandlers(prev => ({ ...prev, rotate: handler }));
+};
+
+const registerScaleHandler = (handler: (scaleFactor: number) => void) => {
+  setCurrentGestureHandlers(prev => ({ ...prev, scale: handler }));
+};
+
+const registerResetHandler = (handler: () => void) => {
+  setCurrentGestureHandlers(prev => ({ ...prev, reset: handler }));
+};
+
+const registerSwipeUpHandler = (handler: () => void) => {
+  setCurrentGestureHandlers(prev => ({ ...prev, swipeUp: handler }));
+};
+
+const registerSwipeDownHandler = (handler: () => void) => {
+  setCurrentGestureHandlers(prev => ({ ...prev, swipeDown: handler }));
+};
       
   // Handle experience completion
   const handleExperienceComplete = () => {
@@ -138,11 +170,11 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       arScene: arScene ?? undefined,          
       arCamera: arCamera ?? undefined, 
       coordinateScale,
-      onModelRotate: handleModelRotate,
-      onModelScale: handleModelScale,
-      onModelReset: handleModelReset,
-      onSwipeUp: handleSwipeUp,
-      onSwipeDown: handleSwipeDown
+      onModelRotate: registerRotateHandler,
+      onModelScale: registerScaleHandler,
+      onModelReset: registerResetHandler,
+      onSwipeUp: registerSwipeUpHandler,
+      onSwipeDown: registerSwipeDownHandler
     };
     
     switch (experienceType) {

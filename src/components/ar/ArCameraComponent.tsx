@@ -325,6 +325,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     initialize();
 
     // Add these touch handlers in ArCameraComponent
+// Updated touch handlers:
 const handleTouchStart = (event: TouchEvent) => {
   if (event.touches.length === 1) {
     // Single touch: store positions for rotation
@@ -410,26 +411,8 @@ const handleTouchMove = (event: TouchEvent) => {
 };
 
 const handleTouchEnd = (event: TouchEvent) => {
-
   console.log('👆 Touch ended');
-  // touchEndY.current = event.changedTouches[0].clientY;
-  // const deltaY = touchStartY.current - touchEndY.current;
-  
-  // Only handle swipe if it's a significant VERTICAL swipe
-//   if (Math.abs(deltaY) > minSwipeDistance) {
-//     if (deltaY > 0) {
-//       // Swipe up
-//       if (onSwipeUp) {
-//         onSwipeUp();
-//       }
-//     } else {
-//       // Swipe down  
-//       if (onSwipeDown) {
-//         onSwipeDown();
-//       }
-//     }
-//     event.preventDefault();
-//   }
+  // Could add swipe detection here if needed
 };
     
     // Add resize listener

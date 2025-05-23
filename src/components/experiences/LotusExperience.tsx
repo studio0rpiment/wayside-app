@@ -13,11 +13,11 @@ interface LotusExperienceProps {
   arScene?: THREE.Scene;
   arCamera?: THREE.PerspectiveCamera;
   coordinateScale?: number;
-  onModelRotate?: (deltaX: number, deltaY: number) => void;
-  onModelScale?: (scaleFactor: number) => void;
-  onModelReset?: () => void;
-  onSwipeUp?: () => void;
-  onSwipeDown?: () => void;
+  onModelRotate?: (handler: (deltaX: number, deltaY: number) => void) => void;
+  onModelScale?: (handler: (scaleFactor: number) => void) => void;
+  onModelReset?: (handler: () => void) => void;
+  onSwipeUp?: (handler: () => void) => void;
+  onSwipeDown?: (handler: () => void) => void;
 }
 
 const LotusExperience: React.FC<LotusExperienceProps> = ({ 
@@ -40,6 +40,7 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const instructionsRef = useRef<HTMLDivElement | null>(null);
+  const handlersRegisteredRef = useRef(false);
   
   // Store initial camera position for reset
   const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
@@ -47,6 +48,9 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({
   
   // Define stage names
   const stageNames = ["Seed Pod", "New Pod", "Bloom", "Fully Grown"];
+
+  // State to track when models are loaded
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   // Add state to track override status
   const [arTestingOverride, setArTestingOverride] = useState(() => {  
@@ -56,38 +60,77 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
 
-  // Model interaction handlers
+  // Model interaction handlers - these now always reference current models
   const handleRotateModel = (deltaX: number, deltaY: number) => {
+    console.log('🔄 Rotate called, models available:', modelsRef.current.length);
     const currentModel = modelsRef.current[currentModelIndexRef.current];
     if (currentModel) {
       currentModel.rotation.y += deltaX;
       currentModel.rotation.x += deltaY;
       console.log('🔄 Model rotated:', currentModel.rotation.x, currentModel.rotation.y);
+    } else {
+      console.warn('🔄 No model available to rotate');
     }
   };
 
   const handleScaleModel = (scaleFactor: number) => {
+    console.log('📏 Scale called, models available:', modelsRef.current.length);
     const currentModel = modelsRef.current[currentModelIndexRef.current];
     if (currentModel) {
       const newScale = Math.max(0.5, Math.min(5.0, scaleFactor));
       currentModel.scale.set(newScale, newScale, newScale);
       console.log('📏 Model scaled:', newScale);
+    } else {
+      console.warn('📏 No model available to scale');
     }
   };
 
   const handleResetModel = () => {
+    console.log('🔄 Reset called, models available:', modelsRef.current.length);
     const currentModel = modelsRef.current[currentModelIndexRef.current];
     if (currentModel) {
       currentModel.rotation.copy(initialModelRotation.current);
       currentModel.scale.set(2, 2, 2);
       console.log('🔄 Model reset');
+    } else {
+      console.warn('🔄 No model available to reset');
     }
   };
 
   const handleNextModel = () => {
-    console.log('➡️ Lotus: Next model');
-    const nextIndex = currentModelIndexRef.current < 3 ? currentModelIndexRef.current + 1 : 0;
-    switchToModel(nextIndex);
+    console.log('➡️ Lotus: Next model called, models available:', modelsRef.current.length);
+    if (modelsRef.current.length > 0) {
+      const nextIndex = currentModelIndexRef.current < 3 ? currentModelIndexRef.current + 1 : 0;
+      switchToModel(nextIndex);
+    } else {
+      console.warn('➡️ No models available for switching');
+    }
+  };
+
+  // Function to register handlers with parent - only call once when models are ready
+  const registerHandlers = () => {
+    if (handlersRegisteredRef.current) return;
+    
+    console.log('🔗 Registering lotus gesture handlers');
+    
+    if (onModelRotate) {
+      onModelRotate(handleRotateModel);
+      console.log('✅ Rotation handler registered');
+    }
+    if (onModelScale) {
+      onModelScale(handleScaleModel);
+      console.log('✅ Scale handler registered');
+    }
+    if (onModelReset) {
+      onModelReset(handleResetModel);
+      console.log('✅ Reset handler registered');
+    }
+    if (onSwipeUp) {
+      onSwipeUp(handleNextModel);
+      console.log('✅ Next model handler registered');
+    }
+    
+    handlersRegisteredRef.current = true;
   };
 
   // Function to change models
@@ -116,36 +159,6 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({
       }
     }
   };
-
-  // Setup handler connections
-  useEffect(() => {
-    console.log('🔗 Setting up lotus handlers');
-    
-    if (onModelRotate) {
-      (window as any).lotusHandleRotate = handleRotateModel;
-      console.log('✅ Rotation handler set');
-    }
-    if (onModelScale) {
-      (window as any).lotusHandleScale = handleScaleModel;
-      console.log('✅ Scale handler set');
-    }
-    if (onModelReset) {
-      (window as any).lotusHandleReset = handleResetModel;
-      console.log('✅ Reset handler set');
-    }
-    if (onSwipeUp) {
-      (window as any).lotusHandleSwipeUp = handleNextModel;
-      console.log('✅ Next model handler set');
-    }
-    
-    return () => {
-      console.log('🧹 Cleaning up lotus handlers');
-      delete (window as any).lotusHandleRotate;
-      delete (window as any).lotusHandleScale;
-      delete (window as any).lotusHandleReset;
-      delete (window as any).lotusHandleSwipeUp;
-    };
-  }, [onModelRotate, onModelScale, onModelReset, onSwipeUp]);
 
   // Listen for override changes
   useEffect(() => {
@@ -406,6 +419,10 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({
           if (modelsLoaded === totalModels) {
             container.removeChild(loadingDiv);
             switchToModel(0);
+            
+            // Set state to trigger handler registration
+            console.log('🎯 All models loaded, setting modelsLoaded state');
+            setModelsLoaded(true);
           }
           
           console.log(`Loaded model ${index}: ${modelUrl}`);
@@ -467,9 +484,41 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({
       if (document.body.contains(container)) {
         document.body.removeChild(container);
       }
+      
+      // Clear handlers registration flag and models loaded state on cleanup
+      handlersRegisteredRef.current = false;
+      setModelsLoaded(false);
     };
-  }, [onClose, onNext, isArMode, arPosition, arScene, arCamera]);
+  }, [isArMode]); // FIXED: Only depend on isArMode, not the changing props
 
+  // Handler registration effect - triggered when models are loaded AND handlers are available
+  useEffect(() => {
+    console.log('🔗 Handler registration effect triggered');
+    console.log('🔗 Models loaded:', modelsLoaded);
+    console.log('🔗 Handlers registered already:', handlersRegisteredRef.current);
+    console.log('🔗 Available handlers:', {
+      onModelRotate: !!onModelRotate,
+      onModelScale: !!onModelScale, 
+      onModelReset: !!onModelReset,
+      onSwipeUp: !!onSwipeUp
+    });
+
+    if (modelsLoaded && !handlersRegisteredRef.current) {
+      console.log('🎯 Registering gesture handlers now');
+      registerHandlers();
+    }
+  }, [modelsLoaded, onModelRotate, onModelScale, onModelReset, onSwipeUp]);
+
+  // Separate effect to register handlers when models become available
+  useEffect(() => {
+    // Only register if we have models and haven't registered yet
+    if (modelsRef.current.length > 0 && !handlersRegisteredRef.current) {
+      console.log('🎯 Models detected, registering gesture handlers');
+      registerHandlers();
+    }
+  }, [onModelRotate, onModelScale, onModelReset, onSwipeUp]); // Re-register if parent handlers change
+
+  // This component renders nothing itself; all UI is managed via DOM/Three.js
   return null;
 };
 
