@@ -39,6 +39,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   
+  // Animation-specific refs
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const clockRef = useRef<THREE.Clock>(new THREE.Clock());
+  const actionsRef = useRef<THREE.AnimationAction[]>([]);
+  
   // Store initial camera position for reset
   const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
   
@@ -47,10 +52,13 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     return (window as any).arTestingOverride ?? true;
   });
 
+  // Animation state
+  const [hasAnimations, setHasAnimations] = useState(false);
+
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
 
-  // Listen for override changes - SAME AS LOTUS EXPERIENCE
+  // Listen for override changes - SAME AS ORIGINAL
   useEffect(() => {
     const checkOverride = () => {
       const currentOverride = (window as any).arTestingOverride ?? true;
@@ -58,14 +66,10 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         setArTestingOverride(currentOverride);
         console.log('🎯 MacExperience override changed:', currentOverride);
         
-        console.log('🎯 Current model:', modelRef.current);
-        console.log('🎯 Is AR mode:', isArMode);
-        console.log('🎯 AR position:', arPosition);
-        
         if (modelRef.current && isArMode && arPosition) {
           if (currentOverride) {
-            console.log('🎯 Setting override position (0, 0, -5)');
-            modelRef.current.position.set(0, 0, -5);
+            console.log('🎯 Setting override position (0.75, 0, -5)');
+            modelRef.current.position.set(0.75, 0, -5);
           } else {
             console.log('🎯 Setting anchor position:', arPosition);
             modelRef.current.position.copy(arPosition);
@@ -87,6 +91,65 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     const interval = setInterval(checkOverride, 100);
     return () => clearInterval(interval);
   }, [arTestingOverride, isArMode, arPosition]);
+
+  // *** FIXED: Register gesture handlers on mount, not in render ***
+  useEffect(() => {
+    // Register rotation handler
+    if (onModelRotate) {
+      onModelRotate((deltaX: number, deltaY: number) => {
+        if (modelRef.current) {
+          modelRef.current.rotation.y += deltaX;
+          modelRef.current.rotation.x += deltaY;
+        }
+      });
+    }
+
+    // Register scale handler
+    if (onModelScale) {
+      onModelScale((scaleFactor: number) => {
+        if (modelRef.current) {
+          const currentScale = modelRef.current.scale.x;
+          const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
+          modelRef.current.scale.setScalar(newScale);
+        }
+      });
+    }
+
+    // Register reset handler
+    if (onModelReset) {
+      onModelReset(() => {
+        if (modelRef.current) {
+          modelRef.current.rotation.set(0, 0, 0);
+          modelRef.current.scale.set(1, 1, 1);
+          
+          // Reset animations too
+          if (hasAnimations && actionsRef.current.length > 0) {
+            actionsRef.current.forEach(action => {
+              action.reset();
+              action.play();
+            });
+          }
+        }
+      });
+    }
+
+    // Register swipe handlers
+    if (onSwipeUp) {
+      onSwipeUp(() => {
+        // For the portal concept, we don't want user controls
+        // But keeping this for future flexibility
+        console.log('👆 Swipe up detected on Mac');
+      });
+    }
+
+    if (onSwipeDown) {
+      onSwipeDown(() => {
+        // For the portal concept, we don't want user controls
+        // But keeping this for future flexibility  
+        console.log('👇 Swipe down detected on Mac');
+      });
+    }
+  }, []); // *** FIXED: Empty dependency array - register once on mount
 
   // Main effect for model loading and scene setup
   useEffect(() => {
@@ -253,7 +316,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
           const currentOverride = (window as any).arTestingOverride ?? true;
           
           if (currentOverride) {
-            model.position.set(0, 0, -5);
+            model.position.set(0.7, 0, -5);
             console.log('🎯 Mac positioned at TESTING override location:', model.position);
           } else {
             model.position.copy(arPosition);
@@ -283,6 +346,40 @@ const MacExperience: React.FC<MacExperienceProps> = ({
             }
           }
         });
+        
+        // Animation Setup - Auto-play for portal effect
+        if (gltf.animations && gltf.animations.length > 0) {
+          console.log('🎬 Found', gltf.animations.length, 'animation(s) in Mac model');
+          
+          // Create animation mixer
+          const mixer = new THREE.AnimationMixer(model);
+          mixerRef.current = mixer;
+          
+          // Create actions for each animation clip
+          const actions: THREE.AnimationAction[] = [];
+          gltf.animations.forEach((clip, index) => {
+            console.log(`🎬 Setting up animation ${index}: "${clip.name}" (${clip.duration.toFixed(2)}s)`);
+            
+            const action = mixer.clipAction(clip);
+            
+            // Configure for portal effect - continuous looping
+            action.setLoop(THREE.LoopRepeat, Infinity); 
+            action.clampWhenFinished = true;
+            
+            // Start playing immediately - no user control needed
+            action.play();
+            
+            actions.push(action);
+          });
+          
+          actionsRef.current = actions;
+          setHasAnimations(true);
+          
+          console.log('✅ Mac animations initialized and auto-playing for portal effect');
+        } else {
+          console.log('ℹ️ No animations found in Mac model');
+          setHasAnimations(false);
+        }
         
         // Add model to scene
         scene.add(model);
@@ -314,17 +411,23 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     
     window.addEventListener('resize', handleResize);
     
-    // Animation loop
+    // Animation loop with mixer updates
     const animate = function () {
       if (!isMounted) return;
       
       requestAnimationFrame(animate);
       
+      // Update animation mixer if it exists
+      if (mixerRef.current) {
+        const delta = clockRef.current.getDelta();
+        mixerRef.current.update(delta);
+      }
+      
       if (controls) {
         controls.update();
       }
       
-      if (renderer) {
+      if (renderer && scene && camera) {
         renderer.render(scene, camera);
       }
     };
@@ -336,6 +439,17 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       isMounted = false;
       
       window.removeEventListener('resize', handleResize);
+      
+      // Stop and cleanup animations
+      if (mixerRef.current) {
+        actionsRef.current.forEach(action => {
+          action.stop();
+        });
+        mixerRef.current.stopAllAction();
+        mixerRef.current = null;
+      }
+      
+      actionsRef.current = [];
       
       if (controls) {
         controls.dispose();
@@ -349,15 +463,15 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         document.body.removeChild(container);
       }
     };
-  }, [isArMode]);
+  }, [isArMode]); // *** FIXED: Only isArMode dependency
 
   return (
     <>
       {/* Debug Panel for Mac Experience */}
-      {/* {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === 'development' && (
         <div style={{
           position: 'absolute',
-          top: '10px',
+          bottom: '10px',
           right: '10px',
           backgroundColor: 'rgba(0, 0, 0, 0.7)',
           color: 'white',
@@ -368,8 +482,8 @@ const MacExperience: React.FC<MacExperienceProps> = ({
           pointerEvents: 'auto',
           fontFamily: 'monospace'
         }}>
-          <div style={{ color: 'yellow' }}>🖥️ MAC DEBUG</div>
-          <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
+          <div style={{ color: 'yellow' }}>🖥️ MAC PORTAL DEBUG</div>
+          <div>Mode: {isArMode ? 'AR Portal' : 'Standalone'}</div>
           {arPosition && (
             <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
           )}
@@ -379,6 +493,9 @@ const MacExperience: React.FC<MacExperienceProps> = ({
             </div>
           )}
           <div>Scale: {coordinateScale}x</div>
+          <div style={{ color: hasAnimations ? 'lightgreen' : 'orange' }}>
+            Animations: {hasAnimations ? `🎬 Auto-Playing (${actionsRef.current.length})` : '❌ None'}
+          </div>
           
           <div 
             onClick={() => {
@@ -391,7 +508,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
               if (modelRef.current && isArMode && arPosition) {
                 if (newValue) {
                   console.log('🎯 Immediately setting override position (0, 0, -5)');
-                  modelRef.current.position.set(0, 0, -5);
+                  modelRef.current.position.set(0.7, 0, -5);
                 } else {
                   console.log('🎯 Immediately setting anchor position:', arPosition);
                   modelRef.current.position.copy(arPosition);
@@ -408,10 +525,10 @@ const MacExperience: React.FC<MacExperienceProps> = ({
               borderRadius: '2px'
             }}
           >
-            Override: {arTestingOverride ? '✅ (0,0,-5)' : '❌ (AR Anchor)'}
+            Override: {arTestingOverride ? '✅ (0.75,0,-5)' : '❌ (AR Anchor)'}
           </div>
         </div>
-      )} */}
+      )}
     </>
   );
 };

@@ -40,17 +40,17 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const instructionsRef = useRef<HTMLDivElement | null>(null);
-  const handlersRegisteredRef = useRef(false);
   
   // Store initial camera position for reset
   const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
   const initialModelRotation = useRef(new THREE.Euler(0, 0, 0));
   
-  // Define stage names
-  const stageNames = ["Seed Pod", "New Pod", "Bloom", "Fully Grown"];
+  // Define cattail stage names (different from lotus and lily)
+  const stageNames = ["Rhizome", "Sprout", "New Bloom", "Fully Grown"];
 
-  // State to track when models are loaded
+  // State to track when models are loaded and current model for React rendering
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [currentModelIndex, setCurrentModelIndex] = useState(0);
 
   // Add state to track override status
   const [arTestingOverride, setArTestingOverride] = useState(() => {  
@@ -60,84 +60,12 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
 
-  // Model interaction handlers - these now always reference current models
-  const handleRotateModel = (deltaX: number, deltaY: number) => {
-    console.log('🔄 Rotate called, models available:', modelsRef.current.length);
-    const currentModel = modelsRef.current[currentModelIndexRef.current];
-    if (currentModel) {
-      currentModel.rotation.y += deltaX;
-      currentModel.rotation.x += deltaY;
-      console.log('🔄 Model rotated:', currentModel.rotation.x, currentModel.rotation.y);
-    } else {
-      console.warn('🔄 No model available to rotate');
-    }
-  };
-
-  const handleScaleModel = (scaleFactor: number) => {
-    console.log('📏 Scale called, models available:', modelsRef.current.length);
-    const currentModel = modelsRef.current[currentModelIndexRef.current];
-    if (currentModel) {
-      const newScale = Math.max(0.5, Math.min(5.0, scaleFactor));
-      currentModel.scale.set(newScale, newScale, newScale);
-      console.log('📏 Model scaled:', newScale);
-    } else {
-      console.warn('📏 No model available to scale');
-    }
-  };
-
-  const handleResetModel = () => {
-    console.log('🔄 Reset called, models available:', modelsRef.current.length);
-    const currentModel = modelsRef.current[currentModelIndexRef.current];
-    if (currentModel) {
-      currentModel.rotation.copy(initialModelRotation.current);
-      currentModel.scale.set(2, 2, 2);
-      console.log('🔄 Model reset');
-    } else {
-      console.warn('🔄 No model available to reset');
-    }
-  };
-
-  const handleNextModel = () => {
-    console.log('➡️ Cattail: Next model called, models available:', modelsRef.current.length);
-    if (modelsRef.current.length > 0) {
-      const nextIndex = currentModelIndexRef.current < 3 ? currentModelIndexRef.current + 1 : 0;
-      switchToModel(nextIndex);
-    } else {
-      console.warn('➡️ No models available for switching');
-    }
-  };
-
-  // Function to register handlers with parent - only call once when models are ready
-  const registerHandlers = () => {
-    if (handlersRegisteredRef.current) return;
-    
-    console.log('🔗 Registering Cattail gesture handlers');
-    
-    if (onModelRotate) {
-      onModelRotate(handleRotateModel);
-      console.log('✅ Rotation handler registered');
-    }
-    if (onModelScale) {
-      onModelScale(handleScaleModel);
-      console.log('✅ Scale handler registered');
-    }
-    if (onModelReset) {
-      onModelReset(handleResetModel);
-      console.log('✅ Reset handler registered');
-    }
-    if (onSwipeUp) {
-      onSwipeUp(handleNextModel);
-      console.log('✅ Next model handler registered');
-    }
-    
-    handlersRegisteredRef.current = true;
-  };
-
   // Function to change models
   const switchToModel = (index: number) => {
-    console.log(`Switching to model index: ${index}`);
+    console.log(`🌾 Switching to cattail model index: ${index} (${stageNames[index]})`);
     
     currentModelIndexRef.current = index;
+    setCurrentModelIndex(index); // Update React state for button rendering
     
     // Remove all models from the scene
     if (sceneRef.current) {
@@ -154,11 +82,95 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
         
         // Update stage label
         if (instructionsRef.current) {
-          instructionsRef.current.innerHTML = `Cattail Plant: ${stageNames[index]}`;
+          instructionsRef.current.innerHTML = `Cattail Plant: ${stageNames[index]} (Stage ${index + 1} of 4)`;
         }
+        
+        console.log(`✅ Now showing: ${stageNames[index]}`);
       }
     }
   };
+
+  // *** FIXED: Register handlers immediately on mount - don't wait for models ***
+  useEffect(() => {
+    console.log('🔗 Registering cattail gesture handlers on mount');
+    
+    // Rotation handler
+    if (onModelRotate) {
+      onModelRotate((deltaX: number, deltaY: number) => {
+        console.log('🔄 Rotate called, models available:', modelsRef.current.length);
+        const currentModel = modelsRef.current[currentModelIndexRef.current];
+        if (currentModel) {
+          currentModel.rotation.y += deltaX;
+          currentModel.rotation.x += deltaY;
+          console.log('🔄 Model rotated:', currentModel.rotation.x, currentModel.rotation.y);
+        } else {
+          console.warn('🔄 No model available to rotate');
+        }
+      });
+      console.log('✅ Rotation handler registered');
+    }
+
+    // Scale handler
+    if (onModelScale) {
+      onModelScale((scaleFactor: number) => {
+        console.log('📏 Scale called, models available:', modelsRef.current.length);
+        const currentModel = modelsRef.current[currentModelIndexRef.current];
+        if (currentModel) {
+          const currentScale = currentModel.scale.x;
+          const newScale = Math.max(0.5, Math.min(5.0, currentScale * scaleFactor));
+          currentModel.scale.set(newScale, newScale, newScale);
+          console.log('📏 Model scaled:', newScale);
+        } else {
+          console.warn('📏 No model available to scale');
+        }
+      });
+      console.log('✅ Scale handler registered');
+    }
+
+    // Reset handler
+    if (onModelReset) {
+      onModelReset(() => {
+        console.log('🔄 Reset called, models available:', modelsRef.current.length);
+        const currentModel = modelsRef.current[currentModelIndexRef.current];
+        if (currentModel) {
+          currentModel.rotation.copy(initialModelRotation.current);
+          currentModel.scale.set(2, 2, 2);
+          console.log('🔄 Model reset');
+        } else {
+          console.warn('🔄 No model available to reset');
+        }
+      });
+      console.log('✅ Reset handler registered');
+    }
+
+    // Next model handler (swipe up)
+    if (onSwipeUp) {
+      onSwipeUp(() => {
+        console.log('➡️ Cattail: Next model called via swipe, models available:', modelsRef.current.length);
+        if (modelsRef.current.length > 0) {
+          const nextIndex = currentModelIndexRef.current < 3 ? currentModelIndexRef.current + 1 : 0;
+          switchToModel(nextIndex);
+        } else {
+          console.warn('➡️ No models available for switching');
+        }
+      });
+      console.log('✅ Next model handler registered (swipe up)');
+    }
+
+    // Previous model handler (swipe down)
+    if (onSwipeDown) {
+      onSwipeDown(() => {
+        console.log('⬅️ Cattail: Previous model called via swipe, models available:', modelsRef.current.length);
+        if (modelsRef.current.length > 0) {
+          const prevIndex = currentModelIndexRef.current > 0 ? currentModelIndexRef.current - 1 : 3;
+          switchToModel(prevIndex);
+        } else {
+          console.warn('⬅️ No models available for switching');
+        }
+      });
+      console.log('✅ Previous model handler registered (swipe down)');
+    }
+  }, []); // *** FIXED: Empty dependency array - register once on mount
 
   // Listen for override changes
   useEffect(() => {
@@ -176,7 +188,7 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
         if (currentModel && isArMode && arPosition) {
           if (currentOverride) {
             console.log('🎯 Setting override position (0, 0, -5)');
-            currentModel.position.set(0, 0, -5);
+            currentModel.position.set(0, -1, -5);
           } else {
             console.log('🎯 Setting anchor position:', arPosition);
             currentModel.position.copy(arPosition);
@@ -222,7 +234,7 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
     // Create instructions
     const instructions = document.createElement('div');
     instructions.style.position = 'absolute';
-    instructions.style.bottom = '20px';
+    instructions.style.bottom = '80px'; // Move up to make room for stage buttons
     instructions.style.left = '50%';
     instructions.style.transform = 'translateX(-50%)';
     instructions.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
@@ -233,7 +245,7 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
     instructions.style.fontFamily = 'var(--font-rigby)';
     instructions.style.fontWeight = '400';
     instructions.style.zIndex = '1002';
-    instructions.innerHTML = 'Double-tap for next stage, triple-tap to reset. Drag to rotate, pinch to scale.';
+    instructions.innerHTML = 'Cattail Plant: Loading...';
     container.appendChild(instructions);
     instructionsRef.current = instructions;
 
@@ -316,8 +328,8 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
       scene.add(directionalLight);
     }
 
-    // Define Cattail model URLs
-    const CattailModels = [
+    // Define cattail model URLs (using the correct file names from your document)
+    const cattailModels = [
       getAssetPath('models/Cattail_Rhizome.glb'),
       getAssetPath('models/Cattail_Sprout.glb'),
       getAssetPath('models/Cattail_NewBloom.glb'),
@@ -327,8 +339,8 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
     // Create loader
     const loader = new GLTFLoaderModule();
     
-    let modelsLoaded = 0;
-    const totalModels = CattailModels.length;
+    let modelsLoadedCount = 0;
+    const totalModels = cattailModels.length;
     
     // Create loading indicator
     const loadingDiv = document.createElement('div');
@@ -341,11 +353,11 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
     loadingDiv.style.padding = '20px';
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = 'Loading models... 0%';
+    loadingDiv.innerHTML = 'Loading cattail models... 0%';
     container.appendChild(loadingDiv);
 
     // Load all models
-    CattailModels.forEach((modelUrl, index) => {
+    cattailModels.forEach((modelUrl, index) => {
       loader.load(
         modelUrl,
         (gltf) => {
@@ -360,11 +372,11 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
           model.position.y = -center.y;
           model.position.z = -center.z;
           
-          // Scale model appropriately
+          // Scale model appropriately for cattail - make them bigger
           const size = box.getSize(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z);
           if (maxDim > 0) {
-            const scale = (isArMode ? 2 : 8) / maxDim;
+            const scale = (isArMode ? 3 : 10) / maxDim; // *** INCREASED SCALE for cattail
             model.scale.set(scale, scale, scale);
           }
           
@@ -373,7 +385,7 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
             const currentOverride = (window as any).arTestingOverride ?? true;
             
             if (currentOverride) {
-              model.position.set(0, 0, -5);
+              model.position.set(0, -1, -5);
               console.log('🎯 Model positioned at TESTING override location:', model.position);
             } else {
               model.position.copy(arPosition);
@@ -411,29 +423,30 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
           initialModelRotation.current = model.rotation.clone();
           
           // Update loading progress
-          modelsLoaded++;
-          const percentage = Math.round((modelsLoaded / totalModels) * 100);
-          loadingDiv.innerHTML = `Loading models... ${percentage}%`;
+          modelsLoadedCount++;
+          const percentage = Math.round((modelsLoadedCount / totalModels) * 100);
+          loadingDiv.innerHTML = `Loading cattail models... ${percentage}%`;
           
           // If all models are loaded, remove the loading div and show first model
-          if (modelsLoaded === totalModels) {
+          if (modelsLoadedCount === totalModels) {
             container.removeChild(loadingDiv);
+            
+            // Switch to first model
             switchToModel(0);
             
-            // Set state to trigger handler registration
-            console.log('🎯 All models loaded, setting modelsLoaded state');
             setModelsLoaded(true);
+            console.log('🎯 All cattail models loaded successfully');
           }
           
-          console.log(`Loaded model ${index}: ${modelUrl}`);
+          console.log(`Loaded cattail model ${index}: ${modelUrl}`);
         },
         (xhr) => {
           console.log(`${modelUrl} ${(xhr.loaded / xhr.total) * 100}% loaded`);
         },
         (error) => {
           console.error(`Error loading model ${modelUrl}:`, error);
-          modelsLoaded++;
-          const percentage = Math.round((modelsLoaded / totalModels) * 100);
+          modelsLoadedCount++;
+          const percentage = Math.round((modelsLoadedCount / totalModels) * 100);
           loadingDiv.innerHTML = `Loading models... ${percentage}%<br>Error loading ${modelUrl.split('/').pop()}`;
         }
       );
@@ -460,7 +473,7 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
         controls.update();
       }
       
-      if (renderer) {
+      if (renderer && scene && camera) {
         renderer.render(scene, camera);
       }
     };
@@ -484,42 +497,87 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
       if (document.body.contains(container)) {
         document.body.removeChild(container);
       }
-      
-      // Clear handlers registration flag and models loaded state on cleanup
-      handlersRegisteredRef.current = false;
-      setModelsLoaded(false);
     };
-  }, [isArMode]); // FIXED: Only depend on isArMode, not the changing props
+  }, [isArMode]); // *** FIXED: Only depend on isArMode
 
-  // Handler registration effect - triggered when models are loaded AND handlers are available
-  useEffect(() => {
-    console.log('🔗 Handler registration effect triggered');
-    console.log('🔗 Models loaded:', modelsLoaded);
-    console.log('🔗 Handlers registered already:', handlersRegisteredRef.current);
-    console.log('🔗 Available handlers:', {
-      onModelRotate: !!onModelRotate,
-      onModelScale: !!onModelScale, 
-      onModelReset: !!onModelReset,
-      onSwipeUp: !!onSwipeUp
-    });
+  return (
+    <>
+      {/* Stage Selection Buttons - React JSX */}
+      {modelsLoaded && (
+        <div style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          gap: '8px',
+          zIndex: 1005,
+          pointerEvents: 'auto',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          padding: '10px',
+          borderRadius: '8px'
+        }}>
+          {stageNames.map((stageName, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                console.log(`🌾 Stage button ${index} clicked: ${stageName}`);
+                switchToModel(index);
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                console.log(`🌾 Stage button ${index} touched: ${stageName}`);
+                switchToModel(index);
+              }}
+              style={{
+                backgroundColor: index === currentModelIndex 
+                  ? 'rgba(139, 69, 19, 0.8)'  // Brown for cattail (earthy/natural)
+                  : 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: index === currentModelIndex 
+                  ? '2px solid rgba(210, 180, 140, 0.8)'  // Tan border
+                  : '1px solid rgba(255, 255, 255, 0.3)',
+                fontSize: '12px',
+                fontFamily: 'var(--font-rigby)',
+                cursor: 'pointer',
+                minWidth: '60px',
+                textAlign: 'center'
+              }}
+            >
+              {/* Stage {index + 1}<br/> */}
+              <small>{stageName}</small>
+            </button>
+          ))}
+        </div>
+      )}
 
-    if (modelsLoaded && !handlersRegisteredRef.current) {
-      console.log('🎯 Registering gesture handlers now');
-      registerHandlers();
-    }
-  }, [modelsLoaded, onModelRotate, onModelScale, onModelReset, onSwipeUp]);
-
-  // Separate effect to register handlers when models become available
-  useEffect(() => {
-    // Only register if we have models and haven't registered yet
-    if (modelsRef.current.length > 0 && !handlersRegisteredRef.current) {
-      console.log('🎯 Models detected, registering gesture handlers');
-      registerHandlers();
-    }
-  }, [onModelRotate, onModelScale, onModelReset, onSwipeUp]); // Re-register if parent handlers change
-
-  // This component renders nothing itself; all UI is managed via DOM/Three.js
-  return null;
+      {/* Debug Panel for Cattail Experience */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'absolute',
+          top: '180px',
+          left: '10px',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '10px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          zIndex: 1003,
+          pointerEvents: 'auto',
+          fontFamily: 'monospace'
+        }}>
+          {/* <div style={{ color: 'tan' }}>🌾 CATTAIL DEBUG</div> */}
+          <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
+          <div>Models: {modelsRef.current.length}/4 loaded</div>
+          <div>Current: {stageNames[currentModelIndex]} (Stage {currentModelIndex + 1})
+          </div>
+         
+        </div>
+      )}
+    </>
+  );
 };
 
 export default CattailExperience;

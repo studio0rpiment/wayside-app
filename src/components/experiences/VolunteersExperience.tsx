@@ -39,6 +39,11 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   
+  // Animation-specific refs
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const clockRef = useRef<THREE.Clock>(new THREE.Clock());
+  const actionsRef = useRef<THREE.AnimationAction[]>([]);
+  
   // Store initial camera position for reset
   const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
   
@@ -47,10 +52,13 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     return (window as any).arTestingOverride ?? true;
   });
 
+  // Animation state
+  const [hasAnimations, setHasAnimations] = useState(false);
+
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
 
-  // Listen for override changes - SAME AS LOTUS EXPERIENCE
+  // Listen for override changes - SAME AS ORIGINAL
   useEffect(() => {
     const checkOverride = () => {
       const currentOverride = (window as any).arTestingOverride ?? true;
@@ -58,14 +66,10 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
         setArTestingOverride(currentOverride);
         console.log('🎯 VolunteersExperience override changed:', currentOverride);
         
-        console.log('🎯 Current model:', modelRef.current);
-        console.log('🎯 Is AR mode:', isArMode);
-        console.log('🎯 AR position:', arPosition);
-        
         if (modelRef.current && isArMode && arPosition) {
           if (currentOverride) {
-            console.log('🎯 Setting override position (0, 0, -5)');
-            modelRef.current.position.set(0, 0, -5);
+            console.log('🎯 Setting override position (0.75, 0, -5)');
+            modelRef.current.position.set(0.75, 0, -5);
           } else {
             console.log('🎯 Setting anchor position:', arPosition);
             modelRef.current.position.copy(arPosition);
@@ -87,6 +91,65 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     const interval = setInterval(checkOverride, 100);
     return () => clearInterval(interval);
   }, [arTestingOverride, isArMode, arPosition]);
+
+  // *** FIXED: Register gesture handlers on mount, not in render ***
+  useEffect(() => {
+    // Register rotation handler
+    if (onModelRotate) {
+      onModelRotate((deltaX: number, deltaY: number) => {
+        if (modelRef.current) {
+          modelRef.current.rotation.y += deltaX;
+          modelRef.current.rotation.x += deltaY;
+        }
+      });
+    }
+
+    // Register scale handler
+    if (onModelScale) {
+      onModelScale((scaleFactor: number) => {
+        if (modelRef.current) {
+          const currentScale = modelRef.current.scale.x;
+          const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
+          modelRef.current.scale.setScalar(newScale);
+        }
+      });
+    }
+
+    // Register reset handler
+    if (onModelReset) {
+      onModelReset(() => {
+        if (modelRef.current) {
+          modelRef.current.rotation.set(0, 0, 0);
+          modelRef.current.scale.set(1, 1, 1);
+          
+          // Reset animations too
+          if (hasAnimations && actionsRef.current.length > 0) {
+            actionsRef.current.forEach(action => {
+              action.reset();
+              action.play();
+            });
+          }
+        }
+      });
+    }
+
+    // Register swipe handlers
+    if (onSwipeUp) {
+      onSwipeUp(() => {
+        // For the portal concept, we don't want user controls
+        // But keeping this for future flexibility
+        console.log('👆 Swipe up detected on Volunteers');
+      });
+    }
+
+    if (onSwipeDown) {
+      onSwipeDown(() => {
+        // For the portal concept, we don't want user controls
+        // But keeping this for future flexibility  
+        console.log('👇 Swipe down detected on Volunteers');
+      });
+    }
+  }, []); // *** FIXED: Empty dependency array - register once on mount
 
   // Main effect for model loading and scene setup
   useEffect(() => {
@@ -218,7 +281,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     loadingDiv.style.padding = '20px';
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = 'Loading Volunteers ';
+    loadingDiv.innerHTML = 'Loading Volunteers Computer...';
     container.appendChild(loadingDiv);
 
     // Load the model
@@ -284,6 +347,40 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
           }
         });
         
+        // Animation Setup - Auto-play for portal effect
+        if (gltf.animations && gltf.animations.length > 0) {
+          console.log('🎬 Found', gltf.animations.length, 'animation(s) in Volunteers model');
+          
+          // Create animation mixer
+          const mixer = new THREE.AnimationMixer(model);
+          mixerRef.current = mixer;
+          
+          // Create actions for each animation clip
+          const actions: THREE.AnimationAction[] = [];
+          gltf.animations.forEach((clip, index) => {
+            console.log(`🎬 Setting up animation ${index}: "${clip.name}" (${clip.duration.toFixed(2)}s)`);
+            
+            const action = mixer.clipAction(clip);
+            
+            // Configure for portal effect - continuous looping
+            action.setLoop(THREE.LoopRepeat, Infinity); 
+            action.clampWhenFinished = true;
+            
+            // Start playing immediately - no user control needed
+            action.play();
+            
+            actions.push(action);
+          });
+          
+          actionsRef.current = actions;
+          setHasAnimations(true);
+          
+          console.log('✅ Volunteers animations initialized and auto-playing for portal effect');
+        } else {
+          console.log('ℹ️ No animations found in Volunteers model');
+          setHasAnimations(false);
+        }
+        
         // Add model to scene
         scene.add(model);
         
@@ -314,17 +411,23 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     
     window.addEventListener('resize', handleResize);
     
-    // Animation loop
+    // Animation loop with mixer updates
     const animate = function () {
       if (!isMounted) return;
       
       requestAnimationFrame(animate);
       
+      // Update animation mixer if it exists
+      if (mixerRef.current) {
+        const delta = clockRef.current.getDelta();
+        mixerRef.current.update(delta);
+      }
+      
       if (controls) {
         controls.update();
       }
       
-      if (renderer) {
+      if (renderer && scene && camera) {
         renderer.render(scene, camera);
       }
     };
@@ -336,6 +439,17 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
       isMounted = false;
       
       window.removeEventListener('resize', handleResize);
+      
+      // Stop and cleanup animations
+      if (mixerRef.current) {
+        actionsRef.current.forEach(action => {
+          action.stop();
+        });
+        mixerRef.current.stopAllAction();
+        mixerRef.current = null;
+      }
+      
+      actionsRef.current = [];
       
       if (controls) {
         controls.dispose();
@@ -349,15 +463,15 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
         document.body.removeChild(container);
       }
     };
-  }, [isArMode]);
+  }, [isArMode]); // *** FIXED: Only isArMode dependency
 
   return (
     <>
       {/* Debug Panel for Volunteers Experience */}
-      {/* {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === 'development' && (
         <div style={{
           position: 'absolute',
-          top: '10px',
+          bottom: '10px',
           right: '10px',
           backgroundColor: 'rgba(0, 0, 0, 0.7)',
           color: 'white',
@@ -368,8 +482,8 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
           pointerEvents: 'auto',
           fontFamily: 'monospace'
         }}>
-          <div style={{ color: 'yellow' }}>🖥️ Volunteers DEBUG</div>
-          <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
+          <div style={{ color: 'yellow' }}>🖥️ Volunteers PORTAL DEBUG</div>
+          <div>Mode: {isArMode ? 'AR Portal' : 'Standalone'}</div>
           {arPosition && (
             <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
           )}
@@ -379,6 +493,9 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
             </div>
           )}
           <div>Scale: {coordinateScale}x</div>
+          <div style={{ color: hasAnimations ? 'lightgreen' : 'orange' }}>
+            Animations: {hasAnimations ? `🎬 Auto-Playing (${actionsRef.current.length})` : '❌ None'}
+          </div>
           
           <div 
             onClick={() => {
@@ -411,7 +528,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
             Override: {arTestingOverride ? '✅ (0,0,-5)' : '❌ (AR Anchor)'}
           </div>
         </div>
-      )} */}
+      )}
     </>
   );
 };

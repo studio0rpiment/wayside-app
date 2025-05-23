@@ -1,22 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import ArCameraComponent from '../components/ar/ArCameraComponent';
 
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
-
 import WaterRiseExperience from './experiences/WaterRiseExperience';
 import Experience1968 from './experiences/Experience1968';
 import BC2200Experience from './experiences/BC2200Experience';
-
 import HelenSExperience from './experiences/HelenSExperience';
 import VolunteersExperience from './experiences/VolunteersExperience';
 import MacExperience from './experiences/MacExperience';
-
 import LilyExperience from './experiences/LilyExperience';
 import CattailExperience from './experiences/CattailExperience';
 import LotusExperience from './experiences/LotusExperience';
-
 
 // Define experience types (same as before)
 export type ExperienceType = 'cube' | 'waterRise' | 'lotus' | 'mac' | '2030-2105' | '1968' | '2200_bc' | 'volunteers' | 'helen_s' | 'lily' | 'cattail';
@@ -56,18 +52,27 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   const [arScene, setArScene] = useState<THREE.Scene | null>(null);
   const [arCamera, setArCamera] = useState<THREE.PerspectiveCamera | null>(null);
   
+  // Use refs to store the current gesture handlers - this prevents recreation
+  const gestureHandlersRef = useRef<{
+    rotate?: (deltaX: number, deltaY: number) => void;
+    scale?: (scaleFactor: number) => void;
+    reset?: () => void;
+    swipeUp?: () => void;
+    swipeDown?: () => void;
+  }>({});
+  
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setArInitialized(false);
       setArObjectPosition(null);
       setExperienceReady(false);
-      setCurrentGestureHandlers({});
+      gestureHandlersRef.current = {}; // Clear handlers
     }
   }, [isOpen]);
   
   // Handler for when AR object is positioned
-  const handleArObjectPlaced = (position: THREE.Vector3) => {
+  const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {
     console.log('🎯 AR object placed at:', position);
     setArObjectPosition(position);
     setArInitialized(true);
@@ -75,87 +80,77 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     // Auto-start experience after AR is positioned
     setTimeout(() => {
       setExperienceReady(true);
-    }, 1000); // Small delay for smooth transition
-  };
+    }, 1000);
+  }, []);
   
   // Handler for orientation updates (for debugging)
-  const handleOrientationUpdate = (orientation: { alpha: number; beta: number; gamma: number }) => {
+  const handleOrientationUpdate = useCallback((orientation: { alpha: number; beta: number; gamma: number }) => {
     // Could be used for experience-specific orientation handling
     if (process.env.NODE_ENV === 'development') {
       console.log('📱 Device orientation:', orientation);
     }
-  };
+  }, []);
 
-  const handleArSceneReady = (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
-  console.log('🎯 AR scene received in ExperienceManager');
-  setArScene(scene);
-  setArCamera(camera);
-};
+  const handleArSceneReady = useCallback((scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
+    console.log('🎯 AR scene received in ExperienceManager');
+    setArScene(scene);
+    setArCamera(camera);
+  }, []);
 
-    // Update the handlers in ExperienceManager to call the lotus handlers
- // State to store the current experience's gesture handlers
-const [currentGestureHandlers, setCurrentGestureHandlers] = useState<{
-  rotate?: (deltaX: number, deltaY: number) => void;
-  scale?: (scaleFactor: number) => void;
-  reset?: () => void;
-  swipeUp?: () => void;
-  swipeDown?: () => void;
-}>({});
+  // *** FIXED: Stable gesture handlers using useCallback ***
+  const handleModelRotate = useCallback((deltaX: number, deltaY: number) => {
+    if (gestureHandlersRef.current.rotate) {
+      gestureHandlersRef.current.rotate(deltaX, deltaY);
+    }
+  }, []); // Empty deps - this function never changes
 
-// These become the bridge functions that call the stored handlers
-const handleModelRotate = (deltaX: number, deltaY: number) => {
-  if (currentGestureHandlers.rotate) {
-    currentGestureHandlers.rotate(deltaX, deltaY);
-  }
-};
+  const handleModelScale = useCallback((scaleFactor: number) => {
+    if (gestureHandlersRef.current.scale) {
+      gestureHandlersRef.current.scale(scaleFactor);
+    }
+  }, []);
 
-const handleModelScale = (scaleFactor: number) => {
-  if (currentGestureHandlers.scale) {
-    currentGestureHandlers.scale(scaleFactor);
-  }
-};
+  const handleModelReset = useCallback(() => {
+    if (gestureHandlersRef.current.reset) {
+      gestureHandlersRef.current.reset();
+    }
+  }, []);
 
-const handleModelReset = () => {
-  if (currentGestureHandlers.reset) {
-    currentGestureHandlers.reset();
-  }
-};
+  const handleSwipeUp = useCallback(() => {
+    if (gestureHandlersRef.current.swipeUp) {
+      gestureHandlersRef.current.swipeUp();
+    }
+  }, []);
 
-const handleSwipeUp = () => {
-  if (currentGestureHandlers.swipeUp) {
-    currentGestureHandlers.swipeUp();
-  }
-};
+  const handleSwipeDown = useCallback(() => {
+    if (gestureHandlersRef.current.swipeDown) {
+      gestureHandlersRef.current.swipeDown();
+    }
+  }, []);
 
-const handleSwipeDown = () => {
-  if (currentGestureHandlers.swipeDown) {
-    currentGestureHandlers.swipeDown();
-  }
-};
+  // *** FIXED: Registration functions that don't cause re-renders ***
+  const registerRotateHandler = useCallback((handler: (deltaX: number, deltaY: number) => void) => {
+    gestureHandlersRef.current.rotate = handler;
+  }, []);
 
-// Registration functions that experiences will call
-const registerRotateHandler = (handler: (deltaX: number, deltaY: number) => void) => {
-  setCurrentGestureHandlers(prev => ({ ...prev, rotate: handler }));
-};
+  const registerScaleHandler = useCallback((handler: (scaleFactor: number) => void) => {
+    gestureHandlersRef.current.scale = handler;
+  }, []);
 
-const registerScaleHandler = (handler: (scaleFactor: number) => void) => {
-  setCurrentGestureHandlers(prev => ({ ...prev, scale: handler }));
-};
+  const registerResetHandler = useCallback((handler: () => void) => {
+    gestureHandlersRef.current.reset = handler;
+  }, []);
 
-const registerResetHandler = (handler: () => void) => {
-  setCurrentGestureHandlers(prev => ({ ...prev, reset: handler }));
-};
+  const registerSwipeUpHandler = useCallback((handler: () => void) => {
+    gestureHandlersRef.current.swipeUp = handler;
+  }, []);
 
-const registerSwipeUpHandler = (handler: () => void) => {
-  setCurrentGestureHandlers(prev => ({ ...prev, swipeUp: handler }));
-};
-
-const registerSwipeDownHandler = (handler: () => void) => {
-  setCurrentGestureHandlers(prev => ({ ...prev, swipeDown: handler }));
-};
+  const registerSwipeDownHandler = useCallback((handler: () => void) => {
+    gestureHandlersRef.current.swipeDown = handler;
+  }, []);
       
   // Handle experience completion
-  const handleExperienceComplete = () => {
+  const handleExperienceComplete = useCallback(() => {
     if (onExperienceComplete) {
       onExperienceComplete();
     }
@@ -163,7 +158,7 @@ const registerSwipeDownHandler = (handler: () => void) => {
     setTimeout(() => {
       onClose();
     }, 500);
-  };
+  }, [onExperienceComplete, onClose]);
   
   // Render the appropriate 3D experience
   const renderExperience = () => {
