@@ -99,17 +99,17 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
     // Rotation handler
     if (onModelRotate) {
       onModelRotate((deltaX: number, deltaY: number) => {
-        console.log('🔄 Rotate called, models available:', modelsRef.current.length);
+        // console.log('🔄 Rotate called, models available:', modelsRef.current.length);
         const currentModel = modelsRef.current[currentModelIndexRef.current];
         if (currentModel) {
           currentModel.rotation.y += deltaX;
           currentModel.rotation.x += deltaY;
-          console.log('🔄 Model rotated:', currentModel.rotation.x, currentModel.rotation.y);
+          // console.log('🔄 Model rotated:', currentModel.rotation.x, currentModel.rotation.y);
         } else {
-          console.warn('🔄 No model available to rotate');
+          // console.warn('🔄 No model available to rotate');
         }
       });
-      console.log('✅ Rotation handler registered');
+      // console.log('✅ Rotation handler registered');
     }
 
     // Scale handler

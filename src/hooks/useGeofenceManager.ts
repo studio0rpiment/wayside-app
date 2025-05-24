@@ -44,7 +44,7 @@ export function useGeofenceManager(
   // Simple debug logging
   const debugLog = useCallback((message: string, ...args: any[]) => {
     if (debugMode) {
-      console.log(`🧭 [GeoManager] ${message}`, ...args);
+      // console.log(`🧭 [GeoManager] ${message}`, ...args);
     }
   }, [debugMode]);
   
@@ -63,10 +63,10 @@ export function useGeofenceManager(
     }
     
     const radius = getCurrentRadius();
-    debugLog('=== PROCESSING GEOFENCES ===');
-    debugLog('User position:', position);
-    debugLog('Radius:', radius);
-    debugLog('Available features:', mapRouteData.features.length);
+    // debugLog('=== PROCESSING GEOFENCES ===');
+    // debugLog('User position:', position);
+    // debugLog('Radius:', radius);
+    // debugLog('Available features:', mapRouteData.features.length);
     
     try {
       // Call the geofence checking function

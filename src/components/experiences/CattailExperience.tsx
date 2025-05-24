@@ -94,19 +94,19 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
 
   // *** FIXED: Register handlers immediately on mount - don't wait for models ***
   useEffect(() => {
-    console.log('🔗 Registering cattail gesture handlers on mount');
+    // console.log('🔗 Registering cattail gesture handlers on mount');
     
     // Rotation handler
     if (onModelRotate) {
       onModelRotate((deltaX: number, deltaY: number) => {
-        console.log('🔄 Rotate called, models available:', modelsRef.current.length);
+        // console.log('🔄 Rotate called, models available:', modelsRef.current.length);
         const currentModel = modelsRef.current[currentModelIndexRef.current];
         if (currentModel) {
           currentModel.rotation.y += deltaX;
           currentModel.rotation.x += deltaY;
-          console.log('🔄 Model rotated:', currentModel.rotation.x, currentModel.rotation.y);
+          // console.log('🔄 Model rotated:', currentModel.rotation.x, currentModel.rotation.y);
         } else {
-          console.warn('🔄 No model available to rotate');
+          // console.warn('🔄 No model available to rotate');
         }
       });
       console.log('✅ Rotation handler registered');
