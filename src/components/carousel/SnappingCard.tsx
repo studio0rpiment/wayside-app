@@ -24,17 +24,14 @@ const SnappingCard: React.FC<CardProps> = ({
     <div 
       className={classNames("carousel-card", className)}
       style={{ 
-        width: '100vw',
+        width: '100%',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
         padding: '1rem',
-        flexShrink: 0,
         position: 'relative',
-        transformOrigin: 'center center',
-        transition: 'transform 0.1s ease-out',
       }}
     >
       <div
@@ -51,23 +48,22 @@ const SnappingCard: React.FC<CardProps> = ({
           boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
           color: 'white',
           overflow: 'hidden',
-          transform: 'translateZ(0)', // Force hardware acceleration
         }}
       >
-        <h3 className="text-3xl font-bold mb-2">{title}</h3>
+        {title && <h3 className="text-3xl font-bold mb-2">{title}</h3>}
         
         {subtitle && (
           <h4 className="text-xl opacity-80 mb-6">{subtitle}</h4>
         )}
         
         <div className="card-content flex-grow overflow-auto">
-          { children }
+          {children}
         </div>
         
         {/* Card number indicator */}
         {index !== undefined && (
           <div className="bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm absolute bottom-4 right-4">
-            {/* {index} */}
+            {/* Optional: show index */}
           </div>
         )}
       </div>
@@ -75,5 +71,4 @@ const SnappingCard: React.FC<CardProps> = ({
   );
 };
 
-// Memoize the component to prevent unnecessary re-renders
 export default React.memo(SnappingCard);

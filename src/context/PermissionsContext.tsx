@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { 
   initPermissions, 
   PermissionsState, 
@@ -85,55 +85,94 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({
   const [initialized, setInitialized] = useState<boolean>(false);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
-  // Auto-initialize permissions when provider mounts
-  useEffect(() => {
-    // Use a flag in localStorage to ensure consistent behavior across browsers
-    const isFirstRun = !localStorage.getItem('permissions-initialized');
-    
-    // Initialize permissions
-    initialize().then(state => {
-      // Mark as initialized
-      localStorage.setItem('permissions-initialized', 'true');
-      
-      // Set explicit first-time user flag for new users
-      if (isFirstRun) {
-        setPermissionsState(prevState => 
-          prevState ? {...prevState, isFirstTimeUser: true} : prevState
-        );
-      }
-    }).catch(error => {
-      console.error("Error initializing permissions:", error);
-    });
-  }, []);
-
   // Method to initialize permissions
-  const initialize = async (): Promise<PermissionsState> => {
-    // If already initialized, return the current state
-    if (initialized && permissionsState) {
-      return permissionsState;
-    }
+const initialize = useCallback(async (): Promise<PermissionsState> => {
+  // If already initialized, return the current state
+  if (initialized && permissionsState) {
+    return permissionsState;
+  }
 
-    const state = await initPermissions({
-      requiredPermissions,
-      onStatusChange: (newState) => {
-        // Only update if there are actual changes
-        if (JSON.stringify(newState) !== JSON.stringify(permissionsState)) {
-          setPermissionsState(newState);
+  const state = await initPermissions({
+    requiredPermissions,
+    onStatusChange: (newState) => {
+      // Only update if there are actual changes
+      setPermissionsState(current => {
+        if (JSON.stringify(newState) !== JSON.stringify(current)) {
+          return newState;
         }
-      },
-      // Disable default UI since we're handling it with our own components
-      showUI: false 
-    });
+        return current;
+      });
+    },
+    showUI: false 
+  });
+  
+  setPermissionsState(state);
+  setInitialized(true);
+  
+  // Determine if we need to show onboarding
+  const needsOnboarding = state.isFirstTimeUser || !state.allGranted;
+  setShowOnboarding(needsOnboarding);
+  
+  return state;
+}, [initialized, permissionsState, requiredPermissions]); // Add dependencies
+
+//   useEffect(() => {
+//   // Only run if not already initialized
+//   if (initialized) return;
+  
+//   const isFirstRun = !localStorage.getItem('permissions-initialized');
+  
+//   // Call initPermissions directly instead of the initialize function
+//   initPermissions({
+//     requiredPermissions,
+//     onStatusChange: (newState) => {
+//       setPermissionsState(current => {
+//         if (JSON.stringify(newState) !== JSON.stringify(current)) {
+//           return newState;
+//         }
+//         return current;
+//       });
+//     },
+//     showUI: false 
+//   }).then(state => {
+//     localStorage.setItem('permissions-initialized', 'true');
     
-    setPermissionsState(state);
-    setInitialized(true);
+//     setPermissionsState(state);
+//     setInitialized(true);
     
-    // Determine if we need to show onboarding
-    const needsOnboarding = state.isFirstTimeUser || !state.allGranted;
-    setShowOnboarding(needsOnboarding);
+//     if (isFirstRun) {
+//       setPermissionsState(prevState => 
+//         prevState ? {...prevState, isFirstTimeUser: true} : prevState
+//       );
+//     }
     
-    return state;
-  };
+//     const needsOnboarding = state.isFirstTimeUser || !state.allGranted;
+//     setShowOnboarding(needsOnboarding);
+//   }).catch(error => {
+//     console.error("Error initializing permissions:", error);
+//   });
+// }, [initialized, requiredPermissions]); // Only depend on initialized flag
+
+useEffect(() => {
+  console.log("🔍 PermissionsProvider useEffect running");
+  
+  // Just set dummy state without calling initPermissions
+ // Just set dummy state without calling initPermissions
+setPermissionsState({
+  results: {
+    [PermissionType.CAMERA]: PermissionStatus.PROMPT,     // Changed from GRANTED
+    [PermissionType.LOCATION]: PermissionStatus.PROMPT,   // Changed from GRANTED
+    [PermissionType.ORIENTATION]: PermissionStatus.GRANTED, // Keep this one
+    [PermissionType.MICROPHONE]: PermissionStatus.PROMPT,
+    [PermissionType.NOTIFICATION]: PermissionStatus.PROMPT,
+  },
+  allGranted: false,  // Changed from true
+  isFirstTimeUser: false
+});
+  setInitialized(true);
+  
+  console.log("🔍 PermissionsProvider useEffect completed");
+}, []);
 
   // Method to manually update permission state
   const updatePermissionState = (type: PermissionType, status: PermissionStatus) => {

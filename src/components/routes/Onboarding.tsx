@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import GradientElement from '../../utils/GradientElement';
-import SnappingCarousel from '../carousel/SnappingCarousel';
+import SwipeableCarousel from '../carousel/SwipeableCarousel';
 import SnappingCard from '../carousel/SnappingCard';
 import PermissionsStatus from '../common/PermissionsStatus';
 import DemoExperience from '../DemoExperience';
@@ -10,15 +11,8 @@ import {
   getPermissionExplanation 
 } from '../../utils/permissions';
 import { usePermissions } from '../../context/PermissionsContext';
-import ContentContainer, { ContentContainerProps } from '../common/ContentContainer';
+import SimpleContentContainer, { ContentContainerProps } from '../common/SimpleContentContainer';
 import ContentConfigHelper from '../../utils/ContentConfigHelper';
-
-// Define global types for GSAP
-declare global {
-  interface Window {
-    gsap: any;
-  }
-}
 
 // Define interface for component props 
 interface OnboardingProps {
@@ -26,6 +20,8 @@ interface OnboardingProps {
 }
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
+  const navigate = useNavigate();
+  
   // Get permissions functionality from context
   const { 
     permissionsState, 
@@ -38,6 +34,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   // Track the current step in the onboarding flow
   const [currentStep, setCurrentStep] = useState<number>(0);
+  useEffect(() => {
+  console.log('🟡 currentStep changed from somewhere:', currentStep);
+}, [currentStep]);
   
   // State to track if the AR experience is ready to be shown
   const [showARExperience, setShowARExperience] = useState(false);
@@ -56,64 +55,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   // Initialize permissions when the component mounts
   useEffect(() => {
-    // Ensure we show at least the welcome screen
     console.log(`Current step changed to: ${currentStep}`);
-    if (currentStep === 0) {
-      initialize();
-    }
-  }, [initialize, currentStep]);
+    initialize();
+  }, [initialize]);
   
-  // Check if all permissions are granted and update the UI accordingly
+  // Only mark permissions as complete in context (no auto-navigation)
   useEffect(() => {
-    // Only mark onboarding as complete in the context 
-    // But DON'T navigate automatically - that should happen only on button click
-    if (allPermissionsGranted && currentStep > 0 && permissionsState) {
-      // Just mark permissions as complete in the context
+    if (allPermissionsGranted && permissionsState) {
       completeOnboarding();
-      
-      // Ensure we show the final card if all permissions are granted
-      if (currentStep < 2) {
-        setCurrentStep(2);
-      }
     }
-  }, [allPermissionsGranted, completeOnboarding, permissionsState, currentStep]);
-
-  // Disable GSAP ScrollTrigger when AR experience is launched
-  useEffect(() => {
-    if (currentARExperience) {
-      console.log('Disabling GSAP ScrollTrigger for AR experience');
-      
-      // Get all ScrollTrigger instances
-      const gsap = window.gsap;
-      const ScrollTrigger = gsap?.ScrollTrigger;
-      
-      // Array to store triggers so we can re-enable them later
-      const disabledTriggers: any[] = [];
-      
-      if (ScrollTrigger) {
-        // Get all active triggers and disable them
-        const allTriggers = ScrollTrigger.getAll();
-        allTriggers.forEach((trigger: any) => {
-          if (trigger.enabled()) {
-            disabledTriggers.push(trigger);
-            trigger.disable();
-          }
-        });
-        
-        console.log(`Disabled ${disabledTriggers.length} ScrollTrigger instances`);
-      }
-      
-      // Re-enable triggers when AR experience is closed
-      return () => {
-        console.log('Re-enabling GSAP ScrollTrigger instances');
-        disabledTriggers.forEach(trigger => {
-          if (trigger && typeof trigger.enable === 'function') {
-            trigger.enable();
-          }
-        });
-      };
-    }
-  }, [currentARExperience]);
+  }, [allPermissionsGranted, completeOnboarding, permissionsState]);
 
   // Handle requesting permissions
   const handleRequestPermission = useCallback(async (type: PermissionType) => {
@@ -143,48 +94,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         granted = await requestPermission(type);
       }
       
-      // No longer automatically advancing steps since we have a consolidated permissions card
-      // We'll rely on the Continue button and the useEffect that checks allPermissionsGranted
     } catch (error) {
       console.error("Error requesting permission:", error);
     }
   }, [requestPermission, updatePermissionState]);
 
-  // Debug button component for development - memoized to prevent re-renders
-  // const DebugButton = useCallback(() => (
-  //   <button 
-  //     onClick={() => {
-  //       // Test location API directly
-  //       if ('geolocation' in navigator) {
-  //         navigator.geolocation.getCurrentPosition(
-  //           () => {},
-  //           () => {}
-  //         );
-  //       }
-  //     }}
-  //     style={{
-  //       position: 'absolute',
-  //       top: 60,
-  //       right: 10,
-  //       padding: '8px 16px',
-  //       background: '#4CAF50',
-  //       color: 'white',
-  //       border: 'none',
-  //       borderRadius: '4px',
-  //       zIndex: 9999
-  //     }}
-  //   >
-  //     Debug Permissions
-  //   </button>
-  // ), []);
-
   // Function to handle completion of onboarding and navigation
-  // This is explicitly called by the "Start Experience" button
   const handleCompleteOnboarding = useCallback(() => {
     // Mark onboarding as complete in the permissions context
     completeOnboarding();
     
-    // Navigate to the map route - this is the ONLY place that should trigger navigation
+    // Navigate to the map route
     onComplete();
   }, [completeOnboarding, onComplete]);
 
@@ -201,119 +121,164 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   
   // Handler for when the AR box is clicked
   const handleNextARStep = useCallback(() => {
-    // setARStep(prevStep => prevStep + 1);
-    // You could also add additional logic here based on the step
+    // Additional logic can be added here based on the step
   }, []);
 
-  // Content for each card in the carousel (simplified to 3 cards)
-    const permConfig1 = ContentConfigHelper.getTemplateById('onboarding-card-permisions') as ContentContainerProps;
-    const arCam = ContentConfigHelper.getTemplateById('arCam') as ContentContainerProps;
+  // Handle card changes from swipe gestures
+ const handleCardChange = useCallback((index: number) => {
+  console.log('🔴 handleCardChange called with:', index, 'from SwipeableCarousel');
+  setCurrentStep(index);
+}, []);
 
-  const renderCardContent = useCallback((index: number) => {
-    switch (index) {
-      case 1:
-        return (
-       <div className="card-content welcome">
-        {/* <h1>Welcome to Wayside.AT</h1>
-        //   //   <p>First, point your camera at the target on the sign in front of you. Try it now!</p> */}
-        <button className="primary-button go-to-next-card" 
-            style={{ 
-              position: 'absolute',
-              color: 'var(--color-light)',
-              fontSize: '1rem',
-              bottom: '0',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              marginBottom: '4rem',
-              padding: '.5rem',
-              backgroundColor: 'var(--color-dark)',
-              borderRadius: '8px',
-              fontFamily: 'rigby, sans-serif'
-            }}
-            onClick={() => {
-              // Update the step in state
-              setCurrentStep(prevStep => prevStep + 1);
-              
-              // Direct scroll manipulation as a fallback
-              setTimeout(() => {
-                // Get the ScrollTrigger instance for the carousel
-                const gsap = window.gsap;
-                if (gsap && gsap.ScrollTrigger) {
-                  const allTriggers = gsap.ScrollTrigger.getAll();
-                  const carouselTrigger = allTriggers.find(
-                    (                    trigger: { vars: { trigger: { classList: { contains: (arg0: string) => any; }; }; }; }) => trigger.vars.trigger && 
-                    trigger.vars.trigger.classList.contains('carousel-trigger')
-                  );
-                  
-                  // If we found the trigger, manually scroll to the next card
-                  if (carouselTrigger) {
-                    // Get all cards and calculate the next card's position
-                    const cards = document.querySelectorAll('#carousel1 .carousel-card');
-                    const cardCount = cards.length;
-                    const nextIndex = 1; // Go to the second card (index 1)
-                    const progress = nextIndex / (cardCount - 1);
-                    
-                    // Set the scroll position
-                    carouselTrigger.scroll(progress);
-                  }
-                }
-              }, 100);
-            }}>
-            CONTINUE
-          </button>
-          </div>
-        );
-      case 2:
-        return (
-          <div className="card-content permissions">
-            <h2>Required Permissions</h2>
-            <p>The following permissions are needed for the AR experience:</p>
+  // Manual navigation functions
+const goToNextCard = useCallback(() => {
+  console.log('🔵 Button clicked - currentStep BEFORE:', currentStep);
+  const nextStep = Math.min(currentStep + 1, 2);
+  console.log('🔵 Button clicked - nextStep calculated:', nextStep);
+  setCurrentStep(nextStep);
+  console.log('🔵 setCurrentStep called with:', nextStep);
+}, [currentStep]);
+
+  // Content configurations - disable animations for carousel use
+  const permConfig1 = { 
+    ...ContentConfigHelper.getTemplateById('onboarding-card-permisions') as ContentContainerProps,
+    animateIn: false,
+    scrollTrigger: false,
+    scrollParallax: false,
+    fontAnimatesOnScroll: false,
+  };
+  const arCam = {
+    ...ContentConfigHelper.getTemplateById('arCam') as ContentContainerProps,
+    animateIn: false,
+    scrollTrigger: false,
+    scrollParallax: false,
+    fontAnimatesOnScroll: false,
+  };
+
+  const buttonStyle = {
+    position: 'absolute' as const,
+    bottom: '2rem',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '1rem 2rem',
+    backgroundColor: 'var(--color-pink)',
+    color: 'var(--color-dark)',
+    borderRadius: '2rem',
+    border: 'none',
+    fontFamily: 'rigby, sans-serif',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    zIndex: 10,
+    touchAction: 'manipulation', // Ensure buttons work on mobile
+  };
+
+
+  return (
+    <div 
+      className="onboarding-route"
+      style={{ touchAction: 'manipulation' }} // Only allow essential touch actions
+    >
+      <GradientElement 
+        color="gradient(var(--color-dark), var(--color-pink), var(--color-blue), var(--color-dark), var(--color-green))" 
+        gradientType="blocks"
+        blockSize={200}
+      >
+        <SwipeableCarousel 
+          id="carousel1" 
+          title="onboarding"
+          background=""
+          currentCard={currentStep}
+          onCardChange={handleCardChange}
+        >
+          {/* Card 0: Welcome */}
+          <SnappingCard title="" subtitle="" color="var(--color-green)" index={0} height="90%">
+            <SimpleContentContainer {...permConfig1} />
             
-            <div className="permissions-summary" style={{ margin: '1rem 0' }}>
-              <PermissionsStatus />
+            <button 
+              className="primary-button continue-button" 
+              style={buttonStyle}
+              onClick={goToNextCard}
+            >
+              CONTINUE
+            </button>
+          </SnappingCard>
+          
+          {/* Card 1: Permissions */}
+          <SnappingCard title="" subtitle="" color="var(--color-pink)" index={1} height="90%">
+            <div className="card-content permissions" style={{ padding: '2rem', textAlign: 'center' }}>
+              <h2 style={{ color: 'var(--color-light)', marginBottom: '1rem' }}>Required Permissions</h2>
+              <p style={{ color: 'var(--color-light)', marginBottom: '2rem' }}>
+                The following permissions are needed for the AR experience:
+              </p>
+              
+              <div className="permissions-summary" style={{ margin: '2rem 0' }}>
+                <PermissionsStatus />
+              </div>
             </div>
             
-            {/* <button 
-              className="primary-button" 
-              onClick={() => setCurrentStep(2)}
+            <button 
+              className="primary-button continue-button" 
+              style={{
+                ...buttonStyle,
+                backgroundColor: allPermissionsGranted ? 'var(--color-pink)' : '#666',
+                cursor: allPermissionsGranted ? 'pointer' : 'not-allowed',
+                opacity: allPermissionsGranted ? 1 : 0.6,
+              }}
+              onClick={allPermissionsGranted ? goToNextCard : undefined}
               disabled={!allPermissionsGranted}
             >
-              Continue
-            </button> */}
-          </div>
-        );
-        case 3:
-          return (
+              {allPermissionsGranted ? 'CONTINUE' : 'Grant Permissions First'}
+            </button>
+          </SnappingCard>
+          
+          {/* Card 2: AR Demo */}
+          <SnappingCard title="" subtitle="" color="var(--color-blue)" index={2} height="100%">
             <div className="card-content ready" 
-            style={{ 
-              height: 'auto', 
-              display: 'flex', 
-              margin: '1rem', 
-              textAlign: 'center',
-              flexDirection: 'column' }}>
-              <h2>Camera and AR Demo</h2>
+              style={{ 
+                height: 'auto', 
+                display: 'flex', 
+                margin: '1rem', 
+                textAlign: 'center',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2rem'
+              }}>
+              <h2 style={{ color: 'var(--color-light)', marginBottom: '2rem' }}>Camera and AR Demo</h2>
 
-              <ContentContainer {...arCam} />
+              <SimpleContentContainer {...arCam} />
 
-              <p>First, point your camera at the target on the sign in front of you. Try it now!.</p>
+              <p style={{ color: 'var(--color-light)', margin: '2rem 0' }}>
+                Follow the Map to find experiences
+              </p>
               
               <div style={{ 
                 flex: 1, 
                 minHeight: 'auto', 
                 margin: '1rem', 
-                padding: '1rem',
+                padding: '2rem',
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                width: '100%',
+                maxWidth: '300px'
               }}>
                 {!currentARExperience ? (
                   <button 
                     className="primary-button"
-                    style={{margin: '1rem', 
-                      padding: '1rem', fontSize: '1rem'}}
+                    style={{
+                      padding: '1rem 2rem', 
+                      fontSize: '1rem',
+                      backgroundColor: 'var(--color-blue)',
+                      color: 'var(--color-light)',
+                      border: 'none',
+                      borderRadius: '2rem',
+                      cursor: 'pointer',
+                      fontFamily: 'rigby, sans-serif'
+                    }}
                     onClick={() => {
                       setCurrentARExperience('demo');
                       setShowARExperience(true);
@@ -322,71 +287,42 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     Launch AR Demo
                   </button>
                 ) : (
-                  <div style={{textAlign: 'center', color: 'var(--color-light)', backgroundColor: 'rgba(0, 0, 0, 0.5)', padding: '1rem', borderRadius: '8px'}}>
+                  <div style={{
+                    textAlign: 'center', 
+                    color: 'var(--color-light)', 
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+                    padding: '1rem', 
+                    borderRadius: '8px'
+                  }}>
                     AR Experience Running (Step {arStep})
                   </div>
                 )}
               </div>
-              
-              {/* <button className="primary-button" onClick={handleCompleteOnboarding}>
-                Start Experience
-              </button> */}
             </div>
-          );
-      default:
-        return null;
-    }
-  }, [showARExperience, handleLaunchAR, handleCompleteOnboarding, allPermissionsGranted]);
-
-
-  // Memoize the Debug Button component to avoid re-rendering it
-  // const MemoizedDebugButton = useMemo(() => {
-  //   return process.env.NODE_ENV === 'development' ? <DebugButton /> : null;
-  // }, [DebugButton]);
-
-  return (
-    <div className="onboarding-route">
-      {/* {MemoizedDebugButton} */}
-
-      <GradientElement 
-        color="gradient(var(--color-dark), var(--color-pink), var(--color-blue), var(--color-dark), var(--color-green))" 
-        gradientType="blocks"
-        blockSize={200}
-      >
-        <SnappingCarousel 
-          id="carousel1" 
-          title="onboarding"
-          background=""
-          currentCard={currentStep + 1} // +1 because card indices start at 1
-        >
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={1} height="90%">
-
-          <ContentContainer {...permConfig1} />
-
-            {/* {renderCardContent(1)} */}
             
-
+            <button 
+              className="primary-button start-button" 
+              style={{
+                ...buttonStyle,
+                backgroundColor: 'var(--color-green)',
+              }}
+              onClick={handleCompleteOnboarding}
+            >
+              Start Experience
+            </button>
           </SnappingCard>
-          
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={2} height="90%">
-            {renderCardContent(2)}
-          </SnappingCard>
-          
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={3} height="100%">
-            {renderCardContent(3)}
-          </SnappingCard>
-        </SnappingCarousel>
-        
+        </SwipeableCarousel>
       </GradientElement>
       
-      {/* Render AR experience through Portal when active */}
-   {showARExperience && (
-     <DemoExperience 
-       onClose={() => setShowARExperience(false)} 
-       onNext={handleNextARStep}
+
       
-     />
-   )}
+      {/* Render AR experience through Portal when active */}
+      {showARExperience && (
+        <DemoExperience 
+          onClose={() => setShowARExperience(false)} 
+          onNext={handleNextARStep}
+        />
+      )}
     </div>
   ); 
 };

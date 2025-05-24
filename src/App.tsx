@@ -19,7 +19,7 @@ import { registerServiceWorker } from './utils/serviceWorkerRegistration';
 import './App.css';
 import { GeofenceProvider } from './context/GeofenceContext.tsx';
 
-registerServiceWorker();
+// registerServiceWorker();
 
 
 // Wrapper component to provide navigation functionality
@@ -59,7 +59,9 @@ function App() {
           <Router>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/onboarding" element={<OnboardingWrapper />} />
+              
+              <Route path="/onboarding" element={<Onboarding onComplete={() => console.log('Onboarding complete')} />} />
+
               <Route path="/map" element={
                 <GeofenceProvider>
                   <GeofenceNotificationSystem>
