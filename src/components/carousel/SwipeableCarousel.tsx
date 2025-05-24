@@ -20,6 +20,7 @@ const SwipeableCarousel: React.FC<SwipeableCarouselProps> = ({
   className = '',
   height = '100vh',
   currentCard = 0,
+  onCardChange,
 }) => {
   
   const cardCount = React.Children.count(children);
@@ -48,7 +49,7 @@ const SwipeableCarousel: React.FC<SwipeableCarouselProps> = ({
     >
       {title && (
         <div style={{
-          padding: '1rem',
+          padding: '1rem 1rem 0rem 1rem',
           fontSize: '1.3rem',
           color: 'var(--color-light)',
           zIndex: 10,
@@ -76,8 +77,10 @@ const SwipeableCarousel: React.FC<SwipeableCarouselProps> = ({
               height: '100%',
               flexShrink: 0,
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'start',
               justifyContent: 'center',
+              paddingTop: '0rem',   
+              transform: 'translateY(-2rem)' 
             }}
           >
             {child}
@@ -86,27 +89,31 @@ const SwipeableCarousel: React.FC<SwipeableCarouselProps> = ({
       </div>
 
       {/* Progress dots */}
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        right: '20px',
-        display: 'flex',
-        gap: '8px',
-        zIndex: 10,
-      }}>
-        {Array.from({ length: cardCount }, (_, index) => (
-          <div
-            key={index}
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: index === currentCard ? 'var(--color-pink)' : 'rgba(255, 255, 255, 0.3)',
-              transition: 'background-color 0.3s ease',
-            }}
-          />
-        ))}
-      </div>
+            <div style={{
+            position: 'absolute',
+            top: '3vh',
+            right: '5vh',
+            display: 'flex',
+            gap: '8px',
+            zIndex: 10,
+            }}>
+            {Array.from({ length: cardCount }, (_, index) => (
+                <div
+                key={index}
+                onClick={() => onCardChange?.(index)}
+                style={{
+                    width: '15px',
+                    height: '15px',
+                    borderRadius: '50%',
+                    backgroundColor: index === currentCard ? 'var(--color-pink)' : 'rgba(255, 255, 255, 0.3)',
+                    transition: 'background-color 0.3s ease',
+                    cursor: 'pointer', // Add pointer cursor
+                    padding: '4px', // Add padding for better touch targets
+                    margin: '1px', // Negative margin to maintain visual spacing
+                }}
+                />
+            ))}
+            </div>
 
       {/* Debug info */}
       <div style={{
@@ -124,7 +131,7 @@ const SwipeableCarousel: React.FC<SwipeableCarouselProps> = ({
       </div>
 
       {/* Navigation hint */}
-      <div style={{
+      {/* <div style={{
         position: 'absolute',
         bottom: '10px',
         width: '100%',
@@ -152,7 +159,7 @@ const SwipeableCarousel: React.FC<SwipeableCarouselProps> = ({
             </svg>
           </span>
         </p>
-      </div>
+      </div> */}
     </div>
   );
 };

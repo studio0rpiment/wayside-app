@@ -148,6 +148,7 @@ const goToNextCard = useCallback(() => {
     scrollTrigger: false,
     scrollParallax: false,
     fontAnimatesOnScroll: false,
+
   };
   const arCam = {
     ...ContentConfigHelper.getTemplateById('arCam') as ContentContainerProps,
@@ -158,11 +159,12 @@ const goToNextCard = useCallback(() => {
   };
 
   const buttonStyle = {
-    position: 'absolute' as const,
+    // position: 'absolute' as const,
     width: '65vw',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    padding: '1rem 2rem',
+    // left: '50%',
+    // transform: 'translateX(-50%)',
+    margin: '1rem auto 0',
+    padding: '1rem 1rem',
     backgroundColor: 'var(--color-pink)',
     color: 'var(--color-light)',
     borderRadius: '2rem',
@@ -170,6 +172,7 @@ const goToNextCard = useCallback(() => {
     fontFamily: 'var(--font-rigby)',
     fontSize: '1.2rem',
     fontWeight:'1000',
+    display: 'block' ,
     
     cursor: 'pointer',
     zIndex: 10,
@@ -195,7 +198,7 @@ const goToNextCard = useCallback(() => {
           onCardChange={handleCardChange}
         >
           {/* Card 0: Welcome */}
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={0} height="90%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={0} height="80%">
             <SimpleContentContainer {...permConfig1} />
             
             <button 
@@ -208,17 +211,39 @@ const goToNextCard = useCallback(() => {
           </SnappingCard>
           
           {/* Card 1: Permissions */}
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={1} height="90%">
-            <div className="card-content permissions" style={{ padding: '2rem', textAlign: 'center' }}>
-              <h2 style={{ color: 'var(--color-light)', marginBottom: '1rem' }}>Required Permissions</h2>
-              <p style={{ color: 'var(--color-light)', marginBottom: '2rem' }}>
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={1} height="80%" >
+            <div className="card-content permissions" 
+              style={{ 
+                
+                textAlign: 'center' ,
+                height: 'calc(100vh - 120px)',
+                overflowY: 'scroll',
+                display: 'flex',
+                flexDirection: 'column',
+                WebkitOverflowScrolling: 'touch', 
+              }}>
+
+                 <div style={{ 
+                  padding: '0rem', 
+                  textAlign: 'center',
+                  flex: 1,
+                  paddingBottom: '6rem'  // Space for the button
+                }}>
+              <h2 style={{ color: 'var(--color-light)', marginBottom: '0rem' }}>Required Permissions</h2>
+              <p style={{ color: 'var(--color-light)', margin: '1rem' }}>
                 The following permissions are needed for the AR experience:
               </p>
               
-              <div className="permissions-summary" style={{ margin: '1rem -1rem 1rem -1rem' }}>
+              <div className="permissions-summary" 
+                style={{ 
+                  margin: '1rem -1rem 1rem -1rem' ,
+                  width: '120%',
+                  flex: 1, 
+                  minHeight: 0 
+                }}>
                 <PermissionsStatus />
               </div>
-            </div>
+            
             
             <button 
               className="primary-button continue-button" 
@@ -227,94 +252,78 @@ const goToNextCard = useCallback(() => {
                 backgroundColor: allPermissionsGranted ? 'var(--color-green)' : '#666',
                 cursor: allPermissionsGranted ? 'pointer' : 'not-allowed',
                 opacity: allPermissionsGranted ? 1 : 0.6,
+                
               }}
               onClick={allPermissionsGranted ? goToNextCard : undefined}
               disabled={!allPermissionsGranted}
             >
               {allPermissionsGranted ? 'CONTINUE' : 'Grant Permissions First'}
             </button>
+            </div>
+          </div>
+
           </SnappingCard>
           
           {/* Card 2: AR Demo */}
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={2} height="90%">
-            <div className="card-content ready" 
-              style={{ 
-                height: 'auto', 
-                display: 'flex', 
-                margin: '1rem', 
-                textAlign: 'left',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '1rem'
-              }}>
-              <h2 style={{ color: 'var(--color-light)', marginBottom: '0rem' }}>How to Find HotSpots</h2>
+<SnappingCard title="" subtitle="" color="var(--color-dark)" index={2} height="90%">
+  <div 
+    style={{ 
+      height: '100%',
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative'
+    }}
+  >
+    {/* Fixed height scrollable container - same as permissions card */}
+    <div 
+      className="card-content ready" 
+      style={{ 
+        height: 'calc(100vh - 120px)', // Same explicit height calculation
+        overflowY: 'scroll',           // Force scroll bars
+        overflowX: 'hidden',
+        padding: '2rem',
+        textAlign: 'center',
+        WebkitOverflowScrolling: 'touch', // iOS smooth scrolling
+      }}
+    >
+      <h2 style={{ color: 'var(--color-light)', marginBottom: '1rem' }}>How to Find HotSpots</h2>
 
-              <SimpleContentContainer {...arCam} />
+      <SimpleContentContainer {...arCam} />
 
-              <p style={{ color: 'var(--color-light)', margin: '0rem 0' , fontSize: '.85rem'}}>
-                Each Icon on the map of the Kenilworth Aquatic Gardens marks a location where you can open an experience. Your location is shown with the concentric circles. When you arrive at the location you you will get a notification that you can open a portal.
-              </p>
-              
-              {/* <div style={{ 
-                flex: 1, 
-                minHeight: 'auto', 
-                margin: '1rem', 
-                padding: '2rem',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                borderRadius: '8px',
-                width: '100%',
-                maxWidth: '300px'
-              }}>
-                {!currentARExperience ? (
-                  <button 
-                    className="primary-button"
-                    style={{
-                      padding: '1rem 2rem', 
-                      fontSize: '1rem',
-                      backgroundColor: 'var(--color-blue)',
-                      color: 'var(--color-light)',
-                      border: 'none',
-                      borderRadius: '2rem',
-                      cursor: 'pointer',
-                      fontFamily: 'rigby, sans-serif'
-                    }}
-                    onClick={() => {
-                      setCurrentARExperience('demo');
-                      setShowARExperience(true);
-                    }}
-                  >
-                    Launch AR Demo
-                  </button>
-                ) : (
-                  <div style={{
-                    textAlign: 'center', 
-                    color: 'var(--color-light)', 
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
-                    padding: '1rem', 
-                    borderRadius: '8px'
-                  }}>
-                    AR Experience Running (Step {arStep})
-                  </div>
-                )}
-              </div> */}
-            </div>
-            
-            <button 
-              className="primary-button start-button" 
-              style={{
-                ...buttonStyle,
-                backgroundColor: 'var(--color-green)',
-              }}
-              onClick={handleCompleteOnboarding}
-            >
-              BEGIN
-            </button>
-          </SnappingCard>
+      <p style={{ 
+        color: 'var(--color-light)', 
+        margin: '1rem 0', 
+        fontSize: '.85rem',
+        textAlign: 'left'
+      }}>
+        Each Icon on the map of the Kenilworth Aquatic Gardens marks a location where you can open an experience. Your location is shown with the concentric circles. When you arrive at the location you will get a notification that you can open a portal.
+      </p>
+
+      {/* Button inside scrollable area with lots of space below */}
+      <button 
+        className="primary-button start-button" 
+        style={{
+          width: '65vw',
+          margin: '3rem auto 8rem', // Large bottom margin to ensure scrollability
+          padding: '1rem 2rem',
+          backgroundColor: 'var(--color-green)',
+          color: 'var(--color-light)',
+          borderRadius: '2rem',
+          border: 'none',
+          fontFamily: 'var(--font-rigby)',
+          fontSize: '1.2rem',
+          fontWeight: '1000',
+          cursor: 'pointer',
+          display: 'block'
+        }}
+        onClick={handleCompleteOnboarding}
+      >
+        BEGIN
+      </button>
+    </div>
+  </div>
+</SnappingCard>
         </SwipeableCarousel>
       </GradientElement>
       

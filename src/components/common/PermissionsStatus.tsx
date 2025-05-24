@@ -362,6 +362,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
             maxWidth: '100%',
             border: 'none',
             boxShadow: 'none',
+            height: 'auto',
             borderRadius: 0
           }}
         >
@@ -371,7 +372,14 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
             borderRadius: 0,
             '& > div': { borderRadius: 0 } 
           }}>
-            <Stack spacing={0} sx={{ borderRadius: 0, overflow: 'hidden' }}>
+            <Stack spacing={0.5} sx={{ 
+              borderRadius: 0, 
+              overflow: 'hidden',
+              '& > *': {
+                  minHeight: '40px',  // Control individual item height
+                  maxHeight: '90px',
+                }
+               }}>
               {showCamera && renderPermissionStatus(PermissionType.CAMERA, 'Camera')}
               {showLocation && renderPermissionStatus(PermissionType.LOCATION, 'Location')}
               {showOrientation && renderPermissionStatus(PermissionType.ORIENTATION, 'Orientation')}
