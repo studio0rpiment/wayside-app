@@ -170,18 +170,18 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         <div style={{ marginBottom: '15px' }}>
           {isNotification && (
             <p style={{ fontWeight: 'bold', color: 'var(--color-blue)' }}>
-              You've entered a new experience area!
+             
             </p>
           )}
-          <p>{pointData.modalContent.description}</p>
+          <p style={{ fontWeight: 'bold', color: 'var(--color-blue)' }}>{pointData.modalContent.description}</p>
           
-          {pointData.modalContent.year && (
+          {/* {pointData.modalContent.year && (
             <p><strong>Time Period:</strong> {pointData.modalContent.year}</p>
-          )}
+          )} */}
           
-          {pointData.modalContent.additionalInfo?.heading && (
+          {/* {pointData.modalContent.additionalInfo?.heading && (
             <p><strong>Duration:</strong> {pointData.modalContent.additionalInfo.heading}</p>
-          )}
+          )} */}
         </div>
         
         {isInsideGeofence ? (

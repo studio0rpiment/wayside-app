@@ -63,22 +63,22 @@ export const routePointsData: RoutePointCollection = {
       'properties': {
         'iconName': '2030-2105',
         'iconScale': 1,
-        'title': '2030-2105',
+        'title': '2030-2150',
         'modalContent': {
-          'title': '2030-2105',
-          'description': 'Experience the future of the Anacostia River as it might look in the years 2030-2105.',
+          'title': '2030-2150',
+          'description': 'Rising tides will flood the gardens. High water will bring severe, lasting damage.',
           'imageUrl': getAssetPath('icons/2030-2105.svg'),
           'experienceRoute': '/2030-2105',
-          'buttonText': 'START AR EXPERIENCE',
+          'buttonText': 'OPEN',
           'year': '2030-2105',
           'additionalInfo': {
             'theme': 'Future projections',
             'heading': '3 minutes'
           }
         },
-        // Add AR anchor point with height map elevation
+        // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.9418102502823, 38.91331316705603],
+          'coordinates': [-76.942076, 38.912485],
           'elevation': 2.0,        // Light gray area - low elevation
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -88,7 +88,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.9418102502823, 38.91331316705603]
+        'coordinates': [-76.94177, 38.913078]
       }
     },
     {
@@ -99,18 +99,18 @@ export const routePointsData: RoutePointCollection = {
         'title': 'Mac',
         'modalContent': {
           'title': 'Mac',
-          'description': 'Explore the history and ecological significance of Mac in the Anacostia watershed.',
+          'description': 'In 1968, Ranger Mac made history as the first African American NPS Park Ranger, he went on to inspire many others.',
           'imageUrl': getAssetPath('icons/mac.svg'),
           'experienceRoute': '/mac',
-          'buttonText': 'START AR EXPERIENCE',
+          'buttonText': 'OPEN',
           'additionalInfo': {
             'theme': 'Local ecology',
             'heading': '2 minutes'
           }
         },
-        // Add AR anchor point with height map elevation
+        // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.94238424301149, 38.91251174709548],
+          'coordinates': [-76.942076, 38.912485],
           'elevation': 4.0,        // Medium gray area - elevated
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -120,7 +120,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.94238424301149, 38.91251174709548]
+        'coordinates': [-76.942081, 38.912531]
       }
     },
     {
@@ -131,18 +131,18 @@ export const routePointsData: RoutePointCollection = {
         'title': 'Lotus',
         'modalContent': {
           'title': 'Lotus',
-          'description': 'Discover the significance of lotus plants in the Anacostia ecosystem.',
+          'description': 'Activate to watch the lotus emerge from mud, bloom in sunlight, and drop its seed pods.',
           'imageUrl': getAssetPath('icons/lotus.svg'),
           'experienceRoute': '/lotus',
-          'buttonText': 'START AR EXPERIENCE',
+          'buttonText': 'OPEN',
           'additionalInfo': {
             'theme': 'Native flora',
             'heading': '2 minutes'
           }
         },
-        // Add AR anchor point with height map elevation
+        // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.94290995597841, 38.912261301501985], 
+          'coordinates': [-76.942954, 38.912327], 
           'elevation': 2.5,        // Light-medium gray - water/pond area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -152,7 +152,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.94290995597841, 38.912261301501985]
+        'coordinates': [-76.942953, 38.912265]
       }
     },
     {
@@ -163,18 +163,18 @@ export const routePointsData: RoutePointCollection = {
         'title': 'Volunteers',
         'modalContent': {
           'title': 'Van Ulteen',
-          'description': 'Volunteers continue to play an important role in the Kenilworth Aquatic Gardens ',
+          'description': 'Local volunteers care for the park today, keeping its community roots strong and growing.',
           'imageUrl': getAssetPath('icons/volunteers.svg'),
           'experienceRoute': '/volunteers',
-          'buttonText': 'START AR EXPERIENCE',
+          'buttonText': 'OPEN',
           'additionalInfo': {
             'theme': 'Local history',
             'heading': '3 minutes'
           }
         },
-        // Add AR anchor point with height map elevation
+        // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.94419205188753, 38.91246583213616],
+          'coordinates': [-76.944148, 38.9125],
           'elevation': 5.0,        // Medium-dark gray - elevated area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -184,7 +184,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.94419205188753, 38.91246583213616]
+        'coordinates': [-76.944106, 38.912457]
       }
     },
     {
@@ -192,21 +192,21 @@ export const routePointsData: RoutePointCollection = {
       'properties': {
         'iconName': 'helen_s',
         'iconScale': 1,
-        'title': 'Helen\'s',
+        'title': 'Helen Fowler',
         'modalContent': {
-          'title': 'Helen\'s',
-          'description': 'Explore the story of Helen and her contributions to the Anacostia community.',
+          'title': 'Helen Fowler',
+          'description': 'Helen Fowler brought plants from around the world and helped shape today’s Kenilworth Gardens.',
           'imageUrl': getAssetPath('icons/helen_s.svg'),
           'experienceRoute': '/helen_s',
-          'buttonText': 'START AR EXPERIENCE',
+          'buttonText': 'OPEN',
           'additionalInfo': {
             'theme': 'Community history',
             'heading': '2 minutes'
           }
         },
-        // Add AR anchor point with height map elevation
+        // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.94354832172395, 38.913334037246614],
+          'coordinates': [-76.943534, 38.913195],
           'elevation': 3.0,        // Light-medium gray area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -216,7 +216,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.94354832172395, 38.913334037246614]
+        'coordinates': [-76.943401, 38.913326]
       }
     },
     {
@@ -225,20 +225,22 @@ export const routePointsData: RoutePointCollection = {
         'iconName': 'lily',
         'iconScale': 1,
         'title': 'Lily',
+        
         'modalContent': {
+          
           'title': 'Lily',
-          'description': 'Discover the water lilies of the Anacostia and their role in the ecosystem.',
+          'description': 'Use AR to follow water lily pads as they unfurl, float, and decay across seasons.',
           'imageUrl': getAssetPath('icons/lily.svg'),
           'experienceRoute': '/lily',
-          'buttonText': 'START AR EXPERIENCE',
+          'buttonText': 'OPEN',
           'additionalInfo': {
             'theme': 'Aquatic plants',
             'heading': '2 minutes'
           }
         },
-        // Add AR anchor point with height map elevation
+        // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.94476068019867, 38.91345925826118],
+          'coordinates': [-76.944643, 38.913399],
           'elevation': 3.5,        // Medium gray - slightly elevated
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -248,7 +250,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.94476068019867, 38.91345925826118]
+        'coordinates': [-76.944588, 38.913446]
       }
     },
     {
@@ -259,19 +261,19 @@ export const routePointsData: RoutePointCollection = {
         'title': '1968',
         'modalContent': {
           'title': '1968',
-          'description': 'Experience the Anacostia River as it was in 1968, exploring the historical context and environmental conditions.',
+          'description': 'The dump burned. A boy died. Public outcry forced change in Kenilworth.',
           'imageUrl': getAssetPath('icons/1968.svg'),
           'experienceRoute': '/1968',
-          'buttonText': 'START AR EXPERIENCE',
+          'buttonText': 'OPEN',
           'year': '1968',
           'additionalInfo': {
             'theme': 'Historical perspective',
             'heading': '3 minutes'
           }
         },
-        // Add AR anchor point with height map elevation
+        // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.9466543197632, 38.911568397422],
+          'coordinates': [-76.949213, 38.910475],
           'elevation': 6.0,        // Darker area - higher elevation (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -281,9 +283,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-         'coordinates': [-76.9466543197632, 38.911568397422]
-       // fake coordinate for testing 
-      //  'coordinates': [-76.939864, 38.957814]
+        'coordinates': [-76.946716, 38.911531]
       }
     },
     {
@@ -294,18 +294,18 @@ export const routePointsData: RoutePointCollection = {
         'title': 'Cattail',
         'modalContent': {
           'title': 'Cattail',
-          'description': 'Learn about cattails and their importance to the wetland ecosystem of the Anacostia.',
+          'description': 'Scan to reveal the cattail\'s seasonal life cycle — from green shoots to winter husks.',
           'imageUrl': getAssetPath('icons/cattail.svg'),
           'experienceRoute': '/cattail',
-          'buttonText': 'START AR EXPERIENCE',
+          'buttonText': 'OPEN',
           'additionalInfo': {
             'theme': 'Native flora',
             'heading': '2 minutes'
           }
         },
-        // Add AR anchor point with height map elevation
+        // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.94748044013978, 38.911981636211536],
+          'coordinates': [-76.947519, 38.911934],
           'elevation': 7.0,        // Dark area - elevated terrain (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -315,7 +315,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.94748044013978, 38.911981636211536]
+        'coordinates': [-76.947518, 38.911967]
       }
     },
     {
@@ -326,19 +326,19 @@ export const routePointsData: RoutePointCollection = {
         'title': '2200 BC',
         'modalContent': {
           'title': '2200 BC',
-          'description': 'Journey back to 2200 BC to see how the Anacostia River and surrounding lands appeared to indigenous peoples.',
+          'description': 'At high tide, a canoe glides. At low tide, it vanishes. Past cultures thrived on these lands.',
           'imageUrl': getAssetPath('icons/2200_bc.svg'),
           'experienceRoute': '/2200_bc',
-          'buttonText': 'START AR EXPERIENCE',
+          'buttonText': 'OPEN',
           'year': '2200 BC',
           'additionalInfo': {
             'theme': 'Ancient history',
             'heading': '4 minutes'
           }
         },
-        // Add AR anchor point with height map elevation
+        // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.94825828075409, 38.91204424793947],
+          'coordinates': [-76.949342, 38.912096],
           'elevation': 8.0,        // Very dark area - highest elevation (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -348,7 +348,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.94825828075409, 38.91204424793947]
+        'coordinates': [-76.948307, 38.912053]
       }
     }
   ]
@@ -367,15 +367,15 @@ export const routeLineData = {
       'geometry': {
         'type': 'LineString',
         'coordinates': [
-          [-76.9418102502823, 38.91331316705603],
-          [-76.94238424301149, 38.91251174709548],
-          [-76.94290995597841, 38.912261301501985],
-          [-76.94419205188753, 38.91246583213616],
-          [-76.94354832172395, 38.913334037246614],
-          [-76.94476068019867, 38.91345925826118],
-          [-76.9466543197632, 38.911568397422],
-          [-76.94748044013978, 38.911981636211536],
-          [-76.94825828075409, 38.91204424793947]
+          [-76.94177, 38.913078],
+          [-76.942081, 38.912531],
+          [-76.942953, 38.912265],
+          [-76.944106, 38.912457],
+          [-76.943401, 38.913326],
+          [-76.944588, 38.913446],
+          [-76.946716, 38.911531],
+          [-76.947518, 38.911967],
+          [-76.948307, 38.912053]
         ]
       }
     }

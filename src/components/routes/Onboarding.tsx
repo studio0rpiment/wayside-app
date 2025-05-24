@@ -105,7 +105,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     completeOnboarding();
     
     // Navigate to the map route
-    onComplete();
+    // onComplete();
+    navigate('/map');
+
   }, [completeOnboarding, onComplete]);
 
   // Handle closing the AR experience
@@ -191,7 +193,7 @@ const goToNextCard = useCallback(() => {
           onCardChange={handleCardChange}
         >
           {/* Card 0: Welcome */}
-          <SnappingCard title="" subtitle="" color="var(--color-green)" index={0} height="90%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={0} height="90%">
             <SimpleContentContainer {...permConfig1} />
             
             <button 
@@ -204,14 +206,14 @@ const goToNextCard = useCallback(() => {
           </SnappingCard>
           
           {/* Card 1: Permissions */}
-          <SnappingCard title="" subtitle="" color="var(--color-pink)" index={1} height="90%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={1} height="90%">
             <div className="card-content permissions" style={{ padding: '2rem', textAlign: 'center' }}>
               <h2 style={{ color: 'var(--color-light)', marginBottom: '1rem' }}>Required Permissions</h2>
               <p style={{ color: 'var(--color-light)', marginBottom: '2rem' }}>
                 The following permissions are needed for the AR experience:
               </p>
               
-              <div className="permissions-summary" style={{ margin: '2rem 0' }}>
+              <div className="permissions-summary" style={{ margin: '1rem -1rem 1rem -1rem' }}>
                 <PermissionsStatus />
               </div>
             </div>
@@ -220,7 +222,7 @@ const goToNextCard = useCallback(() => {
               className="primary-button continue-button" 
               style={{
                 ...buttonStyle,
-                backgroundColor: allPermissionsGranted ? 'var(--color-pink)' : '#666',
+                backgroundColor: allPermissionsGranted ? 'var(--color-green)' : '#666',
                 cursor: allPermissionsGranted ? 'pointer' : 'not-allowed',
                 opacity: allPermissionsGranted ? 1 : 0.6,
               }}
@@ -232,27 +234,27 @@ const goToNextCard = useCallback(() => {
           </SnappingCard>
           
           {/* Card 2: AR Demo */}
-          <SnappingCard title="" subtitle="" color="var(--color-blue)" index={2} height="100%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={2} height="90%">
             <div className="card-content ready" 
               style={{ 
                 height: 'auto', 
                 display: 'flex', 
                 margin: '1rem', 
-                textAlign: 'center',
+                textAlign: 'left',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '2rem'
+                padding: '1rem'
               }}>
-              <h2 style={{ color: 'var(--color-light)', marginBottom: '2rem' }}>Camera and AR Demo</h2>
+              <h2 style={{ color: 'var(--color-light)', marginBottom: '2rem' }}>How to Find HotSpots</h2>
 
               <SimpleContentContainer {...arCam} />
 
-              <p style={{ color: 'var(--color-light)', margin: '2rem 0' }}>
-                Follow the Map to find experiences
+              <p style={{ color: 'var(--color-light)', margin: '0rem 0' }}>
+                Each Icon on the map of the Kenilworth Aquatic Gardens marks a location where you can open an experience. Your location is shown with the concentric circles. When you arrive at the location you you will get a notification that you can open a portal.
               </p>
               
-              <div style={{ 
+              {/* <div style={{ 
                 flex: 1, 
                 minHeight: 'auto', 
                 margin: '1rem', 
@@ -297,7 +299,7 @@ const goToNextCard = useCallback(() => {
                     AR Experience Running (Step {arStep})
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
             
             <button 

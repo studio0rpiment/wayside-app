@@ -226,8 +226,8 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
           mt: 0,
           p: '0rem',
           minHeight: '50px',
-          width: '110vw', 
-          maxWidth: '110vw',
+          width: '100vw', 
+          maxWidth: '100vw',
           marginLeft: '-5vw',
           borderRadius: 0,
           ...(isGranted 
@@ -271,7 +271,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
           }} />
         }
         
-        {/* Type icon is hidden as requested */}
+        {/* Type icon is hidden  */}
         
         <Box sx={{ flexGrow: 1, alignSelf: 'center', pr: 1 }}>
           <Typography 
@@ -283,14 +283,18 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               textTransform: 'uppercase',
               letterSpacing: '0.3px',
               fontSize: '1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
               mb: 0.0
             }}
-          >
-            {type === PermissionType.CAMERA && "CAMERA ACCESS"}
-            {type === PermissionType.LOCATION && "LOCATION"}
-            {type === PermissionType.ORIENTATION && "MOTION"}
-            {type === PermissionType.NOTIFICATION && "NOTIFICATIONS"}
-
+          > <span style={{ paddingRight: '4rem' }}>
+              {type === PermissionType.CAMERA && "CAMERA ACCESS"}
+              {type === PermissionType.LOCATION && "LOCATION"}
+              {type === PermissionType.ORIENTATION && "MOTION"}
+              {type === PermissionType.NOTIFICATION && "NOTIFICATIONS"}
+                
+            </span>
           </Typography>
           
           <Typography 
@@ -303,7 +307,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               maxWidth: '100%',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'flex-end'
+              alignItems: 'flex-start'
             }}
           >
             <span style={{ paddingRight: '1rem' }}>
