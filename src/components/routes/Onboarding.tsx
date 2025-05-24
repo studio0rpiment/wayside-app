@@ -159,16 +159,18 @@ const goToNextCard = useCallback(() => {
 
   const buttonStyle = {
     position: 'absolute' as const,
-    bottom: '2rem',
+    width: '65vw',
     left: '50%',
     transform: 'translateX(-50%)',
     padding: '1rem 2rem',
     backgroundColor: 'var(--color-pink)',
-    color: 'var(--color-dark)',
+    color: 'var(--color-light)',
     borderRadius: '2rem',
     border: 'none',
-    fontFamily: 'rigby, sans-serif',
-    fontSize: '1rem',
+    fontFamily: 'var(--font-rigby)',
+    fontSize: '1.2rem',
+    fontWeight:'1000',
+    
     cursor: 'pointer',
     zIndex: 10,
     touchAction: 'manipulation', // Ensure buttons work on mobile
@@ -246,11 +248,11 @@ const goToNextCard = useCallback(() => {
                 justifyContent: 'center',
                 padding: '1rem'
               }}>
-              <h2 style={{ color: 'var(--color-light)', marginBottom: '2rem' }}>How to Find HotSpots</h2>
+              <h2 style={{ color: 'var(--color-light)', marginBottom: '0rem' }}>How to Find HotSpots</h2>
 
               <SimpleContentContainer {...arCam} />
 
-              <p style={{ color: 'var(--color-light)', margin: '0rem 0' }}>
+              <p style={{ color: 'var(--color-light)', margin: '0rem 0' , fontSize: '.85rem'}}>
                 Each Icon on the map of the Kenilworth Aquatic Gardens marks a location where you can open an experience. Your location is shown with the concentric circles. When you arrive at the location you you will get a notification that you can open a portal.
               </p>
               
@@ -310,7 +312,7 @@ const goToNextCard = useCallback(() => {
               }}
               onClick={handleCompleteOnboarding}
             >
-              Start Experience
+              BEGIN
             </button>
           </SnappingCard>
         </SwipeableCarousel>
