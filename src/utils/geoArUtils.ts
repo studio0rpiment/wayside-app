@@ -1,9 +1,10 @@
-// src/utils/geoArUtils.ts
+// src/utils/geoArUtils.ts - Enhanced with terrain awareness
 import * as THREE from 'three';
+import { getElevationAtGPS, gpsToThreeJsPositionWithTerrain } from './terrainUtils';
 
 /**
- * Utilities for converting GPS coordinates to AR 3D space
- * Based on Spherical Mercator projection with local origin
+ * Enhanced utilities for converting GPS coordinates to AR 3D space
+ * Now includes terrain-aware positioning using LiDAR heightmap data
  */
 
 // Earth radius in meters (WGS84)
@@ -96,7 +97,6 @@ export function gpsToLocalCoordinates(
   const dLon = targetLonRad - userLonRad;
   
   // Convert to meters using local approximation
-  // For small distances, this is more accurate than full projection
   const cosLat = Math.cos(userLatRad);
   
   // X: East-West distance (longitude difference)
@@ -113,14 +113,14 @@ export function gpsToLocalCoordinates(
 }
 
 /**
- * Convert GPS coordinates to Three.js world position
- * This is the main function for AR positioning
+ * LEGACY: Convert GPS coordinates to Three.js world position (original method)
+ * This maintains your existing implementation for compatibility
  */
 export function gpsToThreeJsPosition(
   userGps: [number, number],
   anchorGps: [number, number],
   anchorElevation: number = 2.0,
-  coordinateScale: number = 1.0 // Scale factor for fine-tuning AR positioning
+  coordinateScale: number = 1.0
 ): THREE.Vector3 {
   const [x, y, z] = gpsToLocalCoordinates(
     userGps, 
@@ -134,13 +134,62 @@ export function gpsToThreeJsPosition(
 }
 
 /**
+ * ENHANCED: Convert GPS coordinates to Three.js world position with terrain awareness
+ * This is the new terrain-aware version that should replace gpsToThreeJsPosition
+ */
+export function gpsToThreeJsPositionTerrain(
+  userGps: [number, number],
+  anchorGps: [number, number],
+  elevationOffset: number = 2.0,  // Height ABOVE ground level
+  coordinateScale: number = 1.0,
+  fallbackElevation: number = 2.0  // Used if no terrain data available
+): {
+  position: THREE.Vector3;
+  terrainElevation: number | null;
+  usedTerrain: boolean;
+} {
+  try {
+    // Try to use terrain-aware positioning
+    const result = gpsToThreeJsPositionWithTerrain(
+      userGps, 
+      anchorGps, 
+      elevationOffset, 
+      coordinateScale
+    );
+    
+    return {
+      position: result.position,
+      terrainElevation: result.terrainElevation,
+      usedTerrain: result.terrainElevation !== null
+    };
+    
+  } catch (error) {
+    console.warn('⚠️ Terrain lookup failed, using fallback:', error);
+    
+    // Fallback to original method
+    const fallbackPosition = gpsToThreeJsPosition(
+      userGps, 
+      anchorGps, 
+      fallbackElevation, 
+      coordinateScale
+    );
+    
+    return {
+      position: fallbackPosition,
+      terrainElevation: null,
+      usedTerrain: false
+    };
+  }
+}
+
+/**
  * Check if a target position is within a reasonable AR viewing distance
  * Returns true if the target should be rendered
  */
 export function isWithinArRange(
   userGps: [number, number],
   targetGps: [number, number],
-  maxDistance: number = 200 // Increased from 100m to 200m for your route
+  maxDistance: number = 200
 ): boolean {
   const distance = calculateGpsDistance(userGps, targetGps);
   return distance <= maxDistance;
@@ -148,7 +197,6 @@ export function isWithinArRange(
 
 /**
  * Get visibility level for AR objects based on distance
- * Returns: 'close' | 'medium' | 'far' | 'too-far'
  */
 export function getArVisibilityLevel(
   userGps: [number, number],
@@ -164,7 +212,6 @@ export function getArVisibilityLevel(
 
 /**
  * Calculate the appropriate scale for an AR object based on distance
- * Objects farther away should appear smaller to maintain realism
  */
 export function getDistanceBasedScale(
   userGps: [number, number],
@@ -183,33 +230,132 @@ export function getDistanceBasedScale(
 }
 
 /**
- * Test function to validate coordinate conversion with your route data
- * Simulates being inside the Lotus geofence
+ * Enhanced anchor positioning with terrain awareness and experience-specific adjustments
+ * This function replaces the manual elevation settings in your mapRouteData
  */
-export function testCoordinateConversion() {
-  // Simulate user inside Lotus geofence (slightly offset from exact anchor)
-  const userPosition: [number, number] = [-76.94285995597841, 38.912281301501985]; // Near Lotus
-  const anchorPosition: [number, number] = [-76.94290995597841, 38.912261301501985]; // Lotus anchor
+export function getEnhancedAnchorPosition(
+  userGps: [number, number],
+  anchorGps: [number, number],
+  experienceType: string,
+  coordinateScale: number = 1.0
+): {
+  position: THREE.Vector3;
+  terrainElevation: number | null;
+  usedTerrain: boolean;
+  experienceOffset: number;
+} {
+  // Experience-specific elevation offsets (height above terrain)
+  const experienceOffsets: Record<string, number> = {
+    // Water-based experiences should be at or near water surface
+    'lotus': 0.5,      // Slightly above water surface
+    'lily': 0.5,       // Slightly above water surface
+    'cattail': 1.0,    // Taller, emergent plant
+    
+    // Historical moments on paths/boardwalks
+    'mac': 1.8,        // Human height on boardwalk
+    'helen_s': 1.8,    // Human height on path
+    'volunteers': 1.8, // Human height on ground
+    
+    // Environmental effects
+    '2030-2105': 0.0,  // Water rise starts at current water level
+    '1968': 10.0,      // Smoke rises high above horizon
+    '2200_bc': 0.2,    // Canoe at water surface
+    
+    // Default for unknown experiences
+    'default': 2.0
+  };
   
-  return testSingleExperience(userPosition, anchorPosition, 'Lotus Experience', 1.0);
+  const elevationOffset = experienceOffsets[experienceType] || experienceOffsets['default'];
+  
+  // Get terrain-aware position
+  const result = gpsToThreeJsPositionTerrain(
+    userGps,
+    anchorGps,
+    elevationOffset,
+    coordinateScale,
+    elevationOffset // Use same value as fallback
+  );
+  
+  console.log(`🎯 ${experienceType} anchor: ${result.usedTerrain ? 'terrain-aware' : 'fallback'} positioning`);
+  if (result.terrainElevation !== null) {
+    console.log(`   Terrain: ${result.terrainElevation.toFixed(2)}m + ${elevationOffset}m offset`);
+  }
+  
+  return {
+    ...result,
+    experienceOffset: elevationOffset
+  };
 }
 
 /**
- * Test different coordinate scales to see the effect
+ * Validate terrain data availability for your anchor positions
  */
-export function testCoordinateScaling() {
-  const userPosition: [number, number] = [-76.94285995597841, 38.912281301501985];
-  const anchorPosition: [number, number] = [-76.94290995597841, 38.912261301501985];
+export function validateTerrainCoverage(anchors: Array<{ name: string; coordinates: [number, number] }>): void {
+  console.log('🔍 Validating terrain coverage for anchors...');
   
-  console.group('🔧 Coordinate Scaling Test');
-  console.log('Testing different scale factors for AR positioning:');
+  let terrainAvailable = 0;
+  let noTerrain = 0;
   
-  [0.5, 1.0, 1.5, 2.0].forEach(scale => {
-    console.log(`\n--- Scale: ${scale}x ---`);
-    testSingleExperience(userPosition, anchorPosition, `Lotus (${scale}x)`, scale);
+  anchors.forEach(anchor => {
+    const [lon, lat] = anchor.coordinates;
+    const elevation = getElevationAtGPS(lon, lat);
+    
+    if (elevation !== null) {
+      terrainAvailable++;
+      console.log(`✅ ${anchor.name}: ${elevation.toFixed(2)}m elevation`);
+    } else {
+      noTerrain++;
+      console.log(`❌ ${anchor.name}: No terrain data`);
+    }
   });
   
-  console.groupEnd();
+  console.log(`📊 Terrain coverage: ${terrainAvailable}/${anchors.length} anchors have elevation data`);
+}
+
+/**
+ * Test function for terrain-aware positioning with your specific anchors
+ */
+export function testTerrainPositioning(): void {
+  const testUserPosition: [number, number] = [-76.943, 38.9125]; // Center of gardens
+  
+  const testAnchors = [
+    { name: 'mac', coordinates: [-76.942076, 38.912485] as [number, number], experience: 'mac' },
+    { name: 'lotus', coordinates: [-76.942954, 38.912327] as [number, number], experience: 'lotus' },
+    { name: 'volunteers', coordinates: [-76.944148, 38.9125] as [number, number], experience: 'volunteers' },
+    { name: 'cattail', coordinates: [-76.947519, 38.911934] as [number, number], experience: 'cattail' }
+  ];
+  
+  console.log('🧪 Testing terrain-aware positioning...');
+  console.log(`👤 User position: ${testUserPosition[0]}, ${testUserPosition[1]}`);
+  
+  testAnchors.forEach(anchor => {
+    console.log(`\n🎯 Testing ${anchor.name} (${anchor.experience}):`);
+    
+    // Test original method
+    const originalPos = gpsToThreeJsPosition(
+      testUserPosition,
+      anchor.coordinates,
+      2.0, // Fixed elevation
+      1.0
+    );
+    
+    // Test terrain-aware method
+    const terrainPos = getEnhancedAnchorPosition(
+      testUserPosition,
+      anchor.coordinates,
+      anchor.experience,
+      1.0
+    );
+    
+    console.log(`   Original: (${originalPos.x.toFixed(2)}, ${originalPos.y.toFixed(2)}, ${originalPos.z.toFixed(2)})`);
+    console.log(`   Terrain:  (${terrainPos.position.x.toFixed(2)}, ${terrainPos.position.y.toFixed(2)}, ${terrainPos.position.z.toFixed(2)})`);
+    console.log(`   Method: ${terrainPos.usedTerrain ? 'LiDAR elevation' : 'Fallback'}`);
+    
+    if (terrainPos.terrainElevation !== null) {
+      console.log(`   Ground level: ${terrainPos.terrainElevation.toFixed(2)}m`);
+      console.log(`   Experience offset: +${terrainPos.experienceOffset}m`);
+    }
+  });
 }
 
 /**
@@ -222,15 +368,16 @@ function getBearingDirection(bearing: number): string {
 }
 
 /**
- * Test a single geofence experience (simulates being inside a geofence)
+ * Test a single geofence experience with terrain awareness
  */
-export function testSingleExperience(
+export function testSingleExperienceWithTerrain(
   userPosition: [number, number],
   anchorPosition: [number, number],
+  experienceType: string,
   experienceName: string = 'Test Experience',
   coordinateScale: number = 1.0
 ) {
-  console.group(`🎯 Single Experience Test: ${experienceName}`);
+  console.group(`🎯 Terrain Test: ${experienceName}`);
   
   const distance = calculateGpsDistance(userPosition, anchorPosition);
   console.log(`Distance to anchor: ${distance.toFixed(2)}m`);
@@ -238,11 +385,21 @@ export function testSingleExperience(
   const bearing = calculateBearing(userPosition, anchorPosition);
   console.log(`Bearing: ${bearing.toFixed(1)}° (${getBearingDirection(bearing)})`);
   
-  const threeJsPos = gpsToThreeJsPosition(userPosition, anchorPosition, 2.0, coordinateScale);
-  console.log(`AR Position: (${threeJsPos.x.toFixed(2)}, ${threeJsPos.y.toFixed(2)}, ${threeJsPos.z.toFixed(2)})`);
+  // Test terrain-aware positioning
+  const result = getEnhancedAnchorPosition(
+    userPosition,
+    anchorPosition,
+    experienceType,
+    coordinateScale
+  );
   
-  if (coordinateScale !== 1.0) {
-    console.log(`Coordinate scale applied: ${coordinateScale}x`);
+  console.log(`AR Position: (${result.position.x.toFixed(2)}, ${result.position.y.toFixed(2)}, ${result.position.z.toFixed(2)})`);
+  console.log(`Positioning method: ${result.usedTerrain ? 'Terrain-aware' : 'Fallback'}`);
+  
+  if (result.terrainElevation !== null) {
+    console.log(`Terrain elevation: ${result.terrainElevation.toFixed(2)}m`);
+    console.log(`Experience offset: +${result.experienceOffset}m`);
+    console.log(`Final elevation: ${(result.terrainElevation + result.experienceOffset).toFixed(2)}m`);
   }
   
   const visibilityLevel = getArVisibilityLevel(userPosition, anchorPosition);
@@ -256,8 +413,43 @@ export function testSingleExperience(
   return {
     distance,
     bearing,
-    position: threeJsPos,
+    position: result.position,
+    terrainElevation: result.terrainElevation,
+    usedTerrain: result.usedTerrain,
     visibilityLevel,
     scale
   };
 }
+
+/**
+ * Test terrain positioning for all your Kenilworth experiences
+ */
+export function testKenilworthExperiences(): void {
+  // Simulate being at the visitor center area
+  const userPosition: [number, number] = [-76.943, 38.9125];
+  
+  const experiences = [
+    { anchor: [-76.942076, 38.912485] as [number, number], type: 'mac', name: 'Ranger Mac' },
+    { anchor: [-76.942954, 38.912327] as [number, number], type: 'lotus', name: 'Lotus Experience' },
+    { anchor: [-76.944148, 38.9125] as [number, number], type: 'volunteers', name: 'Volunteers' },
+    { anchor: [-76.943534, 38.913195] as [number, number], type: 'helen_s', name: 'Helen Fowler' },
+    { anchor: [-76.944643, 38.913399] as [number, number], type: 'lily', name: 'Water Lily' },
+    { anchor: [-76.947519, 38.911934] as [number, number], type: 'cattail', name: 'Cattail Experience' }
+  ];
+  
+  console.log('🌊 Testing all Kenilworth AR experiences with terrain awareness');
+  console.log('═'.repeat(60));
+  
+  experiences.forEach(exp => {
+    testSingleExperienceWithTerrain(
+      userPosition,
+      exp.anchor,
+      exp.type,
+      exp.name,
+      1.0
+    );
+  });
+}
+
+// Export the terrain-enhanced positioning as the main function
+export { gpsToThreeJsPositionTerrain as gpsToThreeJsPositionWithTerrain };

@@ -12,7 +12,7 @@ import GeofenceDebugger from '../debug/GeofenceDebugger';
 import ExperienceModal from '../common/ExperienceModal';
 import MapWrapper from './MapWrapper';
 import { useGeofenceContext } from '../../context/GeofenceContext'; 
-import { testCoordinateConversion } from '../../utils/geoArUtils'
+import { testKenilworthExperiences } from '../../utils/geoArUtils'
 
 // Interface for the modal state
 interface ModalState {
@@ -188,7 +188,7 @@ const Map: React.FC = () => {
 
   useEffect(() => {
   // Test the coordinate conversion
-  testCoordinateConversion();
+  testKenilworthExperiences();
  
 }, []); // Run once when component mounts
 

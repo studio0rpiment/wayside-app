@@ -1,0 +1,65 @@
+General
+
+Name
+ElevationForAnchors_02062025
+Path
+/Users/kevinpatton/Documents/2a_DEVELOPER/__StudioOrpiment/wayside-ar/OpenDataDC_LiDAR_DSM_2020/ElevationForAnchors_02062025.tif
+Size
+1.15 MB
+Last modified
+June 2, 2025 12:18:22 PM EDT
+Provider
+gdal
+
+
+Information from provider
+
+Extent
+404350.0000000000000000,138041.0000000000000000 : 405083.0000000000000000,138453.0000000000000000
+Width
+733
+Height
+412
+Data type
+Float32 - Thirty two bit floating point 
+GDAL Driver Description
+GTiff
+GDAL Driver Metadata
+GeoTIFF
+Dataset Description
+/Users/kevinpatton/Documents/2a_DEVELOPER/__StudioOrpiment/wayside-ar/OpenDataDC_LiDAR_DSM_2020/ElevationForAnchors_02062025.tif
+Compression
+
+Band 1
+	•	RepresentationType=ATHEMATIC
+	•	STATISTICS_MAXIMUM=26.124000549316
+	•	STATISTICS_MEAN=2.3581656163774
+	•	STATISTICS_MINIMUM=-5
+	•	STATISTICS_STDDEV=5.2290964988778
+	•	STATISTICS_VALID_PERCENT=41.36
+	•	Scale: 1
+	•	Offset: 0
+More information
+	•	AREA_OR_POINT=Area
+Dimensions
+X: 733 Y: 412 Bands: 1
+Origin
+404350.0000000000000000,138453.0000000000000000
+Pixel Size
+1,-1
+
+
+Coordinate Reference System (CRS)
+
+Name
+EPSG:26985 - NAD83 / Maryland
+Units
+meters
+Type
+Projected
+Method
+Lambert Conformal Conic
+Celestial Body
+Earth
+Reference
+Static (relies on a datum which is plate-fixed)

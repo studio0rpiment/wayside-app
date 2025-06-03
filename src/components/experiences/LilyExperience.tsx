@@ -556,7 +556,7 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
       )}
 
       {/* Debug Panel for Lily Experience */}
-      {SHOW_DEBUG_PANEL &&  (
+      {/* {SHOW_DEBUG_PANEL &&  (
         <div style={{
           position: 'absolute',
           top: '180px',
@@ -570,13 +570,13 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
           pointerEvents: 'auto',
           fontFamily: 'monospace'
         }}>
-          {/* <div style={{ color: 'pink' }}>🌸 LILY DEBUG</div> */}
+         
           <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
           <div>Models: {modelsRef.current.length}/4 loaded</div>
           <div>Current: {stageNames[currentModelIndex]} (Stage {currentModelIndex + 1})</div>
           
         </div>
-      )}
+      )} */}
     </>
   );
 };

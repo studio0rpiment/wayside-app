@@ -1,6 +1,7 @@
 // mapRouteData.ts
 
 import { getAssetPath } from '../utils/assetPaths';
+import { getEnhancedAnchorPosition } from '../utils/geoArUtils';
 
 /**
  * Map route data with coordinates and SVG icon references
@@ -408,27 +409,28 @@ export const getArAnchorForPoint = (
   elevation: number;
   orientation: number;
   scale: number;
-  heightMapScale: number;
+  usedTerrain: boolean;
 } | null => {
   const point = getPointByName(pointId);
-  if (!point || !point.properties.arAnchor) return null;
+  if (!point || !point.properties.arAnchor || !userPosition) return null;
   
   const anchor = point.properties.arAnchor;
   
-  // If anchor is configured to snap to user and we have user position,
-  // use the user's position but keep the orientation
-  const position = anchor.snapToUser && userPosition 
-    ? userPosition 
-    : anchor.coordinates;
-  
-  // Apply height map scale to elevation
-  const scaledElevation = (anchor.elevation || 0) * (anchor.heightMapScale || 1.0);
+  // Use terrain-aware positioning
+  const result = getEnhancedAnchorPosition(
+    userPosition,
+    anchor.coordinates,
+    pointId, // Use pointId as experience type
+    anchor.heightMapScale || 1.0
+  );
   
   return {
-    position,
-    elevation: scaledElevation,
+    position: anchor.coordinates,
+    elevation: result.terrainElevation !== null 
+      ? result.terrainElevation + result.experienceOffset 
+      : anchor.elevation || 2.0,
     orientation: anchor.orientation || 0,
-    scale: anchor.scale || point.properties.iconScale || 1.0,
-    heightMapScale: anchor.heightMapScale || 1.0
+    scale: anchor.scale || 1.0,
+    usedTerrain: result.usedTerrain
   };
 };

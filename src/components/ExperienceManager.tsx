@@ -234,6 +234,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         anchorPosition={anchorPosition}
         anchorElevation={anchorElevation}
         coordinateScale={coordinateScale}
+        experienceType={experienceType}
         onArObjectPlaced={handleArObjectPlaced}
         onOrientationUpdate={handleOrientationUpdate}
         onSceneReady={handleArSceneReady} 
