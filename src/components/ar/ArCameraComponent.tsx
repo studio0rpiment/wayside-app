@@ -71,11 +71,19 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     beta: number;
     gamma: number;
   } | null>(null);
+
+
 //big red sphere for anchor testing
 const [showAnchorSphere, setShowAnchorSphere] = useState(true);
-// Add this with other state around line 65:
 const [sphereSize, setSphereSize] = useState(0.5); // Default 0.5m radius
 const anchorSphereRef = useRef<THREE.Mesh | null>(null);
+//add plane
+const anchorPlaneRef = useRef<THREE.Mesh | null>(null);
+const [showAnchorPlane, setShowAnchorPlane] = useState(true); // Start visible for testing
+
+
+
+
   // Debug/testing override state
   const [debugCollapsed, setDebugCollapsed] = useState(false);
 
@@ -141,23 +149,38 @@ const anchorSphereRef = useRef<THREE.Mesh | null>(null);
     sceneRef.current = scene;
 
   
-    const createAnchorSphere = () => {
+  const createAnchorSphere = () => {
     // Create big red sphere with variable size
-        const sphereGeometry = new THREE.SphereGeometry(sphereSize, 16, 16);
-        const sphereMaterial = new THREE.MeshBasicMaterial({ 
-          color: 0xff0000, 
-          transparent: true, 
-          opacity: 0.7,
-          wireframe: false 
-        });
-        
-        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        sphere.visible = true;
-        anchorSphereRef.current = sphere;
-        scene.add(sphere);
-        
-        console.log('🔴 Anchor sphere created with radius:', sphereSize);
-      };
+    const sphereGeometry = new THREE.SphereGeometry(sphereSize, 16, 16);
+    const sphereMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xff0000, 
+      transparent: true, 
+      opacity: 0.7,
+      wireframe: false 
+    });
+    
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere.visible = true;
+    anchorSphereRef.current = sphere;
+    scene.add(sphere);
+    
+    // Create slicing plane on X-Z plane (horizontal)
+    const planeGeometry = new THREE.PlaneGeometry(sphereSize * 4, sphereSize * 4); // Larger than sphere
+    const planeMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,     // Bright green for contrast
+      transparent: true,
+      opacity: 0.5,
+      side: THREE.DoubleSide // Visible from both sides
+    });
+    
+    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    plane.rotation.x = -Math.PI / 2; // Rotate to lie flat on X-Z plane
+    plane.visible = true;
+    anchorPlaneRef.current = plane;
+    scene.add(plane);
+    
+    console.log('🔴 Anchor sphere and 🟢 slicing plane created');
+  };
 
   
     
@@ -533,14 +556,15 @@ const handleTouchEnd = (event: TouchEvent) => {
   }, []); // Remove permission dependency to avoid loops
   
 
-  useEffect(() => {
+// updated with plane:
+useEffect(() => {
   if (anchorSphereRef.current && anchorSphereRef.current.visible) {
+    let targetPosition;
+    
     if (arTestingOverride) {
-      // Override mode - sphere at test position
-      anchorSphereRef.current.position.set(0, 0, -5);
+      targetPosition = new THREE.Vector3(0, 0, -5);
       console.log('🔴 Sphere updated to override position');
     } else {
-      // AR mode - sphere at anchor position
       if (userPosition && anchorPosition) {
         const result = gpsToThreeJsPositionWithTerrain(
           userPosition,
@@ -548,8 +572,18 @@ const handleTouchEnd = (event: TouchEvent) => {
           anchorElevation,
           coordinateScale
         );
-        anchorSphereRef.current.position.copy(result.position);
+        targetPosition = result.position;
         console.log('🔴 Sphere updated to AR anchor position');
+      }
+    }
+    
+    if (targetPosition) {
+      anchorSphereRef.current.position.copy(targetPosition);
+      
+      // Update plane position to match sphere
+      if (anchorPlaneRef.current && anchorPlaneRef.current.visible) {
+        anchorPlaneRef.current.position.copy(targetPosition);
+        console.log('🟢 Plane updated to match sphere position');
       }
     }
   }
