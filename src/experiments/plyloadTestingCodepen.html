@@ -1,0 +1,826 @@
+<head>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+            max-width: 300px;
+        }
+        
+        .controls h3 {
+            margin: 0 0 15px 0;
+            color: #4CAF50;
+        }
+        
+        .control-group {
+            margin-bottom: 12px;
+        }
+        
+        label {
+            display: inline-block;
+            width: 100px;
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        input[type="range"] {
+            width: 120px;
+        }
+        
+        input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        button {
+            padding: 8px 12px;
+            margin: 5px 2px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            color: #FFA500;
+            font-weight: bold;
+        }
+        
+        .loaded {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #ff4444;
+            font-weight: bold;
+        }
+        
+        .model-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            padding: 10px;
+            margin: 10px 0;
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .model-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+            font-size: 11px;
+        }
+        
+        .model-item:last-child {
+            border-bottom: none;
+        }
+        
+        .model-name {
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .model-info {
+            font-size: 10px;
+            color: #999;
+        }
+        
+        .scene-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 250px;
+        }
+        
+        .toggle-btn {
+            font-size: 10px;
+            padding: 4px 8px;
+            min-width: 60px;
+        }
+    </style>
+</head>
+<body>
+ <div class="controls">
+        <h3>Volunteers Point Cloud Loader</h3>
+        
+        <div class="control-group">
+            <label>Point Size:</label>
+            <input type="range" id="pointSize" min="0.1" max="10" step="0.1" value="2">
+            <span id="pointSizeValue">2.0</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Point Density:</label>
+            <input type="range" id="pointDensity" min="0.1" max="1.0" step="0.1" value="1.0">
+            <span id="pointDensityValue">100%</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Animation Speed:</label>
+            <input type="range" id="animationSpeed" min="0" max="5" step="0.1" value="1.0">
+            <span id="animationSpeedValue">1.0x</span>
+        </div>
+        
+        <div class="control-group">
+            <input type="checkbox" id="useVertexColors" checked>
+            <label for="useVertexColors" style="width: auto;">Vertex Colors</label>
+        </div>
+        
+        <div class="control-group">
+            <input type="checkbox" id="showBoundingBoxes">
+            <label for="showBoundingBoxes" style="width: auto;">Bounding Boxes</label>
+        </div>
+        
+        <div class="control-group">
+            <input type="checkbox" id="rotateModels" checked>
+            <label for="rotateModels" style="width: auto;">Z-up to Y-up Rotation</label>
+        </div>
+        
+        <div class="control-group">
+            <input type="checkbox" id="enableAnimation" checked>
+            <label for="enableAnimation" style="width: auto;">Enable Animation</label>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="loadAllModels()">Load All Volunteers</button>
+            <button onclick="clearAllModels()">Clear All</button>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="centerCamera()">Center View</button>
+            <button onclick="toggleWireframe()">Toggle Wireframe</button>
+        </div>
+        
+        <div class="model-list" id="modelList">
+            <div class="model-item">
+                <span class="model-name">volunteers1.ply</span>
+                <button class="toggle-btn" onclick="toggleModel(0)">Load</button>
+                <span class="model-info" id="info0">Ready</span>
+            </div>
+            <div class="model-item">
+                <span class="model-name">volunteers2.ply</span>
+                <button class="toggle-btn" onclick="toggleModel(1)">Load</button>
+                <span class="model-info" id="info1">Ready</span>
+            </div>
+            <div class="model-item">
+                <span class="model-name">volunteers3.ply</span>
+                <button class="toggle-btn" onclick="toggleModel(2)">Load</button>
+                <span class="model-info" id="info2">Ready</span>
+            </div>
+            <div class="model-item">
+                <span class="model-name">volunteers4.ply</span>
+                <button class="toggle-btn" onclick="toggleModel(3)">Load</button>
+                <span class="model-info" id="info3">Ready</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="scene-info">
+        <div><strong>Scene Information:</strong></div>
+        <div>Loaded Models: <span id="loadedCount">0</span></div>
+        <div>Total Vertices: <span id="totalVertices">0</span></div>
+        <div>Scene Bounds: <span id="sceneBounds">Calculating...</span></div>
+        <div><strong>Controls:</strong></div>
+        <div>• Mouse: Orbit camera</div>
+        <div>• Wheel: Zoom in/out</div>
+        <div>• Individual model loading</div>
+    </div>
+
+
+<script>
+
+import * as THREE from 'https://cdn.skypack.dev/three@0.136.0';
+import { OrbitControls } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/controls/OrbitControls.js';
+import { PLYLoader } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/loaders/PLYLoader.js';
+     
+
+let scene, camera, renderer, controls;
+        let loadedModels = [];
+        let originalGeometries = []; // Store original geometries for point sampling
+        let boundingBoxes = [];
+        let sceneBoundingBox = new THREE.Box3();
+        let wireframeMode = false;
+        let animationEnabled = true;
+        let clock = new THREE.Clock();
+
+        // Your PLY file URLs
+        const modelUrls = [
+            'https://res.cloudinary.com/djz8b4fhb/image/upload/v1748632849/volunteers1_mwz3y5.ply',
+            'https://res.cloudinary.com/djz8b4fhb/image/upload/v1748632850/volunteers2_gnp1yu.ply',
+            'https://res.cloudinary.com/djz8b4fhb/image/upload/v1748632849/volunteers3_mntva2.ply',
+            'https://res.cloudinary.com/djz8b4fhb/image/upload/v1748632850/volunteers4_odhgzy.ply'
+        ];
+
+        const modelNames = ['volunteers1', 'volunteers2', 'volunteers3', 'volunteers4'];
+
+        // Initialize the scene
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.set(50, 50, 50);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 1;
+            controls.maxDistance = 1000;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(100, 100, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            // Additional point lights for better illumination
+            const pointLight1 = new THREE.PointLight(0x4080ff, 0.3, 200);
+            pointLight1.position.set(50, 0, 50);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0xff8040, 0.3, 200);
+            pointLight2.position.set(-50, 0, -50);
+            scene.add(pointLight2);
+
+            // Grid helper
+            const gridHelper = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
+            scene.add(gridHelper);
+
+            // Coordinate axes
+            const axesHelper = new THREE.AxesHelper(20);
+            scene.add(axesHelper);
+
+            // Event listeners
+            setupEventListeners();
+        }
+
+        function setupEventListeners() {
+            // Point size control
+            const pointSizeSlider = document.getElementById('pointSize');
+            const pointSizeValue = document.getElementById('pointSizeValue');
+            
+            pointSizeSlider.addEventListener('input', (e) => {
+                const size = parseFloat(e.target.value);
+                pointSizeValue.textContent = size.toFixed(1);
+                updatePointSize(size);
+            });
+
+            // Point density control
+            const pointDensitySlider = document.getElementById('pointDensity');
+            const pointDensityValue = document.getElementById('pointDensityValue');
+            
+            pointDensitySlider.addEventListener('input', (e) => {
+                const density = parseFloat(e.target.value);
+                pointDensityValue.textContent = Math.round(density * 100) + '%';
+                updatePointDensity(density);
+            });
+
+            // Animation speed control
+            const animationSpeedSlider = document.getElementById('animationSpeed');
+            const animationSpeedValue = document.getElementById('animationSpeedValue');
+            
+            animationSpeedSlider.addEventListener('input', (e) => {
+                const speed = parseFloat(e.target.value);
+                animationSpeedValue.textContent = speed.toFixed(1) + 'x';
+            });
+
+            // Vertex colors toggle
+            document.getElementById('useVertexColors').addEventListener('change', (e) => {
+                updateVertexColors(e.target.checked);
+            });
+
+            // Bounding boxes toggle
+            document.getElementById('showBoundingBoxes').addEventListener('change', (e) => {
+                toggleBoundingBoxes(e.target.checked);
+            });
+
+            // Model rotation toggle
+            const rotateModelsElement = document.getElementById('rotateModels');
+            if (rotateModelsElement) {
+                rotateModelsElement.addEventListener('change', (e) => {
+                    toggleModelRotation(e.target.checked);
+                });
+            } else {
+                console.error('rotateModels element not found');
+            }
+
+            // Animation toggle
+            const enableAnimationElement = document.getElementById('enableAnimation');
+            if (enableAnimationElement) {
+                enableAnimationElement.addEventListener('change', (e) => {
+                    animationEnabled = e.target.checked;
+                });
+            }
+
+            // Window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        async function loadModel(index) {
+            const url = modelUrls[index];
+            const name = modelNames[index];
+            
+            // Update UI
+            updateModelStatus(index, 'Loading...', 'loading');
+            
+            try {
+                const loader = new PLYLoader();
+                
+                // Load the PLY file
+                const geometry = await new Promise((resolve, reject) => {
+                    loader.load(
+                        url,
+                        resolve,
+                        (progress) => {
+                            const percent = (progress.loaded / progress.total * 100).toFixed(1);
+                            updateModelStatus(index, `${percent}%`, 'loading');
+                        },
+                        reject
+                    );
+                });
+
+                // Store original geometry for point density control
+                originalGeometries[index] = geometry.clone();
+                
+                // Apply point density
+                const density = parseFloat(document.getElementById('pointDensity').value);
+                const sampledGeometry = sampleGeometry(geometry, density);
+                
+                // Create material
+                const useVertexColors = document.getElementById('useVertexColors').checked;
+                const pointSize = parseFloat(document.getElementById('pointSize').value);
+                
+                const material = new THREE.PointsMaterial({
+                    size: pointSize,
+                    vertexColors: useVertexColors && sampledGeometry.attributes.color,
+                    sizeAttenuation: true
+                });
+
+                // Set default color if no vertex colors
+                if (!useVertexColors || !sampledGeometry.attributes.color) {
+                    const colors = [0xff6b6b, 0x6bff6b, 0x6b6bff, 0xffff6b];
+                    material.color.setHex(colors[index % colors.length]);
+                }
+
+                // Create points mesh - preserve embedded coordinates but fix orientation
+                const pointCloud = new THREE.Points(sampledGeometry, material);
+                pointCloud.name = name;
+                pointCloud.userData = { originalIndex: index }; // Store index for animation
+                
+                // Apply rotation if enabled (Blender Z-up to Three.js Y-up)
+                const shouldRotate = document.getElementById('rotateModels').checked;
+                if (shouldRotate) {
+                    pointCloud.rotation.x = -Math.PI / 2;
+                }
+                
+                // Add to scene
+                scene.add(pointCloud);
+                loadedModels[index] = pointCloud;
+
+                // Create bounding box helper (but don't add to scene yet)
+                const boundingBox = new THREE.BoxHelper(pointCloud, 0x888888);
+                boundingBoxes[index] = boundingBox;
+
+                // Update scene bounding box
+                updateSceneBounds();
+
+                // Update UI
+                const vertexCount = sampledGeometry.attributes.position.count;
+                const originalCount = originalGeometries[index].attributes.position.count;
+                updateModelStatus(index, `${vertexCount}/${originalCount} pts`, 'loaded');
+                updateSceneInfo();
+
+                console.log(`Loaded ${name}: ${vertexCount}/${originalCount} vertices (${Math.round(density * 100)}% density)`);
+                
+                // Check if this model has colors
+                if (originalGeometries[index].attributes.color) {
+                    console.log(`${name} has vertex colors`);
+                } else {
+                    console.log(`${name} has no vertex colors, using material color`);
+                }
+
+                return pointCloud;
+
+            } catch (error) {
+                console.error(`Error loading ${name}:`, error);
+                updateModelStatus(index, 'Error', 'error');
+                throw error;
+            }
+        }
+
+        function sampleGeometry(geometry, density) {
+            if (density >= 1.0) return geometry;
+            
+            const positions = geometry.attributes.position;
+            const colors = geometry.attributes.color;
+            const normals = geometry.attributes.normal;
+            
+            const totalPoints = positions.count;
+            const sampleCount = Math.floor(totalPoints * density);
+            
+            // Create new geometry
+            const sampledGeometry = new THREE.BufferGeometry();
+            
+            // Sample positions
+            const sampledPositions = new Float32Array(sampleCount * 3);
+            const sampledColors = colors ? new Float32Array(sampleCount * 3) : null;
+            const sampledNormals = normals ? new Float32Array(sampleCount * 3) : null;
+            
+            // Random sampling with consistent distribution
+            const indices = [];
+            for (let i = 0; i < totalPoints; i++) indices.push(i);
+            
+            // Shuffle for random sampling
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+            
+            // Copy sampled data
+            for (let i = 0; i < sampleCount; i++) {
+                const idx = indices[i];
+                
+                // Positions
+                sampledPositions[i * 3] = positions.getX(idx);
+                sampledPositions[i * 3 + 1] = positions.getY(idx);
+                sampledPositions[i * 3 + 2] = positions.getZ(idx);
+                
+                // Colors
+                if (colors && sampledColors) {
+                    sampledColors[i * 3] = colors.getX(idx);
+                    sampledColors[i * 3 + 1] = colors.getY(idx);
+                    sampledColors[i * 3 + 2] = colors.getZ(idx);
+                }
+                
+                // Normals
+                if (normals && sampledNormals) {
+                    sampledNormals[i * 3] = normals.getX(idx);
+                    sampledNormals[i * 3 + 1] = normals.getY(idx);
+                    sampledNormals[i * 3 + 2] = normals.getZ(idx);
+                }
+            }
+            
+            sampledGeometry.setAttribute('position', new THREE.BufferAttribute(sampledPositions, 3));
+            if (sampledColors) {
+                sampledGeometry.setAttribute('color', new THREE.BufferAttribute(sampledColors, 3));
+            }
+            if (sampledNormals) {
+                sampledGeometry.setAttribute('normal', new THREE.BufferAttribute(sampledNormals, 3));
+            }
+            
+            return sampledGeometry;
+        }
+
+        function unloadModel(index) {
+            const model = loadedModels[index];
+            if (model) {
+                scene.remove(model);
+                if (model.geometry) model.geometry.dispose();
+                if (model.material) model.material.dispose();
+                loadedModels[index] = null;
+                
+                // Clean up original geometry
+                if (originalGeometries[index]) {
+                    originalGeometries[index].dispose();
+                    originalGeometries[index] = null;
+                }
+                
+                // Remove bounding box
+                if (boundingBoxes[index]) {
+                    scene.remove(boundingBoxes[index]);
+                    boundingBoxes[index] = null;
+                }
+                
+                updateSceneBounds();
+                updateModelStatus(index, 'Ready', '');
+                updateSceneInfo();
+            }
+        }
+
+        function toggleModel(index) {
+            const button = document.querySelector(`#modelList .model-item:nth-child(${index + 1}) .toggle-btn`);
+            
+            if (loadedModels[index]) {
+                // Unload
+                unloadModel(index);
+                button.textContent = 'Load';
+            } else {
+                // Load
+                button.textContent = 'Loading...';
+                button.disabled = true;
+                
+                loadModel(index).then(() => {
+                    button.textContent = 'Unload';
+                    button.disabled = false;
+                }).catch(() => {
+                    button.textContent = 'Load';
+                    button.disabled = false;
+                });
+            }
+        }
+
+        async function loadAllModels() {
+            const promises = [];
+            for (let i = 0; i < modelUrls.length; i++) {
+                if (!loadedModels[i]) {
+                    promises.push(loadModel(i));
+                }
+            }
+            
+            try {
+                await Promise.all(promises);
+                // Update all buttons
+                document.querySelectorAll('.toggle-btn').forEach((btn, index) => {
+                    if (loadedModels[index]) {
+                        btn.textContent = 'Unload';
+                        btn.disabled = false;
+                    }
+                });
+                centerCamera();
+            } catch (error) {
+                console.error('Error loading some models:', error);
+            }
+        }
+
+        function clearAllModels() {
+            for (let i = 0; i < loadedModels.length; i++) {
+                if (loadedModels[i]) {
+                    unloadModel(i);
+                    const button = document.querySelector(`#modelList .model-item:nth-child(${i + 1}) .toggle-btn`);
+                    button.textContent = 'Load';
+                    button.disabled = false;
+                }
+            }
+        }
+
+        function updatePointDensity(density) {
+            loadedModels.forEach((model, index) => {
+                if (model && originalGeometries[index]) {
+                    // Create new sampled geometry
+                    const sampledGeometry = sampleGeometry(originalGeometries[index], density);
+                    
+                    // Update the model's geometry
+                    model.geometry.dispose();
+                    model.geometry = sampledGeometry;
+                    
+                    // Update vertex colors if needed
+                    const useVertexColors = document.getElementById('useVertexColors').checked;
+                    model.material.vertexColors = useVertexColors && sampledGeometry.attributes.color;
+                    model.material.needsUpdate = true;
+                    
+                    // Update UI
+                    const vertexCount = sampledGeometry.attributes.position.count;
+                    const originalCount = originalGeometries[index].attributes.position.count;
+                    updateModelStatus(index, `${vertexCount}/${originalCount} pts`, 'loaded');
+                }
+            });
+            
+            updateSceneInfo();
+        }
+
+        function updatePointSize(size) {
+            loadedModels.forEach(model => {
+                if (model && model.material.size !== undefined) {
+                    model.material.size = size;
+                    model.material.needsUpdate = true;
+                }
+            });
+        }
+
+        function updateVertexColors(enabled) {
+            loadedModels.forEach((model, index) => {
+                if (model && model.material) {
+                    const hasColors = model.geometry.attributes.color;
+                    model.material.vertexColors = enabled && hasColors;
+                    model.material.needsUpdate = true;
+                    
+                    if (!enabled || !hasColors) {
+                        const colors = [0xff6b6b, 0x6bff6b, 0x6b6bff, 0xffff6b];
+                        model.material.color.setHex(colors[index % colors.length]);
+                    }
+                }
+            });
+        }
+
+        function toggleModelRotation(rotate) {
+            loadedModels.forEach(model => {
+                if (model) {
+                    if (rotate) {
+                        model.rotation.x = -Math.PI / 2;
+                    } else {
+                        model.rotation.x = 0;
+                    }
+                }
+            });
+            
+            // Update bounding boxes
+            updateSceneBounds();
+            updateSceneInfo();
+        }
+
+        function toggleBoundingBoxes(show) {
+            boundingBoxes.forEach(box => {
+                if (box) {
+                    if (show) {
+                        scene.add(box);
+                    } else {
+                        scene.remove(box);
+                    }
+                }
+            });
+        }
+
+        function toggleWireframe() {
+            wireframeMode = !wireframeMode;
+            loadedModels.forEach(model => {
+                if (model && model.material) {
+                    // For points, we can't use wireframe, but we can change the material type
+                    // This is more of a placeholder for if you want to add mesh rendering later
+                    console.log('Wireframe toggle - currently only affects point materials minimally');
+                }
+            });
+        }
+
+        function updateSceneBounds() {
+            sceneBoundingBox.makeEmpty();
+            
+            loadedModels.forEach(model => {
+                if (model) {
+                    model.geometry.computeBoundingBox();
+                    const modelBox = model.geometry.boundingBox.clone();
+                    // Apply model matrix to get world bounds
+                    modelBox.applyMatrix4(model.matrixWorld);
+                    sceneBoundingBox.union(modelBox);
+                }
+            });
+        }
+
+        function centerCamera() {
+            if (sceneBoundingBox.isEmpty()) return;
+            
+            const center = sceneBoundingBox.getCenter(new THREE.Vector3());
+            const size = sceneBoundingBox.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            // Position camera to see all models
+            const distance = maxDim * 2;
+            camera.position.set(
+                center.x + distance,
+                center.y + distance,
+                center.z + distance
+            );
+            
+            controls.target.copy(center);
+            controls.update();
+            
+            console.log('Camera centered on scene bounds:', {
+                center: center,
+                size: size,
+                distance: distance
+            });
+        }
+
+        function updateModelStatus(index, status, className) {
+            const infoElement = document.getElementById(`info${index}`);
+            infoElement.textContent = status;
+            infoElement.className = `model-info ${className}`;
+        }
+
+        function updateSceneInfo() {
+            const loadedCount = loadedModels.filter(m => m !== null).length;
+            const totalVertices = loadedModels.reduce((sum, model) => {
+                return sum + (model ? model.geometry.attributes.position.count : 0);
+            }, 0);
+            
+            document.getElementById('loadedCount').textContent = loadedCount;
+            document.getElementById('totalVertices').textContent = totalVertices.toLocaleString();
+            
+            if (!sceneBoundingBox.isEmpty()) {
+                const size = sceneBoundingBox.getSize(new THREE.Vector3());
+                document.getElementById('sceneBounds').textContent = 
+                    `${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)}`;
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update controls
+            controls.update();
+            
+            // Apply sin wave animation to loaded models
+            if (animationEnabled) {
+                const time = clock.getElapsedTime();
+                const animationSpeed = parseFloat(document.getElementById('animationSpeed').value);
+                
+                loadedModels.forEach((model, index) => {
+                    if (model && model.geometry && model.geometry.attributes.position) {
+                        const positions = model.geometry.attributes.position;
+                        const originalPositions = originalGeometries[index]?.attributes.position;
+                        
+                        if (originalPositions) {
+                            // Get current density to know which points we're using
+                            const density = parseFloat(document.getElementById('pointDensity').value);
+                            const currentCount = positions.count;
+                            const originalCount = originalPositions.count;
+                            
+                            // Create subtle sin wave movement
+                            for (let i = 0; i < currentCount; i++) {
+                                // Different frequency for each model and each point
+                                const modelOffset = index * 0.5;
+                                const pointOffset = i * 0.01;
+                                const waveTime = (time * animationSpeed + modelOffset + pointOffset);
+                                
+                                // Multiple sin waves for more organic movement
+                                const waveX = Math.sin(waveTime * 0.8) * 0.02;
+                                const waveY = Math.sin(waveTime * 1.2 + 1.0) * 0.01;
+                                const waveZ = Math.sin(waveTime * 0.6 + 2.0) * 0.01;
+                                
+                                // Apply the wave offset
+                                const originalX = positions.getX(i);
+                                const originalY = positions.getY(i);
+                                const originalZ = positions.getZ(i);
+                                
+                                positions.setX(i, originalX + waveX);
+                                positions.setY(i, originalY + waveY);
+                                positions.setZ(i, originalZ + waveZ);
+                            }
+                            
+                            positions.needsUpdate = true;
+                        }
+                    }
+                });
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // Make functions available globally
+        window.toggleModel = toggleModel;
+        window.loadAllModels = loadAllModels;
+        window.clearAllModels = clearAllModels;
+        window.centerCamera = centerCamera;
+        window.toggleWireframe = toggleWireframe;
+
+        // Initialize
+        init();
+        animate();
+</script>
+</body>

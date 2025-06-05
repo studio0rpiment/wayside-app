@@ -71,8 +71,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     beta: number;
     gamma: number;
   } | null>(null);
-
+//big red sphere for anchor testing
+const [showAnchorSphere, setShowAnchorSphere] = useState(true);
+// Add this with other state around line 65:
+const [sphereSize, setSphereSize] = useState(0.5); // Default 0.5m radius
+const anchorSphereRef = useRef<THREE.Mesh | null>(null);
   // Debug/testing override state
+  const [debugCollapsed, setDebugCollapsed] = useState(false);
+
   const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
     // Initialize from global if available, otherwise false
     return typeof (window as any).arTestingOverride === 'boolean'
@@ -133,6 +139,27 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     // Create scene
     const scene = new THREE.Scene();
     sceneRef.current = scene;
+
+  
+    const createAnchorSphere = () => {
+    // Create big red sphere with variable size
+        const sphereGeometry = new THREE.SphereGeometry(sphereSize, 16, 16);
+        const sphereMaterial = new THREE.MeshBasicMaterial({ 
+          color: 0xff0000, 
+          transparent: true, 
+          opacity: 0.7,
+          wireframe: false 
+        });
+        
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.visible = true;
+        anchorSphereRef.current = sphere;
+        scene.add(sphere);
+        
+        console.log('🔴 Anchor sphere created with radius:', sphereSize);
+      };
+
+  
     
     // Create camera with realistic FOV for mobile AR
     const camera = new THREE.PerspectiveCamera(
@@ -161,6 +188,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
+
+  
+      createAnchorSphere();
 
     if (onSceneReady) {
     onSceneReady(scene, camera);
@@ -208,10 +238,26 @@ const placeArObject = () => {
   console.log(`   Anchor elevation: ${result.terrainElevation?.toFixed(2)}m`);
   console.log(`   Using terrain data: ${result.usedTerrain ? 'Yes' : 'No (fallback)'}`);
   
-  // Pass the terrain-aware position to your AR object placement
-  if (onArObjectPlaced) {
-    onArObjectPlaced(result.position);
-  }
+      // Pass the terrain-aware position to your AR object placement
+      // In the placeArObject function, update the sphere positioning:
+      if (onArObjectPlaced) {
+        onArObjectPlaced(result.position);
+        
+        // Update anchor sphere position
+        if (anchorSphereRef.current) {
+          const currentOverride = (window as any).arTestingOverride ?? true;
+          
+          if (currentOverride) {
+            // In override mode, show sphere at the test position
+            anchorSphereRef.current.position.set(0, 0, -5);
+            console.log('🔴 Anchor sphere positioned at override location (0, 0, -5)');
+          } else {
+            // In AR mode, show sphere at the ACTUAL AR ANCHOR position
+            anchorSphereRef.current.position.copy(result.position); // This is the AR anchor
+            console.log('🔴 Anchor sphere positioned at AR anchor:', result.position);
+          }
+        }
+      }
 };
   
   // Handle device orientation events
@@ -357,9 +403,16 @@ const placeArObject = () => {
       // Start animation loop
       animate();
 
-        window.addEventListener('touchstart', handleTouchStart, { passive: false });
-        window.addEventListener('touchmove', handleTouchMove, { passive: false });
-        window.addEventListener('touchend', handleTouchEnd, { passive: false });
+      // Right before setIsInitialized(true)
+      if (canvasRef.current) {
+        canvasRef.current.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvasRef.current.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvasRef.current.addEventListener('touchend', handleTouchEnd, { passive: false });
+        console.log('✅ Touch events attached to canvas');
+      } else {
+        console.error('❌ Canvas ref is null, cannot attach touch events');
+      }
+            
       
       setIsInitialized(true);
       console.log('✅ AR Camera fully initialized');
@@ -369,49 +422,40 @@ const placeArObject = () => {
 
     // Add these touch handlers in ArCameraComponent
 // Updated touch handlers:
-const handleTouchStart = (event: TouchEvent) => {
-  if (event.touches.length === 1) {
-    // Single touch: store positions for rotation
-    touchStartY.current = event.touches[0].clientY;
-    lastTouchX.current = event.touches[0].clientX;
-    lastTouchY.current = event.touches[0].clientY;
-  } else if (event.touches.length === 2) {
-    // Two finger pinch: store initial distance
-    const touch1 = event.touches[0];
-    const touch2 = event.touches[1];
-    initialPinchDistance.current = Math.hypot(
-      touch2.clientX - touch1.clientX,
-      touch2.clientY - touch1.clientY
-    );
-  }
-  
-  // Multi-tap detection
-  const now = new Date().getTime();
-  const timeSince = now - lastTapTime.current;
-  
-  if (timeSince < doubleTapDelay && timeSince > 0) {
-    // This is a multi-tap - check if it's double or triple
-    const timeSinceFirst = now - (lastTapTime.current - doubleTapDelay);
-    
-    if (timeSinceFirst < doubleTapDelay * 2) {
-      // Triple tap: reset model
-      console.log('👆 Triple tap detected - reset');
-      if (onModelReset) {
-        onModelReset();
+    const handleTouchStart = (event: TouchEvent) => {
+      const now = new Date().getTime();
+      const timeSince = now - lastTapTime.current;
+
+      if (event.touches.length === 1) {
+        // Single touch: store positions for rotation
+        touchStartY.current = event.touches[0].clientY;
+        lastTouchX.current = event.touches[0].clientX;
+        lastTouchY.current = event.touches[0].clientY;
+      } else if (event.touches.length === 2) {
+        // Two finger pinch: store initial distance
+        const touch1 = event.touches[0];
+        const touch2 = event.touches[1];
+        initialPinchDistance.current = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
       }
-      lastTapTime.current = 0; // Reset to prevent further detection
-    } else {
-      // Double tap: next model
-      console.log('👆 Double tap detected - next model');
-      if (onSwipeUp) {
-        onSwipeUp();
+
+      // Multi-tap detection - SIMPLIFIED
+      if (timeSince < doubleTapDelay && timeSince > 0) {
+        // This is a double tap
+        console.log('👆 Double tap detected - reset');
+        if (onModelReset) {
+          onModelReset();
+          console.log('onModelReset called');
+        }
+        event.preventDefault();
+        lastTapTime.current = 0; // Reset to prevent further detection
+      } else {
+        // This is a single tap (or first tap)
+        lastTapTime.current = now;
       }
-    }
-    event.preventDefault();
-  }
-  
-  lastTapTime.current = now;
-};
+    };
 
 const handleTouchMove = (event: TouchEvent) => {
   if (event.touches.length === 1) {
@@ -457,6 +501,8 @@ const handleTouchEnd = (event: TouchEvent) => {
   console.log('👆 Touch ended');
   // Could add swipe detection here if needed
 };
+
+
     
     // Add resize listener
     window.addEventListener('resize', handleResize);
@@ -471,10 +517,12 @@ const handleTouchEnd = (event: TouchEvent) => {
       // Remove event listeners
       window.removeEventListener('deviceorientation', handleDeviceOrientation);
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      
+      if (canvasRef.current) {
+        canvasRef.current.removeEventListener('touchstart', handleTouchStart);
+        canvasRef.current.removeEventListener('touchmove', handleTouchMove);
+        canvasRef.current.removeEventListener('touchend', handleTouchEnd);
+      }
+            
       // Cleanup Three.js
       if (rendererRef.current) {
         rendererRef.current.dispose();
@@ -484,6 +532,29 @@ const handleTouchEnd = (event: TouchEvent) => {
     };
   }, []); // Remove permission dependency to avoid loops
   
+
+  useEffect(() => {
+  if (anchorSphereRef.current && anchorSphereRef.current.visible) {
+    if (arTestingOverride) {
+      // Override mode - sphere at test position
+      anchorSphereRef.current.position.set(0, 0, -5);
+      console.log('🔴 Sphere updated to override position');
+    } else {
+      // AR mode - sphere at anchor position
+      if (userPosition && anchorPosition) {
+        const result = gpsToThreeJsPositionWithTerrain(
+          userPosition,
+          anchorPosition,
+          anchorElevation,
+          coordinateScale
+        );
+        anchorSphereRef.current.position.copy(result.position);
+        console.log('🔴 Sphere updated to AR anchor position');
+      }
+    }
+  }
+}, [arTestingOverride, userPosition, anchorPosition, coordinateScale]);
+
   // Update AR object position when GPS coordinates change
   useEffect(() => {
     if (isInitialized) {
@@ -532,7 +603,7 @@ const handleTouchEnd = (event: TouchEvent) => {
           width: '100%',
           height: '100%',
           zIndex: 1002,
-          pointerEvents: 'none' // Allow touch events to pass through
+          pointerEvents: 'auto' 
         }}
       />
       
@@ -620,7 +691,23 @@ const handleTouchEnd = (event: TouchEvent) => {
                 pointerEvents: 'auto',
                 fontFamily: 'monospace'
               }}>
-                <div style={{ color: 'yellow' }}>🎥 AR CAMERA DEBUG</div> 
+               {/* Collapsible header */}
+             <div 
+                onClick={() => setDebugCollapsed(!debugCollapsed)}
+                style={{ 
+                  cursor: 'pointer', 
+                  userSelect: 'none',
+                  marginBottom: debugCollapsed ? '0' : '5px'
+                }}
+              >
+                <span style={{ fontSize: '14px', marginRight: '8px' }}>
+                  {debugCollapsed ? '▶' : '▼'}
+                </span>
+                <span style={{ color: 'yellow' }}>🎥 AR CAMERA DEBUG</span>
+              </div>
+
+               {!debugCollapsed && (
+              <div>    
 
                 {deviceOrientation ? (
                   <>
@@ -638,6 +725,56 @@ const handleTouchEnd = (event: TouchEvent) => {
                 <div>User: [{userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}]</div>
                 <div>Anchor: [{anchorPosition[0].toFixed(6)}, {anchorPosition[1].toFixed(6)}]</div>
                 <div>Elevation: {anchorElevation}m</div>
+
+               // Add this in the debug panel content (when !debugCollapsed):
+                <div style={{ marginTop: '5px' }}>
+                  <div style={{ color: 'yellow', fontSize: '10px' }}>🔴 ANCHOR SPHERE</div>
+                  
+                  <div 
+                    onClick={() => {
+                      setShowAnchorSphere(!showAnchorSphere);
+                      if (anchorSphereRef.current) {
+                        anchorSphereRef.current.visible = !showAnchorSphere;
+                        console.log('🔴 Anchor sphere:', !showAnchorSphere ? 'ON' : 'OFF');
+                      }
+                    }}
+                    style={{ 
+                      cursor: 'pointer', 
+                      userSelect: 'none', 
+                      padding: '2px 4px',
+                      backgroundColor: showAnchorSphere ? 'rgba(255, 0, 0, 0.3)' : 'rgba(100, 100, 100, 0.3)',
+                      borderRadius: '2px',
+                      fontSize: '9px',
+                      marginTop: '2px'
+                    }}
+                  >
+                    Sphere: {showAnchorSphere ? '✅ ON' : '❌ OFF'}
+                  </div>
+                  
+                  <div style={{ marginTop: '2px', fontSize: '9px' }}>
+                    <label>Size: {sphereSize.toFixed(1)}m</label>
+                    <input 
+                      type="range" 
+                      min="0.1" 
+                      max="2.0" 
+                      step="0.1" 
+                      value={sphereSize}
+                      onChange={(e) => {
+                        const newSize = parseFloat(e.target.value);
+                        setSphereSize(newSize);
+                        
+                        // Update existing sphere geometry
+                        if (anchorSphereRef.current) {
+                          const newGeometry = new THREE.SphereGeometry(newSize, 16, 16);
+                          anchorSphereRef.current.geometry.dispose();
+                          anchorSphereRef.current.geometry = newGeometry;
+                          console.log('🔴 Sphere size updated to:', newSize);
+                        }
+                      }}
+                      style={{ width: '80px', marginLeft: '5px' }}
+                    />
+                  </div>
+                </div>
 
                 <div 
                   onClick={() => {
@@ -902,8 +1039,14 @@ const handleTouchEnd = (event: TouchEvent) => {
                   >
                     Test Area Sample
                   </button>
+                  
                 </div>
+
+                </div>)}
+              
               </div>
+            
+              
             )}
                   
       {/* Loading indicator - show permission request instead of error */}

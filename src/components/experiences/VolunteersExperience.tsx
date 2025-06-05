@@ -2,11 +2,12 @@ import React, { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
 import { getAssetPath } from '../../utils/assetPaths';
 
-// Import these separately to avoid the Vite optimization issue
-import { GLTFLoader as GLTFLoaderModule } from 'three/examples/jsm/loaders/GLTFLoader.js';
+// Import PLYLoader separately to avoid Vite optimization issues
+import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const SHOW_DEBUG_PANEL = true;
+
 
 interface VolunteersExperienceProps {
   onClose: () => void;
@@ -36,15 +37,14 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   onSwipeDown
 }) => {
   // Refs for Three.js objects
-  const modelRef = useRef<THREE.Group | null>(null);
+  const modelRef = useRef<THREE.Points | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const initialScaleRef = useRef<number>(1);
   
-  // Animation-specific refs
-  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const clockRef = useRef<THREE.Clock>(new THREE.Clock());
-  const actionsRef = useRef<THREE.AnimationAction[]>([]);
+  // Store original geometry for density/size adjustments
+  const originalGeometryRef = useRef<THREE.BufferGeometry | null>(null);
   
   // Store initial camera position for reset
   const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
@@ -54,13 +54,18 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     return (window as any).arTestingOverride ?? true;
   });
 
-  // Animation state
-  const [hasAnimations, setHasAnimations] = useState(false);
+  // Point cloud state
+  const [hasPointCloud, setHasPointCloud] = useState(false);
+  const [pointCount, setPointCount] = useState(0);
 
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
 
-  // Listen for override changes - SAME AS ORIGINAL
+  // Point cloud configuration (fixed as requested)
+  const POINT_SIZE = 2; // Reduced from 1.0 - pixels can be very large
+  const POINT_DENSITY = 0.7;
+
+  // Listen for override changes
   useEffect(() => {
     const checkOverride = () => {
       const currentOverride = (window as any).arTestingOverride ?? true;
@@ -70,8 +75,8 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
         
         if (modelRef.current && isArMode && arPosition) {
           if (currentOverride) {
-            console.log('🎯 Setting override position (0.75, 0, -5)');
-            modelRef.current.position.set(0.75, 0, -5);
+            console.log('🎯 Setting override position (0, 0, -5)');
+            modelRef.current.position.set(0, 0, -5);
           } else {
             console.log('🎯 Setting anchor position:', arPosition);
             modelRef.current.position.copy(arPosition);
@@ -94,7 +99,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     return () => clearInterval(interval);
   }, [arTestingOverride, isArMode, arPosition]);
 
-  // *** FIXED: Register gesture handlers on mount, not in render ***
+  // Register gesture handlers on mount
   useEffect(() => {
     // Register rotation handler
     if (onModelRotate) {
@@ -112,6 +117,12 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
         if (modelRef.current) {
           const currentScale = modelRef.current.scale.x;
           const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
+         console.log('🔍 Scale handler called AFTER RESET:', {
+            scaleFactor,
+            currentScale: currentScale.toFixed(3),
+            newScale: newScale.toFixed(3),
+            timestamp: new Date().getTime()
+          });
           modelRef.current.scale.setScalar(newScale);
         }
       });
@@ -120,17 +131,31 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     // Register reset handler
     if (onModelReset) {
       onModelReset(() => {
+        console.log('🔄 RESET HANDLER CALLED - Starting reset...');
         if (modelRef.current) {
-          modelRef.current.rotation.set(0, 0, 0);
-          modelRef.current.scale.set(1, 1, 1);
+          // Reset rotation and scale
+          modelRef.current.rotation.set(-Math.PI / 2, 0, 0); // Keep Z-up to Y-up conversion
+          // Reset to initial calculated scale, not 1
+            const initialScale = initialScaleRef.current;
+            modelRef.current.scale.set(initialScale, initialScale, initialScale);
           
-          // Reset animations too
-          if (hasAnimations && actionsRef.current.length > 0) {
-            actionsRef.current.forEach(action => {
-              action.reset();
-              action.play();
-            });
+          // Reset position based on current mode
+          if (isArMode && arPosition) {
+            const currentOverride = (window as any).arTestingOverride ?? true;
+            
+            if (currentOverride) {
+              modelRef.current.position.set(0, 0, -5);
+              console.log('🔄 Reset: Volunteers positioned at override location');
+            } else {
+              modelRef.current.position.copy(arPosition);
+              console.log('🔄 Reset: Volunteers positioned at AR anchor location');
+            }
+          } else {
+            modelRef.current.position.set(0, 0, -3);
+            console.log('🔄 Reset: Volunteers positioned at standalone location');
           }
+          
+          console.log('🔄 Model reset completed - Scale is now:', modelRef.current.scale.x);
         }
       });
     }
@@ -138,20 +163,80 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     // Register swipe handlers
     if (onSwipeUp) {
       onSwipeUp(() => {
-        // For the portal concept, we don't want user controls
-        // But keeping this for future flexibility
         console.log('👆 Swipe up detected on Volunteers');
       });
     }
 
     if (onSwipeDown) {
       onSwipeDown(() => {
-        // For the portal concept, we don't want user controls
-        // But keeping this for future flexibility  
         console.log('👇 Swipe down detected on Volunteers');
       });
     }
-  }, []); // *** FIXED: Empty dependency array - register once on mount
+  }, []); // Empty dependency array - register once on mount
+
+  // Geometry sampling function (ported from CodePen)
+  const sampleGeometry = (geometry: THREE.BufferGeometry, density: number): THREE.BufferGeometry => {
+    if (density >= 1.0) return geometry;
+    
+    const positions = geometry.attributes.position;
+    const colors = geometry.attributes.color;
+    const normals = geometry.attributes.normal;
+    
+    const totalPoints = positions.count;
+    const sampleCount = Math.floor(totalPoints * density);
+    
+    // Create new geometry
+    const sampledGeometry = new THREE.BufferGeometry();
+    
+    // Sample positions
+    const sampledPositions = new Float32Array(sampleCount * 3);
+    const sampledColors = colors ? new Float32Array(sampleCount * 3) : null;
+    const sampledNormals = normals ? new Float32Array(sampleCount * 3) : null;
+    
+    // Random sampling with consistent distribution
+    const indices = [];
+    for (let i = 0; i < totalPoints; i++) indices.push(i);
+    
+    // Shuffle for random sampling
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    
+    // Copy sampled data
+    for (let i = 0; i < sampleCount; i++) {
+      const idx = indices[i];
+      
+      // Positions
+      sampledPositions[i * 3] = positions.getX(idx);
+      sampledPositions[i * 3 + 1] = positions.getY(idx);
+      sampledPositions[i * 3 + 2] = positions.getZ(idx);
+      
+      // Colors
+      if (colors && sampledColors) {
+        sampledColors[i * 3] = colors.getX(idx);
+        sampledColors[i * 3 + 1] = colors.getY(idx);
+        sampledColors[i * 3 + 2] = colors.getZ(idx);
+      }
+      
+      // Normals
+      if (normals && sampledNormals) {
+        sampledNormals[i * 3] = normals.getX(idx);
+        sampledNormals[i * 3 + 1] = normals.getY(idx);
+        sampledNormals[i * 3 + 2] = normals.getZ(idx);
+      }
+    }
+    
+    sampledGeometry.setAttribute('position', new THREE.BufferAttribute(sampledPositions, 3));
+    if (sampledColors) {
+      sampledGeometry.setAttribute('color', new THREE.BufferAttribute(sampledColors, 3));
+    }
+    if (sampledNormals) {
+      sampledGeometry.setAttribute('normal', new THREE.BufferAttribute(sampledNormals, 3));
+    }
+    
+    return sampledGeometry;
+  };
 
   // Main effect for model loading and scene setup
   useEffect(() => {
@@ -187,7 +272,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     instructions.style.fontFamily = 'var(--font-rigby)';
     instructions.style.fontWeight = '400';
     instructions.style.zIndex = '1002';
-    instructions.innerHTML = 'Explore the historic Volunteersintosh computer. Tap continue when ready.';
+    instructions.innerHTML = 'Explore the volunteers point cloud. Tap continue when ready.';
     container.appendChild(instructions);
 
     // Create continue button
@@ -270,7 +355,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     }
 
     // Create loader
-    const loader = new GLTFLoaderModule();
+    const loader = new PLYLoader();
     
     // Create loading indicator
     const loadingDiv = document.createElement('div');
@@ -283,125 +368,155 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     loadingDiv.style.padding = '20px';
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = 'Loading Volunteers Computer...';
+    loadingDiv.innerHTML = 'Loading Volunteers Point Cloud...';
     container.appendChild(loadingDiv);
 
-    // Load the model
-    const modelPath = getAssetPath('models/Volunteers.glb');
-    console.log('🎯 Loading Volunteers model:', modelPath);
+    // Load the PLY model
+    const modelPath = getAssetPath('models/volunteers.ply');
+    console.log('🎯 Loading Volunteers PLY model:', modelPath);
 
-    loader.load(
-      modelPath,
-      (gltf) => {
-        if (!isMounted) return;
+    // Fixed PLY loader.load function
+   // Optimized PLY loader using known Cloud Compare dimensions
+loader.load(
+  modelPath,
+  (geometry) => {
+    if (!isMounted) return;
 
-        const model = gltf.scene;
-        modelRef.current = model;
-        
-        // Center the model
-        const box = new THREE.Box3().setFromObject(model);
-        const center = box.getCenter(new THREE.Vector3());
-        model.position.x = -center.x;
-        model.position.y = -center.y;
-        model.position.z = -center.z;
-        
-        // Scale model appropriately
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z);
-        if (maxDim > 0) {
-          const scale = (isArMode ? 2 : 8) / maxDim;
-          model.scale.set(scale, scale, scale);
-        }
-        
-        // Position based on mode
-        if (isArMode && arPosition) {
-          const currentOverride = (window as any).arTestingOverride ?? true;
-          
-          if (currentOverride) {
-            model.position.set(0, 0, -5);
-            console.log('🎯 Volunteers positioned at TESTING override location:', model.position);
-          } else {
-            model.position.copy(arPosition);
-            console.log('🎯 Volunteers positioned at AR anchor location:', arPosition);
-          }
-        } else {
-          model.position.set(0, 0, -3);
-        }
-        
-        // Make all materials transparent
-        model.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(material => {
-                  material.transparent = true;
-                  material.opacity = 1.0;
-                  material.alphaTest = 0.5;
-                  material.side = THREE.DoubleSide;
-                });
-              } else {
-                child.material.transparent = true;
-                child.material.opacity = 1.0;
-                child.material.alphaTest = 0.5;
-                child.material.side = THREE.DoubleSide;
-              }
-            }
-          }
-        });
-        
-        // Animation Setup - Auto-play for portal effect
-        if (gltf.animations && gltf.animations.length > 0) {
-          console.log('🎬 Found', gltf.animations.length, 'animation(s) in Volunteers model');
-          
-          // Create animation mixer
-          const mixer = new THREE.AnimationMixer(model);
-          mixerRef.current = mixer;
-          
-          // Create actions for each animation clip
-          const actions: THREE.AnimationAction[] = [];
-          gltf.animations.forEach((clip, index) => {
-            console.log(`🎬 Setting up animation ${index}: "${clip.name}" (${clip.duration.toFixed(2)}s)`);
-            
-            const action = mixer.clipAction(clip);
-            
-            // Configure for portal effect - continuous looping
-            action.setLoop(THREE.LoopRepeat, Infinity); 
-            action.clampWhenFinished = true;
-            
-            // Start playing immediately - no user control needed
-            action.play();
-            
-            actions.push(action);
-          });
-          
-          actionsRef.current = actions;
-          setHasAnimations(true);
-          
-          console.log('✅ Volunteers animations initialized and auto-playing for portal effect');
-        } else {
-          console.log('ℹ️ No animations found in Volunteers model');
-          setHasAnimations(false);
-        }
-        
-        // Add model to scene
-        scene.add(model);
-        
-        // Remove loading indicator
-        container.removeChild(loadingDiv);
-        
-        console.log('✅ Volunteers model loaded successfully');
-      },
-      (xhr) => {
-        console.log(`Volunteers model ${(xhr.loaded / xhr.total) * 100}% loaded`);
-      },
-      (error) => {
-        console.error('❌ Error loading Volunteers model:', error);
-        if (container.contains(loadingDiv)) {
-          loadingDiv.innerHTML = 'Error loading Volunteers Model file may be missing';
-        }
+    console.log('📊 Original PLY loaded:', {
+      vertices: geometry.attributes.position.count,
+      hasColors: !!geometry.attributes.color,
+      hasNormals: !!geometry.attributes.normal
+    });
+
+    // Store original geometry
+    originalGeometryRef.current = geometry.clone();
+    
+    // Apply density sampling
+    const sampledGeometry = sampleGeometry(geometry, POINT_DENSITY);
+    const finalPointCount = sampledGeometry.attributes.position.count;
+    
+    console.log('📊 Sampled geometry:', {
+      originalPoints: geometry.attributes.position.count,
+      sampledPoints: finalPointCount,
+      density: POINT_DENSITY,
+      reduction: `${(100 - (finalPointCount / geometry.attributes.position.count) * 100).toFixed(1)}%`
+    });
+
+    // Create point material with simple fixed size
+    const material = new THREE.PointsMaterial({
+      size: 1.0, // Fixed size - scale will handle the visual sizing
+      sizeAttenuation: false, // Keep consistent size
+      vertexColors: !!sampledGeometry.attributes.color
+    });
+
+    // Set fallback color if no vertex colors
+    if (!sampledGeometry.attributes.color) {
+      material.color.setHex(0x6b6bff); // Blue fallback for volunteers
+      console.log('⚠️ No vertex colors found, using fallback color');
+    } else {
+      console.log('✅ Using embedded vertex colors from PLY');
+    }
+
+    // Create point cloud
+    const pointCloud = new THREE.Points(sampledGeometry, material);
+    modelRef.current = pointCloud;
+    
+    // Use known dimensions from Cloud Compare - NO expensive bounding box calculation
+    const knownMaxDim = 14.8577; // Y dimension from Cloud Compare
+    const knownCenter = new THREE.Vector3(-1.545095, -1.040582, 4.833244);
+    
+    console.log('📐 Using known model dimensions:', {
+      maxDim: knownMaxDim,
+      center: knownCenter
+    });
+
+    // Apply centering - move model so its center is at origin
+    pointCloud.position.x = -knownCenter.x;
+    pointCloud.position.y = -knownCenter.y;
+    pointCloud.position.z = -knownCenter.z;
+
+    // Calculate and apply scale using known max dimension
+    const scale = (isArMode ? 2 : 8) / knownMaxDim;
+    initialScaleRef.current = scale; // Store for reset function
+    pointCloud.scale.set(scale, scale, scale);
+    
+    console.log('🔧 Applied scale:', scale.toFixed(3));
+
+    // Apply Z-up to Y-up rotation (Blender to Three.js conversion)
+    pointCloud.rotation.x = -Math.PI / 2;
+
+    // Apply final positioning - ADD to the centered position, don't replace it
+    if (isArMode && arPosition) {
+      const currentOverride = (window as any).arTestingOverride ?? true;
+      
+      if (currentOverride) {
+        // Add override offset to centered position
+        pointCloud.position.add(new THREE.Vector3(0, 0, -5));
+        console.log('🎯 Volunteers positioned at TESTING override location');
+      } else {
+        // Add AR anchor offset to centered position  
+        pointCloud.position.add(arPosition);
+        console.log('🎯 Volunteers positioned at AR anchor location');
       }
-    );
-
+    } else {
+      // Add standalone offset to centered position
+      pointCloud.position.add(new THREE.Vector3(0, 0, -3));
+      console.log('🎯 Volunteers positioned at standalone location');
+    }
+    
+    // Add point cloud to scene
+    scene.add(pointCloud);
+    
+    // Update state
+    setHasPointCloud(true);
+    setPointCount(finalPointCount);
+    
+    // Remove loading indicator
+    if (container.contains(loadingDiv)) {
+      container.removeChild(loadingDiv);
+    }
+    
+    console.log('✅ Volunteers point cloud loaded successfully');
+    console.log('📊 Final model stats:', {
+      position: {
+        x: pointCloud.position.x.toFixed(3),
+        y: pointCloud.position.y.toFixed(3), 
+        z: pointCloud.position.z.toFixed(3)
+      },
+      rotation: {
+        x: pointCloud.rotation.x.toFixed(3),
+        y: pointCloud.rotation.y.toFixed(3),
+        z: pointCloud.rotation.z.toFixed(3)
+      },
+      scale: {
+        x: pointCloud.scale.x.toFixed(3),
+        y: pointCloud.scale.y.toFixed(3),
+        z: pointCloud.scale.z.toFixed(3)
+      },
+      pointCount: finalPointCount,
+      pointSize: material.size,
+      materialType: material.type
+    });
+  },
+  
+  // Progress callback
+  (xhr) => {
+    const percent = (xhr.loaded / xhr.total) * 100;
+    console.log(`📥 Volunteers PLY ${percent.toFixed(1)}% loaded`);
+    if (loadingDiv && container.contains(loadingDiv)) {
+      loadingDiv.innerHTML = `Loading Volunteers Point Cloud... ${percent.toFixed(0)}%`;
+    }
+  },
+  
+  // Error callback
+  (error) => {
+    console.error('❌ Error loading Volunteers PLY:', error);
+    if (container.contains(loadingDiv)) {
+      loadingDiv.innerHTML = 'Error loading Volunteers PLY file. File may be missing or invalid.';
+      loadingDiv.style.color = '#ff6666';
+    }
+  }
+);
     // Handle window resize
     const handleResize = () => {
       if (isMounted && camera && renderer) {
@@ -413,17 +528,11 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     
     window.addEventListener('resize', handleResize);
     
-    // Animation loop with mixer updates
+    // Animation loop (no model animations needed for point clouds)
     const animate = function () {
       if (!isMounted) return;
       
       requestAnimationFrame(animate);
-      
-      // Update animation mixer if it exists
-      if (mixerRef.current) {
-        const delta = clockRef.current.getDelta();
-        mixerRef.current.update(delta);
-      }
       
       if (controls) {
         controls.update();
@@ -442,17 +551,6 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
       
       window.removeEventListener('resize', handleResize);
       
-      // Stop and cleanup animations
-      if (mixerRef.current) {
-        actionsRef.current.forEach(action => {
-          action.stop();
-        });
-        mixerRef.current.stopAllAction();
-        mixerRef.current = null;
-      }
-      
-      actionsRef.current = [];
-      
       if (controls) {
         controls.dispose();
       }
@@ -461,11 +559,28 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
         renderer.dispose();
       }
       
+      // Clean up geometries
+      if (originalGeometryRef.current) {
+        originalGeometryRef.current.dispose();
+      }
+      
+      if (modelRef.current && modelRef.current.geometry) {
+        modelRef.current.geometry.dispose();
+      }
+      
+      if (modelRef.current && modelRef.current.material) {
+        if (Array.isArray(modelRef.current.material)) {
+          modelRef.current.material.forEach(material => material.dispose());
+        } else {
+          modelRef.current.material.dispose();
+        }
+      }
+      
       if (document.body.contains(container)) {
         document.body.removeChild(container);
       }
     };
-  }, [isArMode]); // *** FIXED: Only isArMode dependency
+  }, [isArMode]); // Only isArMode dependency
 
   return (
     <>
@@ -484,7 +599,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
           pointerEvents: 'auto',
           fontFamily: 'monospace'
         }}>
-          <div style={{ color: 'yellow' }}>🖥️ Volunteers PORTAL DEBUG</div>
+          <div style={{ color: 'yellow' }}>🖥️ Volunteers POINT CLOUD DEBUG</div>
           <div>Mode: {isArMode ? 'AR Portal' : 'Standalone'}</div>
           {arPosition && (
             <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
@@ -495,8 +610,11 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
             </div>
           )}
           <div>Scale: {coordinateScale}x</div>
-          <div style={{ color: hasAnimations ? 'lightgreen' : 'orange' }}>
-            Animations: {hasAnimations ? `🎬 Auto-Playing (${actionsRef.current.length})` : '❌ None'}
+          <div style={{ color: hasPointCloud ? 'lightgreen' : 'orange' }}>
+            Point Cloud: {hasPointCloud ? `✅ ${pointCount.toLocaleString()} pts` : '❌ None'}
+          </div>
+          <div style={{ color: 'lightblue', fontSize: '10px' }}>
+            Size: {POINT_SIZE}px | Density: {(POINT_DENSITY * 100).toFixed(0)}%
           </div>
           
           <div 
