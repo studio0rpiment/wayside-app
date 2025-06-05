@@ -33,3 +33,7 @@ Experience Types
 Point cloud animations (water rise, plant lifecycles, historical smoke)
 2D-to-3D photo conversions (historical moments)
 Interactive elements (touch controls for model manipulation)
+
+Terrain Awareness
+
+I have implimented a terrain awareness anchoring. I took the LIDAR 2022 Open DC data, created a heightmap, and then used that to calculate the hieght that the expereince or model houdl be viewed at. This is combined with estimating the users phone elevation based on location and device orientation.
