@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cattail Seasonal Morph - Growth Stages</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: monospace;
+            overflow: hidden;
+        canvas {
+            display: block;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            z-index: 100;
+            max-width: 300px;
+            border: 1px solid #333;
+        }
+        
+        .controls h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin-bottom: 8px;
+        }
+        
+        label {
+            display: inline-block;
+            width: 100px;
+            font-size: 12px;
+        }
+        
+        input[type="range"] {
+            width: 120px;
+        }
+        
+        input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        
+        button {
+            padding: 4px 8px;
+            margin: 2px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+            border: 1px solid #666;
+            font-size: 11px;
+            font-family: monospace;
+        }
+        
+        button:hover {
+            background: #555;
+        }
+        
+        button:disabled {
+            background: #222;
+            cursor: not-allowed;
+        }
+        
+        .season-info {
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #333;
+        }
+        
+        .current-season {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .season-desc {
+            font-size: 10px;
+        }
+        
+        .stage-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            margin: 8px 0;
+        }
+        
+        .stage-btn {
+            padding: 6px;
+            font-size: 10px;
+        }
+        
+        .stage-btn.active {
+            background: #555;
+            border-color: #888;
+        }
+        
+        .info-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            font-size: 11px;
+            max-width: 250px;
+            border: 1px solid #333;
+        }
+        
+        .value-display {
+            display: inline-block;
+            min-width: 40px;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            margin: 5px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #666;
+            transition: width 0.3s ease;
+        }
+    }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3>Cattail Seasonal Growth</h3>
+        
+        <div class="season-info">
+            <div class="current-season" id="currentSeason">Spring Growth</div>
+            <div class="season-desc" id="seasonDesc">Early shoots emerging from water</div>
+        </div>
+        
+        <div class="control-group">
+            <label>Season Progress:</label>
+            <input type="range" id="seasonProgress" min="0" max="1" step="0.01" value="0">
+            <span class="value-display" id="seasonProgressValue">0%</span>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="control-group">
+            <label>Point Size:</label>
+            <input type="range" id="pointSize" min="0.01" max="0.8" step="0.001" value="0.05">
+            <span class="value-display" id="pointSizeValue">0.05</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Point Density:</label>
+            <input type="range" id="pointDensity" min="0.1" max="1.0" step="0.05" value="1.0">
+            <span class="value-display" id="pointDensityValue">100%</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Animation Speed:</label>
+            <input type="range" id="animationSpeed" min="0" max="10" step="0.1" value="1.0">
+            <span class="value-display" id="animationSpeedValue">1.0x</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Transition Mode:</label>
+            <select id="transitionMode">
+                <option value="direct">Direct Interpolation</option>
+                <option value="bezier">Flowing Streams</option>
+                <option value="spawn">Spawn/Dissolve</option>
+               
+               
+                <option value="organic">Organic Growth</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <input type="checkbox" id="autoProgress" checked>
+            <label for="autoProgress" style="width: auto;">Auto Seasonal Cycle</label>
+        </div>
+        
+        <div class="control-group">
+            <input type="checkbox" id="enableBreathing" checked>
+            <label for="enableBreathing" style="width: auto;">Subtle Movement</label>
+        </div>
+        
+        <div class="stage-buttons">
+            <button class="stage-btn" onclick="jumpToStage(0)">Stage 1</button>
+            <button class="stage-btn" onclick="jumpToStage(1)">Stage 2</button>
+            <button class="stage-btn" onclick="jumpToStage(2)">Stage 3</button>
+            <button class="stage-btn" onclick="jumpToStage(3)">Stage 4</button>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="resetCycle()">Reset Cycle</button>
+            <button onclick="pausePlay()" id="pauseBtn">Pause</button>
+        </div>
+        <!-- SMOOTHING -->
+        <div class="control-group">
+            <label>Smoothing:</label>
+            <input type="range" id="smoothingFactor" min="0" max="5" step="0.1" value="1">
+            <span class="value-display" id="smoothingFactorValue">1</span>
+        </div>
+    </div>
+    
+    <div class="info-panel">
+        <div><strong>Growth Stage Information:</strong></div>
+        <div>Active Models: <span id="activeModels">Loading...</span></div>
+        <div>Total Vertices: <span id="totalVertices">0</span></div>
+        <div>Transition: <span id="transitionInfo">Initializing</span></div>
+        <div style="margin-top: 8px; font-size: 10px;">
+            <strong>Controls:</strong><br>
+            Mouse: Orbit camera<br>
+            Wheel: Zoom in/out<br>
+            Season slider: Manual control
+        </div>
+        
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
+
+        let scene, camera, renderer, controls;
+        let cattailGeometries = []; // Store geometries instead of meshes
+        let morphingPointCloud = null; // Single point cloud that morphs
+        let originalGeometries = []; // Store full original geometries
+        let particleVelocities = []; // For swarm behavior
+        let particlePhases = []; // For organic growth
+        let clock = new THREE.Clock();
+        let autoProgressEnabled = true;
+        let breathingEnabled = true;
+        let isPaused = false;
+        let transitionMode = 'direct';
+
+              // Add this smoothing function:
+        function smoothTransition(t) {
+            if (t <= 0) return 0;
+            if (t >= 1) return 1;
+            
+            // Get smoothing amount from slider (0 = no smoothing, 1 = full smoothing)
+            const smoothingAmount = parseFloat(document.getElementById('smoothingFactor').value);
+            
+            // Apply smoothing based on slider value
+            const smoothed = 0.5 * (1 - Math.cos(Math.PI * t));
+            
+            // Blend between raw and smoothed based on slider
+            return t + (smoothed - t) * smoothingAmount;
+        }
+
+        // Cattail growth stage URLs and info
+        const stageData = [
+            {
+                url: 'https://res.cloudinary.com/djz8b4fhb/image/upload/v1749068499/cattailStage_1_jnsmiw.ply',
+                name: 'Early Spring',
+                description: 'First shoots emerging from water',
+                color: 0x90EE90
+            },
+            {
+                url: 'https://res.cloudinary.com/djz8b4fhb/image/upload/v1749068499/cattailStage2_kf5iop.ply',
+                name: 'Late Spring', 
+                description: 'Growing taller, leaves developing',
+                color: 0x9ACD32
+            },
+            {
+                url: 'https://res.cloudinary.com/djz8b4fhb/image/upload/v1749068499/cattailStage3_ytnt4c.ply',
+                name: 'Summer',
+                description: 'Full height, flower spikes forming',
+                color: 0x228B22
+            },
+            {
+                url: 'https://res.cloudinary.com/djz8b4fhb/image/upload/v1749068499/cattailStage4_wvvme4.ply',
+                name: 'Fall Mature',
+                description: 'Fully mature with seed heads',
+                color: 0x8B4513
+            }
+        ];
+
+        // Initialize the scene
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a1a);
+            scene.fog = new THREE.Fog(0x0a0a1a, 50, 200);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(15, 10, 15);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 5, 0); // Focus on cattail height
+            controls.minDistance = 5;
+            controls.maxDistance = 50;
+
+            // Lighting setup for aquatic environment
+            const ambientLight = new THREE.AmbientLight(0x404080, 0.3);
+            scene.add(ambientLight);
+
+            // Sun light
+            const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            sunLight.position.set(20, 30, 10);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            scene.add(sunLight);
+
+            // Water reflection light
+            const waterLight = new THREE.PointLight(0x4080ff, 0.4, 100);
+            waterLight.position.set(0, -2, 0);
+            scene.add(waterLight);
+
+            // Create water plane
+            createWaterEnvironment();
+
+            // Setup event listeners
+            setupEventListeners();
+
+            // Load all cattail stages
+            loadAllStages();
+        }
+
+        function createWaterEnvironment() {
+            // Water surface
+            const waterGeometry = new THREE.PlaneGeometry(50, 50);
+            const waterMaterial = new THREE.MeshLambertMaterial({
+                color: 0x006994,
+                transparent: true,
+                opacity: 0.6
+            });
+            const water = new THREE.Mesh(waterGeometry, waterMaterial);
+            water.rotation.x = -Math.PI / 2;
+            water.position.y = 0;
+            scene.add(water);
+
+            // Grid helper at water level
+            const gridHelper = new THREE.GridHelper(30, 20, 0x333366, 0x222244);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+        }
+
+        function setupEventListeners() {
+            // Season progress control
+            const seasonSlider = document.getElementById('seasonProgress');
+            const seasonValue = document.getElementById('seasonProgressValue');
+            
+            seasonSlider.addEventListener('input', (e) => {
+                const progress = parseFloat(e.target.value);
+                seasonValue.textContent = Math.round(progress * 100) + '%';
+                updateSeasonalTransition(progress);
+                updateProgressBar(progress);
+            });
+
+            // Point size control
+            const pointSizeSlider = document.getElementById('pointSize');
+            const pointSizeValue = document.getElementById('pointSizeValue');
+            
+            pointSizeSlider.addEventListener('input', (e) => {
+                const size = parseFloat(e.target.value);
+                pointSizeValue.textContent = size.toFixed(1);
+                updatePointSize(size);
+            });
+
+            // Point density control
+            const pointDensitySlider = document.getElementById('pointDensity');
+            const pointDensityValue = document.getElementById('pointDensityValue');
+            
+            pointDensitySlider.addEventListener('input', (e) => {
+                const density = parseFloat(e.target.value);
+                pointDensityValue.textContent = Math.round(density * 100) + '%';
+                updatePointDensity(density);
+            });
+
+            const smoothingSlider = document.getElementById('smoothingFactor');
+            const smoothingValue = document.getElementById('smoothingFactorValue');
+
+            smoothingSlider.addEventListener('input', (e) => {
+                const smoothing = parseFloat(e.target.value);
+                smoothingValue.textContent = Math.round(smoothing);
+            });
+
+            // Animation speed control
+            const animationSpeedSlider = document.getElementById('animationSpeed');
+            const animationSpeedValue = document.getElementById('animationSpeedValue');
+            
+            animationSpeedSlider.addEventListener('input', (e) => {
+                const speed = parseFloat(e.target.value);
+                animationSpeedValue.textContent = speed.toFixed(1) + 'x';
+            });
+
+            // Auto progress toggle
+            document.getElementById('autoProgress').addEventListener('change', (e) => {
+                autoProgressEnabled = e.target.checked;
+            });
+
+            // Breathing animation toggle
+            document.getElementById('enableBreathing').addEventListener('change', (e) => {
+                breathingEnabled = e.target.checked;
+            });
+
+            // stagebuttons
+            document.querySelectorAll('.stage-btn').forEach((btn, index) => {
+                btn.addEventListener('click', () => jumpToStage(index));
+            });
+
+            document.querySelector('button[onclick="resetCycle()"]').addEventListener('click', resetCycle);
+            document.querySelector('button[onclick="pausePlay()"]').addEventListener('click', pausePlay);
+
+            
+            // Transition mode selector
+            document.getElementById('transitionMode').addEventListener('change', (e) => {
+                transitionMode = e.target.value;
+                // console.log(`Transition mode changed to: ${transitionMode}`);
+                // Re-initialize particle data for modes that need it (only if morphing cloud exists)
+                if (morphingPointCloud) {
+                    initializeParticleData();
+                }
+            });
+            // Window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+      async function loadAllStages() {
+                const loader = new PLYLoader();
+                
+                for (let i = 0; i < stageData.length; i++) {
+                    try {
+                        // console.log(`Loading cattail stage ${i + 1}...`);
+                        
+                        const geometry = await new Promise((resolve, reject) => {
+                            loader.load(stageData[i].url, resolve, undefined, reject);
+                        });
+
+
+                        // Store original geometry
+                        originalGeometries[i] = geometry.clone();
+                                    // console.log(`📦 Original geometry ${i + 1} stored`);
+
+
+                        const originalVertexCount = geometry.attributes.position.count;
+                        const hasColors = geometry.attributes.color ? true : false;
+                        
+                        // console.log(`=== STAGE ${i + 1} LOADED ===`);
+                        // console.log(`Original vertices: ${originalVertexCount.toLocaleString()}`);
+                        // console.log(`Has vertex colors: ${hasColors}`);
+                        // console.log(`Stage name: ${stageData[i].name}`);
+                        // console.log(`URL: ${stageData[i].url}`);
+                        
+                        // Apply point density and store processed geometry
+                        const density = parseFloat(document.getElementById('pointDensity').value);
+                        const sampledGeometry = sampleGeometry(geometry, density);
+                      
+
+                        cattailGeometries[i] = sampledGeometry;
+                                    // console.log(`🎯 Processed geometry ${i + 1} stored with ${sampledGeometry.attributes.position.count} vertices`);
+
+                        
+                        const finalVertexCount = sampledGeometry.attributes.position.count;
+                        // console.log(`Final rendered vertices: ${finalVertexCount.toLocaleString()}`);
+                        // console.log(`Density applied: ${Math.round(density * 100)}%`);
+                        // console.log(`=== END STAGE ${i + 1} ===\n`);
+                        
+                    } catch (error) {
+                         console.error(`❌ Error loading stage ${i + 1}:`, error);
+                        cattailGeometries[i] = null;
+                        originalGeometries[i] = null
+                    }
+                }
+                
+                // After all stages loaded, normalize vertex counts and create morphing data
+                normalizeStageVertexCounts();
+                createMorphingPointCloud();
+                updateInfoPanel();
+                // Start with first stage
+                updateSeasonalTransition(0);
+            }
+            
+            updateInfoPanel();
+            // Start with first stage visible
+            updateSeasonalTransition(0);
+        
+
+        function sampleGeometry(geometry, density, targetVertexCount = null) {
+            const positions = geometry.attributes.position;
+            const colors = geometry.attributes.color;
+            const totalPoints = positions.count;
+            
+            // If targetVertexCount is specified, use that for consistent vertex counts across stages
+            let sampleCount;
+            if (targetVertexCount) {
+                sampleCount = Math.min(targetVertexCount, totalPoints);
+                // console.log(`Sampling to match target count: ${sampleCount}/${totalPoints} points`);
+            } else {
+                const clampedDensity = Math.min(Math.max(density, 0), 1.0);
+                sampleCount = Math.floor(totalPoints * clampedDensity);
+                // console.log(`Sampling geometry: ${sampleCount}/${totalPoints} points (${Math.round(clampedDensity * 100)}% density)`);
+            }
+            
+            if (sampleCount >= totalPoints) {
+                // console.log('Using full geometry - no sampling needed');
+                return geometry.clone();
+            }
+            
+            const sampledGeometry = new THREE.BufferGeometry();
+            const sampledPositions = new Float32Array(sampleCount * 3);
+            const sampledColors = colors ? new Float32Array(sampleCount * 3) : null;
+            
+            // Sequential sampling to maintain consistency across stages
+            const step = totalPoints / sampleCount;
+            
+            for (let i = 0; i < sampleCount; i++) {
+                const idx = Math.floor(i * step);
+                
+                sampledPositions[i * 3] = positions.getX(idx);
+                sampledPositions[i * 3 + 1] = positions.getY(idx);
+                sampledPositions[i * 3 + 2] = positions.getZ(idx);
+                
+                if (colors && sampledColors) {
+                    sampledColors[i * 3] = colors.getX(idx);
+                    sampledColors[i * 3 + 1] = colors.getY(idx);
+                    sampledColors[i * 3 + 2] = colors.getZ(idx);
+                }
+            }
+            
+            sampledGeometry.setAttribute('position', new THREE.BufferAttribute(sampledPositions, 3));
+            if (sampledColors) {
+                sampledGeometry.setAttribute('color', new THREE.BufferAttribute(sampledColors, 3));
+            }
+            
+            // console.log(`Created sampled geometry with ${sampleCount} vertices using sequential sampling`);
+            return sampledGeometry;
+        }
+        function createMorphingPointCloud() {
+            if (cattailGeometries.length === 0 || !cattailGeometries[0]) {
+                console.error('No geometries loaded for morphing point cloud');
+                return;
+            }
+            
+            // Use first stage as base geometry - clone it to avoid modifying original
+            const baseGeometry = cattailGeometries[0].clone();
+            const pointSize = parseFloat(document.getElementById('pointSize').value);
+            
+            const material = new THREE.PointsMaterial({
+                size: pointSize,
+                vertexColors: baseGeometry.attributes.color ? true : false,
+                sizeAttenuation: true
+            });
+
+            // Set fallback color if no vertex colors
+            if (!baseGeometry.attributes.color) {
+                material.color.setHex(stageData[0].color);
+            }
+
+            morphingPointCloud = new THREE.Points(baseGeometry, material);
+            morphingPointCloud.name = 'morphing_cattail';
+            
+            // Apply coordinate system rotation (Blender Z-up to Three.js Y-up)
+            morphingPointCloud.rotation.x = -Math.PI / 2;
+            
+            scene.add(morphingPointCloud);  // THIS WAS MISSING!
+            
+            const vertexCount = baseGeometry.attributes.position.count;
+            // console.log(`Created morphing point cloud with ${vertexCount.toLocaleString()} vertices`);
+            // console.log('Each particle will morph between corresponding positions across growth stages');
+            
+            // Initialize particle data for special transition modes
+            initializeParticleData();
+        }
+
+        function initializeParticleData() {
+            if (!morphingPointCloud || !morphingPointCloud.geometry) {
+                console.warn('Cannot initialize particle data - no morphing point cloud exists');
+                return;
+            }
+            
+            const vertexCount = morphingPointCloud.geometry.attributes.position.count;
+            
+            // Initialize velocities for swarm behavior
+            particleVelocities = [];
+            for (let i = 0; i < vertexCount; i++) {
+                particleVelocities.push(new THREE.Vector3(0, 0, 0));
+            }
+            
+            // Initialize random phases for organic growth
+            particlePhases = [];
+            for (let i = 0; i < vertexCount; i++) {
+                particlePhases.push(Math.random() * Math.PI * 2);
+            }
+            
+            console.log(`Initialized particle data for ${vertexCount} particles`);
+        }
+
+        function smoothstep(edge0, edge1, x) {
+            const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+            return t * t * (3 - 2 * t);
+        }
+
+        function gaussianWeight(distance, sigma = 0.5) {
+            return Math.exp(-(distance * distance) / (2 * sigma * sigma));
+        }
+           
+     
+            // 6. Organic Growth: P(t) = P₀ + t(P₁ - P₀) + amplitude × sin(2πft + φᵢ) × N̂
+            function applyOrganicGrowth(currentStageIndex, nextStageIndex, blendFactor, isFullStage) {
+                const currentGeometry = cattailGeometries[currentStageIndex];
+                const nextGeometry = cattailGeometries[nextStageIndex];
+                const smoothedBlendFactor = smoothTransition(blendFactor);
+
+                
+                if (!currentGeometry || !nextGeometry) return;
+
+                if (isFullStage || currentStageIndex === nextStageIndex) {
+                const morphedGeometry = morphingPointCloud.geometry;
+                const positions = morphedGeometry.attributes.position;
+                const colors = morphedGeometry.attributes.color;
+                
+                const sourcePositions = currentGeometry.attributes.position;
+                const sourceColors = currentGeometry.attributes.color;
+                
+                // Copy positions and colors directly
+                for (let i = 0; i < positions.count; i++) {
+                    positions.setXYZ(i, sourcePositions.getX(i), sourcePositions.getY(i), sourcePositions.getZ(i));
+                    if (colors && sourceColors) {
+                        colors.setXYZ(i, sourceColors.getX(i), sourceColors.getY(i), sourceColors.getZ(i));
+                    }
+                }
+                
+                positions.needsUpdate = true;
+                if (colors) colors.needsUpdate = true;
+                return;
+            }
+                
+                const morphedGeometry = morphingPointCloud.geometry;
+                const positions = morphedGeometry.attributes.position;
+                const colors = morphedGeometry.attributes.color;
+                
+                const currentPositions = currentGeometry.attributes.position;
+                const nextPositions = nextGeometry.attributes.position;
+                const currentColors = currentGeometry.attributes.color;
+                const nextColors = nextGeometry.attributes.color;
+                
+                const vertexCount = Math.min(currentPositions.count, nextPositions.count, positions.count);
+                
+                const time = clock.getElapsedTime();
+                const frequency = 0.5;
+                const amplitude = 0.1 * (1 + smoothedBlendFactor); // Increase amplitude as growth progresses
+                const growthScale = 1 + smoothedBlendFactor * 0.2; // Slight scaling during growth
+                
+                for (let i = 0; i < vertexCount; i++) {
+                    const currentX = currentPositions.getX(i);
+                    const currentY = currentPositions.getY(i);
+                    const currentZ = currentPositions.getZ(i);
+                    
+                    const nextX = nextPositions.getX(i);
+                    const nextY = nextPositions.getY(i);
+                    const nextZ = nextPositions.getZ(i);
+                    
+                    // Base interpolation
+                    const baseX = currentX + (nextX - currentX) * smoothedBlendFactor;
+                    const baseY = currentY + (nextY - currentY) * smoothedBlendFactor;
+                    const baseZ = currentZ + (nextZ - currentZ) * smoothedBlendFactor;
+                    
+                    // Organic oscillation using particle-specific phase
+                    const phase = particlePhases[i] || 0;
+                    const oscillation = Math.sin(2 * Math.PI * frequency * time + phase);
+                    
+                  // Create random but consistent 3D movement directions for each particle
+                   
+                    const perpX = Math.sin(phase) * Math.cos(phase * 1.3);
+                    const perpY = Math.cos(phase) * Math.sin(phase * 0.7);
+                    const perpZ = Math.sin(phase * 1.7) * Math.cos(phase * 2.1);
+
+                    // Multiple oscillation frequencies for more organic feel
+                    const oscillationX = Math.sin(2 * Math.PI * frequency * time + phase);
+                    const oscillationY = Math.sin(2 * Math.PI * frequency * 1.3 * time + phase * 1.5);
+                    const oscillationZ = Math.sin(2 * Math.PI * frequency * 0.8 * time + phase * 2.1);
+
+                    
+                    // Apply organic movement
+                    // Apply organic movement with 3D cloud-like oscillation
+                    const organicX = (baseX + perpX * amplitude * oscillationX) * growthScale;
+                    const organicY = (baseY + perpY * amplitude * oscillationY) * growthScale;
+                    const organicZ = (baseZ + perpZ * amplitude * oscillationZ) * growthScale;
+                    
+                    positions.setXYZ(i, organicX, organicY, organicZ);
+                    
+                    // Color interpolation with seasonal temperature shift
+                    if (colors && currentColors && nextColors) {
+                        const currentR = currentColors.getX(i);
+                        const currentG = currentColors.getY(i);
+                        const currentB = currentColors.getZ(i);
+                        
+                        const nextR = nextColors.getX(i);
+                        const nextG = nextColors.getY(i);
+                        const nextB = nextColors.getZ(i);
+                        
+                        // Add seasonal color temperature shift
+                        const temperatureShift = smoothedBlendFactor * 0.1; // Warmer colors as seasons progress
+                        
+                        const morphedR = Math.min(1, (currentR + (nextR - currentR) * smoothedBlendFactor) + temperatureShift);
+                        const morphedG = currentG + (nextG - currentG) * smoothedBlendFactor;
+                        const morphedB = Math.max(0, (currentB + (nextB - currentB) * smoothedBlendFactor) - temperatureShift);
+                        
+                        colors.setXYZ(i, morphedR, morphedG, morphedB);
+                    }
+                }
+                
+                positions.needsUpdate = true;
+                if (colors) colors.needsUpdate = true;
+            }
+
+            function normalizeStageVertexCounts() {
+                console.log('\n=== NORMALIZING VERTEX COUNTS ACROSS STAGES ===');
+                
+                // Find the minimum vertex count across all loaded stages
+                let minVertexCount = Infinity;
+                cattailGeometries.forEach((geometry, index) => {
+                    if (geometry) {
+                        const count = geometry.attributes.position.count;
+                        minVertexCount = Math.min(minVertexCount, count);
+                      //  console.log(`Stage ${index + 1}: ${count.toLocaleString()} vertices`);
+                    }
+                });
+                
+                //console.log(`Target vertex count for all stages: ${minVertexCount.toLocaleString()}`);
+                
+                // Resample all stages to have the same vertex count
+                const density = parseFloat(document.getElementById('pointDensity').value);
+                for (let i = 0; i < originalGeometries.length; i++) {
+                    if (originalGeometries[i]) {
+                        // Use target vertex count to ensure all stages have same number of particles
+                        const targetCount = Math.floor(minVertexCount * density);
+                        const normalizedGeometry = sampleGeometry(originalGeometries[i], density, targetCount);
+                        
+                        if (cattailGeometries[i]) {
+                            cattailGeometries[i].dispose();
+                        }
+                        cattailGeometries[i] = normalizedGeometry;
+                        
+                     //   console.log(`Stage ${i + 1} normalized to: ${normalizedGeometry.attributes.position.count.toLocaleString()} vertices`);
+                    }
+                }
+                
+               // console.log('=== NORMALIZATION COMPLETE ===\n');
+            }
+
+
+        function updateSeasonalTransition(progress) {
+                    if (!morphingPointCloud || cattailGeometries.length === 0) return;
+
+        
+            
+            const stageInfo = getStageFromProgress(progress);
+            const currentStageIndex = stageInfo.currentStage;
+            const nextStageIndex = stageInfo.nextStage;
+            const blendFactor = stageInfo.blendFactor;
+            
+               // console.log(`Progress: ${progress.toFixed(3)}, Current: ${currentStageIndex}, Next: ${nextStageIndex}, Blend: ${blendFactor.toFixed(3)}`);
+
+                // And check if stage 4 geometry exists:
+                if (currentStageIndex === 3 || nextStageIndex === 3) {
+                  //  console.log('Stage 4 geometry exists:', cattailGeometries[3] ? 'YES' : 'NO');
+                    if (cattailGeometries[3]) {
+                       // console.log('Stage 4 vertex count:', cattailGeometries[3].attributes.position.count);
+                    }
+                }
+            if (!morphingPointCloud || cattailGeometries.length === 0) return;
+            // Apply the selected transition mode
+
+            switch (transitionMode) {
+                case 'direct':
+                    applyDirectInterpolation(currentStageIndex, nextStageIndex, blendFactor);
+                    break;
+                case 'bezier':
+                    applyBezierFlow(currentStageIndex, nextStageIndex, blendFactor);
+                    break;
+                case 'spawn':
+                    applySpawnDissolve(currentStageIndex, nextStageIndex, blendFactor);
+                    break;
+             
+             
+                case 'organic':
+                    applyOrganicGrowth(currentStageIndex, nextStageIndex, blendFactor);
+                    break;
+                default:
+                    applyDirectInterpolation(currentStageIndex, nextStageIndex, blendFactor);
+            }  
+
+            // console.log(`Switch statement completed`);
+
+          function getStageFromProgress(progress) {
+                // Clamp progress to [0, 1] range
+                progress = Math.max(0, Math.min(1, progress));
+                
+                // Equal timing for all 4 transitions: 1→2, 2→3, 3→4, 4→1
+                const thresholds = [0, 0.25, 0.5, 0.75, 1.0];
+                
+                // Handle the wrap-around transition (stage 4 → 1) 
+                if (progress >= 0.75) {
+                    const rawProgress = (progress - 0.75) / 0.25;
+                    const smoothedProgress = smoothTransition(rawProgress); // Apply smoothing
+                    return {
+                        currentStage: 3,  // Stage 4 (index 3)
+                        nextStage: 0,     // Stage 1 (index 0) - WRAP AROUND!
+                        blendFactor: smoothedProgress,
+                        isFullStage: false
+                    };
+                }
+                
+                // Handle stages 1→2, 2→3, 3→4 transitions
+                for (let i = 0; i < 3; i++) {  // Only handle first 3 transitions
+                    if (progress >= thresholds[i] && progress < thresholds[i + 1]) {
+                        const rawProgress = (progress - thresholds[i]) / (thresholds[i + 1] - thresholds[i]);
+                        const smoothedProgress = smoothTransition(rawProgress); // Apply smoothing
+                        return {
+                            currentStage: i,
+                            nextStage: i + 1,
+                            blendFactor: smoothedProgress,
+                            isFullStage: false
+                        };
+                    }
+                }
+                
+                // Fallback
+                return { currentStage: 0, nextStage: 1, blendFactor: 0, isFullStage: false };
+            }
+
+      
+
+            //console.log(`🎯 About to call updateSeasonInfo with: currentStageIndex=${currentStageIndex}, blendFactor=${blendFactor}`);
+                updateSeasonInfo(currentStageIndex, blendFactor);
+              //  console.log(`✅ updateSeasonInfo completed`);
+                                        
+            // Update UI information
+            updateSeasonInfo(currentStageIndex, blendFactor);
+            updateStageButtons(currentStageIndex);
+        }
+
+        // 1. Direct Interpolation: P(t) = P₀ + t(P₁ - P₀)
+        function applyDirectInterpolation(currentStageIndex, nextStageIndex, blendFactor, isFullStage) {
+
+             //   console.log(`🔥 applyDirectInterpolation CALLED: Current=${currentStageIndex}, Next=${nextStageIndex}, Blend=${blendFactor.toFixed(3)}`);
+
+            const currentGeometry = cattailGeometries[currentStageIndex];
+            const nextGeometry = cattailGeometries[nextStageIndex];
+            
+             if (!currentGeometry || !nextGeometry) {
+              //  console.log(`❌ Missing geometry: Current=${currentGeometry ? 'OK' : 'MISSING'}, Next=${nextGeometry ? 'OK' : 'MISSING'}`);
+                return;
+            }
+               // console.log(`✅ Geometries found, proceeding with interpolation`);
+
+            if (isFullStage || currentStageIndex === nextStageIndex) {
+                const morphedGeometry = morphingPointCloud.geometry;
+                const positions = morphedGeometry.attributes.position;
+                const colors = morphedGeometry.attributes.color;
+                
+                const sourcePositions = currentGeometry.attributes.position;
+                const sourceColors = currentGeometry.attributes.color;
+                
+                // Copy positions and colors directly
+                for (let i = 0; i < positions.count; i++) {
+                    positions.setXYZ(i, sourcePositions.getX(i), sourcePositions.getY(i), sourcePositions.getZ(i));
+                    if (colors && sourceColors) {
+                        colors.setXYZ(i, sourceColors.getX(i), sourceColors.getY(i), sourceColors.getZ(i));
+                    }
+                }
+                
+                positions.needsUpdate = true;
+                if (colors) colors.needsUpdate = true;
+                return;
+            }
+            
+            const morphedGeometry = morphingPointCloud.geometry;
+            const positions = morphedGeometry.attributes.position;
+            const colors = morphedGeometry.attributes.color;
+            
+            const currentPositions = currentGeometry.attributes.position;
+            const nextPositions = nextGeometry.attributes.position;
+            const currentColors = currentGeometry.attributes.color;
+            const nextColors = nextGeometry.attributes.color;
+            
+            const vertexCount = Math.min(currentPositions.count, nextPositions.count, positions.count);
+            
+            for (let i = 0; i < vertexCount; i++) {
+                // Linear interpolation
+                const currentX = currentPositions.getX(i);
+                const currentY = currentPositions.getY(i);
+                const currentZ = currentPositions.getZ(i);
+                
+                const nextX = nextPositions.getX(i);
+                const nextY = nextPositions.getY(i);
+                const nextZ = nextPositions.getZ(i);
+                
+                const morphedX = currentX + (nextX - currentX) * blendFactor;
+                const morphedY = currentY + (nextY - currentY) * blendFactor;
+                const morphedZ = currentZ + (nextZ - currentZ) * blendFactor;
+                
+                positions.setXYZ(i, morphedX, morphedY, morphedZ);
+                
+                // Color interpolation
+                if (colors && currentColors && nextColors) {
+                    const currentR = currentColors.getX(i);
+                    const currentG = currentColors.getY(i);
+                    const currentB = currentColors.getZ(i);
+                    
+                    const nextR = nextColors.getX(i);
+                    const nextG = nextColors.getY(i);
+                    const nextB = nextColors.getZ(i);
+                    
+                    const morphedR = currentR + (nextR - currentR) * blendFactor;
+                    const morphedG = currentG + (nextG - currentG) * blendFactor;
+                    const morphedB = currentB + (nextB - currentB) * blendFactor;
+                    
+                    colors.setXYZ(i, morphedR, morphedG, morphedB);
+                }
+            }
+            
+            positions.needsUpdate = true;
+            if (colors) colors.needsUpdate = true;
+        }
+
+        // 2. Bezier Flow: P(t) = (1-t)³P₀ + 3(1-t)²t·C + 3(1-t)t²·C + t³P₁
+      function applyBezierFlow(currentStageIndex, nextStageIndex, blendFactor) {
+            const currentGeometry = cattailGeometries[currentStageIndex];
+            const nextGeometry = cattailGeometries[nextStageIndex];
+            
+            if (!currentGeometry || !nextGeometry) return;
+            
+            const morphedGeometry = morphingPointCloud.geometry;
+            const positions = morphedGeometry.attributes.position;
+            const colors = morphedGeometry.attributes.color;
+            
+            const currentPositions = currentGeometry.attributes.position;
+            const nextPositions = nextGeometry.attributes.position;
+            const currentColors = currentGeometry.attributes.color;
+            const nextColors = nextGeometry.attributes.color;
+            
+            const vertexCount = Math.min(currentPositions.count, nextPositions.count, positions.count);
+            
+            for (let i = 0; i < vertexCount; i++) {
+                const currentX = currentPositions.getX(i);
+                const currentY = currentPositions.getY(i);
+                const currentZ = currentPositions.getZ(i);
+                
+                const nextX = nextPositions.getX(i);
+                const nextY = nextPositions.getY(i);
+                const nextZ = nextPositions.getZ(i);
+                
+                // Keep original control point calculation for each transition
+                const controlX = (currentX + nextX) / 2;
+                const controlY = Math.max(currentY, nextY) + 2; // Arc upward
+                const controlZ = (currentZ + nextZ) / 2;
+                
+                // Calculate particle's phase offset for wave progression
+                const currentHeight = currentY;
+                const heightNormalized = Math.max(0, Math.min(1, (currentHeight + 5) / 10)); // Normalize height
+                const particlePhase = heightNormalized * 0.4; // Higher particles lead by up to 40% of transition
+                
+                // Apply phase offset to blend factor for this particle
+                const rawParticleBlend = Math.max(0, Math.min(1, blendFactor + particlePhase - 0.2));
+                const particleBlendFactor = smoothTransition(rawParticleBlend);
+
+                
+                // Cubic Bezier interpolation with particle's individual timing
+                const t = particleBlendFactor;
+                const t2 = t * t;
+                const t3 = t2 * t;
+                const mt = 1 - t;
+                const mt2 = mt * mt;
+                const mt3 = mt2 * mt;
+                
+                const morphedX = mt3 * currentX + 3 * mt2 * t * controlX + 3 * mt * t2 * controlX + t3 * nextX;
+                const morphedY = mt3 * currentY + 3 * mt2 * t * controlY + 3 * mt * t2 * controlY + t3 * nextY;
+                const morphedZ = mt3 * currentZ + 3 * mt2 * t * controlZ + 3 * mt * t2 * controlZ + t3 * nextZ;
+                
+                positions.setXYZ(i, morphedX, morphedY, morphedZ);
+                
+                // Color interpolation with same particle timing
+                if (colors && currentColors && nextColors) {
+                    const currentR = currentColors.getX(i);
+                    const currentG = currentColors.getY(i);
+                    const currentB = currentColors.getZ(i);
+                    
+                    const nextR = nextColors.getX(i);
+                    const nextG = nextColors.getY(i);
+                    const nextB = nextColors.getZ(i);
+                    
+                    const morphedR = currentR + (nextR - currentR) * particleBlendFactor;
+                    const morphedG = currentG + (nextG - currentG) * particleBlendFactor;
+                    const morphedB = currentB + (nextB - currentB) * particleBlendFactor;
+                    
+                    colors.setXYZ(i, morphedR, morphedG, morphedB);
+                }
+            }
+            
+            positions.needsUpdate = true;
+            if (colors) colors.needsUpdate = true;
+        }
+        // 3. Spawn/Dissolve: Opacity₀(t) = 1 - smoothstep(0, 0.6, t), Opacity₁(t) = smoothstep(0.4, 1, t)
+        function applySpawnDissolve(currentStageIndex, nextStageIndex, blendFactor, isFullStage) {
+            const currentGeometry = cattailGeometries[currentStageIndex];
+            const nextGeometry = cattailGeometries[nextStageIndex];
+            
+            if (!currentGeometry || !nextGeometry) return;
+
+            if (isFullStage || currentStageIndex === nextStageIndex) {
+                const morphedGeometry = morphingPointCloud.geometry;
+                const positions = morphedGeometry.attributes.position;
+                const colors = morphedGeometry.attributes.color;
+                
+                const sourcePositions = currentGeometry.attributes.position;
+                const sourceColors = currentGeometry.attributes.color;
+                
+                // Copy positions and colors directly
+                for (let i = 0; i < positions.count; i++) {
+                    positions.setXYZ(i, sourcePositions.getX(i), sourcePositions.getY(i), sourcePositions.getZ(i));
+                    if (colors && sourceColors) {
+                        colors.setXYZ(i, sourceColors.getX(i), sourceColors.getY(i), sourceColors.getZ(i));
+                    }
+                }
+                
+                positions.needsUpdate = true;
+                if (colors) colors.needsUpdate = true;
+                return;
+            }
+            
+            const morphedGeometry = morphingPointCloud.geometry;
+            const positions = morphedGeometry.attributes.position;
+            const colors = morphedGeometry.attributes.color;
+            
+            const currentPositions = currentGeometry.attributes.position;
+            const nextPositions = nextGeometry.attributes.position;
+            const currentColors = currentGeometry.attributes.color;
+            const nextColors = nextGeometry.attributes.color;
+            
+            const vertexCount = Math.min(currentPositions.count, nextPositions.count, positions.count);
+            
+            // Calculate opacity weights
+            const currentOpacity = 1 - smoothstep(0, 0.6, blendFactor);
+            const nextOpacity = smoothstep(0.4, 1, blendFactor);
+            
+            for (let i = 0; i < vertexCount; i++) {
+                const currentX = currentPositions.getX(i);
+                const currentY = currentPositions.getY(i);
+                const currentZ = currentPositions.getZ(i);
+                
+                const nextX = nextPositions.getX(i);
+                const nextY = nextPositions.getY(i);
+                const nextZ = nextPositions.getZ(i);
+                
+                // Weighted position based on opacity
+                const morphedX = (currentX * currentOpacity + nextX * nextOpacity) / (currentOpacity + nextOpacity + 0.001);
+                const morphedY = (currentY * currentOpacity + nextY * nextOpacity) / (currentOpacity + nextOpacity + 0.001);
+                const morphedZ = (currentZ * currentOpacity + nextZ * nextOpacity) / (currentOpacity + nextOpacity + 0.001);
+                
+                positions.setXYZ(i, morphedX, morphedY, morphedZ);
+                
+                // Color blending with opacity weights
+                if (colors && currentColors && nextColors) {
+                    const currentR = currentColors.getX(i);
+                    const currentG = currentColors.getY(i);
+                    const currentB = currentColors.getZ(i);
+                    
+                    const nextR = nextColors.getX(i);
+                    const nextG = nextColors.getY(i);
+                    const nextB = nextColors.getZ(i);
+                    
+                    const morphedR = (currentR * currentOpacity + nextR * nextOpacity) / (currentOpacity + nextOpacity + 0.001);
+                    const morphedG = (currentG * currentOpacity + nextG * nextOpacity) / (currentOpacity + nextOpacity + 0.001);
+                    const morphedB = (currentB * currentOpacity + nextB * nextOpacity) / (currentOpacity + nextOpacity + 0.001);
+                    
+                    colors.setXYZ(i, morphedR, morphedG, morphedB);
+                }
+            }
+            
+            // Update material opacity for dissolve effect
+            morphingPointCloud.material.opacity = Math.max(currentOpacity, nextOpacity);
+            morphingPointCloud.material.transparent = true;
+            
+            positions.needsUpdate = true;
+            if (colors) colors.needsUpdate = true;
+        }
+
+        //
+
+        function updateStageButtons(activeStage) {
+            document.querySelectorAll('.stage-btn').forEach((btn, index) => {
+                btn.classList.toggle('active', index === activeStage);
+            });
+        }
+
+        function updateProgressBar(progress) {
+            document.getElementById('progressFill').style.width = (progress * 100) + '%';
+        }
+
+       function updatePointSize(size) {
+                console.log(`Updating point size to ${size}`);
+                if (morphingPointCloud && morphingPointCloud.material) {
+                    morphingPointCloud.material.size = size;
+                    console.log(`Morphing point cloud size updated to ${size}`);
+                }
+            }
+
+        function updateSeasonInfo(stageIndex, blendFactor) {
+            const currentStage = stageData[stageIndex];
+            const isTransitioning = blendFactor > 0.1 && stageIndex < stageData.length - 1;
+            
+            document.getElementById('currentSeason').textContent = 
+                isTransitioning ? `${currentStage.name} → ${stageData[stageIndex + 1].name}` : currentStage.name;
+            
+            document.getElementById('seasonDesc').textContent = currentStage.description;
+            
+            // Calculate smoothed blend factor for display
+            const smoothedBlendFactor = smoothTransition(blendFactor);
+            
+            // Update transition info
+            if (isTransitioning) {
+                document.getElementById('transitionInfo').textContent = 
+                    `Transitioning (${Math.round(blendFactor * 100)}%)`;
+            } else {
+                document.getElementById('transitionInfo').textContent = 
+                    `Stage ${stageIndex + 1} (100%)`;
+            }
+            
+            // Add smoothed blend factor to display
+            const smoothingInfo = `Raw: ${(blendFactor * 100).toFixed(1)}% | Smoothed: ${(smoothedBlendFactor * 100).toFixed(1)}%`;
+            
+            // Update or create a smoothing display element
+            let smoothingDisplay = document.getElementById('smoothingInfo');
+            if (!smoothingDisplay) {
+                smoothingDisplay = document.createElement('div');
+                smoothingDisplay.id = 'smoothingInfo';
+                smoothingDisplay.style.fontSize = '10px';
+                smoothingDisplay.style.marginTop = '5px';
+                smoothingDisplay.style.color = '#aaa';
+                document.querySelector('.info-panel').appendChild(smoothingDisplay);
+            }
+            
+            smoothingDisplay.textContent = smoothingInfo;
+        }
+
+        function updatePointDensity(density) {
+            console.log(`\n=== UPDATING POINT DENSITY TO ${Math.round(density * 100)}% ===`);
+            
+            // Regenerate all stage geometries with new density but same vertex count
+            normalizeStageVertexCounts();
+            
+            // Recreate the morphing point cloud with new density
+            if (morphingPointCloud) {
+                scene.remove(morphingPointCloud);
+                morphingPointCloud.geometry.dispose();
+                morphingPointCloud.material.dispose();
+            }
+            
+            createMorphingPointCloud();
+            
+            // Re-apply current seasonal transition
+            const currentProgress = parseFloat(document.getElementById('seasonProgress').value);
+            updateSeasonalTransition(currentProgress);
+            
+            console.log('=== DENSITY UPDATE COMPLETE - All stages have matching vertex counts ===\n');
+            updateInfoPanel();
+        }
+
+        function jumpToStage(stageIndex) {
+            const progress = stageIndex / (stageData.length - 1);
+            document.getElementById('seasonProgress').value = progress;
+            document.getElementById('seasonProgressValue').textContent = Math.round(progress * 100) + '%';
+            updateSeasonalTransition(progress);
+            updateProgressBar(progress);
+        }
+
+        function resetCycle() {
+            jumpToStage(0);
+            clock.start();
+        }
+
+        function pausePlay() {
+            isPaused = !isPaused;
+            document.getElementById('pauseBtn').textContent = isPaused ? 'Resume' : 'Pause';
+        }
+
+        function updateInfoPanel() {
+            const totalVertices = morphingPointCloud ? 
+                morphingPointCloud.geometry.attributes.position.count : 0;
+            
+            document.getElementById('activeModels').textContent = morphingPointCloud ? '1 (Morphing)' : '0';
+            document.getElementById('totalVertices').textContent = totalVertices.toLocaleString();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            // Auto progress through seasons
+            if (autoProgressEnabled && !isPaused) {
+                const elapsedTime = clock.getElapsedTime();
+                const baseSpeed = parseFloat(document.getElementById('animationSpeed').value);
+                const cycleTime = 20 / baseSpeed; // Adjust cycle time based on speed
+                const progress = (elapsedTime % cycleTime) / cycleTime;
+                
+                document.getElementById('seasonProgress').value = progress;
+                document.getElementById('seasonProgressValue').textContent = Math.round(progress * 100) + '%';
+                updateSeasonalTransition(progress);
+                updateProgressBar(progress);
+            }
+            
+            // Subtle breathing animation
+            if (breathingEnabled && morphingPointCloud) {
+                const time = clock.getElapsedTime();
+                const animationSpeed = parseFloat(document.getElementById('animationSpeed').value);
+                const breathingOffset = Math.sin(time * animationSpeed) * 0.02;
+                morphingPointCloud.position.y = breathingOffset;
+            }
+            
+            updateInfoPanel();
+            renderer.render(scene, camera);
+        }
+    
+
+        // Make functions available globally
+        window.jumpToStage = jumpToStage;
+        window.resetCycle = resetCycle;
+        window.pausePlay = pausePlay;
+
+        // Initialize
+        init();
+        animate();
+    </script>
+</body>
+</html>
