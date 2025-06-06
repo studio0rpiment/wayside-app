@@ -22,7 +22,7 @@ const Home: React.FC = () => {
       <GradientElement 
         color="gradient(  var(--color-dark), var(--color-light) , var(--color-dark))" 
         gradientType="aurora"
-        blockSize={110}
+        blockSize={150}
         animationDuration="30s"
     
         
@@ -48,10 +48,9 @@ const Home: React.FC = () => {
           {/* <div style={{ fontSize: '0.9rem', fontWeight: 'bold'}}>
           <ContentContainer {...kenConfig} />
           </div> */}
-          <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--color-dark)', margin: '1rem', borderRadius: '1rem'}}
-            
+          <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--color-dark)', margin: '1rem', borderRadius: '1rem', fontWeight:'bold'}}
             >
-          <ContentContainer {...infoConfig} />
+          <ContentContainer  {...infoConfig} />
           
           <Link to="/onboarding" style={{ textDecoration: 'none', border:'1px solid var(--color-light)', borderRadius: '1rem',  "margin": "1rem 1rem 1rem 1rem",  }}>
             <Button {...buttonConfig} />
