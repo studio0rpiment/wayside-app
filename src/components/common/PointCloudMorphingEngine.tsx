@@ -27,6 +27,9 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
   onError,
   onReadyForReset
 }) => {
+
+      console.log('🔍 PointCloudMorphingEngine received modelPrefix:', modelPrefix); // 
+
   const morphingPointCloudRef = useRef<THREE.Points | null>(null);
   const morphingGroupRef = useRef<THREE.Group | null>(null);
   const geometriesRef = useRef<THREE.BufferGeometry[]>([]);
@@ -128,68 +131,72 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
   };
 
   // Apply per-stage scaling and centering to normalize visual size within the experience
-  const applyPerStageScaling = (geometry: THREE.BufferGeometry, stageIndex: number): THREE.BufferGeometry => {
-    const stageKey = `${modelPrefix}_${stageIndex + 1}`;
-    const stageBoxData = boundingBoxData[stageKey];
-    
-    if (!stageBoxData) return geometry;
-    
-    // Find this stage's dimension
-    const stageDim = Math.max(
-      Math.abs(stageBoxData.box_dimensions.X),
-      Math.abs(stageBoxData.box_dimensions.Y),
-      Math.abs(stageBoxData.box_dimensions.Z)
-    );
-    
-    // Find the target dimension (largest stage in this experience)
-    let targetDim = 0;
-    for (let i = 1; i <= 4; i++) {
-      const targetKey = `${modelPrefix}_${i}`;
-      const targetBoxData = boundingBoxData[targetKey];
-      if (targetBoxData) {
-        const targetStageDim = Math.max(
-          Math.abs(targetBoxData.box_dimensions.X),
-          Math.abs(targetBoxData.box_dimensions.Y),
-          Math.abs(targetBoxData.box_dimensions.Z)
-        );
-        targetDim = Math.max(targetDim, targetStageDim);
-      }
+const applyPerStageScaling = (geometry: THREE.BufferGeometry, stageIndex: number): THREE.BufferGeometry => {
+  const stageKey = `${modelPrefix}_${stageIndex + 1}`;
+  const stageBoxData = boundingBoxData[stageKey];
+  
+  if (!stageBoxData) return geometry;
+  
+  // *** ADD THIS: Center the geometry first to fix rotation pivot ***
+  const centeredGeometry = geometry.clone();
+  centeredGeometry.center(); // This centers all vertices around (0,0,0)
+  console.log(`📐 ${modelPrefix}_${stageIndex + 1}: geometry centered around origin`);
+  
+  // Find this stage's dimension
+  const stageDim = Math.max(
+    Math.abs(stageBoxData.box_dimensions.X),
+    Math.abs(stageBoxData.box_dimensions.Y),
+    Math.abs(stageBoxData.box_dimensions.Z)
+  );
+  
+  // Find the target dimension (largest stage in this experience)
+  let targetDim = 0;
+  for (let i = 1; i <= 4; i++) {
+    const targetKey = `${modelPrefix}_${i}`;
+    const targetBoxData = boundingBoxData[targetKey];
+    if (targetBoxData) {
+      const targetStageDim = Math.max(
+        Math.abs(targetBoxData.box_dimensions.X),
+        Math.abs(targetBoxData.box_dimensions.Y),
+        Math.abs(targetBoxData.box_dimensions.Z)
+      );
+      targetDim = Math.max(targetDim, targetStageDim);
     }
+  }
+  
+  if (stageDim <= 0 || targetDim <= 0) return centeredGeometry; // Return centered geometry
+  
+  // Scale this stage to match the target size
+  const stageScale = targetDim / stageDim;
+  
+  if (Math.abs(stageScale - 1.0) < 0.001) return centeredGeometry; // No scaling needed
+  
+  console.log(`📏 ${modelPrefix}_${stageIndex + 1}: scaling centered geometry by ${stageScale.toFixed(3)} (${stageDim.toFixed(2)} → ${targetDim.toFixed(2)})`);
+  
+  // Apply scaling to the already-centered geometry
+  const positions = centeredGeometry.attributes.position; // Use centeredGeometry instead of scaledGeometry
+  
+  // Use STAGE 1 center for ALL stages to ensure consistent alignment
+  const referenceKey = `${modelPrefix}_1`;
+  const referenceBoxData = boundingBoxData[referenceKey];
+  const referenceCenter = referenceBoxData ? referenceBoxData.shifted_box_center : { X: 0, Y: 0, Z: 0 };
+  
+  // Apply light centering - just offset all stages by the same small amount if needed
+  // For now, skip complex centering since raw positions work well
+  console.log(`📐 ${modelPrefix}_${stageIndex + 1}: applying scaling only (${stageScale.toFixed(3)}x)`);
+  
+  for (let i = 0; i < positions.count; i++) {
+    // Apply ONLY scaling - models are already well-aligned and now centered
+    const scaledX = positions.getX(i) * stageScale;
+    const scaledY = positions.getY(i) * stageScale;
+    const scaledZ = positions.getZ(i) * stageScale;
     
-    if (stageDim <= 0 || targetDim <= 0) return geometry;
-    
-    // Scale this stage to match the target size
-    const stageScale = targetDim / stageDim;
-    
-    if (Math.abs(stageScale - 1.0) < 0.001) return geometry; // No scaling needed
-    
-    console.log(`📏 ${modelPrefix}_${stageIndex + 1}: scaling by ${stageScale.toFixed(3)} (${stageDim.toFixed(2)} → ${targetDim.toFixed(2)})`);
-    
-    // Apply scaling and centering to geometry
-    const scaledGeometry = geometry.clone();
-    const positions = scaledGeometry.attributes.position;
-    
-    // Use STAGE 1 center for ALL stages to ensure consistent alignment
-    const referenceKey = `${modelPrefix}_1`;
-    const referenceBoxData = boundingBoxData[referenceKey];
-    const referenceCenter = referenceBoxData ? referenceBoxData.shifted_box_center : { X: 0, Y: 0, Z: 0 };
-    
-    // Apply light centering - just offset all stages by the same small amount if needed
-    // For now, skip complex centering since raw positions work well
-    console.log(`📐 ${modelPrefix}_${stageIndex + 1}: applying scaling only (${stageScale.toFixed(3)}x)`);
-    
-    for (let i = 0; i < positions.count; i++) {
-      // Apply ONLY scaling - models are already well-aligned
-      const scaledX = positions.getX(i) * stageScale;
-      const scaledY = positions.getY(i) * stageScale;
-      const scaledZ = positions.getZ(i) * stageScale;
-      
-      positions.setXYZ(i, scaledX, scaledY, scaledZ);
-    }
-    
-    positions.needsUpdate = true;
-    return scaledGeometry;
-  };
+    positions.setXYZ(i, scaledX, scaledY, scaledZ);
+  }
+  
+  positions.needsUpdate = true;
+  return centeredGeometry; // Return the centered and scaled geometry
+};
 
   // Get stage from progress (copied from HTML)
   const getStageFromProgress = (progress: number) => {
@@ -333,6 +340,7 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
     
     // Apply coordinate system rotation (Blender Z-up to Three.js Y-up) to the point cloud
     pointCloud.rotation.x = -Math.PI / 2;
+
     
     // Add point cloud to the group (at group origin - no individual positioning)
     morphingGroup.add(pointCloud);

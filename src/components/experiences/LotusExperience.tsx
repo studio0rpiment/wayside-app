@@ -160,8 +160,15 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({
     if (onModelRotate) {
       onModelRotate((deltaX: number, deltaY: number) => {
         if (morphingGroupRef.current) {
+          // Store current position
+          const currentPosition = morphingGroupRef.current.position.clone();
+
+          // Apply rotation
           morphingGroupRef.current.rotation.y += deltaX;
           morphingGroupRef.current.rotation.x += deltaY;
+
+          // Restore position to prevent drift
+          morphingGroupRef.current.position.copy(currentPosition);
         }
       });
     }

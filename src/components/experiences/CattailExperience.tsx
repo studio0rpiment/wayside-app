@@ -1,10 +1,72 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
-import { getAssetPath } from '../../utils/assetPaths';
-
-// Import these separately to avoid the Vite optimization issue
-import { GLTFLoader as GLTFLoaderModule } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import PointCloudMorphingEngine from '../common/PointCloudMorphingEngine';
+
+// Import the bounding box data
+// Import the bounding box data - USE THE COMPLETE DATA SET
+const seasonsBoxDimensions = {
+  "cattail_1": {
+    "box_dimensions": { "X": 7.0, "Y": 6.11391, "Z": -3.11109 },
+    "shifted_box_center": { "X": 3.00282, "Y": 5.15699, "Z": -2.57107 },
+    "global_box_center": { "X": 2.58592, "Y": 9.96978, "Z": 0.00309755 }
+  },
+  "cattail_2": {
+    "box_dimensions": { "X": 7.0, "Y": 3.86938, "Z": -1.92645 },
+    "shifted_box_center": { "X": 1.94294, "Y": 3.85586, "Z": -2.00759 },
+    "global_box_center": { "X": 1.84827, "Y": 8.86985, "Z": 0.00205987 }
+  },
+  "cattail_3": {
+    "box_dimensions": { "X": 7.0, "Y": 15.7519, "Z": -8.55881 },
+    "shifted_box_center": { "X": 7.19311, "Y": 17.201, "Z": -9.11689 },
+    "global_box_center": { "X": 8.08407, "Y": 9.67628, "Z": 0.0130204 }
+  },
+  "cattail_4": {
+    "box_dimensions": { "X": 7.0, "Y": 9.78502, "Z": -5.48069 },
+    "shifted_box_center": { "X": 4.30433, "Y": 10.1278, "Z": -5.07628 },
+    "global_box_center": { "X": 5.0515, "Y": 27.3561, "Z": 0.013139 }
+  },
+  "lily_1": {
+    "box_dimensions": { "X": 7.0, "Y": 26.1559, "Z": -13.091 },
+    "shifted_box_center": { "X": 13.0649, "Y": 16.4241, "Z": -8.0769 },
+    "global_box_center": { "X": 8.34724, "Y": 9.99417, "Z": 0.000821289 }
+  },
+  "lily_2": {
+    "box_dimensions": { "X": 27.8148, "Y": -28.2008, "Z": -0.385963 },
+    "shifted_box_center": { "X": 33.4941, "Y": -20.9138, "Z": 12.5803 },
+    "global_box_center": { "X": 115.79, "Y": -1.77575, "Z": 14.0143 }
+  },
+  "lily_3": {
+    "box_dimensions": { "X": 7.0, "Y": 68.0109, "Z": -33.9307 },
+    "shifted_box_center": { "X": 34.0801, "Y": 77.0403, "Z": -38.4627 },
+    "global_box_center": { "X": 38.5777, "Y": 9.09365, "Z": 0.0833207 }
+  },
+  "lily_4": {
+    "box_dimensions": { "X": 7.0, "Y": 60.9039, "Z": -30.8069 },
+    "shifted_box_center": { "X": 30.097, "Y": 60.9249, "Z": -30.3065 },
+    "global_box_center": { "X": 30.6184, "Y": 9.80548, "Z": 0.160642 }
+  },
+  "lotus_1": {
+    "box_dimensions": { "X": 4.74237, "Y": -2.18979, "Z": 2.55258 },
+    "shifted_box_center": { "X": 9.99301, "Y": 0.000422351, "Z": 9.99343 },
+    "global_box_center": { "X": 0.546762, "Y": 0.353696, "Z": 0.900457 }
+  },
+  "lotus_2": {
+    "box_dimensions": { "X": 7.0, "Y": 12.172, "Z": -6.12077 },
+    "shifted_box_center": { "X": 6.05123, "Y": 9.93416, "Z": 0.0378408 },
+    "global_box_center": { "X": 9.972, "Y": 9.82072, "Z": -4.94933 }
+  },
+  "lotus_3": {
+    "box_dimensions": { "X": 7.0, "Y": 23.8707, "Z": -11.8118 },
+    "shifted_box_center": { "X": 12.0589, "Y": 9.99123, "Z": 0.00311597 },
+    "global_box_center": { "X": 9.99435, "Y": 24.1301, "Z": -12.1061 }
+  },
+  "lotus_4": {
+    "box_dimensions": { "X": 7.0, "Y": 34.1839, "Z": -17.1202 },
+    "shifted_box_center": { "X": 17.0637, "Y": 9.99004, "Z": 0.00112372 },
+    "global_box_center": { "X": 9.99117, "Y": 33.5477, "Z": -16.6561 }
+  }
+};
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -35,144 +97,31 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
   onSwipeUp,
   onSwipeDown
 }) => {
-  // Use refs instead of state for better handling in event listeners
-  const currentModelIndexRef = useRef(0);
-  const modelsRef = useRef<THREE.Group[]>([]);
+    console.log('🪷 CattailExperience: modelPrefix will be "Cattail"'); // Add this line
+
+  // Refs for Three.js objects
+  const morphingPointCloudRef = useRef<THREE.Points | null>(null);
+  const morphingGroupRef = useRef<THREE.Group | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
-  const instructionsRef = useRef<HTMLDivElement | null>(null);
+  const initialScaleRef = useRef<number>(1);
   
   // Store initial camera position for reset
   const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
-  const initialModelRotation = useRef(new THREE.Euler(0, 0, 0));
   
-  // Define cattail stage names (different from lotus and lily)
-  const stageNames = ["Rhizome", "Sprout", "New Bloom", "Fully Grown"];
-
-  // State to track when models are loaded and current model for React rendering
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [currentModelIndex, setCurrentModelIndex] = useState(0);
-
-  // Add state to track override status
+  // State to track override status
   const [arTestingOverride, setArTestingOverride] = useState(() => {  
     return (window as any).arTestingOverride ?? true;
   });
 
+  // Point cloud state
+  const [hasPointCloud, setHasPointCloud] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [currentStage, setCurrentStage] = useState('Cattail Growth Cycle');
+
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
-
-  // Function to change models
-  const switchToModel = (index: number) => {
-    console.log(`🌾 Switching to cattail model index: ${index} (${stageNames[index]})`);
-    
-    currentModelIndexRef.current = index;
-    setCurrentModelIndex(index); // Update React state for button rendering
-    
-    // Remove all models from the scene
-    if (sceneRef.current) {
-      modelsRef.current.forEach(model => {
-        if (model && sceneRef.current) {
-          sceneRef.current.remove(model);
-        }
-      });
-      
-      // Add only the current model
-      if (modelsRef.current[index]) {
-        modelsRef.current[index].rotation.copy(initialModelRotation.current);
-        sceneRef.current.add(modelsRef.current[index]);
-        
-        // Update stage label
-        if (instructionsRef.current) {
-          instructionsRef.current.innerHTML = `Cattail Plant: ${stageNames[index]} (Stage ${index + 1} of 4)`;
-        }
-        
-        console.log(`✅ Now showing: ${stageNames[index]}`);
-      }
-    }
-  };
-
-  // *** FIXED: Register handlers immediately on mount - don't wait for models ***
-  useEffect(() => {
-    // console.log('🔗 Registering cattail gesture handlers on mount');
-    
-    // Rotation handler
-    if (onModelRotate) {
-      onModelRotate((deltaX: number, deltaY: number) => {
-        // console.log('🔄 Rotate called, models available:', modelsRef.current.length);
-        const currentModel = modelsRef.current[currentModelIndexRef.current];
-        if (currentModel) {
-          currentModel.rotation.y += deltaX;
-          currentModel.rotation.x += deltaY;
-          // console.log('🔄 Model rotated:', currentModel.rotation.x, currentModel.rotation.y);
-        } else {
-          // console.warn('🔄 No model available to rotate');
-        }
-      });
-      console.log('✅ Rotation handler registered');
-    }
-
-    // Scale handler
-    if (onModelScale) {
-      onModelScale((scaleFactor: number) => {
-        console.log('📏 Scale called, models available:', modelsRef.current.length);
-        const currentModel = modelsRef.current[currentModelIndexRef.current];
-        if (currentModel) {
-          const currentScale = currentModel.scale.x;
-          const newScale = Math.max(0.5, Math.min(5.0, currentScale * scaleFactor));
-          currentModel.scale.set(newScale, newScale, newScale);
-          console.log('📏 Model scaled:', newScale);
-        } else {
-          console.warn('📏 No model available to scale');
-        }
-      });
-      console.log('✅ Scale handler registered');
-    }
-
-    // Reset handler
-    if (onModelReset) {
-      onModelReset(() => {
-        console.log('🔄 Reset called, models available:', modelsRef.current.length);
-        const currentModel = modelsRef.current[currentModelIndexRef.current];
-        if (currentModel) {
-          currentModel.rotation.copy(initialModelRotation.current);
-          currentModel.scale.set(2, 2, 2);
-          console.log('🔄 Model reset');
-        } else {
-          console.warn('🔄 No model available to reset');
-        }
-      });
-      console.log('✅ Reset handler registered');
-    }
-
-    // Next model handler (swipe up)
-    if (onSwipeUp) {
-      onSwipeUp(() => {
-        console.log('➡️ Cattail: Next model called via swipe, models available:', modelsRef.current.length);
-        if (modelsRef.current.length > 0) {
-          const nextIndex = currentModelIndexRef.current < 3 ? currentModelIndexRef.current + 1 : 0;
-          switchToModel(nextIndex);
-        } else {
-          console.warn('➡️ No models available for switching');
-        }
-      });
-      console.log('✅ Next model handler registered (swipe up)');
-    }
-
-    // Previous model handler (swipe down)
-    if (onSwipeDown) {
-      onSwipeDown(() => {
-        console.log('⬅️ Cattail: Previous model called via swipe, models available:', modelsRef.current.length);
-        if (modelsRef.current.length > 0) {
-          const prevIndex = currentModelIndexRef.current > 0 ? currentModelIndexRef.current - 1 : 3;
-          switchToModel(prevIndex);
-        } else {
-          console.warn('⬅️ No models available for switching');
-        }
-      });
-      console.log('✅ Previous model handler registered (swipe down)');
-    }
-  }, []); // *** FIXED: Empty dependency array - register once on mount
 
   // Listen for override changes
   useEffect(() => {
@@ -180,31 +129,26 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
       const currentOverride = (window as any).arTestingOverride ?? true;
       if (currentOverride !== arTestingOverride) {
         setArTestingOverride(currentOverride);
-        console.log('🎯 CattailExperience override changed:', currentOverride);
+        console.log('🪷 CattailExperience override changed:', currentOverride);
         
-        const currentModel = modelsRef.current[currentModelIndexRef.current];
-        console.log('🎯 Current model:', currentModel);
-        console.log('🎯 Is AR mode:', isArMode);
-        console.log('🎯 AR position:', arPosition);
-        
-        if (currentModel && isArMode && arPosition) {
+        if (morphingGroupRef.current && isArMode && arPosition) {
           if (currentOverride) {
-            console.log('🎯 Setting override position (0, 0, -5)');
-            currentModel.position.set(0, -1, -5);
+            console.log('🎯 Setting group override position (0, 0, -5)');
+            morphingGroupRef.current.position.set(0, 0, -5);
           } else {
-            console.log('🎯 Setting anchor position:', arPosition);
-            currentModel.position.copy(arPosition);
+            console.log('🎯 Setting group anchor position:', arPosition);
+            morphingGroupRef.current.position.copy(arPosition);
           }
           
           // Force visual update
-          currentModel.visible = false;
+          morphingGroupRef.current.visible = false;
           setTimeout(() => {
-            if (currentModel) {
-              currentModel.visible = true;
+            if (morphingGroupRef.current) {
+              morphingGroupRef.current.visible = true;
             }
           }, 50);
           
-          console.log('🎯 Model position after change:', currentModel.position);
+          console.log('🎯 Group position after change:', morphingGroupRef.current.position);
         }
       }
     };
@@ -213,11 +157,148 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
     return () => clearInterval(interval);
   }, [arTestingOverride, isArMode, arPosition]);
 
-  // Main effect for model loading and scene setup
+  // Register gesture handlers on mount
+  useEffect(() => {
+    // Register rotation handler - now operates on the GROUP
+    if (onModelRotate) {
+      onModelRotate((deltaX: number, deltaY: number) => {
+        if (morphingGroupRef.current) {
+          // Store current position
+          const currentPosition = morphingGroupRef.current.position.clone();
+
+          // Apply rotation
+          morphingGroupRef.current.rotation.y += deltaX;
+          morphingGroupRef.current.rotation.x += deltaY;
+
+          // Restore position to prevent drift
+          morphingGroupRef.current.position.copy(currentPosition);
+        }
+      });
+    }
+
+    // Register scale handler - now operates on the GROUP
+    if (onModelScale) {
+      onModelScale((scaleFactor: number) => {
+        if (morphingGroupRef.current) {
+          const currentScale = morphingGroupRef.current.scale.x;
+          const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
+          console.log('🪷 Scale handler called:', {
+            scaleFactor,
+            currentScale: currentScale.toFixed(3),
+            newScale: newScale.toFixed(3)
+          });
+          morphingGroupRef.current.scale.setScalar(newScale);
+        }
+      });
+    }
+
+    // Register reset handler - now operates on the GROUP
+    if (onModelReset) {
+      onModelReset(() => {
+        console.log('🔄 Cattail RESET HANDLER CALLED');
+        if (morphingGroupRef.current) {
+          // Reset rotation and scale on the GROUP
+          morphingGroupRef.current.rotation.set(0, 0, 0);
+          const initialScale = initialScaleRef.current;
+          morphingGroupRef.current.scale.set(initialScale, initialScale, initialScale);
+          
+          // Reset position based on current mode
+          if (isArMode && arPosition) {
+            const currentOverride = (window as any).arTestingOverride ?? true;
+            
+            if (currentOverride) {
+              morphingGroupRef.current.position.set(0, 0, -5);
+              console.log('🔄 Reset: Cattail group positioned at override location');
+            } else {
+              morphingGroupRef.current.position.copy(arPosition);
+              console.log('🔄 Reset: Cattail group positioned at AR anchor location');
+            }
+          } else {
+            morphingGroupRef.current.position.set(0, 0, -3);
+            console.log('🔄 Reset: Cattail group positioned at standalone location');
+          }
+          
+          console.log('🔄 Cattail reset completed');
+        }
+      });
+    }
+
+    // Register swipe handlers (no action needed - auto-morphing)
+    if (onSwipeUp) {
+      onSwipeUp(() => {
+        console.log('👆 Swipe up detected on Cattail (auto-morphing)');
+      });
+    }
+
+    if (onSwipeDown) {
+      onSwipeDown(() => {
+        console.log('👇 Swipe down detected on Cattail (auto-morphing)');
+      });
+    }
+  }, []);
+
+  // Declare callback functions
+  const handleModelLoaded = (pointCloud: THREE.Points) => {
+    morphingPointCloudRef.current = pointCloud;
+    
+    // Get the group reference from the point cloud's parent
+    if (pointCloud.parent && pointCloud.parent instanceof THREE.Group) {
+      morphingGroupRef.current = pointCloud.parent;
+      
+      // Store initial scale from the GROUP
+      initialScaleRef.current = morphingGroupRef.current.scale.x;
+    }
+    
+    setHasPointCloud(true);
+    
+    console.log('✅ Cattail morphing point cloud loaded successfully');
+  };
+
+  // Handle ready for reset callback - triggers auto-reset when models ready
+  const handleReadyForReset = () => {
+    console.log('🔄 Cattail ready for reset - auto-triggering reset');
+    // Directly call reset logic 
+    if (morphingGroupRef.current) {
+      // Reset rotation and scale on the GROUP
+      morphingGroupRef.current.rotation.set(0, 0, 0);
+      const initialScale = initialScaleRef.current;
+      morphingGroupRef.current.scale.set(initialScale, initialScale, initialScale);
+      
+      // Reset position based on current mode
+      if (isArMode && arPosition) {
+        const currentOverride = (window as any).arTestingOverride ?? true;
+        
+        if (currentOverride) {
+          morphingGroupRef.current.position.set(0, 0, -5);
+          console.log('🔄 Auto-reset: Cattail group positioned at override location');
+        } else {
+          morphingGroupRef.current.position.copy(arPosition);
+          console.log('🔄 Auto-reset: Cattail group positioned at AR anchor location');
+        }
+      } else {
+        morphingGroupRef.current.position.set(0, 0, -3);
+        console.log('🔄 Auto-reset: Cattail group positioned at standalone location');
+      }
+      
+      console.log('🔄 Cattail auto-reset completed');
+    }
+  };
+
+  // Handle loading progress
+  const handleLoadingProgress = (progress: number) => {
+    setLoadingProgress(progress);
+  };
+
+  // Handle errors
+  const handleError = (error: string) => {
+    console.error('❌ Cattail loading error:', error);
+  };
+
+  // Main effect for scene setup
   useEffect(() => {
     let isMounted = true;
     
-    console.log('🎯 CattailExperience mode:', isArMode ? 'AR' : 'Standalone');
+    console.log('🪷 CattailExperience mode:', isArMode ? 'AR' : 'Standalone');
     
     // Create container for standalone mode
     const container = document.createElement('div');
@@ -236,7 +317,7 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
     // Create instructions
     const instructions = document.createElement('div');
     instructions.style.position = 'absolute';
-    instructions.style.bottom = '80px'; // Move up to make room for stage buttons
+    instructions.style.bottom = '20px';
     instructions.style.left = '50%';
     instructions.style.transform = 'translateX(-50%)';
     instructions.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
@@ -247,16 +328,15 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
     instructions.style.fontFamily = 'var(--font-rigby)';
     instructions.style.fontWeight = '400';
     instructions.style.zIndex = '1002';
-    instructions.innerHTML = 'Cattail Plant: Loading...';
+    instructions.innerHTML = 'Watch the Cattail seasonal growth cycle unfold. Tap continue when ready.';
     container.appendChild(instructions);
-    instructionsRef.current = instructions;
 
     // Create continue button
     const continueButton = document.createElement('button');
     continueButton.style.position = 'absolute';
     continueButton.style.bottom = '20px';
     continueButton.style.right = '20px';
-    continueButton.style.backgroundColor = 'rgba(0, 120, 0, 0.7)';
+    continueButton.style.backgroundColor = 'rgba(255, 192, 203, 0.7)'; // Light pink for Cattail
     continueButton.style.color = 'white';
     continueButton.style.padding = '10px 15px';
     continueButton.style.borderRadius = '8px';
@@ -290,7 +370,7 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
       camera = arCamera!;
       sceneRef.current = scene;
       cameraRef.current = camera;
-      console.log('🎯 Using AR scene and camera');
+      console.log('🪷 CattailExperience using AR scene and camera');
     } else {
       // Standalone Mode: Create own scene/camera/renderer
       scene = new THREE.Scene();
@@ -330,130 +410,6 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
       scene.add(directionalLight);
     }
 
-    // Define cattail model URLs (using the correct file names from your document)
-    const cattailModels = [
-      getAssetPath('models/Cattail_Rhizome.glb'),
-      getAssetPath('models/Cattail_Sprout.glb'),
-      getAssetPath('models/Cattail_NewBloom.glb'),
-      getAssetPath('models/Cattail_Grown.glb')
-    ];
-
-    // Create loader
-    const loader = new GLTFLoaderModule();
-    
-    let modelsLoadedCount = 0;
-    const totalModels = cattailModels.length;
-    
-    // Create loading indicator
-    const loadingDiv = document.createElement('div');
-    loadingDiv.style.position = 'absolute';
-    loadingDiv.style.top = '50%';
-    loadingDiv.style.left = '50%';
-    loadingDiv.style.transform = 'translate(-50%, -50%)';
-    loadingDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    loadingDiv.style.color = 'white';
-    loadingDiv.style.padding = '20px';
-    loadingDiv.style.borderRadius = '10px';
-    loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = 'Loading cattail models... 0%';
-    container.appendChild(loadingDiv);
-
-    // Load all models
-    cattailModels.forEach((modelUrl, index) => {
-      loader.load(
-        modelUrl,
-        (gltf) => {
-          if (!isMounted) return;
-
-          const model = gltf.scene;
-          
-          // Center the model
-          const box = new THREE.Box3().setFromObject(model);
-          const center = box.getCenter(new THREE.Vector3());
-          model.position.x = -center.x;
-          model.position.y = -center.y;
-          model.position.z = -center.z;
-          
-          // Scale model appropriately for cattail - make them bigger
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          if (maxDim > 0) {
-            const scale = (isArMode ? 3 : 10) / maxDim; // *** INCREASED SCALE for cattail
-            model.scale.set(scale, scale, scale);
-          }
-          
-          // Position based on mode
-          if (isArMode && arPosition) {
-            const currentOverride = (window as any).arTestingOverride ?? true;
-            
-            if (currentOverride) {
-              model.position.set(0, -1, -5);
-              console.log('🎯 Model positioned at TESTING override location:', model.position);
-            } else {
-              model.position.copy(arPosition);
-              console.log('🎯 Model positioned at AR anchor location:', arPosition);
-            }
-          } else {
-            model.position.set(0, 0, -3);
-          }
-          
-          // Make all materials transparent
-          model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              if (child.material) {
-                if (Array.isArray(child.material)) {
-                  child.material.forEach(material => {
-                    material.transparent = true;
-                    material.opacity = 1.0;
-                    material.alphaTest = 0.5;
-                    material.side = THREE.DoubleSide;
-                  });
-                } else {
-                  child.material.transparent = true;
-                  child.material.opacity = 1.0;
-                  child.material.alphaTest = 0.5;
-                  child.material.side = THREE.DoubleSide;
-                }
-              }
-            }
-          });
-          
-          // Add to the array of models
-          modelsRef.current[index] = model;
-          
-          // Store the initial rotation
-          initialModelRotation.current = model.rotation.clone();
-          
-          // Update loading progress
-          modelsLoadedCount++;
-          const percentage = Math.round((modelsLoadedCount / totalModels) * 100);
-          loadingDiv.innerHTML = `Loading cattail models... ${percentage}%`;
-          
-          // If all models are loaded, remove the loading div and show first model
-          if (modelsLoadedCount === totalModels) {
-            container.removeChild(loadingDiv);
-            
-            // Switch to first model
-            switchToModel(0);
-            
-            setModelsLoaded(true);
-            console.log('🎯 All cattail models loaded successfully');
-          }
-          
-          console.log(`Loaded cattail model ${index}: ${modelUrl}`);
-        },
-        (xhr) => {
-          console.log(`${modelUrl} ${(xhr.loaded / xhr.total) * 100}% loaded`);
-        },
-        (error) => {
-          console.error(`Error loading model ${modelUrl}:`, error);
-          modelsLoadedCount++;
-          const percentage = Math.round((modelsLoadedCount / totalModels) * 100);
-          loadingDiv.innerHTML = `Loading models... ${percentage}%<br>Error loading ${modelUrl.split('/').pop()}`;
-        }
-      );
-    });
-
     // Handle window resize
     const handleResize = () => {
       if (isMounted && camera && renderer) {
@@ -465,7 +421,7 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
     
     window.addEventListener('resize', handleResize);
     
-    // Animation loop
+    // Animation loop (no model animations needed - morphing engine handles it)
     const animate = function () {
       if (!isMounted) return;
       
@@ -500,58 +456,37 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
         document.body.removeChild(container);
       }
     };
-  }, [isArMode]); // *** FIXED: Only depend on isArMode
+  }, [isArMode]);
 
   return (
     <>
-      {/* Stage Selection Buttons - React JSX */}
-      {modelsLoaded && (
+      {/* Morphing Engine Component */}
+      {sceneRef.current ? (
+        <PointCloudMorphingEngine
+        key="Cattail-morphing-engine" 
+          modelPrefix="cattail"
+          scene={isArMode ? arScene! : sceneRef.current!}
+          boundingBoxData={seasonsBoxDimensions}
+          isArMode={isArMode}
+          arPosition={arPosition}
+          onModelLoaded={handleModelLoaded}
+          onLoadingProgress={handleLoadingProgress}
+          onError={handleError}
+          onReadyForReset={handleReadyForReset}
+        />
+      ) : (
         <div style={{
           position: 'absolute',
-          bottom: '20px',
+          top: '50%',
           left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: '8px',
-          zIndex: 1005,
-          pointerEvents: 'auto',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          transform: 'translate(-50%, -50%)',
+          color: 'white',
+          backgroundColor: 'rgba(255, 0, 0, 0.7)',
           padding: '10px',
-          borderRadius: '8px'
+          borderRadius: '5px',
+          zIndex: 9999
         }}>
-          {stageNames.map((stageName, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                console.log(`🌾 Stage button ${index} clicked: ${stageName}`);
-                switchToModel(index);
-              }}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                console.log(`🌾 Stage button ${index} touched: ${stageName}`);
-                switchToModel(index);
-              }}
-              style={{
-                backgroundColor: index === currentModelIndex 
-                  ? 'rgba(139, 69, 19, 0.8)'  // Brown for cattail (earthy/natural)
-                  : 'rgba(0, 0, 0, 0.7)',
-                color: 'white',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: index === currentModelIndex 
-                  ? '2px solid rgba(210, 180, 140, 0.8)'  // Tan border
-                  : '1px solid rgba(255, 255, 255, 0.3)',
-                fontSize: '12px',
-                fontFamily: 'var(--font-rigby)',
-                cursor: 'pointer',
-                minWidth: '60px',
-                textAlign: 'center'
-              }}
-            >
-              {/* Stage {index + 1}<br/> */}
-              <small>{stageName}</small>
-            </button>
-          ))}
+          ⚠️ Scene not ready for morphing engine
         </div>
       )}
 
@@ -559,8 +494,8 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
       {SHOW_DEBUG_PANEL && (
         <div style={{
           position: 'absolute',
-          top: '180px',
-          left: '10px',
+          bottom: '10px',
+          right: '10px',
           backgroundColor: 'rgba(0, 0, 0, 0.7)',
           color: 'white',
           padding: '10px',
@@ -570,12 +505,54 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
           pointerEvents: 'auto',
           fontFamily: 'monospace'
         }}>
-          {/* <div style={{ color: 'tan' }}>🌾 CATTAIL DEBUG</div> */}
-          <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
-          <div>Models: {modelsRef.current.length}/4 loaded</div>
-          <div>Current: {stageNames[currentModelIndex]} (Stage {currentModelIndex + 1})
+          <div style={{ color: 'pink' }}>🪷 Cattail MORPHING DEBUG</div>
+          <div>Mode: {isArMode ? 'AR Portal' : 'Standalone'}</div>
+          {arPosition && (
+            <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
+          )}
+          {morphingGroupRef.current && (
+            <div style={{ color: 'cyan' }}>
+              Group Pos: [{morphingGroupRef.current.position.x.toFixed(3)}, {morphingGroupRef.current.position.y.toFixed(3)}, {morphingGroupRef.current.position.z.toFixed(3)}]
+            </div>
+          )}
+          <div>Scale: {coordinateScale}x</div>
+          <div style={{ color: hasPointCloud ? 'lightgreen' : 'orange' }}>
+            Morphing: {hasPointCloud ? '✅ Active' : `❌ Loading ${loadingProgress.toFixed(0)}%`}
           </div>
-         
+          <div style={{ color: 'lightblue', fontSize: '10px' }}>
+            Auto-cycle: Bud → Opening → Bloom → Seed Pod
+          </div>
+          
+          <div 
+            onClick={() => {
+              const newValue = !arTestingOverride;
+              (window as any).arTestingOverride = newValue;
+              setArTestingOverride(newValue);
+              console.log('🎯 AR Override toggled:', newValue ? 'ON' : 'OFF');
+              
+              // Immediately update group position if we have the group
+              if (morphingGroupRef.current && isArMode && arPosition) {
+                if (newValue) {
+                  console.log('🎯 Immediately setting group override position (0, 0, -5)');
+                  morphingGroupRef.current.position.set(0, 0, -5);
+                } else {
+                  console.log('🎯 Immediately setting group anchor position:', arPosition);
+                  morphingGroupRef.current.position.copy(arPosition);
+                }
+                console.log('🎯 Group position updated to:', morphingGroupRef.current.position);
+              }
+            }}
+            style={{ 
+              cursor: 'pointer', 
+              userSelect: 'none', 
+              marginTop: '5px',
+              padding: '2px 4px',
+              backgroundColor: arTestingOverride ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)',
+              borderRadius: '2px'
+            }}
+          >
+            Override: {arTestingOverride ? '✅ (0,0,-5)' : '❌ (AR Anchor)'}
+          </div>
         </div>
       )}
     </>

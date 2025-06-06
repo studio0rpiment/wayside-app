@@ -201,11 +201,11 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         return <MacExperience {...experienceProps} />
 
       case 'lily':
-         return <LilyExperience {...experienceProps} />
+         return <LilyExperience key="lily-experience" {...experienceProps} />
       case 'cattail':
-        return <CattailExperience {...experienceProps} />
+        return <CattailExperience key="cattail-experience" {...experienceProps} />
       case 'lotus':
-        return <LotusExperience {...experienceProps} />
+        return <LotusExperience key="lotus-experience" {...experienceProps} />
         
       default:
         console.warn(`Unknown experience type: ${experienceType}, defaulting to cube`);
