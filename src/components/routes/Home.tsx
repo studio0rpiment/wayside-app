@@ -37,20 +37,26 @@ const Home: React.FC = () => {
             <ContentContainer {...headerConfig} />
           </div>
           <ContentContainer {...heroConfig} />
-          {/* <ContentContainer {...infoConfig} /> */}
+          
 
           <div style={{ display: 'flex', flexDirection: 'row'}}>
           <ContentContainer {...camMap} />
           <ContentContainer {...arCam} />
           </div>
 
-          <div style={{ fontSize: '0.9rem', fontWeight: 'bold'}}>
-          <ContentContainer {...kenConfig} />
-          </div>
           
-          <Link to="/onboarding" style={{ textDecoration: 'none', "margin": "1rem 1rem 1rem 1rem", }}>
+          {/* <div style={{ fontSize: '0.9rem', fontWeight: 'bold'}}>
+          <ContentContainer {...kenConfig} />
+          </div> */}
+          <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--color-dark)', margin: '1rem', borderRadius: '1rem'}}
+            
+            >
+          <ContentContainer {...infoConfig} />
+          
+          <Link to="/onboarding" style={{ textDecoration: 'none', border:'1px solid var(--color-light)', borderRadius: '1rem',  "margin": "1rem 1rem 1rem 1rem",  }}>
             <Button {...buttonConfig} />
           </Link>
+          </div>
         </VerticalSection>
       </GradientElement>
     </div>

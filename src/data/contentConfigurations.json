@@ -74,16 +74,16 @@
       "configuration": {
         "title": "",
         "subtitle": "",
-        "content": "Wayside is an AR app designed by Andrew Kastner, an artist-in-residence at Kenilworth Aquatic Gardens in partnership with Capital Fringe. \n\n  His residency has been focused on researching the history and climate change impacts to the park and transforming them into artistic interpretations within three themes: time, seasons, and moments.\n\nThe goal is simple: to connect visitors to the park's rich history, present challenges, and future prospects in a more sensory, open-ended way.Andrew is a stroke survivor living with aphasia, the confusion of language. He built this as a \"post linguistic\" experience, encouraging others to navigate using symbols in place of words when possible.",
-        "backgroundColor": "var(--color-dark)",
+        "content": "Discover the only National Park with cultivated aquatic gardens, started in the 1880s by Walter B. Shaw and his daughter Helen. Now a public park, its ponds and wetlands support wildlife and inspire creativity.",
+        "backgroundColor": "transparent",
         "textColor": "var(--color-light)",
         "fontFamily": "'rigby', sans-serif",
         "margin": "1rem 1rem 0rem 1rem",
         "width": "auto",
         "height": "auto",
-        "padding": "1.5rem",
+        "padding": "1rem 1rem 0rem 1rem",
         "fullWidth": false,
-        "borderRadius": "3rem",
+        "borderRadius": "0rem",
         "hasShadow": true,
         "alignment": "left",
         "animateIn": true,
@@ -132,11 +132,12 @@
       "description": "Button that goes to onboarding",
       "configuration": {
         "subtitle": "ONBOARDING",
-        "backgroundColor": "var(--color-dark)",
+        "backgroundColor": "transparent",
         "textColor": "gradient(var(--color-blue), var(--color-pink), var(--color-green))",
         "textSize": "2.5rem",
         "height": "auto",
         "width": "auto",
+         
         "fullWidth": false,
         
         "padding": "0rem",
@@ -152,7 +153,7 @@
           "note": "",
           "src": "",
           "alt": "Button icon",
-          "position": "above",
+          "position": "below",
           "width": "100%",
           "height": ""
         },
