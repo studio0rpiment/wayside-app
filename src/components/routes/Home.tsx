@@ -12,15 +12,20 @@ const Home: React.FC = () => {
   const headerConfig = ContentConfigHelper.getTemplateById('header') as ContentContainerProps;
   const heroConfig = ContentConfigHelper.getTemplateById('hero') as ContentContainerProps;
   const infoConfig = ContentConfigHelper.getTemplateById('info-card') as ContentContainerProps;
+  const arCam = ContentConfigHelper.getTemplateById('arCam') as ContentContainerProps;
+  const camMap = ContentConfigHelper.getTemplateById('camMap') as ContentContainerProps;
   const kenConfig = ContentConfigHelper.getTemplateById('kenilworthLogo') as ContentContainerProps;
   const buttonConfig = ContentConfigHelper.getTemplateById('buttonToOnboarding') as ContentContainerProps;
 
   return (
     <div className="home-route">
       <GradientElement 
-        color="gradient(var(--color-dark)" 
-        gradientType="blocks"
-        blockSize={200}
+        color="gradient( var(--color-dark), var(--color-dark), var(--color-light), var(--color-dark))" 
+        gradientType="aurora"
+        blockSize={150}
+        animationDuration="20s"
+    
+        
       >
         <VerticalSection 
           id="vert1" 
@@ -28,12 +33,21 @@ const Home: React.FC = () => {
           color='transparent'
           // color='gradient(var(--color-dark), var(--color-pink), var(--color-blue))'
         >
-          <div style={{ textDecoration: 'none', margin: '1rem 1rem 1rem 1rem' }}>
+          <div style={{ textDecoration: 'none', margin: '1rem 1rem 1rem 1rem', height: '100%', overflow: 'auto',  overflowY: 'scroll',WebkitOverflowScrolling: 'touch' }}>
             <ContentContainer {...headerConfig} />
           </div>
           <ContentContainer {...heroConfig} />
           {/* <ContentContainer {...infoConfig} /> */}
+
+          <div style={{ display: 'flex', flexDirection: 'row'}}>
+          <ContentContainer {...camMap} />
+          <ContentContainer {...arCam} />
+          </div>
+
+          <div style={{ fontSize: '0.9rem', fontWeight: 'bold'}}>
           <ContentContainer {...kenConfig} />
+          </div>
+          
           <Link to="/onboarding" style={{ textDecoration: 'none', "margin": "1rem 1rem 1rem 1rem", }}>
             <Button {...buttonConfig} />
           </Link>

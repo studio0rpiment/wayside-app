@@ -18,7 +18,7 @@
         "borderRadius": "0",
         "glassmorphism": true,
         "contentImage": {
-          "src": "/logos/wayside-cl.png",
+          "src": "/logos/wayside-bw.png",
           "alt": "Site Logo",
           "width": "100%",
           "height": "auto",
@@ -37,8 +37,8 @@
       "description": "",
       "configuration": {
         "title": "",
-        "subtitle": "An Augmented Reality (AR) view of Kenliworth Aquatic Gardens" ,        
-        "content": "",
+        "subtitle": "A Geo-Landscape AR experience. " ,        
+        "content": "Move through real places. Seeing, feeling, and connecting to place.",
         "backgroundColor": "transparent",
         "textColor": "var(--color-light)",
         "width": "100vw",
@@ -100,12 +100,15 @@
       "description": "Display the kenliworth logo",
       "configuration": {
         "backgroundColor": "var(--color-light)",
-        "textColor": "",
+        "content": "Discover the only National Park with cultivated aquatic gardens, started in the 1880s by Walter B. Shaw and his daughter Helen. Now a public park, its ponds and wetlands support wildlife and inspire creativity.",
+        "textColor": "var(--color-dark)",
+        "textSize": "2.5rem",
         "width": "auto",
         "height": "auto",
-        "margin": "5rem 1rem 5rem 1rem",
+        "margin": "1rem 1rem 1rem 1rem",
+
         "padding": "1.5rem",
-        "borderRadius": "3rem",
+        "borderRadius": "1rem",
         "fullWidth": false,
         "alignment": "center",
         "animateIn": true,
@@ -115,7 +118,7 @@
         "contentImage": {
           "src": "/logos/Kenilworth.png",
           "alt": "Kenilworth Aquatic Gardens Logo",
-          "position": "above",
+          "position": "below",
           "width": "100%",
           "className": "kenilworthLogo shadow-lg transform transition duration-100 ease-in-out"
         },
@@ -129,14 +132,15 @@
       "description": "Button that goes to onboarding",
       "configuration": {
         "subtitle": "ONBOARDING",
-        "backgroundColor": "var(--color-pink)",
-        "textColor": "var(--color-dark)",
+        "backgroundColor": "var(--color-dark)",
+        "textColor": "gradient(var(--color-blue), var(--color-pink), var(--color-green))",
+        "textSize": "2.5rem",
         "height": "auto",
         "width": "auto",
         "fullWidth": false,
         
-        "padding": "1rem",
-        "borderRadius": "3rem",
+        "padding": "0rem",
+        "borderRadius": "1rem",
         "hasShadow": true,
         "targetId": "",
         "href": "",
@@ -145,7 +149,7 @@
         "hoverEffect": "lift",
         "alignment": "center",
         "contentImage_HOLDER": {
-          "note": "to activate the contentImage take _HOLDER off",
+          "note": "",
           "src": "",
           "alt": "Button icon",
           "position": "above",
@@ -201,7 +205,7 @@
         "textColor": "",
         "width": "auto",
         "height": "auto",
-        "margin": "1rem",
+        "margin": "1rem 0rem 0rem 0rem",
         "padding": "1rem",
         "textAlign": "center",
         "borderRadius": "3rem",
@@ -214,6 +218,36 @@
         "contentImage": {
           "src": "/picto/ar-camera.png",
           "alt": "ar-camera",
+          "position": "above",
+          "width": "100%",
+          "className": "ar-camera-pict shadow-lg transform transition duration-100 ease-in-out"
+        },
+        
+        "className": "split-section py-16"
+      }
+    },
+    {
+     "id": "camMap",
+      "name": "camMap",
+      "description": "Display the phonemap pictogram",
+      "configuration": {
+        "backgroundColor": "transparent",
+        "textColor": "",
+        "width": "auto",
+        "height": "auto",
+        "margin": "1rem 0rem 0rem 0rem",
+        "padding": "1rem",
+        "textAlign": "center",
+        "borderRadius": "3rem",
+        "fullWidth": false,
+        "alignment": "center",
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/picto/map.png",
+          "alt": "camMap",
           "position": "above",
           "width": "100%",
           "className": "ar-camera-pict shadow-lg transform transition duration-100 ease-in-out"
