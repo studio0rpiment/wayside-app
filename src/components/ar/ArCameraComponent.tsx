@@ -1,10 +1,11 @@
 // src/components/ar/ArCameraComponent.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { gpsToThreeJsPosition } from '../../utils/geoArUtils';
+import { calculateBearing, gpsToThreeJsPosition } from '../../utils/geoArUtils';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 import { validateTerrainCoverage, getEnhancedAnchorPosition } from '../../utils/geoArUtils'
+import EdgeChevrons from './EdgeChevrons';
 import { loadHeightmap, testTerrainLookup, gpsToThreeJsPositionWithTerrain } from '../../utils/terrainUtils';
 
 const SHOW_DEBUG_PANEL = true;
@@ -82,12 +83,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 const [showAnchorSphere, setShowAnchorSphere] = useState(true);
 const [sphereSize, setSphereSize] = useState(0.5); // Default 0.5m radius
 const [planeRotation, setPlaneRotation] = useState(-Math.PI / 2.1 ); 
-
-
-
-
-
-
+//chevrons for directions
+const [showChevrons, setShowChevrons] = useState(true);
+const [debugHeading, setDebugHeading] = useState<number | null>(null);
 
 
   // Debug/testing override state
@@ -341,6 +339,24 @@ const placeArObject = () => {
     }
   };
   
+  const getDeviceHeading = (): number | null => {
+  // Use debug override if set
+  if (debugHeading !== null) {
+    return debugHeading;
+  }
+  
+  if (!deviceOrientation || deviceOrientation.alpha === null) {
+    // Fallback for desktop testing
+    return 0; // Point north
+  }
+  
+  let heading = deviceOrientation.alpha;
+  while (heading < 0) heading += 360;
+  while (heading >= 360) heading -= 360;
+  
+  return heading;
+};
+
   // Animation loop
   const animate = () => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
@@ -657,6 +673,14 @@ useEffect(() => {
           pointerEvents: 'auto' 
         }}
       />
+
+   {/* FORCE RENDER FOR TESTING */}
+<EdgeChevrons
+  userPosition={[-76.943, 38.9125]} // hardcoded test values
+  anchorPosition={[-76.942076, 38.912485]} // hardcoded test values  
+  deviceHeading={0} // hardcoded north
+  isVisible={true}
+/>
       
       {/* Error display - only show for actual technical errors, not permission issues */}
       {cameraError && !cameraError.includes('permission') && (
@@ -862,7 +886,77 @@ useEffect(() => {
                 </div>
               </div>
                   
-              
+                  <div style={{ 
+                      marginTop: '8px', 
+                      borderTop: '1px solid rgba(255,255,255,0.3)', 
+                      paddingTop: '5px' 
+                    }}>
+                      <div style={{ color: 'yellow', fontSize: '10px' }}>🧭 EDGE CHEVRONS</div>
+                      
+                      <div 
+                        onClick={() => {
+                          setShowChevrons(!showChevrons);
+                          console.log('🧭 Edge chevrons:', !showChevrons ? 'ON' : 'OFF');
+                        }}
+                        style={{ 
+                          cursor: 'pointer', 
+                          userSelect: 'none', 
+                          padding: '2px 4px',
+                          backgroundColor: showChevrons ? 'rgba(190, 105, 169, 0.3)' : 'rgba(100, 100, 100, 0.3)',
+                          borderRadius: '2px',
+                          fontSize: '9px',
+                          marginTop: '2px'
+                        }}
+                      >
+                        Chevrons: {showChevrons ? '✅ ON' : '❌ OFF'}
+                      </div>
+
+                      <div style={{ marginTop: '2px', fontSize: '9px' }}>
+                      <label>Debug Heading: {debugHeading?.toFixed(1) || 'Auto'}°</label>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="360" 
+                        step="10" 
+                        value={debugHeading || 0}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value);
+                          setDebugHeading(value);
+                          console.log('🧭 Debug heading set to:', value);
+                        }}
+                        style={{ width: '80px', marginLeft: '5px' }}
+                      />
+                      <button 
+                        onClick={() => {
+                          setDebugHeading(null);
+                          console.log('🧭 Debug heading cleared, using auto');
+                        }}
+                        style={{ 
+                          fontSize: '8px', 
+                          padding: '1px 3px', 
+                          marginLeft: '3px',
+                          backgroundColor: 'rgba(255,255,255,0.2)', 
+                          border: 'none', 
+                          color: 'white' 
+                        }}
+                      >
+                        Auto
+                      </button>
+                    </div>
+                      
+                  {deviceOrientation && (
+                    <div style={{ fontSize: '9px', marginTop: '2px' }}>
+                      Heading: {getDeviceHeading()?.toFixed(1)}°
+                    </div>
+                  )}
+                  
+                  {userPosition && anchorPosition && (
+                    <div style={{ fontSize: '9px' }}>
+                      GPS Bearing: {calculateBearing(userPosition, anchorPosition).toFixed(1)}°
+                    </div>
+                  )}
+                </div>
+                              
             
 
                 <div 
