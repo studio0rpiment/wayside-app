@@ -82,7 +82,7 @@ const GradientElement: React.FC<CustomGradientElementProps> = ({
           
         case 'aurora':
           const auroraPositions = [
-            { x: 20, y: 15 }, { x: 45, y: 35 }, { x: 70, y: 55 }, { x: 85, y: 75 }
+            { x: 20, y: 15 }, { x: 45, y: 65 }, { x: 70, y: 55 }, { x: 85, y: 75 }
           ];
           
           const auroraBackgrounds: string[] = [];

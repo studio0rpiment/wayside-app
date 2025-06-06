@@ -20,10 +20,10 @@ const Home: React.FC = () => {
   return (
     <div className="home-route">
       <GradientElement 
-        color="gradient( var(--color-dark), var(--color-dark), var(--color-light), var(--color-dark))" 
+        color="gradient(  var(--color-dark), var(--color-light) , var(--color-dark))" 
         gradientType="aurora"
-        blockSize={150}
-        animationDuration="20s"
+        blockSize={110}
+        animationDuration="30s"
     
         
       >

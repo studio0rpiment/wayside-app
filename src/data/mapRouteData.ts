@@ -59,39 +59,39 @@ export interface RoutePointCollection {
 export const routePointsData: RoutePointCollection = {
   'type': 'FeatureCollection',
   'features': [
-    // {
-    //   'type': 'Feature',
-    //   'properties': {
-    //     'iconName': '2030-2105',
-    //     'iconScale': 1,
-    //     'title': '2030-2150',
-    //     'modalContent': {
-    //       'title': '2030-2150',
-    //       'description': 'Rising tides will flood the gardens. High water will bring severe, lasting damage.',
-    //       'imageUrl': getAssetPath('icons/2030-2105.svg'),
-    //       'experienceRoute': '/2030-2105',
-    //       'buttonText': 'OPEN',
-    //       'year': '2030-2105',
-    //       'additionalInfo': {
-    //         'theme': 'Future projections',
-    //         'heading': '3 minutes'
-    //       }
-    //     },
-    //     // Updated coordinates from new data
-    //     'arAnchor': {
-    //       'coordinates': [-76.942076, 38.912485],
-    //       'elevation': 2.0,        // Light gray area - low elevation
-    //       'orientation': 180,      // Facing south
-    //       'scale': 1.5,            // Slightly larger than default
-    //       'heightMapScale': 1.0,   // Scale factor for height adjustments
-    //       'alignToTerrain': true
-    //     }
-    //   },
-    //   'geometry': {
-    //     'type': 'Point',
-    //     'coordinates': [-76.94177, 38.913078]
-    //   }
-    // },
+    {
+      'type': 'Feature',
+      'properties': {
+        'iconName': '2030-2105',
+        'iconScale': 1,
+        'title': '2030-2150',
+        'modalContent': {
+          'title': '2030-2150',
+          'description': 'Rising tides will flood the gardens. High water will bring severe, lasting damage.',
+          'imageUrl': getAssetPath('icons/2030-2105.svg'),
+          'experienceRoute': '/2030-2105',
+          'buttonText': 'OPEN',
+          'year': '2030-2105',
+          'additionalInfo': {
+            'theme': 'Future projections',
+            'heading': '3 minutes'
+          }
+        },
+        // Updated coordinates from new data
+        'arAnchor': {
+          'coordinates': [-76.942076, 38.912485],
+          'elevation': 2.0,        // Light gray area - low elevation
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
+          'alignToTerrain': true
+        }
+      },
+      'geometry': {
+        'type': 'Point',
+        'coordinates': [-76.94177, 38.913078]
+      }
+    },
     {
       'type': 'Feature',
       'properties': {
@@ -254,39 +254,39 @@ export const routePointsData: RoutePointCollection = {
         'coordinates': [-76.944588, 38.913446]
       }
     },
-    // {
-    //   'type': 'Feature',
-    //   'properties': {
-    //     'iconName': '1968',
-    //     'iconScale': 1,
-    //     'title': '1968',
-    //     'modalContent': {
-    //       'title': '1968',
-    //       'description': 'The dump burned. A boy died. Public outcry forced change in Kenilworth.',
-    //       'imageUrl': getAssetPath('icons/1968.svg'),
-    //       'experienceRoute': '/1968',
-    //       'buttonText': 'OPEN',
-    //       'year': '1968',
-    //       'additionalInfo': {
-    //         'theme': 'Historical perspective',
-    //         'heading': '3 minutes'
-    //       }
-    //     },
-    //     // Updated coordinates from new data
-    //     'arAnchor': {
-    //       'coordinates': [-76.949213, 38.910475],
-    //       'elevation': 6.0,        // Darker area - higher elevation (outside main pond)
-    //       'orientation': 180,      // Facing south
-    //       'scale': 1.5,            // Slightly larger than default
-    //       'heightMapScale': 1.0,   // Scale factor for height adjustments
-    //       'alignToTerrain': true
-    //     }
-    //   },
-    //   'geometry': {
-    //     'type': 'Point',
-    //     'coordinates': [-76.946716, 38.911531]
-    //   }
-    // },
+    {
+      'type': 'Feature',
+      'properties': {
+        'iconName': '1968',
+        'iconScale': 1,
+        'title': '1968',
+        'modalContent': {
+          'title': '1968',
+          'description': 'The dump burned. A boy died. Public outcry forced change in Kenilworth.',
+          'imageUrl': getAssetPath('icons/1968.svg'),
+          'experienceRoute': '/1968',
+          'buttonText': 'OPEN',
+          'year': '1968',
+          'additionalInfo': {
+            'theme': 'Historical perspective',
+            'heading': '3 minutes'
+          }
+        },
+        // Updated coordinates from new data
+        'arAnchor': {
+          'coordinates': [-76.949213, 38.910475],
+          'elevation': 6.0,        // Darker area - higher elevation (outside main pond)
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
+          'alignToTerrain': true
+        }
+      },
+      'geometry': {
+        'type': 'Point',
+        'coordinates': [-76.946716, 38.911531]
+      }
+    },
     {
       'type': 'Feature',
       'properties': {
@@ -319,39 +319,39 @@ export const routePointsData: RoutePointCollection = {
         'coordinates': [-76.947518, 38.911967]
       }
     },
-    // {
-    //   'type': 'Feature',
-    //   'properties': {
-    //     'iconName': '2200_bc',
-    //     'iconScale': 1,
-    //     'title': '2200 BC',
-    //     'modalContent': {
-    //       'title': '2200 BC',
-    //       'description': 'At high tide, a canoe glides. At low tide, it vanishes. Past cultures thrived on these lands.',
-    //       'imageUrl': getAssetPath('icons/2200_bc.svg'),
-    //       'experienceRoute': '/2200_bc',
-    //       'buttonText': 'OPEN',
-    //       'year': '2200 BC',
-    //       'additionalInfo': {
-    //         'theme': 'Ancient history',
-    //         'heading': '4 minutes'
-    //       }
-    //     },
-    //     // Updated coordinates from new data
-    //     'arAnchor': {
-    //       'coordinates': [-76.949342, 38.912096],
-    //       'elevation': 8.0,        // Very dark area - highest elevation (outside main pond)
-    //       'orientation': 180,      // Facing south
-    //       'scale': 1.5,            // Slightly larger than default
-    //       'heightMapScale': 1.0,   // Scale factor for height adjustments
-    //       'alignToTerrain': true
-    //     }
-    //   },
-    //   'geometry': {
-    //     'type': 'Point',
-    //     'coordinates': [-76.948307, 38.912053]
-    //   }
-    // }
+    {
+      'type': 'Feature',
+      'properties': {
+        'iconName': '2200_bc',
+        'iconScale': 1,
+        'title': '2200 BC',
+        'modalContent': {
+          'title': '2200 BC',
+          'description': 'At high tide, a canoe glides. At low tide, it vanishes. Past cultures thrived on these lands.',
+          'imageUrl': getAssetPath('icons/2200_bc.svg'),
+          'experienceRoute': '/2200_bc',
+          'buttonText': 'OPEN',
+          'year': '2200 BC',
+          'additionalInfo': {
+            'theme': 'Ancient history',
+            'heading': '4 minutes'
+          }
+        },
+        // Updated coordinates from new data
+        'arAnchor': {
+          'coordinates': [-76.949342, 38.912096],
+          'elevation': 8.0,        // Very dark area - highest elevation (outside main pond)
+          'orientation': 180,      // Facing south
+          'scale': 1.5,            // Slightly larger than default
+          'heightMapScale': 1.0,   // Scale factor for height adjustments
+          'alignToTerrain': true
+        }
+      },
+      'geometry': {
+        'type': 'Point',
+        'coordinates': [-76.948307, 38.912053]
+      }
+    }
   ]
 };
 
