@@ -211,7 +211,7 @@ const createAnchorSphere = () => {
       0.1,
       1000
     );
-    camera.position.set(0, 1.6, 0); // Camera at origin
+    camera.position.set(0, 0, 0); // Camera at origin
     cameraRef.current = camera;
     
     // Create renderer with transparency for overlay
@@ -320,7 +320,7 @@ const placeArObject = () => {
     // Apply rotation to camera to match device orientation
     const alphaRad = THREE.MathUtils.degToRad(alpha || 0);
     const betaRad = THREE.MathUtils.degToRad(beta || 0);
-    const gammaRad = THREE.MathUtils.degToRad(gamma || 0);
+    const gammaRad = THREE.MathUtils.degToRad((beta || 0) - 90);
     
     // Create rotation matrix from device orientation
     // Note: These may need adjustment based on device coordinate system
