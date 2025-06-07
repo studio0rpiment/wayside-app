@@ -211,7 +211,7 @@ const createAnchorSphere = () => {
       0.1,
       1000
     );
-    camera.position.set(0, 0, 0); // Camera at origin
+    camera.position.set(0, 1.6, 0); // Camera at origin
     cameraRef.current = camera;
     
     // Create renderer with transparency for overlay
