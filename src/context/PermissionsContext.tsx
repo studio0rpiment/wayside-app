@@ -162,7 +162,7 @@ setPermissionsState({
   results: {
     [PermissionType.CAMERA]: PermissionStatus.PROMPT,     // Changed from GRANTED
     [PermissionType.LOCATION]: PermissionStatus.PROMPT,   // Changed from GRANTED
-    [PermissionType.ORIENTATION]: PermissionStatus.GRANTED, // Keep this one
+    [PermissionType.ORIENTATION]: PermissionStatus.PROMPT, 
     [PermissionType.MICROPHONE]: PermissionStatus.PROMPT,
     [PermissionType.NOTIFICATION]: PermissionStatus.PROMPT,
   },
