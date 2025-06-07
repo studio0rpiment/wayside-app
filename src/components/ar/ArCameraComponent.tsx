@@ -104,7 +104,7 @@ const [debugHeading, setDebugHeading] = useState<number | null>(null);
   // Initialize camera stream
   const initializeCamera = async () => {
     try {
-      console.log('🎥 Initializing AR camera...');
+      // console.log('🎥 Initializing AR camera...');
       
       // Check permissions using existing system
       if (!isPermissionGranted(PermissionType.CAMERA)) {
@@ -131,7 +131,7 @@ const [debugHeading, setDebugHeading] = useState<number | null>(null);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
-        console.log('✅ Camera stream initialized');
+        // console.log('✅ Camera stream initialized');
       }
       
       return true;
@@ -146,7 +146,7 @@ const [debugHeading, setDebugHeading] = useState<number | null>(null);
   const initializeThreeJs = () => {
     if (!canvasRef.current || !containerRef.current) return false;
     
-    console.log('🎨 Initializing Three.js scene...');
+    // console.log('🎨 Initializing Three.js scene...');
     
     // Create scene
     const scene = new THREE.Scene();
@@ -198,10 +198,10 @@ const createAnchorSphere = () => {
   const currentOverride = (window as any).arTestingOverride ?? true;
   if (currentOverride) {
     anchorGroup.position.set(0, 0, -5);
-    console.log('🔴🟢 Group positioned with sphere at origin, plane rotated');
+    // console.log('🔴🟢 Group positioned with sphere at origin, plane rotated');
   }
   
-  console.log('🔴 Sphere stays centered, plane handles all rotation');
+  // console.log('🔴 Sphere stays centered, plane handles all rotation');
 };
     
     // Create camera with realistic FOV for mobile AR
@@ -237,10 +237,10 @@ const createAnchorSphere = () => {
 
     if (onSceneReady) {
     onSceneReady(scene, camera);
-    console.log('📡 AR scene exposed to parent component');
+    // console.log('📡 AR scene exposed to parent component');
   }
     
-    console.log('✅ Three.js scene initialized');
+    // console.log('✅ Three.js scene initialized');
     return true;
   };
   
@@ -275,11 +275,11 @@ const placeArObject = () => {
     coordinateScale
   );
   
-  console.log(`📍 Terrain-aware AR positioning:`);
-  console.log(`   Position: (${result.position.x.toFixed(2)}, ${result.position.y.toFixed(2)}, ${result.position.z.toFixed(2)})`);
-  console.log(`   User elevation: ${result.userElevation?.toFixed(2)}m`);
-  console.log(`   Anchor elevation: ${result.terrainElevation?.toFixed(2)}m`);
-  console.log(`   Using terrain data: ${result.usedTerrain ? 'Yes' : 'No (fallback)'}`);
+  // console.log(`📍 Terrain-aware AR positioning:`);
+  // console.log(`   Position: (${result.position.x.toFixed(2)}, ${result.position.y.toFixed(2)}, ${result.position.z.toFixed(2)})`);
+  // console.log(`   User elevation: ${result.userElevation?.toFixed(2)}m`);
+  // console.log(`   Anchor elevation: ${result.terrainElevation?.toFixed(2)}m`);
+  // console.log(`   Using terrain data: ${result.usedTerrain ? 'Yes' : 'No (fallback)'}`);
   
       // Pass the terrain-aware position to your AR object placement
       // In the placeArObject function, update the sphere positioning:
@@ -293,11 +293,11 @@ const placeArObject = () => {
           if (currentOverride) {
             // In override mode, show sphere at the test position
             anchorSphereRef.current.position.set(0, 0, -5);
-            console.log('🔴 Anchor sphere positioned at override location (0, 0, -5)');
+            // console.log('🔴 Anchor sphere positioned at override location (0, 0, -5)');
           } else {
             // In AR mode, show sphere at the ACTUAL AR ANCHOR position
             anchorSphereRef.current.position.copy(result.position); // This is the AR anchor
-            console.log('🔴 Anchor sphere positioned at AR anchor:', result.position);
+            // console.log('🔴 Anchor sphere positioned at AR anchor:', result.position);
           }
         }
       }
@@ -405,11 +405,11 @@ const placeArObject = () => {
   // Initialize everything
   useEffect(() => {
     const initialize = async () => {
-      console.log('🚀 Starting AR Camera initialization...');
+      // console.log('🚀 Starting AR Camera initialization...');
       
       // Check and request camera permission if needed
       if (!isPermissionGranted(PermissionType.CAMERA)) {
-        console.log('📸 Camera permission not granted, requesting...');
+        // console.log('📸 Camera permission not granted, requesting...');
         const cameraGranted = await requestPermission(PermissionType.CAMERA);
         if (!cameraGranted) {
           setCameraError('Camera permission required for AR experience. Please allow camera access when prompted.');
@@ -419,7 +419,7 @@ const placeArObject = () => {
       
       // Check and request orientation permission if needed
       if (!isPermissionGranted(PermissionType.ORIENTATION)) {
-        console.log('📱 Orientation permission not granted, requesting...');
+        // console.log('📱 Orientation permission not granted, requesting...');
         await requestPermission(PermissionType.ORIENTATION);
         // Don't fail if orientation is denied - AR can work without it
       }
@@ -436,17 +436,17 @@ const placeArObject = () => {
       const orientationSupported = await requestOrientationPermission();
       if (orientationSupported) {
         window.addEventListener('deviceorientation', handleDeviceOrientation);
-        console.log('📱 Device orientation tracking enabled');
+        // console.log('📱 Device orientation tracking enabled');
       } else {
         console.warn('⚠️ Device orientation not available or permission denied');
       }
 
           // Load terrain data
-    console.log('🗺️ Loading terrain data...');
+    // console.log('🗺️ Loading terrain data...');
     const terrainLoaded = await loadHeightmap();
     
     if (terrainLoaded) {
-      console.log('✅ Terrain system ready');
+      // console.log('✅ Terrain system ready');
       
       // Test terrain coverage for your anchors (development only)
       if (process.env.NODE_ENV === 'development') {
@@ -469,14 +469,14 @@ const placeArObject = () => {
         canvasRef.current.addEventListener('touchstart', handleTouchStart, { passive: false });
         canvasRef.current.addEventListener('touchmove', handleTouchMove, { passive: false });
         canvasRef.current.addEventListener('touchend', handleTouchEnd, { passive: false });
-        console.log('✅ Touch events attached to canvas');
+        // console.log('✅ Touch events attached to canvas');
       } else {
         console.error('❌ Canvas ref is null, cannot attach touch events');
       }
             
       
       setIsInitialized(true);
-      console.log('✅ AR Camera fully initialized');
+      // console.log('✅ AR Camera fully initialized');
     };
     
     initialize();
@@ -505,10 +505,10 @@ const placeArObject = () => {
       // Multi-tap detection - SIMPLIFIED
       if (timeSince < doubleTapDelay && timeSince > 0) {
         // This is a double tap
-        console.log('👆 Double tap detected - reset');
+        // console.log('👆 Double tap detected - reset');
         if (onModelReset) {
           onModelReset();
-          console.log('onModelReset called');
+          // console.log('onModelReset called');
         }
         event.preventDefault();
         lastTapTime.current = 0; // Reset to prevent further detection
@@ -559,7 +559,7 @@ const handleTouchMove = (event: TouchEvent) => {
 };
 
 const handleTouchEnd = (event: TouchEvent) => {
-  console.log('👆 Touch ended');
+  // console.log('👆 Touch ended');
   // Could add swipe detection here if needed
 };
 
@@ -589,7 +589,7 @@ const handleTouchEnd = (event: TouchEvent) => {
         rendererRef.current.dispose();
       }
       
-      console.log('🧹 AR Camera cleaned up');
+      // console.log('🧹 AR Camera cleaned up');
     };
   }, []); // Remove permission dependency to avoid loops
   
@@ -617,7 +617,7 @@ useEffect(() => {
     if (targetPosition) {
       // Move the entire GROUP
       anchorGroupRef.current.position.copy(targetPosition);
-      console.log('🔴🟢 Anchor group moved to:', targetPosition);
+      // console.log('🔴🟢 Anchor group moved to:', targetPosition);
     }
   }
 }, [arTestingOverride, userPosition, anchorPosition, coordinateScale]);
@@ -816,7 +816,7 @@ useEffect(() => {
                       anchorPlaneRef.current.visible = !showAnchorSphere;
                     }
                     
-                    console.log('🔴🟢 Anchor sphere & plane:', !showAnchorSphere ? 'ON' : 'OFF');
+                    // console.log('🔴🟢 Anchor sphere & plane:', !showAnchorSphere ? 'ON' : 'OFF');
                   }}
                   style={{ 
                     cursor: 'pointer', 
@@ -845,8 +845,8 @@ useEffect(() => {
                       
                       if (anchorPlaneRef.current) {
                         anchorPlaneRef.current.rotation.x = newRotation;
-                        console.log('🟢 Plane rotation:', (newRotation * 180 / Math.PI).toFixed(1), 'degrees');
-                        console.log('🟢 Plane tilt from horizontal:', ((newRotation + Math.PI / 2.1) * 180 / Math.PI).toFixed(1), 'degrees');
+                        // console.log('🟢 Plane rotation:', (newRotation * 180 / Math.PI).toFixed(1), 'degrees');
+                        // console.log('🟢 Plane tilt from horizontal:', ((newRotation + Math.PI / 2.1) * 180 / Math.PI).toFixed(1), 'degrees');
                       }
                     }}
                     style={{ width: '80px', marginLeft: '5px' }}
@@ -870,7 +870,7 @@ useEffect(() => {
                         const newSphereGeometry = new THREE.SphereGeometry(newSize, 16, 16);
                         anchorSphereRef.current.geometry.dispose();
                         anchorSphereRef.current.geometry = newSphereGeometry;
-                        console.log('🔴 Sphere size updated to:', newSize);
+                        // console.log('🔴 Sphere size updated to:', newSize);
                       }
                       
                       // Update plane geometry to match sphere size
@@ -878,7 +878,7 @@ useEffect(() => {
                         const newPlaneGeometry = new THREE.PlaneGeometry(newSize * 4, newSize * 4);
                         anchorPlaneRef.current.geometry.dispose();
                         anchorPlaneRef.current.geometry = newPlaneGeometry;
-                        console.log('🟢 Plane size updated to:', newSize * 4);
+                        // console.log('🟢 Plane size updated to:', newSize * 4);
                       }
                     }}
                     style={{ width: '80px', marginLeft: '5px' }}
@@ -896,7 +896,7 @@ useEffect(() => {
                       <div 
                         onClick={() => {
                           setShowChevrons(!showChevrons);
-                          console.log('🧭 Edge chevrons:', !showChevrons ? 'ON' : 'OFF');
+                          // console.log('🧭 Edge chevrons:', !showChevrons ? 'ON' : 'OFF');
                         }}
                         style={{ 
                           cursor: 'pointer', 
@@ -922,14 +922,14 @@ useEffect(() => {
                         onChange={(e) => {
                           const value = parseFloat(e.target.value);
                           setDebugHeading(value);
-                          console.log('🧭 Debug heading set to:', value);
+                          // console.log('🧭 Debug heading set to:', value);
                         }}
                         style={{ width: '80px', marginLeft: '5px' }}
                       />
                       <button 
                         onClick={() => {
                           setDebugHeading(null);
-                          console.log('🧭 Debug heading cleared, using auto');
+                          // console.log('🧭 Debug heading cleared, using auto');
                         }}
                         style={{ 
                           fontSize: '8px', 
@@ -964,7 +964,7 @@ useEffect(() => {
                     const newValue = !arTestingOverride;
                     (window as any).arTestingOverride = newValue;
                     setArTestingOverride(newValue);
-                    console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
+                    // console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
                   }}
                   style={{ cursor: 'pointer', userSelect: 'none', marginTop: '5px' }}
                 >
@@ -983,7 +983,7 @@ useEffect(() => {
                     <button 
                       onClick={() => {
                         import('../../utils/terrainUtils').then(utils => {
-                          console.log('🧪 Testing terrain lookup...');
+                          // console.log('🧪 Testing terrain lookup...');
                           utils.testTerrainLookup();
                         }).catch(err => console.error('❌ Terrain test failed:', err));
                       }}
@@ -1003,7 +1003,7 @@ useEffect(() => {
                     <button 
                       onClick={() => {
                         import('../../utils/geoArUtils').then(utils => {
-                          console.log('🧪 Testing all Kenilworth experiences...');
+                          // console.log('🧪 Testing all Kenilworth experiences...');
                           utils.testKenilworthExperiences();
                         }).catch(err => console.error('❌ Experience test failed:', err));
                       }}
@@ -1025,7 +1025,7 @@ useEffect(() => {
                     onClick={() => {
                       import('../../utils/geoArUtils').then(utils => {
                         import('../../data/mapRouteData').then(data => {
-                          console.log('🔍 Validating terrain coverage...');
+                          // console.log('🔍 Validating terrain coverage...');
                           const anchors = data.routePointsData.features.map(f => ({
                             name: f.properties.iconName,
                             coordinates: f.properties.arAnchor?.coordinates || f.geometry.coordinates
@@ -1051,7 +1051,7 @@ useEffect(() => {
                   <button 
                       onClick={() => {
                         import('../../utils/terrainUtils').then(utils => {
-                          console.log('🔧 Running coordinate conversion debug...');
+                          // console.log('🔧 Running coordinate conversion debug...');
                           utils.debugCoordinateConversion();
                         });
                       }}
@@ -1071,7 +1071,7 @@ useEffect(() => {
                         onClick={() => {
                           import('../../utils/terrainUtils').then(utils => {
                             // Test around the mac anchor point that showed (444, 95)
-                            console.log('🔍 Sampling area around mac anchor...');
+                            // console.log('🔍 Sampling area around mac anchor...');
                             utils.debugPixelArea(444, 95, 15);
                           });
                         }}
@@ -1090,7 +1090,7 @@ useEffect(() => {
                     <button 
                       onClick={() => {
                         import('../../utils/terrainUtils').then(utils => {
-                          console.log('📊 Sampling heightmap distribution...');
+                          // console.log('📊 Sampling heightmap distribution...');
                           utils.sampleHeightmapDistribution();
                         });
                       }}
@@ -1110,7 +1110,7 @@ useEffect(() => {
                     <button 
                       onClick={() => {
                         import('../../utils/terrainUtils').then(utils => {
-                          console.log('🔍 Analyzing raw pixel data...');
+                          // console.log('🔍 Analyzing raw pixel data...');
                           utils.debugPixelData();
                         });
                       }}
@@ -1130,7 +1130,7 @@ useEffect(() => {
                     <button 
                       onClick={() => {
                         import('../../utils/terrainUtils').then(utils => {
-                          console.log('🧪 Testing pixel interpretation methods...');
+                          // console.log('🧪 Testing pixel interpretation methods...');
                           utils.testPixelInterpretation();
                         });
                       }}
@@ -1181,12 +1181,12 @@ useEffect(() => {
                   <button 
                     onClick={() => {
                       import('../../utils/terrainUtils').then(utils => {
-                        console.log(`🎯 Testing with GPS offset: ${gpsOffset.lon}, ${gpsOffset.lat}`);
+                        // console.log(`🎯 Testing with GPS offset: ${gpsOffset.lon}, ${gpsOffset.lat}`);
                         // Test current anchor position with offset
                         const testLon = anchorPosition[0] + gpsOffset.lon;
                         const testLat = anchorPosition[1] + gpsOffset.lat;
                         const elevation = utils.getElevationAtGPS(testLon, testLat);
-                        console.log(`📍 Adjusted anchor elevation: ${elevation?.toFixed(2)}m`);
+                        // console.log(`📍 Adjusted anchor elevation: ${elevation?.toFixed(2)}m`);
                       });
                     }}
                     style={{ 
@@ -1206,7 +1206,7 @@ useEffect(() => {
                   <button 
                     onClick={() => {
                       import('../../utils/terrainUtils').then(utils => {
-                        console.log('🧪 Testing area sampling for all anchors...');
+                        // console.log('🧪 Testing area sampling for all anchors...');
                         utils.testAreaSampling();
                       });
                     }}

@@ -276,9 +276,9 @@ export function getEnhancedAnchorPosition(
     elevationOffset // Use same value as fallback
   );
   
-  console.log(`🎯 ${experienceType} anchor: ${result.usedTerrain ? 'terrain-aware' : 'fallback'} positioning`);
+  // console.log(`🎯 ${experienceType} anchor: ${result.usedTerrain ? 'terrain-aware' : 'fallback'} positioning`);
   if (result.terrainElevation !== null) {
-    console.log(`   Terrain: ${result.terrainElevation.toFixed(2)}m + ${elevationOffset}m offset`);
+    // console.log(`   Terrain: ${result.terrainElevation.toFixed(2)}m + ${elevationOffset}m offset`);
   }
   
   return {
@@ -291,7 +291,7 @@ export function getEnhancedAnchorPosition(
  * Validate terrain data availability for your anchor positions
  */
 export function validateTerrainCoverage(anchors: Array<{ name: string; coordinates: [number, number] }>): void {
-  console.log('🔍 Validating terrain coverage for anchors...');
+  // console.log('🔍 Validating terrain coverage for anchors...');
   
   let terrainAvailable = 0;
   let noTerrain = 0;
@@ -302,14 +302,14 @@ export function validateTerrainCoverage(anchors: Array<{ name: string; coordinat
     
     if (elevation !== null) {
       terrainAvailable++;
-      console.log(`✅ ${anchor.name}: ${elevation.toFixed(2)}m elevation`);
+      // console.log(`✅ ${anchor.name}: ${elevation.toFixed(2)}m elevation`);
     } else {
       noTerrain++;
-      console.log(`❌ ${anchor.name}: No terrain data`);
+      // console.log(`❌ ${anchor.name}: No terrain data`);
     }
   });
   
-  console.log(`📊 Terrain coverage: ${terrainAvailable}/${anchors.length} anchors have elevation data`);
+  // console.log(`📊 Terrain coverage: ${terrainAvailable}/${anchors.length} anchors have elevation data`);
 }
 
 /**
@@ -325,11 +325,11 @@ export function testTerrainPositioning(): void {
     { name: 'cattail', coordinates: [-76.947519, 38.911934] as [number, number], experience: 'cattail' }
   ];
   
-  console.log('🧪 Testing terrain-aware positioning...');
-  console.log(`👤 User position: ${testUserPosition[0]}, ${testUserPosition[1]}`);
+  // console.log('🧪 Testing terrain-aware positioning...');
+  // console.log(`👤 User position: ${testUserPosition[0]}, ${testUserPosition[1]}`);
   
   testAnchors.forEach(anchor => {
-    console.log(`\n🎯 Testing ${anchor.name} (${anchor.experience}):`);
+    // console.log(`\n🎯 Testing ${anchor.name} (${anchor.experience}):`);
     
     // Test original method
     const originalPos = gpsToThreeJsPosition(
@@ -347,13 +347,13 @@ export function testTerrainPositioning(): void {
       1.0
     );
     
-    console.log(`   Original: (${originalPos.x.toFixed(2)}, ${originalPos.y.toFixed(2)}, ${originalPos.z.toFixed(2)})`);
-    console.log(`   Terrain:  (${terrainPos.position.x.toFixed(2)}, ${terrainPos.position.y.toFixed(2)}, ${terrainPos.position.z.toFixed(2)})`);
-    console.log(`   Method: ${terrainPos.usedTerrain ? 'LiDAR elevation' : 'Fallback'}`);
+    // console.log(`   Original: (${originalPos.x.toFixed(2)}, ${originalPos.y.toFixed(2)}, ${originalPos.z.toFixed(2)})`);
+    // console.log(`   Terrain:  (${terrainPos.position.x.toFixed(2)}, ${terrainPos.position.y.toFixed(2)}, ${terrainPos.position.z.toFixed(2)})`);
+    // console.log(`   Method: ${terrainPos.usedTerrain ? 'LiDAR elevation' : 'Fallback'}`);
     
     if (terrainPos.terrainElevation !== null) {
-      console.log(`   Ground level: ${terrainPos.terrainElevation.toFixed(2)}m`);
-      console.log(`   Experience offset: +${terrainPos.experienceOffset}m`);
+      // console.log(`   Ground level: ${terrainPos.terrainElevation.toFixed(2)}m`);
+      // console.log(`   Experience offset: +${terrainPos.experienceOffset}m`);
     }
   });
 }
@@ -377,13 +377,13 @@ export function testSingleExperienceWithTerrain(
   experienceName: string = 'Test Experience',
   coordinateScale: number = 1.0
 ) {
-  console.group(`🎯 Terrain Test: ${experienceName}`);
+  // console.group(`🎯 Terrain Test: ${experienceName}`);
   
   const distance = calculateGpsDistance(userPosition, anchorPosition);
-  console.log(`Distance to anchor: ${distance.toFixed(2)}m`);
+  // console.log(`Distance to anchor: ${distance.toFixed(2)}m`);
   
   const bearing = calculateBearing(userPosition, anchorPosition);
-  console.log(`Bearing: ${bearing.toFixed(1)}° (${getBearingDirection(bearing)})`);
+  // console.log(`Bearing: ${bearing.toFixed(1)}° (${getBearingDirection(bearing)})`);
   
   // Test terrain-aware positioning
   const result = getEnhancedAnchorPosition(
@@ -393,22 +393,22 @@ export function testSingleExperienceWithTerrain(
     coordinateScale
   );
   
-  console.log(`AR Position: (${result.position.x.toFixed(2)}, ${result.position.y.toFixed(2)}, ${result.position.z.toFixed(2)})`);
-  console.log(`Positioning method: ${result.usedTerrain ? 'Terrain-aware' : 'Fallback'}`);
+  // console.log(`AR Position: (${result.position.x.toFixed(2)}, ${result.position.y.toFixed(2)}, ${result.position.z.toFixed(2)})`);
+  // console.log(`Positioning method: ${result.usedTerrain ? 'Terrain-aware' : 'Fallback'}`);
   
   if (result.terrainElevation !== null) {
-    console.log(`Terrain elevation: ${result.terrainElevation.toFixed(2)}m`);
-    console.log(`Experience offset: +${result.experienceOffset}m`);
-    console.log(`Final elevation: ${(result.terrainElevation + result.experienceOffset).toFixed(2)}m`);
+    // console.log(`Terrain elevation: ${result.terrainElevation.toFixed(2)}m`);
+    // console.log(`Experience offset: +${result.experienceOffset}m`);
+    // console.log(`Final elevation: ${(result.terrainElevation + result.experienceOffset).toFixed(2)}m`);
   }
   
   const visibilityLevel = getArVisibilityLevel(userPosition, anchorPosition);
-  console.log(`Visibility level: ${visibilityLevel}`);
+  // console.log(`Visibility level: ${visibilityLevel}`);
   
   const scale = getDistanceBasedScale(userPosition, anchorPosition);
-  console.log(`Recommended scale: ${scale.toFixed(2)}`);
+  // console.log(`Recommended scale: ${scale.toFixed(2)}`);
   
-  console.groupEnd();
+  // console.groupEnd();
   
   return {
     distance,
@@ -437,8 +437,8 @@ export function testKenilworthExperiences(): void {
     { anchor: [-76.947519, 38.911934] as [number, number], type: 'cattail', name: 'Cattail Experience' }
   ];
   
-  console.log('🌊 Testing all Kenilworth AR experiences with terrain awareness');
-  console.log('═'.repeat(60));
+  // console.log('🌊 Testing all Kenilworth AR experiences with terrain awareness');
+  // console.log('═'.repeat(60));
   
   experiences.forEach(exp => {
     testSingleExperienceWithTerrain(

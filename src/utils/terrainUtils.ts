@@ -45,7 +45,7 @@ let heightmapCanvas: HTMLCanvasElement | null = null;
  */
 export async function loadHeightmap(): Promise<boolean> {
   try {
-    console.log('🗺️ Loading heightmap data...');
+    // console.log('🗺️ Loading heightmap data...');
     
     // Create image element
     const img = new Image();
@@ -70,9 +70,9 @@ export async function loadHeightmap(): Promise<boolean> {
           // Extract image data
           heightmapImageData = ctx.getImageData(0, 0, TERRAIN_CONFIG.width, TERRAIN_CONFIG.height);
           
-          console.log('✅ Heightmap loaded successfully');
-          console.log(`📊 Heightmap dimensions: ${TERRAIN_CONFIG.width}x${TERRAIN_CONFIG.height}`);
-          console.log(`📏 Elevation range: ${TERRAIN_CONFIG.elevationRange.min}m to ${TERRAIN_CONFIG.elevationRange.max}m`);
+          // console.log('✅ Heightmap loaded successfully');
+          // console.log(`📊 Heightmap dimensions: ${TERRAIN_CONFIG.width}x${TERRAIN_CONFIG.height}`);
+          // console.log(`📏 Elevation range: ${TERRAIN_CONFIG.elevationRange.min}m to ${TERRAIN_CONFIG.elevationRange.max}m`);
           
           resolve(true);
         } catch (error) {
@@ -156,7 +156,7 @@ function getPixelElevation(pixelX: number, pixelY: number, sampleRadius: number 
   const elevations: number[] = [];
   const step = Math.max(1, Math.floor(sampleRadius / 10)); // Sample every few pixels for performance
   
-  console.log(`🗺️ Sampling ${sampleRadius*2+1}x${sampleRadius*2+1} area around (${pixelX}, ${pixelY}) with step=${step}`);
+  // console.log(`🗺️ Sampling ${sampleRadius*2+1}x${sampleRadius*2+1} area around (${pixelX}, ${pixelY}) with step=${step}`);
   
   // Sample area around the center pixel
   for (let dy = -sampleRadius; dy <= sampleRadius; dy += step) {
@@ -210,11 +210,11 @@ function getPixelElevation(pixelX: number, pixelY: number, sampleRadius: number 
   const landPixels = elevations.filter(e => e > 20).length;  // Very high (land)
   const midRangePixels = elevations.filter(e => e >= -3 && e <= 20).length;
   
-  console.log(`📊 Sampled ${elevations.length} pixels:`);
-  console.log(`   Range: ${min.toFixed(2)}m to ${max.toFixed(2)}m`);
-  console.log(`   Average: ${average.toFixed(2)}m`);
-  console.log(`   Median: ${median.toFixed(2)}m`);
-  console.log(`   Water pixels (<-3m): ${waterPixels}, Land pixels (>20m): ${landPixels}, Mid-range: ${midRangePixels}`);
+  // console.log(`📊 Sampled ${elevations.length} pixels:`);
+  // console.log(`   Range: ${min.toFixed(2)}m to ${max.toFixed(2)}m`);
+  // console.log(`   Average: ${average.toFixed(2)}m`);
+  // console.log(`   Median: ${median.toFixed(2)}m`);
+  // console.log(`   Water pixels (<-3m): ${waterPixels}, Land pixels (>20m): ${landPixels}, Mid-range: ${midRangePixels}`);
   
   // Smart elevation selection
   let finalElevation: number;
@@ -223,15 +223,15 @@ function getPixelElevation(pixelX: number, pixelY: number, sampleRadius: number 
     // If we have significant mid-range values, filter out extremes and use average
     const filteredElevations = elevations.filter(e => e >= -3 && e <= 20);
     finalElevation = filteredElevations.reduce((sum, e) => sum + e, 0) / filteredElevations.length;
-    console.log(`   Using filtered average (${filteredElevations.length} pixels): ${finalElevation.toFixed(2)}m`);
+    // console.log(`   Using filtered average (${filteredElevations.length} pixels): ${finalElevation.toFixed(2)}m`);
   } else if (average > 2 && average < 15) {
     // If average is in a reasonable range, use it instead of median
     finalElevation = average;
-    console.log(`   Using average instead of median: ${finalElevation.toFixed(2)}m`);
+    // console.log(`   Using average instead of median: ${finalElevation.toFixed(2)}m`);
   } else {
     // Fall back to median
     finalElevation = median;
-    console.log(`   Using median: ${finalElevation.toFixed(2)}m`);
+    // console.log(`   Using median: ${finalElevation.toFixed(2)}m`);
   }
   
   return finalElevation;
@@ -267,7 +267,7 @@ export function getElevationAtGPS(longitude: number, latitude: number): number |
     const elevation = getPixelElevation(pixelX, pixelY);
     
     if (elevation !== null) {
-      console.log(`🗺️ GPS (${longitude.toFixed(6)}, ${latitude.toFixed(6)}) -> Elevation: ${elevation.toFixed(2)}m`);
+      // console.log(`🗺️ GPS (${longitude.toFixed(6)}, ${latitude.toFixed(6)}) -> Elevation: ${elevation.toFixed(2)}m`);
     }
     
     return elevation;
@@ -302,9 +302,9 @@ export function gpsToThreeJsPositionWithTerrain(
   // Use existing coordinate conversion
   const [x, y, z] = gpsToLocalCoordinates(userGps, anchorGps, anchorFinalElevation, userFinalElevation);
   
-  console.log(`🏃 User elevation: ${userFinalElevation.toFixed(2)}m`);
-  console.log(`🎯 Anchor elevation: ${anchorFinalElevation.toFixed(2)}m`);
-  console.log(`📏 Relative height: ${(anchorFinalElevation - userFinalElevation).toFixed(2)}m`);
+  // console.log(`🏃 User elevation: ${userFinalElevation.toFixed(2)}m`);
+  // console.log(`🎯 Anchor elevation: ${anchorFinalElevation.toFixed(2)}m`);
+  // console.log(`📏 Relative height: ${(anchorFinalElevation - userFinalElevation).toFixed(2)}m`);
   
   return {
     position: new THREE.Vector3(x * coordinateScale, y, z * coordinateScale),
@@ -349,9 +349,9 @@ export function gpsToThreeJsPositionTerrain(
     userFinalElevation  // Now using actual user elevation
   );
   
-  console.log(`🏃 User elevation: ${userFinalElevation.toFixed(2)}m`);
-  console.log(`🎯 Anchor elevation: ${anchorFinalElevation.toFixed(2)}m`);
-  console.log(`📏 Relative height: ${(anchorFinalElevation - userFinalElevation).toFixed(2)}m`);
+  // console.log(`🏃 User elevation: ${userFinalElevation.toFixed(2)}m`);
+  // console.log(`🎯 Anchor elevation: ${anchorFinalElevation.toFixed(2)}m`);
+  // console.log(`📏 Relative height: ${(anchorFinalElevation - userFinalElevation).toFixed(2)}m`);
   
   return {
     position: new THREE.Vector3(x * coordinateScale, y, z * coordinateScale),
@@ -405,7 +405,7 @@ function gpsToLocalCoordinates(
  * Validate that anchor positions are within the heightmap coverage
  */
 export function validateAnchorCoverage(anchors: Array<{ name: string; coordinates: [number, number] }>): void {
-  console.log('🔍 Validating anchor coverage...');
+  // console.log('🔍 Validating anchor coverage...');
   
   let insideBounds = 0;
   let outsideBounds = 0;
@@ -420,14 +420,14 @@ export function validateAnchorCoverage(anchors: Array<{ name: string; coordinate
     
     if (isInside) {
       insideBounds++;
-      console.log(`✅ ${anchor.name}: Inside heightmap bounds`);
+      // console.log(`✅ ${anchor.name}: Inside heightmap bounds`);
     } else {
       outsideBounds++;
-      console.log(`❌ ${anchor.name}: Outside heightmap bounds`);
+      // console.log(`❌ ${anchor.name}: Outside heightmap bounds`);
     }
   });
   
-  console.log(`📊 Coverage: ${insideBounds} inside, ${outsideBounds} outside bounds`);
+  // console.log(`📊 Coverage: ${insideBounds} inside, ${outsideBounds} outside bounds`);
 }
 
 /**
@@ -443,11 +443,11 @@ export function testTerrainLookup(): void {
     { name: "cattail", coordinates: [-76.947519, 38.911934] as [number, number] }
   ];
   
-  console.log('🧪 Testing terrain lookup for all anchors...');
+  // console.log('🧪 Testing terrain lookup for all anchors...');
   
   testAnchors.forEach(anchor => {
     const elevation = getElevationAtGPS(anchor.coordinates[0], anchor.coordinates[1]);
-    console.log(`${anchor.name}: ${elevation !== null ? elevation.toFixed(2) + 'm' : 'No data'}`);
+    // console.log(`${anchor.name}: ${elevation !== null ? elevation.toFixed(2) + 'm' : 'No data'}`);
   });
 }
 
@@ -462,8 +462,8 @@ export function sampleHeightmapDistribution(): void {
     return;
   }
   
-  console.log('📊 HEIGHTMAP DISTRIBUTION SAMPLE');
-  console.log('═'.repeat(50));
+  // console.log('📊 HEIGHTMAP DISTRIBUTION SAMPLE');
+  // console.log('═'.repeat(50));
   
   const samples = [];
   const sampleCount = 100;
@@ -480,12 +480,12 @@ export function sampleHeightmapDistribution(): void {
   
   samples.sort((a, b) => a - b);
   
-  console.log(`📈 Sample statistics from ${samples.length} random pixels:`);
-  console.log(`  Min: ${samples[0]?.toFixed(2)}m`);
-  console.log(`  Max: ${samples[samples.length - 1]?.toFixed(2)}m`);
-  console.log(`  Median: ${samples[Math.floor(samples.length / 2)]?.toFixed(2)}m`);
-  console.log(`  25th percentile: ${samples[Math.floor(samples.length * 0.25)]?.toFixed(2)}m`);
-  console.log(`  75th percentile: ${samples[Math.floor(samples.length * 0.75)]?.toFixed(2)}m`);
+  // console.log(`📈 Sample statistics from ${samples.length} random pixels:`);
+  // console.log(`  Min: ${samples[0]?.toFixed(2)}m`);
+  // console.log(`  Max: ${samples[samples.length - 1]?.toFixed(2)}m`);
+  // console.log(`  Median: ${samples[Math.floor(samples.length / 2)]?.toFixed(2)}m`);
+  // console.log(`  25th percentile: ${samples[Math.floor(samples.length * 0.25)]?.toFixed(2)}m`);
+  // console.log(`  75th percentile: ${samples[Math.floor(samples.length * 0.75)]?.toFixed(2)}m`);
   
   // Show distribution
   const buckets = new Array(10).fill(0);
@@ -495,14 +495,14 @@ export function sampleHeightmapDistribution(): void {
     buckets[Math.max(0, Math.min(9, bucket))]++;
   });
   
-  console.log(`📊 Distribution (10 buckets):`);
+  // console.log(`📊 Distribution (10 buckets):`);
   buckets.forEach((count, i) => {
     const minElev = TERRAIN_CONFIG.elevationRange.min + 
                    (TERRAIN_CONFIG.elevationRange.max - TERRAIN_CONFIG.elevationRange.min) * i / 10;
     const maxElev = TERRAIN_CONFIG.elevationRange.min + 
                    (TERRAIN_CONFIG.elevationRange.max - TERRAIN_CONFIG.elevationRange.min) * (i + 1) / 10;
     const bar = '█'.repeat(Math.floor(count / sampleCount * 50));
-    console.log(`  ${minElev.toFixed(1)}-${maxElev.toFixed(1)}m: ${bar} (${count})`);
+    // console.log(`  ${minElev.toFixed(1)}-${maxElev.toFixed(1)}m: ${bar} (${count})`);
   });
 }
 
@@ -515,8 +515,8 @@ export function debugPixelData(): void {
     return;
   }
   
-  console.log('🔍 RAW PIXEL DATA ANALYSIS');
-  console.log('═'.repeat(50));
+  // console.log('🔍 RAW PIXEL DATA ANALYSIS');
+  // console.log('═'.repeat(50));
   
   const testPoints = [
     { name: "mac", lon: -76.942076, lat: 38.912485 },
@@ -525,12 +525,12 @@ export function debugPixelData(): void {
   ];
   
   testPoints.forEach(point => {
-    console.log(`\n📍 ${point.name}:`);
+    // console.log(`\n📍 ${point.name}:`);
     
     const { x, y } = gpsToStatePlane(point.lon, point.lat);
     const { pixelX, pixelY } = statePlaneToPixel(x, y);
     
-    console.log(`  Pixel: (${pixelX}, ${pixelY})`);
+    // console.log(`  Pixel: (${pixelX}, ${pixelY})`);
     
     // Examine 3x3 area around the pixel
     for (let dy = -1; dy <= 1; dy++) {
@@ -553,9 +553,9 @@ export function debugPixelData(): void {
                            (brightness / 255) * (TERRAIN_CONFIG.elevationRange.max - TERRAIN_CONFIG.elevationRange.min);
           
           if (dx === 0 && dy === 0) {
-            console.log(`    CENTER (${testX}, ${testY}): RGB(${red}, ${green}, ${blue}, ${alpha}) -> ${elevation.toFixed(2)}m`);
+            // console.log(`    CENTER (${testX}, ${testY}): RGB(${red}, ${green}, ${blue}, ${alpha}) -> ${elevation.toFixed(2)}m`);
           } else if (Math.abs(elevation - (-5.0)) > 0.1 && Math.abs(elevation - 26.12) > 0.1) {
-            console.log(`    (${testX}, ${testY}): RGB(${red}, ${green}, ${blue}) -> ${elevation.toFixed(2)}m`);
+            // console.log(`    (${testX}, ${testY}): RGB(${red}, ${green}, ${blue}) -> ${elevation.toFixed(2)}m`);
           }
         }
       }
@@ -572,8 +572,8 @@ export function testPixelInterpretation(): void {
     return;
   }
   
-  console.log('🧪 PIXEL INTERPRETATION TEST');
-  console.log('═'.repeat(50));
+  // console.log('🧪 PIXEL INTERPRETATION TEST');
+  // console.log('═'.repeat(50));
   
   // Test a pixel that should have intermediate elevation
   const testX = 366; // From your center_estimate
@@ -585,8 +585,8 @@ export function testPixelInterpretation(): void {
   const blue = heightmapImageData.data[index + 2];
   const alpha = heightmapImageData.data[index + 3];
   
-  console.log(`Testing pixel (${testX}, ${testY}):`);
-  console.log(`Raw RGBA: (${red}, ${green}, ${blue}, ${alpha})`);
+  // console.log(`Testing pixel (${testX}, ${testY}):`);
+  // console.log(`Raw RGBA: (${red}, ${green}, ${blue}, ${alpha})`);
   
   // Test different interpretation methods
   const methods = [
@@ -603,11 +603,11 @@ export function testPixelInterpretation(): void {
     const normalizedBrightness = method.value / 255;
     const elevation = TERRAIN_CONFIG.elevationRange.min + 
                      normalizedBrightness * (TERRAIN_CONFIG.elevationRange.max - TERRAIN_CONFIG.elevationRange.min);
-    console.log(`  ${method.name}: ${method.value} -> ${elevation.toFixed(2)}m`);
+    // console.log(`  ${method.name}: ${method.value} -> ${elevation.toFixed(2)}m`);
   });
   
   // Sample some nearby pixels that showed variation
-  console.log('\nNearby pixels with variation:');
+  // console.log('\nNearby pixels with variation:');
   const nearbyTests = [
     { x: 364, y: 205 }, { x: 364, y: 206 }, { x: 365, y: 206 }, { x: 367, y: 208 }
   ];
@@ -618,7 +618,7 @@ export function testPixelInterpretation(): void {
       const r = heightmapImageData.data[idx];
       const g = heightmapImageData.data[idx + 1];
       const b = heightmapImageData.data[idx + 2];
-      console.log(`  (${pos.x}, ${pos.y}): RGB(${r}, ${g}, ${b})`);
+      // console.log(`  (${pos.x}, ${pos.y}): RGB(${r}, ${g}, ${b})`);
     } else {
       console.warn('⚠️ Heightmap not loaded');
     }
@@ -628,8 +628,8 @@ export function testPixelInterpretation(): void {
  * Debug function to test coordinate conversion and pixel sampling
  */
 export function debugCoordinateConversion(): void {
-  console.log('🔧 COORDINATE CONVERSION DEBUG');
-  console.log('═'.repeat(50));
+  // console.log('🔧 COORDINATE CONVERSION DEBUG');
+  // console.log('═'.repeat(50));
   
   const testPoints = [
     { name: "mac", lon: -76.942076, lat: 38.912485 },
@@ -639,27 +639,27 @@ export function debugCoordinateConversion(): void {
   ];
   
   testPoints.forEach(point => {
-    console.log(`\n📍 ${point.name}:`);
+    // console.log(`\n📍 ${point.name}:`);
     
     // Test coordinate conversion
     const { x, y } = gpsToStatePlane(point.lon, point.lat);
     const { pixelX, pixelY } = statePlaneToPixel(x, y);
     
-    console.log(`  GPS: (${point.lon}, ${point.lat})`);
-    console.log(`  State Plane: (${x.toFixed(1)}, ${y.toFixed(1)})`);
-    console.log(`  Pixel: (${pixelX}, ${pixelY})`);
+    // console.log(`  GPS: (${point.lon}, ${point.lat})`);
+    // console.log(`  State Plane: (${x.toFixed(1)}, ${y.toFixed(1)})`);
+    // console.log(`  Pixel: (${pixelX}, ${pixelY})`);
     
     // Check if pixel is in bounds
     const inBounds = pixelX >= 0 && pixelX < TERRAIN_CONFIG.width && 
                     pixelY >= 0 && pixelY < TERRAIN_CONFIG.height;
-    console.log(`  In bounds: ${inBounds ? '✅' : '❌'}`);
+    // console.log(`  In bounds: ${inBounds ? '✅' : '❌'}`);
     
     if (inBounds) {
       const elevation = getPixelElevation(pixelX, pixelY);
-      console.log(`  Elevation: ${elevation?.toFixed(2)}m`);
+      // console.log(`  Elevation: ${elevation?.toFixed(2)}m`);
       
       // Sample nearby pixels to see variation
-      console.log(`  Nearby pixels:`);
+      // console.log(`  Nearby pixels:`);
       for (let dx = -2; dx <= 2; dx++) {
         for (let dy = -2; dy <= 2; dy++) {
           const testX = pixelX + dx;
@@ -683,8 +683,8 @@ export function debugPixelArea(centerX: number, centerY: number, radius: number 
     return;
   }
   
-  console.log(`🔍 SAMPLING ${radius*2+1}x${radius*2+1} AREA AROUND PIXEL (${centerX}, ${centerY})`);
-  console.log('═'.repeat(60));
+  // console.log(`🔍 SAMPLING ${radius*2+1}x${radius*2+1} AREA AROUND PIXEL (${centerX}, ${centerY})`);
+  // console.log('═'.repeat(60));
   
   const samples: Array<{x: number, y: number, brightness: number, elevation: number}> = [];
   
@@ -706,7 +706,7 @@ export function debugPixelArea(centerX: number, centerY: number, radius: number 
         
         // Only log non-extreme values to reduce noise
         if (brightness > 10 && brightness < 245) {
-          console.log(`  (${testX}, ${testY}): brightness=${brightness} -> ${elevation.toFixed(2)}m`);
+          // console.log(`  (${testX}, ${testY}): brightness=${brightness} -> ${elevation.toFixed(2)}m`);
         }
       }
     }
@@ -716,26 +716,26 @@ export function debugPixelArea(centerX: number, centerY: number, radius: number 
   const brightnesses = samples.map(s => s.brightness);
   brightnesses.sort((a, b) => a - b);
   
-  console.log(`\n📊 Sample statistics:`);
-  console.log(`  Total pixels: ${samples.length}`);
-  console.log(`  Brightness range: ${brightnesses[0]} to ${brightnesses[brightnesses.length - 1]}`);
-  console.log(`  Black pixels (0): ${samples.filter(s => s.brightness === 0).length}`);
-  console.log(`  White pixels (255): ${samples.filter(s => s.brightness === 255).length}`);
-  console.log(`  Gray pixels (1-254): ${samples.filter(s => s.brightness > 0 && s.brightness < 255).length}`);
+  // console.log(`\n📊 Sample statistics:`);
+  // console.log(`  Total pixels: ${samples.length}`);
+  // console.log(`  Brightness range: ${brightnesses[0]} to ${brightnesses[brightnesses.length - 1]}`);
+  // console.log(`  Black pixels (0): ${samples.filter(s => s.brightness === 0).length}`);
+  // console.log(`  White pixels (255): ${samples.filter(s => s.brightness === 255).length}`);
+  // console.log(`  Gray pixels (1-254): ${samples.filter(s => s.brightness > 0 && s.brightness < 255).length}`);
   
   // Show some middle values
   const middleValues = samples.filter(s => s.brightness > 50 && s.brightness < 200);
   if (middleValues.length > 0) {
-    console.log(`\n🎯 Found intermediate values:`);
+    // console.log(`\n🎯 Found intermediate values:`);
     middleValues.slice(0, 5).forEach(s => {
-      console.log(`  (${s.x}, ${s.y}): ${s.brightness} -> ${s.elevation.toFixed(2)}m`);
+      // console.log(`  (${s.x}, ${s.y}): ${s.brightness} -> ${s.elevation.toFixed(2)}m`);
     });
   }
 }
 // Test the updated getPixelElevation with area sampling
 export function testAreaSampling(): void {
-  console.log('🧪 TESTING AREA SAMPLING FOR ANCHORS');
-  console.log('═'.repeat(50));
+  // console.log('🧪 TESTING AREA SAMPLING FOR ANCHORS');
+  // console.log('═'.repeat(50));
   
   const testAnchors = [
     { name: "mac", coordinates: [-76.942076, 38.912485] as [number, number] },
@@ -744,21 +744,21 @@ export function testAreaSampling(): void {
   ];
   
   testAnchors.forEach(anchor => {
-    console.log(`\n📍 ${anchor.name}:`);
+    // console.log(`\n📍 ${anchor.name}:`);
     
     // Get the pixel coordinates
     const { x, y } = gpsToStatePlane(anchor.coordinates[0], anchor.coordinates[1]);
     const { pixelX, pixelY } = statePlaneToPixel(x, y);
     
-    console.log(`  GPS: ${anchor.coordinates[0]}, ${anchor.coordinates[1]}`);
-    console.log(`  Pixel: (${pixelX}, ${pixelY})`);
+    // console.log(`  GPS: ${anchor.coordinates[0]}, ${anchor.coordinates[1]}`);
+    // console.log(`  Pixel: (${pixelX}, ${pixelY})`);
     
     // Test with area sampling
     const elevation = getPixelElevation(pixelX, pixelY, 25);
-    console.log(`  Area-sampled elevation: ${elevation?.toFixed(2)}m`);
+    // console.log(`  Area-sampled elevation: ${elevation?.toFixed(2)}m`);
     
     // Test the full getElevationAtGPS function
     const gpsElevation = getElevationAtGPS(anchor.coordinates[0], anchor.coordinates[1]);
-    console.log(`  GPS elevation lookup: ${gpsElevation?.toFixed(2)}m`);
+    // console.log(`  GPS elevation lookup: ${gpsElevation?.toFixed(2)}m`);
   });
 }

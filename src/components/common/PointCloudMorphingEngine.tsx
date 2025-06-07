@@ -28,7 +28,7 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
  onReadyForReset
 }) => {
 
- console.log('🔍 PointCloudMorphingEngine received modelPrefix:', modelPrefix);
+//  console.log('🔍 PointCloudMorphingEngine received modelPrefix:', modelPrefix);
 
  const morphingPointCloudRef = useRef<THREE.Points | null>(null);
  const morphingGroupRef = useRef<THREE.Group | null>(null);
@@ -140,7 +140,7 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
    // Center the geometry first to fix rotation pivot
    const centeredGeometry = geometry.clone();
    centeredGeometry.center(); // This centers all vertices around (0,0,0)
-   console.log(`📐 ${modelPrefix}_${stageIndex + 1}: geometry centered around origin`);
+//    console.log(`📐 ${modelPrefix}_${stageIndex + 1}: geometry centered around origin`);
    
    // Find this stage's dimension
    const stageDim = Math.max(
@@ -171,12 +171,12 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
    
    if (Math.abs(stageScale - 1.0) < 0.001) return centeredGeometry; // No scaling needed
    
-   console.log(`📏 ${modelPrefix}_${stageIndex + 1}: scaling centered geometry by ${stageScale.toFixed(3)} (${stageDim.toFixed(2)} → ${targetDim.toFixed(2)})`);
+//    console.log(`📏 ${modelPrefix}_${stageIndex + 1}: scaling centered geometry by ${stageScale.toFixed(3)} (${stageDim.toFixed(2)} → ${targetDim.toFixed(2)})`);
    
    // Apply scaling to the already-centered geometry
    const positions = centeredGeometry.attributes.position;
    
-   console.log(`📐 ${modelPrefix}_${stageIndex + 1}: applying scaling only (${stageScale.toFixed(3)}x)`);
+//    console.log(`📐 ${modelPrefix}_${stageIndex + 1}: applying scaling only (${stageScale.toFixed(3)}x)`);
    
    for (let i = 0; i < positions.count; i++) {
      // Apply ONLY scaling - models are already well-aligned and now centered
@@ -303,14 +303,14 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
 
  // Create morphing point cloud with THREE.Group container
  const createMorphingPointCloud = () => {
-   console.log(`🏗️ Creating morphing point cloud for ${modelPrefix}`);
+//    console.log(`🏗️ Creating morphing point cloud for ${modelPrefix}`);
    
    if (geometriesRef.current.length === 0 || !geometriesRef.current[0]) {
      console.error('❌ No geometries loaded for morphing point cloud');
      return;
    }
    
-   console.log(`✅ ${geometriesRef.current.length} geometries available for ${modelPrefix}`);
+//    console.log(`✅ ${geometriesRef.current.length} geometries available for ${modelPrefix}`);
    
    // Create a THREE.Group to contain the morphing point cloud
    const morphingGroup = new THREE.Group();
@@ -351,7 +351,7 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
    const finalScale = crossExperienceScale * experienceScale;
    
    morphingGroup.scale.set(finalScale, finalScale, finalScale);
-   console.log(`🎯 ${modelPrefix} final scale: ${crossExperienceScale.toFixed(3)} × ${experienceScale} = ${finalScale.toFixed(3)}`);
+//    console.log(`🎯 ${modelPrefix} final scale: ${crossExperienceScale.toFixed(3)} × ${experienceScale} = ${finalScale.toFixed(3)}`);
    
    // Position the GROUP based on mode (not individual point cloud)
    if (isArMode && arPosition) {
@@ -359,14 +359,14 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
      
      if (currentOverride) {
        morphingGroup.position.set(0, 0, -5);
-       console.log(`🎯 ${modelPrefix} group positioned at override location`);
+    //    console.log(`🎯 ${modelPrefix} group positioned at override location`);
      } else {
        morphingGroup.position.copy(arPosition);
-       console.log(`🎯 ${modelPrefix} group positioned at AR anchor location`);
+    //    console.log(`🎯 ${modelPrefix} group positioned at AR anchor location`);
      }
    } else {
      morphingGroup.position.set(0, 0, -3);
-     console.log(`🎯 ${modelPrefix} group positioned at standalone location`);
+    //  console.log(`🎯 ${modelPrefix} group positioned at standalone location`);
    }
    
    // Add group to scene
@@ -376,12 +376,12 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
      onModelLoaded(pointCloud); // Still pass the point cloud for external access
    }
    
-   console.log(`✅ ${modelPrefix} morphing point cloud created in THREE.Group`);
+//    console.log(`✅ ${modelPrefix} morphing point cloud created in THREE.Group`);
    
    // Trigger reset callback after a small delay to ensure parent handlers are registered
    setTimeout(() => {
      if (onReadyForReset) {
-       console.log(`🔄 Triggering ready-for-reset callback for ${modelPrefix}`);
+    //    console.log(`🔄 Triggering ready-for-reset callback for ${modelPrefix}`);
        onReadyForReset();
      }
    }, 200);
@@ -403,9 +403,9 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
 
  // Load all PLY models
  useEffect(() => {
-   console.log(`🚀 PointCloudMorphingEngine starting for ${modelPrefix}`);
-   console.log(`📦 Scene available:`, !!scene);
-   console.log(`📦 BoundingBox data available:`, !!boundingBoxData);
+//    console.log(`🚀 PointCloudMorphingEngine starting for ${modelPrefix}`);
+//    console.log(`📦 Scene available:`, !!scene);
+//    console.log(`📦 BoundingBox data available:`, !!boundingBoxData);
    
    const loader = new PLYLoader();
    let loadedCount = 0;
@@ -414,12 +414,12 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
    // Load 4 models
    for (let i = 1; i <= 4; i++) {
      const modelPath = getAssetPath(`models/${modelPrefix}_${i}.ply`);
-     console.log(`📥 Loading ${modelPrefix}_${i}.ply from:`, modelPath);
+    //  console.log(`📥 Loading ${modelPrefix}_${i}.ply from:`, modelPath);
      
      loader.load(
        modelPath,
        (geometry) => {
-         console.log(`✅ ${modelPrefix}_${i}.ply loaded successfully!`);
+        //  console.log(`✅ ${modelPrefix}_${i}.ply loaded successfully!`);
          const index = i - 1;
          
          // Store original geometry
@@ -427,7 +427,7 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
          
          // Apply density sampling and per-stage size normalization
          const sampledGeometry = sampleGeometry(geometry, POINT_DENSITY);
-         console.log(`📊 ${modelPrefix}_${i}: ${geometry.attributes.position.count} → ${sampledGeometry.attributes.position.count} vertices`);
+        //  console.log(`📊 ${modelPrefix}_${i}: ${geometry.attributes.position.count} → ${sampledGeometry.attributes.position.count} vertices`);
          
          const normalizedGeometry = applyPerStageScaling(sampledGeometry, index);
          geometriesRef.current[index] = normalizedGeometry;
@@ -439,23 +439,23 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
            onLoadingProgress(progress);
          }
          
-         console.log(`📥 ${modelPrefix}_${i}.ply loaded (${progress.toFixed(0)}%) - ${sampledGeometry.attributes.position.count} vertices`);
+        //  console.log(`📥 ${modelPrefix}_${i}.ply loaded (${progress.toFixed(0)}%) - ${sampledGeometry.attributes.position.count} vertices`);
          
          // When all models are loaded
          if (loadedCount === totalModels) {
-           console.log(`🎯 All ${modelPrefix} models loaded! Creating morphing point cloud...`);
+        //    console.log(`🎯 All ${modelPrefix} models loaded! Creating morphing point cloud...`);
            // Skip vertex normalization - keep native vertex counts
            createMorphingPointCloud();
            
            // Start animation
            clockRef.current.start();
-           console.log(`🎬 Starting ${modelPrefix} animation loop`);
+        //    console.log(`🎬 Starting ${modelPrefix} animation loop`);
            animate();
          }
        },
        (xhr) => {
          const percent = (xhr.loaded / xhr.total) * 100;
-         console.log(`📥 ${modelPrefix}_${i}.ply loading: ${percent.toFixed(1)}%`);
+        //  console.log(`📥 ${modelPrefix}_${i}.ply loading: ${percent.toFixed(1)}%`);
        },
        (error) => {
          console.error(`❌ Error loading ${modelPrefix}_${i}.ply:`, error);
