@@ -319,8 +319,8 @@ const placeArObject = () => {
     // Convert device orientation to camera rotation
     // Apply rotation to camera to match device orientation
     const alphaRad = THREE.MathUtils.degToRad(alpha || 0);
-    const betaRad = THREE.MathUtils.degToRad(beta || 0);
-    const gammaRad = THREE.MathUtils.degToRad((beta || 0) - 90);
+    const betaRad = THREE.MathUtils.degToRad((beta || 0) - 90);
+    const gammaRad = THREE.MathUtils.degToRad(gamma || 0);
     
     // Create rotation matrix from device orientation
     // Note: These may need adjustment based on device coordinate system
