@@ -1,72 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import PointCloudMorphingEngine from '../common/PointCloudMorphingEngine';
+import OptimizedPointCloudMorphingEngine from '../common/OptimizedPointCloudMorphingEngine';
 
 // Import the bounding box data
 // Import the bounding box data - USE THE COMPLETE DATA SET
-const seasonsBoxDimensions = {
-  "cattail_1": {
-    "box_dimensions": { "X": 7.0, "Y": 6.11391, "Z": -3.11109 },
-    "shifted_box_center": { "X": 3.00282, "Y": 5.15699, "Z": -2.57107 },
-    "global_box_center": { "X": 2.58592, "Y": 9.96978, "Z": 0.00309755 }
-  },
-  "cattail_2": {
-    "box_dimensions": { "X": 7.0, "Y": 3.86938, "Z": -1.92645 },
-    "shifted_box_center": { "X": 1.94294, "Y": 3.85586, "Z": -2.00759 },
-    "global_box_center": { "X": 1.84827, "Y": 8.86985, "Z": 0.00205987 }
-  },
-  "cattail_3": {
-    "box_dimensions": { "X": 7.0, "Y": 15.7519, "Z": -8.55881 },
-    "shifted_box_center": { "X": 7.19311, "Y": 17.201, "Z": -9.11689 },
-    "global_box_center": { "X": 8.08407, "Y": 9.67628, "Z": 0.0130204 }
-  },
-  "cattail_4": {
-    "box_dimensions": { "X": 7.0, "Y": 9.78502, "Z": -5.48069 },
-    "shifted_box_center": { "X": 4.30433, "Y": 10.1278, "Z": -5.07628 },
-    "global_box_center": { "X": 5.0515, "Y": 27.3561, "Z": 0.013139 }
-  },
-  "lily_1": {
-    "box_dimensions": { "X": 7.0, "Y": 26.1559, "Z": -13.091 },
-    "shifted_box_center": { "X": 13.0649, "Y": 16.4241, "Z": -8.0769 },
-    "global_box_center": { "X": 8.34724, "Y": 9.99417, "Z": 0.000821289 }
-  },
-  "lily_2": {
-    "box_dimensions": { "X": 27.8148, "Y": -28.2008, "Z": -0.385963 },
-    "shifted_box_center": { "X": 33.4941, "Y": -20.9138, "Z": 12.5803 },
-    "global_box_center": { "X": 115.79, "Y": -1.77575, "Z": 14.0143 }
-  },
-  "lily_3": {
-    "box_dimensions": { "X": 7.0, "Y": 68.0109, "Z": -33.9307 },
-    "shifted_box_center": { "X": 34.0801, "Y": 77.0403, "Z": -38.4627 },
-    "global_box_center": { "X": 38.5777, "Y": 9.09365, "Z": 0.0833207 }
-  },
-  "lily_4": {
-    "box_dimensions": { "X": 7.0, "Y": 60.9039, "Z": -30.8069 },
-    "shifted_box_center": { "X": 30.097, "Y": 60.9249, "Z": -30.3065 },
-    "global_box_center": { "X": 30.6184, "Y": 9.80548, "Z": 0.160642 }
-  },
-  "lotus_1": {
-    "box_dimensions": { "X": 4.74237, "Y": -2.18979, "Z": 2.55258 },
-    "shifted_box_center": { "X": 9.99301, "Y": 0.000422351, "Z": 9.99343 },
-    "global_box_center": { "X": 0.546762, "Y": 0.353696, "Z": 0.900457 }
-  },
-  "lotus_2": {
-    "box_dimensions": { "X": 7.0, "Y": 12.172, "Z": -6.12077 },
-    "shifted_box_center": { "X": 6.05123, "Y": 9.93416, "Z": 0.0378408 },
-    "global_box_center": { "X": 9.972, "Y": 9.82072, "Z": -4.94933 }
-  },
-  "lotus_3": {
-    "box_dimensions": { "X": 7.0, "Y": 23.8707, "Z": -11.8118 },
-    "shifted_box_center": { "X": 12.0589, "Y": 9.99123, "Z": 0.00311597 },
-    "global_box_center": { "X": 9.99435, "Y": 24.1301, "Z": -12.1061 }
-  },
-  "lotus_4": {
-    "box_dimensions": { "X": 7.0, "Y": 34.1839, "Z": -17.1202 },
-    "shifted_box_center": { "X": 17.0637, "Y": 9.99004, "Z": 0.00112372 },
-    "global_box_center": { "X": 9.99117, "Y": 33.5477, "Z": -16.6561 }
-  }
-};
+
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -109,7 +48,15 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
   
   // Store initial camera position for reset
   const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
-  
+
+  const gestureHandlersRef = useRef<{
+    rotate?: (deltaX: number, deltaY: number) => void;
+    scale?: (scaleFactor: number) => void;
+    reset?: () => void;
+    swipeUp?: () => void;
+    swipeDown?: () => void;
+  }>({});
+    
   // State to track override status
   const [arTestingOverride, setArTestingOverride] = useState(() => {  
     return (window as any).arTestingOverride ?? true;
@@ -237,6 +184,10 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
     }
   }, []);
 
+      const registerResetHandler = useCallback((handler: () => void) => {
+      gestureHandlersRef.current.reset = handler;
+    }, []);
+
   // Declare callback functions
   const handleModelLoaded = (pointCloud: THREE.Points) => {
     morphingPointCloudRef.current = pointCloud;
@@ -255,34 +206,23 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
   };
 
   // Handle ready for reset callback - triggers auto-reset when models ready
-  const handleReadyForReset = () => {
-    console.log('🔄 Lily ready for reset - auto-triggering reset');
-    // Directly call reset logic 
-    if (morphingGroupRef.current) {
-      // Reset rotation and scale on the GROUP
-      morphingGroupRef.current.rotation.set(0, 0, 0);
-      const initialScale = initialScaleRef.current;
-      morphingGroupRef.current.scale.set(initialScale, initialScale, initialScale);
-      
-      // Reset position based on current mode
-      if (isArMode && arPosition) {
-        const currentOverride = (window as any).arTestingOverride ?? true;
-        
-        if (currentOverride) {
-          morphingGroupRef.current.position.set(0, 0, -5);
-          console.log('🔄 Auto-reset: Lily group positioned at override location');
-        } else {
-          morphingGroupRef.current.position.copy(arPosition);
-          console.log('🔄 Auto-reset: Lily group positioned at AR anchor location');
-        }
-      } else {
-        morphingGroupRef.current.position.set(0, 0, -3);
-        console.log('🔄 Auto-reset: Lily group positioned at standalone location');
+const handleReadyForReset = () => {
+  console.log('🔄 Lily ready for reset - auto-triggering reset for correct positioning');
+  
+  if (morphingGroupRef.current) {
+    // Store initial scale from the GROUP
+    initialScaleRef.current = morphingGroupRef.current.scale.x;
+    
+    // Trigger the reset handler automatically to position correctly
+    // This calls the same logic that works when user manually resets
+    setTimeout(() => {
+      if (gestureHandlersRef.current.reset) {
+        console.log('🔄 Auto-calling onModelReset for correct positioning');
+        gestureHandlersRef.current.reset();
       }
-      
-      console.log('🔄 Lily auto-reset completed');
-    }
-  };
+    }, 100); // Small delay to ensure handlers are registered
+  }
+};
 
   // Handle loading progress
   const handleLoadingProgress = (progress: number) => {
@@ -462,18 +402,17 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
     <>
       {/* Morphing Engine Component */}
       {sceneRef.current ? (
-        <PointCloudMorphingEngine
+       <OptimizedPointCloudMorphingEngine
         key="lily-morphing-engine" 
-          modelPrefix="lily"
-          scene={isArMode ? arScene! : sceneRef.current!}
-          boundingBoxData={seasonsBoxDimensions}
-          isArMode={isArMode}
-          arPosition={arPosition}
-          onModelLoaded={handleModelLoaded}
-          onLoadingProgress={handleLoadingProgress}
-          onError={handleError}
-          onReadyForReset={handleReadyForReset}
-        />
+        modelPrefix="lily"
+        scene={isArMode ? arScene! : sceneRef.current!}
+        isArMode={isArMode}
+        arPosition={arPosition}
+        onModelLoaded={handleModelLoaded}
+        onLoadingProgress={handleLoadingProgress}
+        onError={handleError}
+        onReadyForReset={handleReadyForReset}
+      />
       ) : (
         <div style={{
           position: 'absolute',
@@ -522,7 +461,12 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
           <div style={{ color: 'lightblue', fontSize: '10px' }}>
             Auto-cycle: Bud → Opening → Bloom → Seed Pod
           </div>
-          
+          <div style={{ color: 'lightblue', fontSize: '10px' }}>
+                Optimized: Loading device-appropriate quality
+              </div>
+              <div style={{ color: 'lightgreen', fontSize: '10px' }}>
+                Binary format: Fast loading + reduced vertices
+              </div>
           <div 
             onClick={() => {
               const newValue = !arTestingOverride;

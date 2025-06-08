@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import ArCameraComponent from '../components/ar/ArCameraComponent';
+import { useSystemOptimization } from '../utils/systemOptimization';
+
 
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
@@ -45,6 +47,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   coordinateScale = 1.0,
   onExperienceComplete
 }) => {
+   const { startArExperience, endArExperience } = useSystemOptimization();
+
   const [arInitialized, setArInitialized] = useState(false);
   const [arObjectPosition, setArObjectPosition] = useState<THREE.Vector3 | null>(null);
   const [experienceReady, setExperienceReady] = useState(false);
@@ -70,6 +74,22 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       gestureHandlersRef.current = {}; // Clear handlers
     }
   }, [isOpen]);
+
+    //  system optimization
+   useEffect(() => {
+    if (isOpen) {
+      console.log('🎯 Starting AR experience with system optimization');
+      startArExperience(experienceType);
+    } else {
+      console.log('🏁 Ending AR experience, resuming systems');
+      endArExperience();
+    }
+
+    return () => {
+      endArExperience();
+    };
+  }, [isOpen, experienceType, startArExperience, endArExperience]);
+
   
   // Handler for when AR object is positioned
   const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {

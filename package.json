@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:firefox": "vite --force",
-    "build": "vite build",
-    "build:force": "vite build",
+    "preprocess-models": "tsx scripts/preprocessModels.ts",
+    "dev": "npm run preprocess-models && vite",
+    "dev:firefox": "npm run preprocess-models && vite --force",
+    "build": "npm run preprocess-models && vite build",
+    "build:force": "npm run preprocess-models && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
@@ -30,7 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.15.30",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.0.4",
     "@types/three": "^0.176.0",
@@ -44,6 +45,7 @@
     "postcss": "^8.5.3",
     "react": "^19.1.0",
     "tailwindcss": "^4.0.16",
+    "tsx": "^4.19.4",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
     "vite": "^6.2.0"

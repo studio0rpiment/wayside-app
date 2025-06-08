@@ -7,6 +7,7 @@ import { PermissionType } from '../../utils/permissions';
 import { validateTerrainCoverage, getEnhancedAnchorPosition } from '../../utils/geoArUtils'
 import EdgeChevrons from './EdgeChevrons';
 import { loadHeightmap, testTerrainLookup, gpsToThreeJsPositionWithTerrain } from '../../utils/terrainUtils';
+import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -143,106 +144,113 @@ const [debugHeading, setDebugHeading] = useState<number | null>(null);
   };
   
   // Initialize Three.js scene
-  const initializeThreeJs = () => {
-    if (!canvasRef.current || !containerRef.current) return false;
-    
-    // console.log('🎨 Initializing Three.js scene...');
-    
-    // Create scene
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
+ const initializeThreeJs = async () => {
+  if (!canvasRef.current || !containerRef.current) return false;
+  
+  console.log('🎨 Initializing Three.js scene...');
+  
+  // Create scene
+  const scene = new THREE.Scene();
+  sceneRef.current = scene;
 
-  
-const createAnchorSphere = () => {
-  // Create a group to hold both sphere and plane
-  const anchorGroup = new THREE.Group();
-  anchorGroupRef.current = anchorGroup;
-  scene.add(anchorGroup);
-  
-  // Create sphere AT GROUP ORIGIN (no rotation)
-  const sphereGeometry = new THREE.SphereGeometry(sphereSize, 16, 16);
-  const sphereMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0xff0000, 
-    transparent: true, 
-    opacity: 0.7,
-    wireframe: false 
-  });
-  
-  const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-  sphere.position.set(0, 0, 0); // Center at group origin
-  sphere.visible = true;
-  anchorSphereRef.current = sphere;
-  anchorGroup.add(sphere);
-  
-  // Create plane AT GROUP ORIGIN with ALL rotation applied to it
-  const planeGeometry = new THREE.PlaneGeometry(sphereSize * 3, sphereSize * 3);
-  const planeMaterial = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,     
-    transparent: true,
-    opacity: 0.9,
-    side: THREE.DoubleSide,
-    depthTest: true,
-    depthWrite: false
-  });
-  
-  const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-  plane.position.set(0, 0, 0); // Center at group origin
-  plane.rotation.x = -Math.PI / 2.1 + (-0.05 * Math.PI); // Combine both rotations
-  plane.visible = true;
-  anchorPlaneRef.current = plane;
-  anchorGroup.add(plane);
-  
-  // NO group rotation - everything applied to plane
-  
-  // Set initial group position
-  const currentOverride = (window as any).arTestingOverride ?? true;
-  if (currentOverride) {
-    anchorGroup.position.set(0, 0, -5);
-    // console.log('🔴🟢 Group positioned with sphere at origin, plane rotated');
-  }
-  
-  // console.log('🔴 Sphere stays centered, plane handles all rotation');
-};
+  const createAnchorSphere = () => {
+    // Create a group to hold both sphere and plane
+    const anchorGroup = new THREE.Group();
+    anchorGroupRef.current = anchorGroup;
+    scene.add(anchorGroup);
     
-    // Create camera with realistic FOV for mobile AR
-    const camera = new THREE.PerspectiveCamera(
-      70, // Field of view (typical for mobile cameras)
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-    camera.position.set(0, 0, 0); // Camera at origin
-    cameraRef.current = camera;
-    
-    // Create renderer with transparency for overlay
-    const renderer = new THREE.WebGLRenderer({
-      canvas: canvasRef.current,
-      alpha: true, // Enable transparency
-      antialias: true
+    // Create sphere AT GROUP ORIGIN (no rotation)
+    const sphereGeometry = new THREE.SphereGeometry(sphereSize, 16, 16);
+    const sphereMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xff0000, 
+      transparent: true, 
+      opacity: 0.7,
+      wireframe: false 
     });
+    
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere.position.set(0, 0, 0); // Center at group origin
+    sphere.visible = true;
+    anchorSphereRef.current = sphere;
+    anchorGroup.add(sphere);
+    
+    // Create plane AT GROUP ORIGIN with ALL rotation applied to it
+    const planeGeometry = new THREE.PlaneGeometry(sphereSize * 3, sphereSize * 3);
+    const planeMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,     
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthTest: true,
+      depthWrite: false
+    });
+    
+    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    plane.position.set(0, 0, 0); // Center at group origin
+    plane.rotation.x = -Math.PI / 2.1 + (-0.05 * Math.PI); // Combine both rotations
+    plane.visible = true;
+    anchorPlaneRef.current = plane;
+    anchorGroup.add(plane);
+    
+    // Set initial group position
+    const currentOverride = (window as any).arTestingOverride ?? true;
+    if (currentOverride) {
+      anchorGroup.position.set(0, 0, -5);
+    }
+  };
+  
+  // Create camera with realistic FOV for mobile AR
+  const camera = new THREE.PerspectiveCamera(
+    70, // Field of view (typical for mobile cameras)
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+  camera.position.set(0, 0, 0); // Camera at origin
+  cameraRef.current = camera;
+  
+  // Create optimized renderer (CHANGED)
+  try {
+    const rendererSettings = await getOptimizedRendererSettings(canvasRef.current);
+    const renderer = new THREE.WebGLRenderer(rendererSettings);
+    
+    await optimizeWebGLRenderer(renderer);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x000000, 0); // Fully transparent background
     rendererRef.current = renderer;
     
-    // Add basic lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
-
-  
-      createAnchorSphere();
-
-    if (onSceneReady) {
-    onSceneReady(scene, camera);
-    // console.log('📡 AR scene exposed to parent component');
+    console.log('✅ Optimized renderer created');
+  } catch (error) {
+    console.warn('⚠️ Failed to create optimized renderer, using fallback:', error);
+    // Fallback to your original renderer
+    const renderer = new THREE.WebGLRenderer({
+      canvas: canvasRef.current,
+      alpha: true,
+      antialias: true
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0);
+    rendererRef.current = renderer;
   }
-    
-    // console.log('✅ Three.js scene initialized');
-    return true;
-  };
+  
+  // Add basic lighting
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
+  
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight.position.set(1, 1, 1);
+  scene.add(directionalLight);
+
+  createAnchorSphere();
+
+  if (onSceneReady) {
+    onSceneReady(scene, camera);
+    console.log('📡 AR scene exposed to parent component');
+  }
+  
+  console.log('✅ Three.js scene initialized with optimizations');
+  return true;
+};
   
   // Calculate and place AR object
 // In ArCameraComponent.tsx, update the placeArObject function:
@@ -429,7 +437,7 @@ const placeArObject = () => {
       if (!cameraInitialized) return;
       
       // Initialize Three.js
-      const threeInitialized = initializeThreeJs();
+      const threeInitialized = await initializeThreeJs();
       if (!threeInitialized) return;
       
       // Setup orientation listener if permission is granted
@@ -674,13 +682,14 @@ useEffect(() => {
         }}
       />
 
-   {/* FORCE RENDER FOR TESTING */}
-<EdgeChevrons
-  userPosition={[-76.943, 38.9125]} // hardcoded test values
-  anchorPosition={[-76.942076, 38.912485]} // hardcoded test values  
-  deviceHeading={0} // hardcoded north
-  isVisible={true}
-/>
+      {showChevrons && userPosition && anchorPosition && (
+        <EdgeChevrons
+          userPosition={userPosition}
+          anchorPosition={anchorPosition}
+          deviceHeading={getDeviceHeading()}
+          isVisible={showChevrons}
+        />
+        )}
       
       {/* Error display - only show for actual technical errors, not permission issues */}
       {cameraError && !cameraError.includes('permission') && (
