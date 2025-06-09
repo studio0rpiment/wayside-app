@@ -342,22 +342,24 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
   return (
     <Box className={className}>
       {compact ? (
-        <Stack 
-          direction="column" 
-          spacing={1.5} 
-          sx={{ 
-            position: 'fixed',
-            bottom: '100px',
-            right: '15px',
-            zIndex: 10
-          }}
-        >
+      <Stack 
+        direction="column" 
+        spacing={1} 
+        sx={{ 
+          position: 'fixed',
+          bottom: '30px',
+          left: '20px',
+          zIndex: 10,
+        }}
+      >
+        <div style={{color: 'var(--color-dark)', fontWeight:'bold'}} >PERMISSIONS</div>
+        <Stack direction="row" spacing={1.5}>
           {showCamera && renderPermissionStatus(PermissionType.CAMERA, 'Camera')}
           {showLocation && renderPermissionStatus(PermissionType.LOCATION, 'Location')}
           {showOrientation && renderPermissionStatus(PermissionType.ORIENTATION, 'Orientation')}
           {/* {showNotification && renderPermissionStatus(PermissionType.NOTIFICATION, 'Notification')} */}
-
         </Stack>
+      </Stack>
       ) : (
         <Card 
           variant="elevation" 
@@ -389,7 +391,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               {showLocation && renderPermissionStatus(PermissionType.LOCATION, 'Location')}
               {showOrientation && renderPermissionStatus(PermissionType.ORIENTATION, 'Orientation')}
               {/* {showNotification && renderPermissionStatus(PermissionType.NOTIFICATION, 'Notification')} */}
-
+               
             </Stack>
           </CardContent>
         </Card>
