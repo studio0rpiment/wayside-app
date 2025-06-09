@@ -8,13 +8,13 @@ interface QualityLevel {
   vertices: number;
   size: number;
   name: string;
+  outputName: string; // NEW: Separate output filename from internal name
 }
 
+// CHANGED: Updated quality levels with new output names
 const QUALITY_LEVELS: QualityLevel[] = [
-  { name: 'desktop', vertices: 50000, size: 2.0 },
-  { name: 'tablet',  vertices: 40000, size: 1.8 },
-  { name: 'mobile',  vertices: 40000,  size: 1.5 },
-  { name: 'lowEnd',  vertices: 30000,  size: 1.2 }
+  { name: 'high', vertices: 40000, size: 1.0, outputName: 'high' },
+  { name: 'low',  vertices: 25000, size: 1.5, outputName: 'low' }
 ];
 
 const EXPERIENCES = ['lily', 'lotus', 'cattail'];
@@ -166,14 +166,25 @@ class ModelPreprocessor {
       console.log('✅ Normalized geometry data looks valid');
     }
       
-      // Generate all quality variants
+      // CHANGED: Generate only unique output files (avoid duplicates)
+      const processedOutputs = new Set<string>();
+      
       for (const quality of QUALITY_LEVELS) {
-
-      console.log(`📊 STEP 3 - Creating ${quality.name} variant:`);
-
+        console.log(`📊 STEP 3 - Creating ${quality.name} variant:`);
 
         const optimizedGeometry = this.createQualityVariant(normalizedGeometry, quality);
-        await this.saveOptimizedGeometry(optimizedGeometry, experience, stage, quality.name);
+        
+        // CHANGED: Use outputName and avoid duplicates
+        const outputKey = `${experience}_${stage}_${quality.outputName}`;
+        if (!processedOutputs.has(outputKey)) {
+          await this.saveOptimizedGeometry(optimizedGeometry, experience, stage, quality.outputName);
+          processedOutputs.add(outputKey);
+          console.log(`  💾 Generated ${outputKey}.bin`);
+        } else {
+          console.log(`  ⏭️  Skipping duplicate ${outputKey}.bin`);
+        }
+        
+        optimizedGeometry.dispose();
       }
       
       // Cleanup
@@ -211,24 +222,14 @@ class ModelPreprocessor {
 }
 
   private normalizeGeometry(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
-    const normalized = geometry.clone();
-    
-    // 1. Center at origin (most expensive operation)
-    normalized.center();
-
-     console.log('📊 After center():');
-  const positions = normalized.attributes.position;
-  for (let i = 0; i < Math.min(3, positions.count); i++) {
-    const x = positions.getX(i);
-    const y = positions.getY(i);
-    const z = positions.getZ(i);
-    console.log(`  Vertex ${i}: (${x}, ${y}, ${z})`);
-  }
-
-    
-    // 2. Apply unified scaling
-    const targetSize = 2.0; // Standard size for all models
-    const scale = targetSize / this.globalMaxDimension;
+  const normalized = geometry.clone();
+  
+  // 1. Center at origin (most expensive operation)
+  normalized.center();
+  
+  // 2. Apply unified scaling
+  const targetSize = 1; // Standard size for all models
+  const scale = targetSize / this.globalMaxDimension;
 
   console.log(`📊 Applying scale: ${scale} (targetSize: ${targetSize}, globalMaxDim: ${this.globalMaxDimension})`);
   
@@ -238,21 +239,60 @@ class ModelPreprocessor {
     return normalized; // Return without scaling
   }
 
+  normalized.scale(scale, scale, scale);
+  
+  // 3. Coordinate system conversion (Blender Z-up to Three.js Y-up)
+  normalized.rotateX(-Math.PI / 2);
 
-
-    normalized.scale(scale, scale, scale);
+  // 4. ✅ FIXED: Color processing (normalize range + convert to linear)
+  const colors = normalized.attributes.color;
+  if (colors) {
+    console.log('🎨 Processing colors...');
     
-    // 3. Coordinate system conversion (Blender Z-up to Three.js Y-up)
-    normalized.rotateX(-Math.PI / 2);
-    
-    // 4. Optimize vertex order for GPU cache efficiency
-    if (normalized.index) {
-      // For indexed geometries, optimize vertex cache
-      normalized.index = this.optimizeVertexCache(normalized.index);
+    // Step 4a: Find actual color range and normalize to 0-1
+    let maxR = 0, maxG = 0, maxB = 0;
+    for (let i = 0; i < colors.count; i++) {
+      maxR = Math.max(maxR, colors.getX(i));
+      maxG = Math.max(maxG, colors.getY(i));
+      maxB = Math.max(maxB, colors.getZ(i));
     }
     
-    return normalized;
+    const overallMax = Math.max(maxR, maxG, maxB);
+    console.log(`🎨 Original max color value: ${overallMax.toFixed(3)}`);
+    
+    if (overallMax > 0) {
+      const colorScale = 1.0 / overallMax;
+      console.log(`🎨 Applying color normalization scale: ${colorScale.toFixed(2)}`);
+      
+      // Step 4b: Normalize colors to full 0-1 range
+      const colorArray = colors.array as Float32Array;
+      for (let i = 0; i < colorArray.length; i++) {
+        colorArray[i] = colorArray[i] * colorScale;
+      }
+      
+      // Step 4c: Convert from sRGB to linear space
+      console.log('🎨 Converting colors from sRGB to linear space...');
+      for (let i = 0; i < colorArray.length; i++) {
+        const srgbValue = colorArray[i];
+        const linearValue = srgbValue <= 0.04045 
+          ? srgbValue / 12.92 
+          : Math.pow((srgbValue + 0.055) / 1.055, 2.4);
+        colorArray[i] = linearValue;
+      }
+      
+      colors.needsUpdate = true;
+      console.log('✅ Colors normalized and converted to linear space');
+    }
   }
+  
+  // 5. Optimize vertex order for GPU cache efficiency
+  if (normalized.index) {
+    // For indexed geometries, optimize vertex cache
+    normalized.index = this.optimizeVertexCache(normalized.index);
+  }
+  
+  return normalized;
+}
 
   private createQualityVariant(geometry: THREE.BufferGeometry, quality: QualityLevel): THREE.BufferGeometry {
     const positions = geometry.attributes.position;
@@ -418,19 +458,24 @@ private geometryToBinary(geometry: THREE.BufferGeometry): Buffer {
 }
 
   private async generateMetadata() {
+    // CHANGED: Update metadata to reflect new output structure
     const metadata = {
       generated: new Date().toISOString(),
       globalMaxDimension: this.globalMaxDimension,
-      qualityLevels: QUALITY_LEVELS,
+      qualityLevels: [
+        { name: 'high', vertices: 50000, description: 'High quality for desktop/tablet' },
+        { name: 'low', vertices: 30000, description: 'Low quality for mobile/low-end' }
+      ],
+      originalQualityMapping: QUALITY_LEVELS, // Keep original mapping for reference
       experiences: EXPERIENCES,
       stages: STAGES,
-      version: '1.0'
+      version: '2.0' // CHANGED: Bump version to indicate new format
     };
     
      const metadataPath = path.resolve(process.cwd(), 'public/models/processed/metadata.json');
     await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
     
-    console.log('📄 Generated metadata.json');
+    console.log('📄 Generated metadata.json with new two-tier structure');
   }
 
 private async loadPLY(filepath: string): Promise<THREE.BufferGeometry> {
@@ -485,8 +530,39 @@ private async loadPLY(filepath: string): Promise<THREE.BufferGeometry> {
       if (hasNaN) {
         throw new Error('PLY file contains NaN values in position data');
       }
-      
-      console.log(`✅ PLY validation passed: ${positions.count} vertices, ${geometry.attributes.color ? 'has colors' : 'no colors'}`);
+
+      const colors = geometry.attributes.color;
+      if (colors) {
+        let maxR = 0, maxG = 0, maxB = 0;
+        let minR = 1, minG = 1, minB = 1;
+        
+        for (let i = 0; i < colors.count; i++) {
+          const r = colors.getX(i);
+          const g = colors.getY(i);
+          const b = colors.getZ(i);
+          
+          maxR = Math.max(maxR, r);
+          maxG = Math.max(maxG, g); 
+          maxB = Math.max(maxB, b);
+          minR = Math.min(minR, r);
+          minG = Math.min(minG, g);
+          minB = Math.min(minB, b);
+        }
+        
+        console.log(`🎨 RAW PLY COLOR ANALYSIS for ${filepath}:`);
+        console.log(`  Red range:   ${minR.toFixed(3)} - ${maxR.toFixed(3)}`);
+        console.log(`  Green range: ${minG.toFixed(3)} - ${maxG.toFixed(3)}`);
+        console.log(`  Blue range:  ${minB.toFixed(3)} - ${maxB.toFixed(3)}`);
+        
+        // Sample a few colors
+        console.log(`  Sample colors:`);
+        for (let i = 0; i < Math.min(5, colors.count); i++) {
+          console.log(`    Color ${i}: RGB(${colors.getX(i).toFixed(3)}, ${colors.getY(i).toFixed(3)}, ${colors.getZ(i).toFixed(3)})`);
+        }
+      } else {
+        console.log(`❌ No colors found in ${filepath}`);
+      }
+
       resolve(geometry);
       
     } catch (error) {

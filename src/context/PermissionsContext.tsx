@@ -8,7 +8,7 @@ import {
   requestLocationPermission,
   requestOrientationPermission,
   requestMicrophonePermission,
-  requestNotificationPermission
+  // requestNotificationPermission
 } from '../utils/permissions';
 
 // Define the context shape
@@ -228,9 +228,9 @@ setPermissionsState({
       case PermissionType.MICROPHONE:
         granted = await requestMicrophonePermission();
         break;
-      case PermissionType.NOTIFICATION:
-      granted = await requestNotificationPermission();
-      break;
+      // case PermissionType.NOTIFICATION:
+      // granted = await requestNotificationPermission();
+      // break;
     }
     
     // Use the optimized updatePermissionState to avoid redundant renders

@@ -15,14 +15,14 @@ import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import ScreenRotationOutlinedIcon from '@mui/icons-material/ScreenRotationOutlined';
-import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
+// import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 
 
 interface PermissionsStatusProps {
   showCamera?: boolean;
   showLocation?: boolean;
   showOrientation?: boolean;
-  showNotification?: boolean;
+  // showNotification?: boolean;
   compact?: boolean;
   onRequestPermission?: (type: PermissionType) => void;
   className?: string;
@@ -32,7 +32,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
   showCamera = true,
   showLocation = true,
   showOrientation = true,
-  showNotification = true, 
+  // showNotification = true, 
   compact = false,
   onRequestPermission,
   className = '',
@@ -87,8 +87,8 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
         return <LocationOnOutlinedIcon fontSize={compact ? "small" : "medium"} />;
       case PermissionType.ORIENTATION:
         return <ScreenRotationOutlinedIcon fontSize={compact ? "small" : "medium"} />;
-      case PermissionType.NOTIFICATION:
-        return <NotificationsOutlinedIcon fontSize={compact ? "small" : "medium"} />; 
+      // case PermissionType.NOTIFICATION:
+      //   return <NotificationsOutlinedIcon fontSize={compact ? "small" : "medium"} />; 
 
       default:
         return null;
@@ -159,8 +159,8 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
       const permissionLetter = 
         type === PermissionType.CAMERA ? "C" : 
         type === PermissionType.LOCATION ? "L" :
-        type === PermissionType.ORIENTATION ? "M" :
-        type === PermissionType.NOTIFICATION ? "N" : "";
+        type === PermissionType.ORIENTATION ? "M" : "";
+        // type === PermissionType.NOTIFICATION ? "N" : "";
       
       return (
         <Box
@@ -187,7 +187,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
             sx={{
               fontWeight: 'bold',
               color: 'var(--color-light)',
-              fontSize: '0.75rem',
+              fontSize: '1.3rem',
               textShadow: '0 1px 1px rgba(0,0,0,0.5)',
               lineHeight: 1,
               zIndex: 2,
@@ -202,8 +202,8 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               position: 'absolute',
               top: '50%',
               left: '50%',
-              width: '16px',
-              height: '16px',
+              width: '30px',
+              height: '30px',
               borderRadius: '50%',
               transform: 'translate(-50%, -50%)',
               border: '0.5px solid var(--color-dark)',
@@ -292,7 +292,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               {type === PermissionType.CAMERA && "CAMERA ACCESS"}
               {type === PermissionType.LOCATION && "LOCATION"}
               {type === PermissionType.ORIENTATION && "MOTION"}
-              {type === PermissionType.NOTIFICATION && "NOTIFICATIONS"}
+              {/* {type === PermissionType.NOTIFICATION && "NOTIFICATIONS"} */}
                 
             </span>
           </Typography>
@@ -314,7 +314,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               {type === PermissionType.CAMERA && "Wayside.at is an augmented reality experience and needs your camera to see the world."}
               {type === PermissionType.LOCATION && "We use geolocation for certain features such as the real-time map."}
               {type === PermissionType.ORIENTATION && "We need access to your device's gyroscope."}
-              {type === PermissionType.NOTIFICATION && "Receive alerts when you enter experience areas, even when the app is in the background."}
+              {/* {type === PermissionType.NOTIFICATION && "Receive alerts when you enter experience areas, even when the app is in the background."} */}
 
             </span>
             <Box component="span" sx={{ 
@@ -339,18 +339,18 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
       {compact ? (
         <Stack 
           direction="column" 
-          spacing={0.5} 
+          spacing={1.5} 
           sx={{ 
             position: 'fixed',
-            bottom: '20px',
-            right: '20px',
+            bottom: '100px',
+            right: '15px',
             zIndex: 10
           }}
         >
           {showCamera && renderPermissionStatus(PermissionType.CAMERA, 'Camera')}
           {showLocation && renderPermissionStatus(PermissionType.LOCATION, 'Location')}
           {showOrientation && renderPermissionStatus(PermissionType.ORIENTATION, 'Orientation')}
-          {showNotification && renderPermissionStatus(PermissionType.NOTIFICATION, 'Notification')}
+          {/* {showNotification && renderPermissionStatus(PermissionType.NOTIFICATION, 'Notification')} */}
 
         </Stack>
       ) : (
@@ -383,7 +383,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               {showCamera && renderPermissionStatus(PermissionType.CAMERA, 'Camera')}
               {showLocation && renderPermissionStatus(PermissionType.LOCATION, 'Location')}
               {showOrientation && renderPermissionStatus(PermissionType.ORIENTATION, 'Orientation')}
-              {showNotification && renderPermissionStatus(PermissionType.NOTIFICATION, 'Notification')}
+              {/* {showNotification && renderPermissionStatus(PermissionType.NOTIFICATION, 'Notification')} */}
 
             </Stack>
           </CardContent>

@@ -12,6 +12,9 @@ export class SystemOptimizationManager {
   private deviceCaps: any = null;
   private suspendedSystems = new Set<string>();
   private callbacks = new Map<string, () => void>();
+  
+  // NEW: Track original states for proper restoration
+  private originalStates = new Map<string, any>();
 
   static getInstance(): SystemOptimizationManager {
     if (!SystemOptimizationManager.instance) {
@@ -31,68 +34,50 @@ export class SystemOptimizationManager {
    * Notify system that AR experience is starting
    */
   async startArExperience(experienceType: string) {
-    if (this.isArActive) return;
+    if (this.isArActive) {
+      console.log(`⚠️ AR experience already active, ignoring start request for ${experienceType}`);
+      return;
+    }
     
     console.log(`🎯 Starting AR experience: ${experienceType}`);
     this.isArActive = true;
     
     const deviceCaps = await this.initDeviceCaps();
     
-    // Suspend systems based on device capabilities
-    if (deviceCaps.isMobile) {
-      this.suspendMapRendering();
+    // CONSERVATIVE: Only suspend systems on low-end mobile devices
+    if (deviceCaps.isMobile && deviceCaps.isLowEnd) {
+      console.log('📱 Low-end mobile detected - applying conservative optimizations');
       this.reduceGeofenceTracking();
-    }
-    
-    if (deviceCaps.isLowEnd) {
-      this.suspendDebugSystems();
       this.optimizeMemoryUsage();
+    } else {
+      console.log('💻 High-end device detected - minimal optimizations');
+      // Only trigger garbage collection on high-end devices
+      this.triggerGarbageCollection();
     }
-    
-    // Force garbage collection if available
-    this.triggerGarbageCollection();
   }
 
   /**
    * Notify system that AR experience is ending
    */
   endArExperience() {
-    if (!this.isArActive) return;
+    if (!this.isArActive) {
+      console.log('⚠️ No AR experience active, ignoring end request');
+      return;
+    }
     
     console.log('🏁 Ending AR experience');
     this.isArActive = false;
     
-    // Resume all suspended systems
+    // Resume all suspended systems with proper cleanup
     this.resumeAllSystems();
+    
+    // Clear all tracking
+    this.suspendedSystems.clear();
+    this.originalStates.clear();
   }
 
-  private suspendMapRendering() {
-    if (this.suspendedSystems.has('map')) return;
-    
-    console.log('🗺️ Suspending map rendering');
-    this.suspendedSystems.add('map');
-    
-    // Find map container and hide it
-    const mapContainers = document.querySelectorAll('[class*="mapbox"], .map-wrapper, #mapSection');
-    mapContainers.forEach(container => {
-      if (container instanceof HTMLElement) {
-        container.style.display = 'none';
-        container.setAttribute('data-suspended', 'true');
-      }
-    });
-    
-    // Try to pause Mapbox GL if available
-    try {
-      const mapboxInstances = (window as any).mapboxgl_instances;
-      if (mapboxInstances) {
-        mapboxInstances.forEach((map: any) => {
-          if (map.stop) map.stop();
-        });
-      }
-    } catch (error) {
-      // Silent fail - map might not be Mapbox GL
-    }
-  }
+  // REMOVED: suspendMapRendering - too aggressive, causes issues
+  // REMOVED: suspendDebugSystems - not worth the complexity
 
   private reduceGeofenceTracking() {
     if (this.suspendedSystems.has('geofence')) return;
@@ -106,105 +91,78 @@ export class SystemOptimizationManager {
     }));
   }
 
-  private suspendDebugSystems() {
-    if (this.suspendedSystems.has('debug')) return;
-    
-    console.log('🐛 Suspending debug systems');
-    this.suspendedSystems.add('debug');
-    
-    // Hide debug panels
-    const debugElements = document.querySelectorAll('[class*="debug"], [id*="debug"]');
-    debugElements.forEach(element => {
-      if (element instanceof HTMLElement) {
-        element.style.display = 'none';
-        element.setAttribute('data-suspended', 'true');
-      }
-    });
-  }
-
   private optimizeMemoryUsage() {
-    console.log('🧹 Optimizing memory usage');
+    console.log('🧹 Optimizing memory usage (conservative)');
     
-    // Clear any large caches
-    if ('caches' in window) {
-      caches.keys().then(cacheNames => {
-        cacheNames.forEach(cacheName => {
-          if (cacheName.includes('images') || cacheName.includes('tiles')) {
-            // Don't clear essential caches, just limit them
-            caches.open(cacheName).then(cache => {
-              // Implementation would depend on cache structure
-            });
-          }
-        });
-      });
-    }
-    
-    // Reduce image quality for background elements
+    // CONSERVATIVE: Only blur non-essential images, don't mess with caches
     const images = document.querySelectorAll('img[data-src], img[loading="lazy"]');
+    const blurredImages: HTMLImageElement[] = [];
+    
     images.forEach(img => {
       if (img instanceof HTMLImageElement && !img.closest('[class*="ar-"]')) {
+        // Store original filter for restoration
+        const originalFilter = img.style.filter;
+        if (!this.originalStates.has('blurred-images')) {
+          this.originalStates.set('blurred-images', []);
+        }
+        
+        this.originalStates.get('blurred-images').push({
+          element: img,
+          originalFilter
+        });
+        
         img.style.filter = 'blur(1px)'; // Slight blur to reduce GPU load
+        blurredImages.push(img);
       }
     });
+    
+    if (blurredImages.length > 0) {
+      this.suspendedSystems.add('image-optimization');
+      console.log(`🖼️ Blurred ${blurredImages.length} background images`);
+    }
   }
 
   private triggerGarbageCollection() {
     // Force garbage collection if available (Chrome DevTools)
     if ((window as any).gc) {
       (window as any).gc();
+      console.log('🗑️ Triggered garbage collection');
     }
     
     // Manual memory pressure hint
     if ('memory' in performance) {
-      console.log(`💾 Memory usage: ${Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024)}MB`);
+      const memoryMB = Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024);
+      console.log(`💾 Memory usage: ${memoryMB}MB`);
     }
   }
 
   private resumeAllSystems() {
-    console.log('🔄 Resuming all suspended systems');
-    
-    // Resume map rendering
-    if (this.suspendedSystems.has('map')) {
-      const suspendedMaps = document.querySelectorAll('[data-suspended="true"]');
-      suspendedMaps.forEach(element => {
-        if (element instanceof HTMLElement) {
-          element.style.display = '';
-          element.removeAttribute('data-suspended');
-        }
-      });
-      
-      // Try to resume Mapbox GL
-      try {
-        const mapboxInstances = (window as any).mapboxgl_instances;
-        if (mapboxInstances) {
-          mapboxInstances.forEach((map: any) => {
-            if (map.resume) map.resume();
-            if (map.resize) {
-              setTimeout(() => map.resize(), 100); // Allow DOM to update
-            }
-          });
-        }
-      } catch (error) {
-        // Silent fail
-      }
-    }
+    console.log('🔄 Resuming suspended systems...');
     
     // Resume geofence tracking
     if (this.suspendedSystems.has('geofence')) {
+      console.log('📍 Resuming normal geofence tracking');
       window.dispatchEvent(new CustomEvent('ar-performance-mode', {
         detail: { reduceTracking: false }
       }));
     }
     
-    // Clear image optimizations
-    const optimizedImages = document.querySelectorAll('img[style*="blur"]');
-    optimizedImages.forEach(img => {
-      if (img instanceof HTMLImageElement) {
-        img.style.filter = '';
-      }
-    });
+    // Restore blurred images
+    if (this.suspendedSystems.has('image-optimization')) {
+      const blurredImages = this.originalStates.get('blurred-images') || [];
+      console.log(`🖼️ Restoring ${blurredImages.length} background images`);
+      
+      blurredImages.forEach(({ element, originalFilter }: any) => {
+        if (element && element.style) {
+          element.style.filter = originalFilter;
+        }
+      });
+    }
     
-    this.suspendedSystems.clear();
+    // Small delay to let DOM updates settle
+    setTimeout(() => {
+      console.log('✅ System resume complete');
+    }, 100);
   }
 
   isSystemSuspended(system: string): boolean {
@@ -213,6 +171,19 @@ export class SystemOptimizationManager {
 
   getActiveOptimizations(): string[] {
     return Array.from(this.suspendedSystems);
+  }
+
+  // NEW: Force reset if something goes wrong
+  forceReset() {
+    console.log('🚨 Force resetting system optimization manager');
+    this.isArActive = false;
+    this.suspendedSystems.clear();
+    this.originalStates.clear();
+    
+    // Emit reset events
+    window.dispatchEvent(new CustomEvent('ar-performance-mode', {
+      detail: { reduceTracking: false }
+    }));
   }
 }
 
@@ -223,136 +194,95 @@ export function useSystemOptimization() {
   const manager = SystemOptimizationManager.getInstance();
   
   return {
-    startArExperience: async (type: string) => await manager.startArExperience(type),
-    endArExperience: () => manager.endArExperience(),
+    startArExperience: async (type: string) => {
+      try {
+        await manager.startArExperience(type);
+      } catch (error) {
+        console.error('❌ Failed to start AR experience optimization:', error);
+        // Continue anyway - don't block AR experience
+      }
+    },
+    endArExperience: () => {
+      try {
+        manager.endArExperience();
+      } catch (error) {
+        console.error('❌ Failed to end AR experience optimization:', error);
+        // Force reset on error
+        manager.forceReset();
+      }
+    },
     isSystemSuspended: (system: string) => manager.isSystemSuspended(system),
-    getActiveOptimizations: () => manager.getActiveOptimizations()
+    getActiveOptimizations: () => manager.getActiveOptimizations(),
+    forceReset: () => manager.forceReset() // NEW: Emergency reset
   };
 }
-
-/**
- * Enhanced ExperienceManager with system optimization
- */
-// Update your ExperienceManager.tsx to include:
-
-/*
-import { useSystemOptimization } from '../../utils/systemOptimization';
-
-const ExperienceManager: React.FC<ExperienceManagerProps> = ({
-  isOpen,
-  onClose,
-  experienceType,
-  // ... other props
-}) => {
-  const { startArExperience, endArExperience } = useSystemOptimization();
-
-  useEffect(() => {
-    if (isOpen) {
-      startArExperience(experienceType);
-    } else {
-      endArExperience();
-    }
-
-    return () => {
-      endArExperience();
-    };
-  }, [isOpen, experienceType]);
-
-  // ... rest of component
-};
-*/
-
-/**
- * Enhanced GeofenceContext with performance awareness
- */
-// Update your GeofenceContext to listen for performance events:
-
-/*
-// In GeofenceContext
-useEffect(() => {
-  const handlePerformanceMode = (event: CustomEvent) => {
-    const { reduceTracking } = event.detail;
-    
-    if (reduceTracking) {
-      // Increase tracking interval from 1s to 5s
-      setTrackingInterval(5000);
-    } else {
-      // Resume normal tracking
-      setTrackingInterval(1000);
-    }
-  };
-
-  window.addEventListener('ar-performance-mode', handlePerformanceMode);
-  
-  return () => {
-    window.removeEventListener('ar-performance-mode', handlePerformanceMode);
-  };
-}, []);
-*/
 
 /**
  * Get optimized WebGL renderer settings for device
  */
 export async function getOptimizedRendererSettings(canvas: HTMLCanvasElement) {
-  const deviceCaps = await getDeviceCapabilities();
-  
-  const settings: THREE.WebGLRendererParameters = {
-    canvas,
-    alpha: true,
-    antialias: deviceCaps.rendererSettings.antialias,
-    powerPreference: deviceCaps.rendererSettings.powerPreference,
-    precision: deviceCaps.rendererSettings.precision,
-    stencil: false,
-    depth: true
-  };
-  
-  // Additional mobile optimizations
-  if (deviceCaps.isMobile) {
-    settings.logarithmicDepthBuffer = false; // Disable for better mobile performance
-    settings.preserveDrawingBuffer = false;  // Save memory
+  try {
+    const deviceCaps = await getDeviceCapabilities();
+    
+    const settings: THREE.WebGLRendererParameters = {
+      canvas,
+      alpha: true,
+      antialias: deviceCaps.rendererSettings.antialias,
+      powerPreference: deviceCaps.rendererSettings.powerPreference,
+      precision: deviceCaps.rendererSettings.precision,
+      stencil: false,
+      depth: true
+    };
+    
+    // Additional mobile optimizations
+    if (deviceCaps.isMobile) {
+      settings.logarithmicDepthBuffer = false; // Disable for better mobile performance
+      settings.preserveDrawingBuffer = false;  // Save memory
+    }
+    
+    return settings;
+  } catch (error) {
+    console.warn('⚠️ Failed to get optimized renderer settings, using defaults:', error);
+    // Fallback to safe defaults
+    return {
+      canvas,
+      alpha: true,
+      antialias: false,
+      powerPreference: 'default' as const,
+      stencil: false,
+      depth: true
+    };
   }
-  
-  return settings;
 }
 
 /**
  * Optimize existing WebGL renderer (for settings that can be changed after creation)
  */
 export async function optimizeWebGLRenderer(renderer: THREE.WebGLRenderer) {
-  const deviceCaps = await getDeviceCapabilities();
-  const gl = renderer.getContext();
-  
-  if (deviceCaps.isMobile) {
-    // Optimize pixel ratio (this CAN be changed after creation)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, deviceCaps.maxPixelRatio));
+  try {
+    const deviceCaps = await getDeviceCapabilities();
     
-    // Disable expensive features on low-end devices (these CAN be changed)
-    if (deviceCaps.isLowEnd) {
-      renderer.shadowMap.enabled = false;
-      renderer.toneMapping = THREE.NoToneMapping; // Disable tone mapping
+    if (deviceCaps.isMobile) {
+      // Optimize pixel ratio (this CAN be changed after creation)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, deviceCaps.maxPixelRatio));
+      
+      // Disable expensive features on low-end devices (these CAN be changed)
+      if (deviceCaps.isLowEnd) {
+        renderer.shadowMap.enabled = false;
+        renderer.toneMapping = THREE.NoToneMapping; // Disable tone mapping
+      }
+      
+      // Set mobile-optimized settings
+      renderer.sortObjects = false; // Disable sorting for better performance
+      renderer.outputColorSpace = THREE.SRGBColorSpace; // Ensure correct color space
     }
     
-    // Set mobile-optimized settings
-    renderer.sortObjects = false; // Disable sorting for better performance
-    renderer.outputColorSpace = THREE.SRGBColorSpace; // Ensure correct color space
-    
-    // Enable WebGL extensions for better performance
-    const extensions = [
-      'OES_vertex_array_object',
-      'ANGLE_instanced_arrays', 
-      'OES_element_index_uint'
-    ];
-    
-    extensions.forEach(ext => {
-      try {
-        gl.getExtension(ext);
-      } catch (error) {
-        // Extension not available
-      }
-    });
+    console.log('✅ WebGL renderer optimized');
+    return renderer;
+  } catch (error) {
+    console.warn('⚠️ Failed to optimize WebGL renderer:', error);
+    return renderer; // Return as-is if optimization fails
   }
-  
-  return renderer;
 }
 
 /**
@@ -360,8 +290,9 @@ export async function optimizeWebGLRenderer(renderer: THREE.WebGLRenderer) {
  */
 export class MemoryMonitor {
   private static instance: MemoryMonitor;
-  private intervalId?: NodeJS.Timeout;
+  private intervalId?: number; // CHANGED: Use number instead of NodeJS.Timeout for browser
   private memoryWarningThreshold = 0.8; // 80% of available memory
+  private isMonitoring = false;
   
   static getInstance(): MemoryMonitor {
     if (!MemoryMonitor.instance) {
@@ -371,36 +302,45 @@ export class MemoryMonitor {
   }
   
   startMonitoring() {
-    if (this.intervalId) return;
+    if (this.isMonitoring || this.intervalId) return;
     
-    this.intervalId = setInterval(() => {
+    this.isMonitoring = true;
+    this.intervalId = window.setInterval(() => {
       this.checkMemoryUsage();
-    }, 5000); // Check every 5 seconds
+    }, 10000); // CHANGED: Check every 10 seconds (less aggressive)
+    
+    console.log('📊 Memory monitoring started');
   }
   
   stopMonitoring() {
     if (this.intervalId) {
-      clearInterval(this.intervalId);
+      window.clearInterval(this.intervalId);
       this.intervalId = undefined;
     }
+    this.isMonitoring = false;
+    console.log('📊 Memory monitoring stopped');
   }
   
   private checkMemoryUsage() {
     if (!('memory' in performance)) return;
     
-    const memory = (performance as any).memory;
-    const usedRatio = memory.usedJSHeapSize / memory.jsHeapSizeLimit;
-    
-    if (usedRatio > this.memoryWarningThreshold) {
-      console.warn(`⚠️ High memory usage: ${Math.round(usedRatio * 100)}%`);
+    try {
+      const memory = (performance as any).memory;
+      const usedRatio = memory.usedJSHeapSize / memory.jsHeapSizeLimit;
       
-      // Trigger aggressive cleanup
-      this.performEmergencyCleanup();
+      if (usedRatio > this.memoryWarningThreshold) {
+        console.warn(`⚠️ High memory usage: ${Math.round(usedRatio * 100)}%`);
+        
+        // Trigger cleanup
+        this.performCleanup();
+      }
+    } catch (error) {
+      console.warn('⚠️ Memory monitoring error:', error);
     }
   }
   
-  private performEmergencyCleanup() {
-    console.log('🚨 Performing emergency memory cleanup');
+  private performCleanup() {
+    console.log('🧹 Performing memory cleanup');
     
     // Emit event for components to clean up
     window.dispatchEvent(new CustomEvent('memory-pressure', {
@@ -414,7 +354,8 @@ export class MemoryMonitor {
   }
 }
 
-// Auto-start memory monitoring in production
-if (process.env.NODE_ENV === 'production') {
-  MemoryMonitor.getInstance().startMonitoring();
+// CHANGED: Only start memory monitoring in development (less aggressive)
+if (process.env.NODE_ENV === 'development') {
+  // Don't auto-start in production - let apps decide
+  // MemoryMonitor.getInstance().startMonitoring();
 }

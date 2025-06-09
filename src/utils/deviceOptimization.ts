@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 
 export interface DeviceCapabilities {
-  quality: 'desktop' | 'tablet' | 'mobile' | 'lowEnd';
+  quality: 'high' | 'low'; // Simplified to just two levels
   isMobile: boolean;
   isLowEnd: boolean;
   maxVertices: number;
@@ -16,8 +16,7 @@ export interface DeviceCapabilities {
 }
 
 /**
- * Comprehensive device capability detection for 2024
- * Based on current Three.js best practices and mobile optimization research
+ * Simplified device capability detection with only two quality tiers
  */
 export function getDeviceCapabilities(): DeviceCapabilities {
   // Basic device detection
@@ -35,10 +34,7 @@ export function getDeviceCapabilities(): DeviceCapabilities {
   const connection = (navigator as any).connection;
   const isSlowConnection = connection?.effectiveType === '2g' || connection?.effectiveType === 'slow-2g';
   
-  // Note: Battery API is deprecated and requires async, removed for now
-  // For production, consider using alternative performance indicators
-  
-  // Performance scoring algorithm (2024 validated)
+  // Performance scoring algorithm (simplified)
   let performanceScore = 0;
   
   // Memory weight (most important for vertex processing)
@@ -63,25 +59,21 @@ export function getDeviceCapabilities(): DeviceCapabilities {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   if (isIOS && performanceScore > 8) performanceScore += 1;
   
-  // Determine quality level based on score
+  // SIMPLIFIED: Only two quality levels
   let quality: DeviceCapabilities['quality'];
   let maxVertices: number;
   
-  if (performanceScore >= 15) {
-    quality = 'desktop';
-    maxVertices = 50000;
-  } else if (performanceScore >= 10) {
-    quality = 'tablet';
-    maxVertices = 50000;
-  } else if (performanceScore >= 6) {
-    quality = 'mobile';
-    maxVertices = 50000;
+  if (performanceScore >= 10) {
+    quality = 'high';
+    maxVertices = 40000;
   } else {
-    quality = 'lowEnd';
-    maxVertices = 50000;
+    quality = 'low';
+    maxVertices = 20000;
   }
   
-  const isLowEndDevice = quality === 'lowEnd' || quality === 'mobile';
+  const isLowEndDevice = quality === 'low';
+  
+  console.log(`📱 Device capabilities: ${quality} quality (score: ${performanceScore}, ${maxVertices} vertices)`);
   
   return {
     quality,
@@ -91,30 +83,39 @@ export function getDeviceCapabilities(): DeviceCapabilities {
     shouldReduceFrameRate: isLowEndDevice || isSlowConnection,
     maxPixelRatio: isMobile ? 1.5 : 2.0,
     rendererSettings: {
-      antialias: !isMobile || quality === 'tablet',
+      antialias: !isMobile || quality === 'high',
       powerPreference: isMobile ? 'low-power' : 'high-performance',
       precision: isLowEndDevice ? 'mediump' : 'highp'
     }
   };
 }
 
-function isLowEnd(score: number): boolean {
-  return score < 8;
-}
-
 /**
- * Performance monitoring for adaptive optimization
+ * Simplified performance monitoring with hysteresis
  */
 export class PerformanceMonitor {
   private frameTimings: number[] = [];
   private lastFrameTime = performance.now();
   private callbacks: Array<(fps: number) => void> = [];
+  private isRunning = false;
   
   constructor() {
+    // Don't auto-start - let the morphing engine control this
+  }
+  
+  start() {
+    if (this.isRunning) return;
+    this.isRunning = true;
     this.animate();
   }
   
+  stop() {
+    this.isRunning = false;
+  }
+  
   private animate = () => {
+    if (!this.isRunning) return;
+    
     const now = performance.now();
     const frameTime = now - this.lastFrameTime;
     
@@ -123,7 +124,7 @@ export class PerformanceMonitor {
       this.frameTimings.shift();
     }
     
-    // Notify callbacks every 2 seconds
+    // Notify callbacks every 5 seconds (increased from 2)
     if (this.frameTimings.length === 60) {
       const avgFPS = this.getAverageFPS();
       this.callbacks.forEach(callback => callback(avgFPS));
@@ -144,84 +145,133 @@ export class PerformanceMonitor {
     this.callbacks.push(callback);
   }
   
-  shouldReduceQuality(): boolean {
-    return this.getAverageFPS() < 25;
-  }
-  
-  shouldIncreaseQuality(): boolean {
-    return this.getAverageFPS() > 50;
+  clearCallbacks() {
+    this.callbacks = [];
   }
 }
 
 /**
- * Adaptive quality manager
+ * Simplified adaptive quality manager with hysteresis
  */
 export class AdaptiveQualityManager {
   private currentQuality: DeviceCapabilities['quality'];
   private monitor = new PerformanceMonitor();
   private onQualityChange?: (quality: DeviceCapabilities['quality']) => void;
+  private lastSwitchTime = 0;
+  private switchCooldown = 10000; // 10 seconds cooldown
+  private isEnabled = true;
+  
+  // Hysteresis thresholds - different for up/down switching
+  private readonly DOWNGRADE_THRESHOLD = 15; // Switch to low if FPS < 15
+  private readonly UPGRADE_THRESHOLD = 35;   // Switch to high if FPS > 35
   
   constructor(initialQuality: DeviceCapabilities['quality']) {
     this.currentQuality = initialQuality;
     
     this.monitor.onPerformanceChange((fps) => {
-      const shouldReduce = fps < 20 && this.canReduceQuality();
-      const shouldIncrease = fps > 45 && this.canIncreaseQuality();
+      if (!this.isEnabled) return;
       
-      if (shouldReduce) {
-        this.reduceQuality();
-      } else if (shouldIncrease) {
-        this.increaseQuality();
+      const now = performance.now();
+      if (now - this.lastSwitchTime < this.switchCooldown) {
+        console.log(`⏳ Quality switch on cooldown (${Math.round((this.switchCooldown - (now - this.lastSwitchTime)) / 1000)}s remaining)`);
+        return;
+      }
+      
+      const shouldDowngrade = fps < this.DOWNGRADE_THRESHOLD && this.currentQuality === 'high';
+      const shouldUpgrade = fps > this.UPGRADE_THRESHOLD && this.currentQuality === 'low';
+      
+      if (shouldDowngrade) {
+        console.log(`📉 Performance low (${fps.toFixed(1)} FPS), switching to low quality`);
+        this.switchToLow();
+      } else if (shouldUpgrade) {
+        console.log(`📈 Performance good (${fps.toFixed(1)} FPS), switching to high quality`);
+        this.switchToHigh();
       }
     });
+  }
+  
+  start() {
+    this.monitor.start();
+  }
+  
+  stop() {
+    this.monitor.stop();
   }
   
   onQualityChanged(callback: (quality: DeviceCapabilities['quality']) => void) {
     this.onQualityChange = callback;
   }
   
-  private canReduceQuality(): boolean {
-    return this.currentQuality !== 'lowEnd';
-  }
-  
-  private canIncreaseQuality(): boolean {
-    return this.currentQuality !== 'desktop';
-  }
-  
-  private reduceQuality() {
-    const levels: DeviceCapabilities['quality'][] = ['desktop', 'tablet', 'mobile', 'lowEnd'];
-    const currentIndex = levels.indexOf(this.currentQuality);
+  private switchToLow() {
+    if (this.currentQuality === 'low') return;
     
-    if (currentIndex < levels.length - 1) {
-      this.currentQuality = levels[currentIndex + 1];
-      console.log(`📉 Reducing quality to: ${this.currentQuality}`);
-      this.onQualityChange?.(this.currentQuality);
-    }
+    this.currentQuality = 'low';
+    this.lastSwitchTime = performance.now();
+    this.onQualityChange?.(this.currentQuality);
   }
   
-  private increaseQuality() {
-    const levels: DeviceCapabilities['quality'][] = ['desktop', 'tablet', 'mobile', 'lowEnd'];
-    const currentIndex = levels.indexOf(this.currentQuality);
+  private switchToHigh() {
+    if (this.currentQuality === 'high') return;
     
-    if (currentIndex > 0) {
-      this.currentQuality = levels[currentIndex - 1];
-      console.log(`📈 Increasing quality to: ${this.currentQuality}`);
-      this.onQualityChange?.(this.currentQuality);
-    }
+    this.currentQuality = 'high';
+    this.lastSwitchTime = performance.now();
+    this.onQualityChange?.(this.currentQuality);
   }
   
   getCurrentQuality(): DeviceCapabilities['quality'] {
     return this.currentQuality;
   }
+  
+  // Allow manual disable for testing
+  setEnabled(enabled: boolean) {
+    this.isEnabled = enabled;
+    if (!enabled) {
+      this.monitor.stop();
+    } else {
+      this.monitor.start();
+    }
+  }
+  
+  // Force a quality level (for testing)
+  forceQuality(quality: DeviceCapabilities['quality']) {
+    this.currentQuality = quality;
+    this.lastSwitchTime = performance.now();
+    this.onQualityChange?.(quality);
+  }
 }
 
 /**
- * Binary geometry loader for pre-processed models
+ * Pre-loading geometry loader that loads BOTH quality levels upfront
  */
 export class OptimizedGeometryLoader {
   private cache = new Map<string, THREE.BufferGeometry>();
   
-  async loadGeometry(experience: string, stage: number, quality: string): Promise<THREE.BufferGeometry> {
+  /**
+   * Pre-load both high and low quality versions
+   */
+  async preloadAllQualities(experience: string, stages: number[]): Promise<{
+    high: THREE.BufferGeometry[];
+    low: THREE.BufferGeometry[];
+  }> {
+    console.log(`🚀 Pre-loading ${experience} models in both qualities...`);
+    
+    const highPromises = stages.map(stage => this.loadGeometry(experience, stage, 'high'));
+    const lowPromises = stages.map(stage => this.loadGeometry(experience, stage, 'low'));
+    
+    const [highGeometries, lowGeometries] = await Promise.all([
+      Promise.all(highPromises),
+      Promise.all(lowPromises)
+    ]);
+    
+    console.log(`✅ Pre-loaded ${experience}: ${highGeometries.length} high + ${lowGeometries.length} low quality models`);
+    
+    return {
+      high: highGeometries,
+      low: lowGeometries
+    };
+  }
+  
+  async loadGeometry(experience: string, stage: number, quality: 'high' | 'low'): Promise<THREE.BufferGeometry> {
     const cacheKey = `${experience}_${stage}_${quality}`;
     
     if (this.cache.has(cacheKey)) {
@@ -247,83 +297,84 @@ export class OptimizedGeometryLoader {
       throw error;
     }
   }
- // Match the fixed header size
-private static readonly FIXED_HEADER_SIZE = 64;
 
-private binaryToGeometry(buffer: ArrayBuffer): THREE.BufferGeometry {
-  const view = new DataView(buffer);
-  
-  try {
-    // Validate minimum buffer size
-    if (buffer.byteLength < OptimizedGeometryLoader.FIXED_HEADER_SIZE) {
-      throw new Error(`Buffer too small: ${buffer.byteLength} bytes (minimum: ${OptimizedGeometryLoader.FIXED_HEADER_SIZE})`);
+  // Keep your existing binaryToGeometry method unchanged
+  private static readonly FIXED_HEADER_SIZE = 64;
+
+  private binaryToGeometry(buffer: ArrayBuffer): THREE.BufferGeometry {
+    const view = new DataView(buffer);
+    
+    try {
+      // Validate minimum buffer size
+      if (buffer.byteLength < OptimizedGeometryLoader.FIXED_HEADER_SIZE) {
+        throw new Error(`Buffer too small: ${buffer.byteLength} bytes (minimum: ${OptimizedGeometryLoader.FIXED_HEADER_SIZE})`);
+      }
+      
+      // Read actual JSON length from first 4 bytes
+      const jsonLength = view.getUint32(0, true);
+      
+      console.log(`📖 Fixed header format: JSON length = ${jsonLength}`);
+      
+      // Validate JSON length
+      if (jsonLength <= 0 || jsonLength > OptimizedGeometryLoader.FIXED_HEADER_SIZE - 4) {
+        throw new Error(`Invalid JSON length: ${jsonLength}`);
+      }
+      
+      // Read JSON from bytes 4 to 4+jsonLength
+      const headerBytes = new Uint8Array(buffer, 4, jsonLength);
+      const headerText = new TextDecoder().decode(headerBytes);
+      const header = JSON.parse(headerText);
+      
+      console.log(`📖 Header parsed:`, header);
+      
+      // Data always starts at byte 64 (guaranteed 4-byte aligned)
+      const dataOffset = OptimizedGeometryLoader.FIXED_HEADER_SIZE;
+      console.log(`📖 Data starts at aligned offset: ${dataOffset}`);
+      
+      // Validate header
+      if (!header.vertexCount || header.vertexCount <= 0 || header.vertexCount > 1000000) {
+        throw new Error(`Invalid vertex count: ${header.vertexCount}`);
+      }
+      
+      // Calculate expected data sizes
+      const expectedPositionsBytes = header.vertexCount * 3 * 4;
+      const expectedColorsBytes = header.hasColors ? header.vertexCount * 3 * 4 : 0;
+      const remainingBytes = buffer.byteLength - dataOffset;
+      
+      console.log(`📖 Expected: positions=${expectedPositionsBytes}B, colors=${expectedColorsBytes}B, remaining=${remainingBytes}B`);
+      
+      // Validate remaining data size
+      if (remainingBytes < expectedPositionsBytes + expectedColorsBytes) {
+        throw new Error(`Insufficient data: expected ${expectedPositionsBytes + expectedColorsBytes}, got ${remainingBytes}`);
+      }
+      
+      // ** FAST PATH: Direct Float32Array creation (no copying needed) **
+      const positionsArray = new Float32Array(buffer, dataOffset, header.vertexCount * 3);
+      
+      // Create geometry
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positionsArray, 3));
+      
+      // Read colors if available
+      if (header.hasColors && expectedColorsBytes > 0) {
+        const colorsOffset = dataOffset + expectedPositionsBytes;
+        const colorsArray = new Float32Array(buffer, colorsOffset, header.vertexCount * 3);
+        geometry.setAttribute('color', new THREE.BufferAttribute(colorsArray, 3));
+      }
+      
+      console.log(`✅ Geometry created: ${header.vertexCount} vertices, ${header.hasColors ? 'with' : 'without'} colors`);
+      
+      return geometry;
+      
+    } catch (error) {
+      console.error('❌ Binary parsing error:', error);
+      console.error('❌ Buffer info:', {
+        byteLength: buffer.byteLength,
+        firstBytes: Array.from(new Uint8Array(buffer, 0, Math.min(16, buffer.byteLength)))
+      });
+      throw error;
     }
-    
-    // Read actual JSON length from first 4 bytes
-    const jsonLength = view.getUint32(0, true);
-    
-    console.log(`📖 Fixed header format: JSON length = ${jsonLength}`);
-    
-    // Validate JSON length
-    if (jsonLength <= 0 || jsonLength > OptimizedGeometryLoader.FIXED_HEADER_SIZE - 4) {
-      throw new Error(`Invalid JSON length: ${jsonLength}`);
-    }
-    
-    // Read JSON from bytes 4 to 4+jsonLength
-    const headerBytes = new Uint8Array(buffer, 4, jsonLength);
-    const headerText = new TextDecoder().decode(headerBytes);
-    const header = JSON.parse(headerText);
-    
-    console.log(`📖 Header parsed:`, header);
-    
-    // Data always starts at byte 64 (guaranteed 4-byte aligned)
-    const dataOffset = OptimizedGeometryLoader.FIXED_HEADER_SIZE;
-    console.log(`📖 Data starts at aligned offset: ${dataOffset}`);
-    
-    // Validate header
-    if (!header.vertexCount || header.vertexCount <= 0 || header.vertexCount > 1000000) {
-      throw new Error(`Invalid vertex count: ${header.vertexCount}`);
-    }
-    
-    // Calculate expected data sizes
-    const expectedPositionsBytes = header.vertexCount * 3 * 4;
-    const expectedColorsBytes = header.hasColors ? header.vertexCount * 3 * 4 : 0;
-    const remainingBytes = buffer.byteLength - dataOffset;
-    
-    console.log(`📖 Expected: positions=${expectedPositionsBytes}B, colors=${expectedColorsBytes}B, remaining=${remainingBytes}B`);
-    
-    // Validate remaining data size
-    if (remainingBytes < expectedPositionsBytes + expectedColorsBytes) {
-      throw new Error(`Insufficient data: expected ${expectedPositionsBytes + expectedColorsBytes}, got ${remainingBytes}`);
-    }
-    
-    // ** FAST PATH: Direct Float32Array creation (no copying needed) **
-    const positionsArray = new Float32Array(buffer, dataOffset, header.vertexCount * 3);
-    
-    // Create geometry
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positionsArray, 3));
-    
-    // Read colors if available
-    if (header.hasColors && expectedColorsBytes > 0) {
-      const colorsOffset = dataOffset + expectedPositionsBytes;
-      const colorsArray = new Float32Array(buffer, colorsOffset, header.vertexCount * 3);
-      geometry.setAttribute('color', new THREE.BufferAttribute(colorsArray, 3));
-    }
-    
-    console.log(`✅ Geometry created: ${header.vertexCount} vertices, ${header.hasColors ? 'with' : 'without'} colors`);
-    
-    return geometry;
-    
-  } catch (error) {
-    console.error('❌ Binary parsing error:', error);
-    console.error('❌ Buffer info:', {
-      byteLength: buffer.byteLength,
-      firstBytes: Array.from(new Uint8Array(buffer, 0, Math.min(16, buffer.byteLength)))
-    });
-    throw error;
   }
-}
   
   clearCache() {
     this.cache.forEach(geometry => geometry.dispose());

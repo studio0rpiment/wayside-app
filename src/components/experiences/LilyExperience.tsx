@@ -71,38 +71,56 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
   const isArMode = !!(arScene && arCamera && arPosition);
 
   // Listen for override changes
-  useEffect(() => {
-    const checkOverride = () => {
-      const currentOverride = (window as any).arTestingOverride ?? true;
-      if (currentOverride !== arTestingOverride) {
-        setArTestingOverride(currentOverride);
-        console.log('🪷 LilyExperience override changed:', currentOverride);
-        
-        if (morphingGroupRef.current && isArMode && arPosition) {
-          if (currentOverride) {
-            console.log('🎯 Setting group override position (0, 0, -5)');
-            morphingGroupRef.current.position.set(0, 0, -5);
-          } else {
-            console.log('🎯 Setting group anchor position:', arPosition);
-            morphingGroupRef.current.position.copy(arPosition);
-          }
-          
-          // Force visual update
-          morphingGroupRef.current.visible = false;
-          setTimeout(() => {
-            if (morphingGroupRef.current) {
-              morphingGroupRef.current.visible = true;
-            }
-          }, 50);
-          
-          console.log('🎯 Group position after change:', morphingGroupRef.current.position);
+  // ✅ MINIMAL FIX: Just change the dependency array to break the loop
+
+// Listen for override changes
+useEffect(() => {
+  const checkOverride = () => {
+    const currentOverride = (window as any).arTestingOverride ?? true;
+    if (currentOverride !== arTestingOverride) {
+      setArTestingOverride(currentOverride);
+      console.log('🪷 LilyExperience override changed:', currentOverride);
+      
+      if (morphingGroupRef.current && isArMode && arPosition) {
+        if (currentOverride) {
+          console.log('🎯 Setting group override position (0, 0, -5)');
+          morphingGroupRef.current.position.set(0, 0, -5);
+        } else {
+          console.log('🎯 Setting group anchor position:', arPosition);
+          morphingGroupRef.current.position.copy(arPosition);
         }
+        
+        // Force visual update
+        morphingGroupRef.current.visible = false;
+        setTimeout(() => {
+          if (morphingGroupRef.current) {
+            morphingGroupRef.current.visible = true;
+          }
+        }, 50);
+        
+        console.log('🎯 Group position after change:', morphingGroupRef.current.position);
       }
-    };
+    }
+  };
+  
+  const interval = setInterval(checkOverride, 100);
+  return () => clearInterval(interval);
+}, [arTestingOverride]); // ✅ FIXED: Only depend on arTestingOverride
+
+// ✅ NEW: Separate effect for position updates when AR data changes
+useEffect(() => {
+  if (morphingGroupRef.current && isArMode && arPosition) {
+    const currentOverride = (window as any).arTestingOverride ?? true;
     
-    const interval = setInterval(checkOverride, 100);
-    return () => clearInterval(interval);
-  }, [arTestingOverride, isArMode, arPosition]);
+    if (currentOverride) {
+      morphingGroupRef.current.position.set(0, 0, -5);
+    } else {
+      morphingGroupRef.current.position.copy(arPosition);
+    }
+    
+    console.log('🎯 Position updated due to AR change:', morphingGroupRef.current.position);
+  }
+}, [isArMode, arPosition]); // ✅ Separate effect for AR position changes
 
   // Register gesture handlers on mount
   useEffect(() => {
@@ -401,33 +419,108 @@ const handleReadyForReset = () => {
   return (
     <>
       {/* Morphing Engine Component */}
-      {sceneRef.current ? (
-       <OptimizedPointCloudMorphingEngine
-        key="lily-morphing-engine" 
-        modelPrefix="lily"
-        scene={isArMode ? arScene! : sceneRef.current!}
-        isArMode={isArMode}
-        arPosition={arPosition}
-        onModelLoaded={handleModelLoaded}
-        onLoadingProgress={handleLoadingProgress}
-        onError={handleError}
-        onReadyForReset={handleReadyForReset}
-      />
-      ) : (
+
+
+{sceneRef.current && (
+  <OptimizedPointCloudMorphingEngine
+    modelPrefix="lily"
+    scene={isArMode ? arScene! : sceneRef.current!}
+    isArMode={isArMode}
+    arPosition={arPosition}
+    onModelLoaded={handleModelLoaded}
+    onLoadingProgress={handleLoadingProgress}
+    onError={handleError}
+    onReadyForReset={handleReadyForReset}
+  />
+)}
+
+{!hasPointCloud && sceneRef.current && (
+  <div style={{
+    position: 'fixed',
+    top: '50%',
+  left: '50%',
+    width: '80%',
+    height: '50%',
+    transform: 'translate(-50%, -50%)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+    color: 'white',
+    fontFamily: 'var(--font-rigby)',
+  }}>
+    {/* Loading spinner */}
+    <div style={{
+      width: '60px',
+      height: '60px',
+      border: '3px solid rgba(255, 192, 203, 0.3)',
+      borderTop: '3px solid #ff69b4',
+      borderRadius: '50%',
+      animation: 'spin 1s linear infinite',
+      marginBottom: '20px'
+    }} />
+    
+    {/* Loading text */}
+    <h2 style={{
+      margin: '0 0 10px 0',
+      fontSize: '24px',
+      fontWeight: '400',
+      color: '#ff69b4'
+    }}>
+      🪷 Preparing Lily Experience
+    </h2>
+    
+    <p style={{
+      margin: '0',
+      fontSize: '16px',
+      opacity: 0.8,
+      textAlign: 'center',
+      maxWidth: '300px'
+    }}>
+      Setting up AR scene and loading lily growth cycle models...
+    </p>
+    
+    {/* Progress bar if loading progress is available */}
+    {loadingProgress > 0 && (
+      <div style={{
+        marginTop: '20px',
+        width: '200px',
+        height: '4px',
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: '2px',
+        overflow: 'hidden'
+      }}>
         <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          color: 'white',
-          backgroundColor: 'rgba(255, 0, 0, 0.7)',
-          padding: '10px',
-          borderRadius: '5px',
-          zIndex: 9999
-        }}>
-          ⚠️ Scene not ready for morphing engine
-        </div>
-      )}
+          width: `${loadingProgress}%`,
+          height: '100%',
+          backgroundColor: '#ff69b4',
+          transition: 'width 0.3s ease',
+          borderRadius: '2px'
+        }} />
+      </div>
+    )}
+    
+    {loadingProgress > 0 && (
+      <p style={{
+        margin: '10px 0 0 0',
+        fontSize: '14px',
+        opacity: 0.7
+      }}>
+        {loadingProgress.toFixed(0)}% loaded
+      </p>
+    )}
+    
+    {/* CSS animation for spinner */}
+    <style>{`
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `}</style>
+  </div>
+)}
 
       {/* Debug Panel for Lily Experience */}
       {SHOW_DEBUG_PANEL && (

@@ -1,12 +1,6 @@
-// src/components/common/OptimizedPointCloudMorphingEngine.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
-import { 
-  getDeviceCapabilities, 
-  PerformanceMonitor, 
-  AdaptiveQualityManager,
-  OptimizedGeometryLoader 
-} from '../../utils/deviceOptimization';
+import { getDeviceCapabilities, OptimizedGeometryLoader } from '../../utils/deviceOptimization';
 
 interface OptimizedPointCloudMorphingEngineProps {
   modelPrefix: 'lily' | 'lotus' | 'cattail';
@@ -29,414 +23,343 @@ const OptimizedPointCloudMorphingEngine: React.FC<OptimizedPointCloudMorphingEng
   onError,
   onReadyForReset
 }) => {
-  // Device capabilities and quality management
-  const [deviceCaps, setDeviceCaps] = useState<any>(null);
-  const [currentQuality, setCurrentQuality] = useState<string>('mobile');
-  
-  // Core references
-  const morphingPointCloudRef = useRef<THREE.Points | null>(null);
-  const morphingGroupRef = useRef<THREE.Group | null>(null);
+  // Simple refs - no complex state
+  const mountedRef = useRef(true);
+  const loadedRef = useRef(false);
+  const groupRef = useRef<THREE.Group | null>(null);
+  const pointCloudRef = useRef<THREE.Points | null>(null);
   const geometriesRef = useRef<THREE.BufferGeometry[]>([]);
-  const clockRef = useRef(new THREE.Clock());
   const animationIdRef = useRef<number | null>(null);
-  const geometryLoaderRef = useRef(new OptimizedGeometryLoader());
+  const clockRef = useRef(new THREE.Clock());
+  const loaderRef = useRef(new OptimizedGeometryLoader());
+
+  // ✅ CRITICAL FIX: Get device capabilities once and store in ref (not state)
+  const deviceCapsRef = useRef<ReturnType<typeof getDeviceCapabilities> | null>(null);
   
-  // Performance optimization
-  const frameCountRef = useRef(0);
-  const performanceMonitorRef = useRef<PerformanceMonitor | undefined>(undefined);
-  const qualityManagerRef = useRef<AdaptiveQualityManager | undefined>(undefined);
-  
-  // Initialize device capabilities
-  useEffect(() => {
-    const initDeviceCaps = async () => {
+  const getDeviceCaps = () => {
+    if (!deviceCapsRef.current) {
       try {
-        const caps = await getDeviceCapabilities();
-        setDeviceCaps(caps);
-        setCurrentQuality(caps.quality);
-        console.log(`🎯 Device capabilities detected: ${caps.quality} (${caps.maxVertices} vertices)`);
+        deviceCapsRef.current = getDeviceCapabilities();
       } catch (error) {
-        console.warn('⚠️ Failed to get device capabilities, using fallback:', error);
-        // Fallback device capabilities
-        setDeviceCaps({
-          quality: 'mobile',
+        console.warn('Device capabilities failed, using fallback');
+        deviceCapsRef.current = {
+          quality: 'low' as const,
           isMobile: true,
-          isLowEnd: false,
-          maxVertices: 8000,
+          isLowEnd: true,
+          maxVertices: 25000,
           shouldReduceFrameRate: true,
-          maxPixelRatio: 1.5
-        });
-        setCurrentQuality('mobile');
-      }
-    };
-    
-    initDeviceCaps();
-  }, []);
-  
-  // Animation settings - adaptive based on device
-  const CYCLE_TIME = 20;
-  const getUpdateFrequency = () => {
-    if (!deviceCaps) return 2;
-    if (deviceCaps.shouldReduceFrameRate) {
-      return currentQuality === 'lowEnd' ? 4 : 3; // Every 4th or 3rd frame
-    }
-    return 1; // Every frame
-  };
-  
-  // Fallback colors
-  const FALLBACK_COLORS = {
-    lily: 0xff69b4,
-    lotus: 0xffc0cb,
-    cattail: 0x8b4513
-  };
-
-  // Optimized smoothing function
-  const smoothTransition = (t: number): number => {
-    if (t <= 0) return 0;
-    if (t >= 1) return 1;
-    return 0.5 * (1 - Math.cos(Math.PI * t));
-  };
-
-  // Stage progression logic
-  const getStageFromProgress = (progress: number) => {
-    progress = Math.max(0, Math.min(1, progress));
-    const thresholds = [0, 0.25, 0.5, 0.75, 1.0];
-    
-    if (progress >= 0.75) {
-      const rawProgress = (progress - 0.75) / 0.25;
-      return {
-        currentStage: 3,
-        nextStage: 0,
-        blendFactor: smoothTransition(rawProgress)
-      };
-    }
-    
-    for (let i = 0; i < 3; i++) {
-      if (progress >= thresholds[i] && progress < thresholds[i + 1]) {
-        const rawProgress = (progress - thresholds[i]) / (thresholds[i + 1] - thresholds[i]);
-        return {
-          currentStage: i,
-          nextStage: i + 1,
-          blendFactor: smoothTransition(rawProgress)
+          maxPixelRatio: 1.5,
+          rendererSettings: {
+            antialias: false,
+            powerPreference: 'low-power' as const,
+            precision: 'mediump' as const
+          }
         };
       }
     }
-    
-    return { currentStage: 0, nextStage: 1, blendFactor: 0 };
+    return deviceCapsRef.current;
   };
 
-  // Highly optimized Bezier flow for mobile performance
-  const applyOptimizedBezierFlow = (currentStage: number, nextStage: number, blendFactor: number) => {
-    const currentGeometry = geometriesRef.current[currentStage];
-    const nextGeometry = geometriesRef.current[nextStage];
+  // Animation loop with Bezier morphing
+  const animate = useCallback(() => {
+    if (!mountedRef.current || !pointCloudRef.current || geometriesRef.current.length < 4) {
+      return;
+    }
+
+    const elapsedTime = clockRef.current.getElapsedTime();
+    const progress = (elapsedTime % 20) / 20; // 20 second cycle
+    const stage = Math.floor(progress * 4);
+    const nextStage = (stage + 1) % 4;
+    const rawBlend = (progress * 4) - stage;
     
-    if (!currentGeometry || !nextGeometry || !morphingPointCloudRef.current) return;
-    
-    const morphedGeometry = morphingPointCloudRef.current.geometry;
-    const positions = morphedGeometry.attributes.position;
-    const colors = morphedGeometry.attributes.color;
-    
-    const currentPositions = currentGeometry.attributes.position;
-    const nextPositions = nextGeometry.attributes.position;
-    const currentColors = currentGeometry.attributes.color;
-    const nextColors = nextGeometry.attributes.color;
-    
-    const vertexCount = Math.min(currentPositions.count, nextPositions.count, positions.count);
-    
-    // Pre-calculate common Bezier coefficients (major optimization)
-    const t = smoothTransition(blendFactor);
-    const t2 = t * t;
-    const t3 = t2 * t;
-    const mt = 1 - t;
-    const mt2 = mt * mt;
-    const mt3 = mt2 * mt;
-    
-    // Use typed arrays for better performance
-    const posArray = positions.array as Float32Array;
-    const currentArray = currentPositions.array as Float32Array;
-    const nextArray = nextPositions.array as Float32Array;
-    
-    // Vectorized loop with optimized calculations
-    for (let i = 0; i < vertexCount; i++) {
-      const i3 = i * 3;
-      
-      // Direct array access (faster than getX/Y/Z)
-      const currentX = currentArray[i3];
-      const currentY = currentArray[i3 + 1];
-      const currentZ = currentArray[i3 + 2];
-      
-      const nextX = nextArray[i3];
-      const nextY = nextArray[i3 + 1];
-      const nextZ = nextArray[i3 + 2];
-      
-      // Simplified control points (reduced computation)
-      const controlX = (currentX + nextX) * 0.5;
-      const controlY = Math.max(currentY, nextY) + 1.0; // Reduced height for performance
-      const controlZ = (currentZ + nextZ) * 0.5;
-      
-      // Optimized particle phase calculation
-      const particlePhase = Math.max(0, Math.min(1, (currentY + 5) * 0.02));
-      const particleBlend = Math.max(0, Math.min(1, blendFactor + particlePhase - 0.1));
-      
-      // Pre-calculated particle Bezier coefficients
-      const pt = smoothTransition(particleBlend);
-      const pt2 = pt * pt;
-      const pt3 = pt2 * pt;
-      const pmt = 1 - pt;
-      const pmt2 = pmt * pmt;
-      const pmt3 = pmt2 * pmt;
-      
-      // Optimized Bezier interpolation
-      const morphedX = pmt3 * currentX + 3 * pmt2 * pt * controlX + 3 * pmt * pt2 * controlX + pt3 * nextX;
-      const morphedY = pmt3 * currentY + 3 * pmt2 * pt * controlY + 3 * pmt * pt2 * controlY + pt3 * nextY;
-      const morphedZ = pmt3 * currentZ + 3 * pmt2 * pt * controlZ + 3 * pmt * pt2 * controlZ + pt3 * nextZ;
-      
-      // Direct array assignment (fastest method)
-      posArray[i3] = morphedX;
-      posArray[i3 + 1] = morphedY;
-      posArray[i3 + 2] = morphedZ;
-      
-      // Color interpolation (simplified for performance)
-      if (colors && currentColors && nextColors) {
-        const colorArray = colors.array as Float32Array;
-        const currentColorArray = currentColors.array as Float32Array;
-        const nextColorArray = nextColors.array as Float32Array;
+    // Smooth step for organic transitions
+    const blend = 0.5 * (1 - Math.cos(Math.PI * rawBlend));
+
+    // Bezier morphing with flowing curves
+    const currentGeom = geometriesRef.current[stage];
+    const nextGeom = geometriesRef.current[nextStage];
+    const morphedGeom = pointCloudRef.current.geometry;
+
+    // Define excursionScales here to access modelPrefix
+    const excursionScales = {
+      lily: 1.0,
+      lotus: 0.8,
+      cattail: 1.5
+    };
+    const excursionScale = excursionScales[modelPrefix] || 1.0;
+
+    if (currentGeom && nextGeom) {
+      const positions = morphedGeom.attributes.position.array as Float32Array;
+      const currentPos = currentGeom.attributes.position.array as Float32Array;
+      const nextPos = nextGeom.attributes.position.array as Float32Array;
+      const vertexCount = Math.min(positions.length / 3, currentPos.length / 3, nextPos.length / 3);
+
+      // Bezier curve interpolation for flowing motion
+      for (let i = 0; i < vertexCount; i++) {
+        const i3 = i * 3;
         
-        colorArray[i3] = currentColorArray[i3] + (nextColorArray[i3] - currentColorArray[i3]) * pt;
-        colorArray[i3 + 1] = currentColorArray[i3 + 1] + (nextColorArray[i3 + 1] - currentColorArray[i3 + 1]) * pt;
-        colorArray[i3 + 2] = currentColorArray[i3 + 2] + (nextColorArray[i3 + 2] - currentColorArray[i3 + 2]) * pt;
+        const currentX = currentPos[i3];
+        const currentY = currentPos[i3 + 1];
+        const currentZ = currentPos[i3 + 2];
+        
+        const nextX = nextPos[i3];
+        const nextY = nextPos[i3 + 1];
+        const nextZ = nextPos[i3 + 2];
+        
+        // Create flowing control points
+        const controlX = (currentX + nextX) * 0.5;
+        const controlY = (currentY + nextY) * 0.5; // ← Keep Y flat
+        const controlZ = Math.max(currentZ, nextZ) + (1.0 * excursionScale);
+        
+        // Particle-specific timing for more organic feel
+        const particlePhase = Math.max(0, Math.min(1, (currentY + 5) * 0.02));
+        const particleBlend = Math.max(0, Math.min(1, blend + particlePhase - 0.1));
+        
+        // Smooth particle blend
+        const t = 0.5 * (1 - Math.cos(Math.PI * particleBlend));
+        const t2 = t * t;
+        const t3 = t2 * t;
+        const mt = 1 - t;
+        const mt2 = mt * mt;
+        const mt3 = mt2 * mt;
+        
+        // Cubic Bezier interpolation for flowing curves
+        const morphedX = mt3 * currentX + 3 * mt2 * t * controlX + 3 * mt * t2 * controlX + t3 * nextX;
+        const morphedY = mt3 * currentY + 3 * mt2 * t * controlY + 3 * mt * t2 * controlY + t3 * nextY;
+        const morphedZ = mt3 * currentZ + 3 * mt2 * t * controlZ + 3 * mt * t2 * controlZ + t3 * nextZ;
+        
+        positions[i3] = morphedX;
+        positions[i3 + 1] = morphedY;
+        positions[i3 + 2] = morphedZ;
       }
-    }
-    
-    positions.needsUpdate = true;
-    if (colors) colors.needsUpdate = true;
-  };
 
-  // Adaptive animation loop with performance monitoring
-  const animate = () => {
-    if (!morphingPointCloudRef.current) return;
-    
-    frameCountRef.current++;
-    const updateFrequency = getUpdateFrequency();
-    
-    // Frame skipping for mobile performance
-    const shouldUpdate = frameCountRef.current % updateFrequency === 0;
-    
-    if (shouldUpdate) {
-      const elapsedTime = clockRef.current.getElapsedTime();
-      const progress = (elapsedTime % CYCLE_TIME) / CYCLE_TIME;
-      const stageInfo = getStageFromProgress(progress);
-      
-      applyOptimizedBezierFlow(stageInfo.currentStage, stageInfo.nextStage, stageInfo.blendFactor);
+      morphedGeom.attributes.position.needsUpdate = true;
     }
-    
-    animationIdRef.current = requestAnimationFrame(animate);
-  };
 
-  // Create optimized point cloud
-  const createMorphingPointCloud = () => {
-    if (geometriesRef.current.length === 0 || !geometriesRef.current[0] || !deviceCaps) {
-      console.error('❌ No geometries loaded for morphing point cloud or device caps not ready');
+    if (mountedRef.current) {
+      animationIdRef.current = requestAnimationFrame(animate);
+    }
+  }, []);
+
+  // ✅ SINGLE EFFECT - Load once, cleanup once
+  useEffect(() => {
+    if (loadedRef.current) {
+      console.log(`⏭️ ${modelPrefix} already loading, skipping duplicate`);
       return;
     }
     
-    console.log(`✅ Creating ${currentQuality} quality point cloud for ${modelPrefix}`);
+    loadedRef.current = true;
+    mountedRef.current = true;
+
+    const loadModels = async () => {
+      console.log(`🚀 Loading ${modelPrefix} models...`);
+
+      try {
+        const deviceCaps = getDeviceCaps();
+        const geometries: THREE.BufferGeometry[] = [];
+
+     // ✅ Define scaling separately
+const visualScales = { 
+  lily: 10.0,   // Visual size multiplier
+  lotus: 10.0,   
+  cattail: 10.0 
+};
+
+const excursionScales = {
+  lily: 1.0,     // Normal animation distance
+  lotus: 0.8,    // Smaller movements
+  cattail: 1.5   // Larger movements
+};
+
+// Load and process 4 stages
+for (let stage = 1; stage <= 4; stage++) {
+  if (!mountedRef.current) return;
+
+  // Load raw geometry
+  const geometry = await loaderRef.current.loadGeometry(modelPrefix, stage, 'high');
+  
+// Check what the original max values are:
+// After loading each stage, check for pink:
+const colors = geometry.attributes.color;
+if (colors) {
+  let maxR = 0, maxG = 0, maxB = 0;
+  let foundPink = false;
+  
+  for (let i = 0; i < colors.count; i++) {
+    const r = colors.getX(i);
+    const g = colors.getY(i);
+    const b = colors.getZ(i);
     
-    // Create group container
-    const morphingGroup = new THREE.Group();
-    morphingGroupRef.current = morphingGroup;
+    maxR = Math.max(maxR, r);
+    maxG = Math.max(maxG, g);
+    maxB = Math.max(maxB, b);
     
-    const baseGeometry = geometriesRef.current[0].clone();
+    // Look for pink colors (red > green and red > blue)
+    if (r > 0.5 && r > g && r > b) {
+      console.log(`🌸 Stage ${stage} PINK found: RGB(${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)})`);
+      foundPink = true;
+      break;
+    }
+  }
+  
+  console.log(`🎨 Stage ${stage} color ranges: R(0-${maxR.toFixed(3)}), G(0-${maxG.toFixed(3)}), B(0-${maxB.toFixed(3)})`);
+  if (!foundPink) {
+    console.log(`❌ Stage ${stage}: No pink colors found`);
+  }
+}
+  
+  // Vertex reduction if needed
+  const vertexCount = geometry.attributes.position.count;
+  if (vertexCount > deviceCaps.maxVertices) {
+    console.log(`Reducing vertices: ${vertexCount} → ${deviceCaps.maxVertices}`);
     
-    // Optimized material based on device capabilities
-    const material = new THREE.PointsMaterial({
-      size: deviceCaps.isMobile ? 1.5 : 1.0, // Larger points on mobile for fewer vertices
-      sizeAttenuation: !deviceCaps.isMobile, // Disable on mobile for performance
-      vertexColors: baseGeometry.attributes.color ? true : false,
-      transparent: !deviceCaps.isLowEnd, // Disable transparency on low-end devices
-      opacity: deviceCaps.isLowEnd ? 1.0 : 0.8
+    const step = Math.ceil(vertexCount / deviceCaps.maxVertices);
+    const oldPos = geometry.attributes.position.array as Float32Array;
+    const newPos = new Float32Array(deviceCaps.maxVertices * 3);
+    
+    for (let i = 0, j = 0; i < vertexCount && j < deviceCaps.maxVertices; i += step, j++) {
+      newPos[j * 3] = oldPos[i * 3];
+      newPos[j * 3 + 1] = oldPos[i * 3 + 1];
+      newPos[j * 3 + 2] = oldPos[i * 3 + 2];
+    }
+    
+    geometry.setAttribute('position', new THREE.BufferAttribute(newPos, 3));
+  }
+  
+  // ✅ Apply visual scaling to geometry (affects model size only)
+  const visualScale = visualScales[modelPrefix] || 100.0;
+  geometry.scale(visualScale, visualScale, visualScale);
+  
+  // Debug scaled size (only for stage 1)
+  if (stage === 1) {
+    geometry.computeBoundingBox();
+    const scaledBox = geometry.boundingBox!;
+    console.log(`After ${visualScale}x visual scaling:`, {
+      size: {
+        x: (scaledBox.max.x - scaledBox.min.x).toFixed(3),
+        y: (scaledBox.max.y - scaledBox.min.y).toFixed(3), 
+        z: (scaledBox.max.z - scaledBox.min.z).toFixed(3)
+      }
     });
+  }
+  
+  geometries.push(geometry);
+  
+  if (onLoadingProgress) {
+    onLoadingProgress((stage / 4) * 100);
+  }
+}
 
-    if (!baseGeometry.attributes.color) {
-      material.color.setHex(FALLBACK_COLORS[modelPrefix]);
-    }
+        if (!mountedRef.current) return;
 
-    const pointCloud = new THREE.Points(baseGeometry, material);
-    morphingPointCloudRef.current = pointCloud;
-    
-    // No rotation needed - models are pre-normalized
-    morphingGroup.add(pointCloud);
-    
-    // Experience-specific scale multipliers (pre-calculated)
-    const experienceScales = {
-      'lily': 1.4,
-      'lotus': 0.8,
-      'cattail': 2.5
-    };
-    
-    const finalScale = experienceScales[modelPrefix] || 1.0;
-    morphingGroup.scale.set(finalScale, finalScale, finalScale);
-    
-    // Position based on mode
-    if (isArMode && arPosition) {
-      const currentOverride = (window as any).arTestingOverride ?? true;
-      
-      if (currentOverride) {
-        morphingGroup.position.set(0, 0, -5);
-      } else {
-        morphingGroup.position.copy(arPosition);
-      }
-    } else {
-      morphingGroup.position.set(0, 0, -3);
-    }
-    
-    scene.add(morphingGroup);
-    
-    if (onModelLoaded) {
-      onModelLoaded(pointCloud);
-    }
-    
-    console.log(`🎯 ${modelPrefix} point cloud created (${baseGeometry.attributes.position.count} vertices)`);
-    
-    // Trigger reset callback
-    setTimeout(() => {
-      if (onReadyForReset) {
-        onReadyForReset();
-      }
-    }, 200);
-  };
+        geometriesRef.current = geometries;
 
-  // Load optimized models
-  const loadOptimizedModels = async () => {
-    if (!deviceCaps) {
-      console.log('⏳ Waiting for device capabilities...');
-      return;
-    }
-    
-    console.log(`🚀 Loading ${currentQuality} quality models for ${modelPrefix}`);
-    
-    const startTime = performance.now();
-    let loadedCount = 0;
-    
-    try {
-      for (let stage = 1; stage <= 4; stage++) {
-        const geometry = await geometryLoaderRef.current.loadGeometry(
-          modelPrefix, 
-          stage, 
-          currentQuality
-        );
-        
-        geometriesRef.current[stage - 1] = geometry;
-        loadedCount++;
-        
-        if (onLoadingProgress) {
-          onLoadingProgress((loadedCount / 4) * 100);
+        // Create group
+        const group = new THREE.Group();
+        groupRef.current = group;
+
+        // Create point cloud
+        const material = new THREE.PointsMaterial({
+          size: 1.0,
+          sizeAttenuation: false,
+           vertexColors: !!geometries[0].attributes.color, // Use vertex colors if available
+          transparent: true,
+          opacity: 0.8
+        });
+
+
+
+        if (!geometries[0].attributes.color) {
+                const colors = { lily: 0xff69b4, lotus: 0xffc0cb, cattail: 0x8b4513 };
+                material.color.setHex(colors[modelPrefix]);
+            }
+
+        console.log('🎨 Using vertex colors:', material.vertexColors);
+        console.log('🎨 Material color:', material.color.getHex());
+
+        const pointCloud = new THREE.Points(geometries[0].clone(), material);
+        pointCloudRef.current = pointCloud;
+        group.add(pointCloud);
+
+        // Scale
+        // const scales = { lily: 20, lotus: 1, cattail: 1 };//seems to apply to the excursion of the bezier, not size of model
+        // group.scale.setScalar(scales[modelPrefix] || 1.0);
+
+        // Position
+        if (isArMode && arPosition) {
+          const useOverride = (window as any).arTestingOverride ?? true;
+          group.position.copy(useOverride ? new THREE.Vector3(0, 0, -5) : arPosition);
+        } else {
+          group.position.set(0, 0, -3);
         }
-        
-        console.log(`📥 Loaded ${modelPrefix}_${stage}_${currentQuality}: ${geometry.attributes.position.count} vertices`);
-      }
-      
-      const loadTime = performance.now() - startTime;
-      console.log(`⚡ Models loaded in ${loadTime.toFixed(1)}ms`);
-      
-      // Create point cloud and start animation
-      createMorphingPointCloud();
-      clockRef.current.start();
-      animate();
-      
-    } catch (error) {
-      console.error(`❌ Failed to load ${modelPrefix} models:`, error);
-      if (onError) {
-        onError(`Failed to load ${modelPrefix} models: ${error}`);
-      }
-      
-      // Try fallback quality
-      if (currentQuality !== 'lowEnd') {
-        console.log('🔄 Attempting fallback to lower quality...');
-        setCurrentQuality('lowEnd');
-      }
-    }
-  };
 
-  // Handle quality changes
-  const handleQualityChange = async (newQuality: string) => {
-    if (newQuality === currentQuality) return;
-    
-    console.log(`🔄 Quality change: ${currentQuality} → ${newQuality}`);
-    
-    // Stop current animation
-    if (animationIdRef.current) {
-      cancelAnimationFrame(animationIdRef.current);
-    }
-    
-    // Clean up current geometries
-    geometriesRef.current.forEach(geometry => geometry?.dispose());
-    geometriesRef.current = [];
-    
-    // Remove current point cloud
-    if (morphingGroupRef.current && scene) {
-      scene.remove(morphingGroupRef.current);
-      morphingGroupRef.current = null;
-      morphingPointCloudRef.current = null;
-    }
-    
-    // Update quality and reload
-    setCurrentQuality(newQuality as any);
-  };
+        scene.add(group);
 
-  // Initialize performance monitoring
-  useEffect(() => {
-    if (!deviceCaps) return;
-    
-    try {
-      performanceMonitorRef.current = new PerformanceMonitor();
-      qualityManagerRef.current = new AdaptiveQualityManager(currentQuality as any);
-      
-      qualityManagerRef.current.onQualityChanged(handleQualityChange);
-    } catch (error) {
-      console.warn('⚠️ Performance monitoring failed to initialize:', error);
-    }
-    
-    return () => {
-      // Cleanup performance monitoring
-      performanceMonitorRef.current = undefined;
-      qualityManagerRef.current = undefined;
+        // Start animation
+        clockRef.current.start();
+        animate();
+
+        console.log(`✅ ${modelPrefix} loaded and animating`);
+
+        if (onModelLoaded) onModelLoaded(pointCloud);
+        if (onReadyForReset) onReadyForReset();
+
+      } catch (error) {
+        console.error(`❌ Failed to load ${modelPrefix}:`, error);
+        if (onError) onError(`Failed to load ${modelPrefix}: ${error}`);
+      }
     };
-  }, [deviceCaps, currentQuality]);
 
-  // Main loading effect - wait for device capabilities
-  useEffect(() => {
-    if (!deviceCaps) return;
-    
-    loadOptimizedModels();
-    
+    loadModels();
+
     return () => {
-      // Cleanup animation
+      console.log(`🧹 Cleaning up ${modelPrefix}`);
+      
+      mountedRef.current = false;
+      loadedRef.current = false;
+      
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current);
+        animationIdRef.current = null;
       }
-      
-      // Dispose geometries
-      geometriesRef.current.forEach(geometry => geometry?.dispose());
-      
-      // Remove from scene
-      if (morphingGroupRef.current && scene) {
-        scene.remove(morphingGroupRef.current);
-        
-        if (morphingPointCloudRef.current?.material) {
-          if (Array.isArray(morphingPointCloudRef.current.material)) {
-            morphingPointCloudRef.current.material.forEach(material => material.dispose());
-          } else {
-            morphingPointCloudRef.current.material.dispose();
-          }
-        }
-      }
-      
-      // Clear geometry cache
-      geometryLoaderRef.current.clearCache();
-    };
-  }, [modelPrefix, scene, isArMode, arPosition, currentQuality, deviceCaps]);
 
-  return null; // This component doesn't render anything itself
+      geometriesRef.current.forEach(geom => geom.dispose());
+      geometriesRef.current = [];
+
+      if (groupRef.current && scene) {
+        scene.remove(groupRef.current);
+        groupRef.current.traverse((child) => {
+          if (child instanceof THREE.Points) {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach(mat => mat.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          }
+        });
+        groupRef.current = null;
+      }
+
+      loaderRef.current.clearCache();
+      
+      if ((window as any).gc) {
+        (window as any).gc();
+      }
+    };
+  }, [modelPrefix, scene]); // Only change when these change
+
+  // Separate effect for position updates
+  useEffect(() => {
+    if (groupRef.current && isArMode && arPosition) {
+      const useOverride = (window as any).arTestingOverride ?? true;
+      groupRef.current.position.copy(useOverride ? new THREE.Vector3(0, 0, -5) : arPosition);
+    }
+  }, [isArMode, arPosition]);
+
+  return null;
 };
 
 export default OptimizedPointCloudMorphingEngine;

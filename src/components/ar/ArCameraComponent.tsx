@@ -682,14 +682,14 @@ useEffect(() => {
         }}
       />
 
-      {showChevrons && userPosition && anchorPosition && (
+      {/* {showChevrons && userPosition && anchorPosition && (
         <EdgeChevrons
           userPosition={userPosition}
           anchorPosition={anchorPosition}
           deviceHeading={getDeviceHeading()}
           isVisible={showChevrons}
         />
-        )}
+        )} */}
       
       {/* Error display - only show for actual technical errors, not permission issues */}
       {cameraError && !cameraError.includes('permission') && (
@@ -900,7 +900,7 @@ useEffect(() => {
                       borderTop: '1px solid rgba(255,255,255,0.3)', 
                       paddingTop: '5px' 
                     }}>
-                      <div style={{ color: 'yellow', fontSize: '10px' }}>🧭 EDGE CHEVRONS</div>
+                      {/* <div style={{ color: 'yellow', fontSize: '10px' }}>🧭 EDGE CHEVRONS</div>
                       
                       <div 
                         onClick={() => {
@@ -918,7 +918,7 @@ useEffect(() => {
                         }}
                       >
                         Chevrons: {showChevrons ? '✅ ON' : '❌ OFF'}
-                      </div>
+                      </div> */}
 
                       <div style={{ marginTop: '2px', fontSize: '9px' }}>
                       <label>Debug Heading: {debugHeading?.toFixed(1) || 'Auto'}°</label>

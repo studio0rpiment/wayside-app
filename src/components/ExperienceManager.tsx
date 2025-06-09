@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import ArCameraComponent from '../components/ar/ArCameraComponent';
 import { useSystemOptimization } from '../utils/systemOptimization';
@@ -64,65 +64,98 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     swipeUp?: () => void;
     swipeDown?: () => void;
   }>({});
-  
-  // Reset state when modal opens/closes
+
   useEffect(() => {
-    if (isOpen) {
-      setArInitialized(false);
-      setArObjectPosition(null);
-      setExperienceReady(false);
-      gestureHandlersRef.current = {}; // Clear handlers
-    }
-  }, [isOpen]);
+  console.log('🔄 ExperienceManager effect - checking what changed:', {
+    isOpen,
+    experienceType,
+    userPosition: userPosition?.slice(0, 2),
+    anchorPosition: anchorPosition?.slice(0, 2),
+    anchorElevation,
+    geofenceId
+  });
+}, [isOpen, experienceType, userPosition, anchorPosition, anchorElevation, geofenceId]);
 
-    //  system optimization
-   useEffect(() => {
-    if (isOpen) {
-      console.log('🎯 Starting AR experience with system optimization');
-      startArExperience(experienceType);
-    } else {
-      console.log('🏁 Ending AR experience, resuming systems');
-      endArExperience();
-    }
+// ✅ Reset state when modal opens/closes - keep this unchanged
+useEffect(() => {
+  if (isOpen) {
+    setArInitialized(false);
+    setArObjectPosition(null);
+    setExperienceReady(false);
+    gestureHandlersRef.current = {}; // Clear handlers
+  }
+}, [isOpen]);
 
-    return () => {
-      endArExperience();
-    };
-  }, [isOpen, experienceType, startArExperience, endArExperience]);
+// ✅ FIXED: System optimization - prevent the endless loop
+useEffect(() => {
+  if (isOpen) {
+    console.log('🎯 Starting AR experience with system optimization');
+    startArExperience(experienceType);
+  }
+  // ❌ REMOVED: Don't call endArExperience here when isOpen is false
+  // This was causing premature cleanup
+}, [isOpen]); // ✅ FIXED: Only depend on isOpen, not experienceType
+
+// ✅ NEW: Separate cleanup effect - only runs on component unmount
+useEffect(() => {
+  return () => {
+    console.log('🏁 ExperienceManager unmounting, ending system optimization');
+    endArExperience();
+  };
+}, []); // ✅ No dependencies - only cleanup when component truly unmounts
+
 
   
-  // Handler for when AR object is positioned
-  const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {
-    console.log('🎯 AR object placed at:', position);
-    setArObjectPosition(position);
-    setArInitialized(true);
-    
-    // Auto-start experience after AR is positioned
-    setTimeout(() => {
-      setExperienceReady(true);
-    }, 1000);
-  }, []);
+ const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {
+  console.log('🎯 AR object placed at:', position);
+  
+  // ✅ SIMPLIFIED: Only prevent duplicate calls if position is exactly the same
+  // if (arObjectPosition && arObjectPosition.equals(position)) {
+  //   console.log('🔄 AR object position exactly the same, skipping update');
+  //   return;
+  // }
+  
+  // ✅ ALWAYS allow the first position to be set
+  setArObjectPosition(position);
+  setArInitialized(true);
+  setExperienceReady(true);
+  
+  // // Auto-start experience after AR is positioned
+  // setTimeout(() => {
+  //   setExperienceReady(true);
+  // }, 1000);
+}, [arObjectPosition]);
   
   // Handler for orientation updates (for debugging)
   const handleOrientationUpdate = useCallback((orientation: { alpha: number; beta: number; gamma: number }) => {
     // Could be used for experience-specific orientation handling
     if (process.env.NODE_ENV === 'development') {
-      console.log('📱 Device orientation:', orientation);
+      // Only log occasionally to reduce spam
+      if (Math.random() < 0.01) { // 1% chance
+        console.log('📱 Device orientation:', orientation);
+      }
     }
   }, []);
 
   const handleArSceneReady = useCallback((scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
     console.log('🎯 AR scene received in ExperienceManager');
+    
+    // Prevent duplicate calls
+    if (arScene === scene && arCamera === camera) {
+      console.log('🔄 AR scene unchanged, skipping update');
+      return;
+    }
+    
     setArScene(scene);
     setArCamera(camera);
-  }, []);
+  }, [arScene, arCamera]);
 
   // *** FIXED: Stable gesture handlers using useCallback ***
   const handleModelRotate = useCallback((deltaX: number, deltaY: number) => {
     if (gestureHandlersRef.current.rotate) {
       gestureHandlersRef.current.rotate(deltaX, deltaY);
     }
-  }, []); // Empty deps - this function never changes
+  }, []); // No dependencies - uses ref
 
   const handleModelScale = useCallback((scaleFactor: number) => {
     if (gestureHandlersRef.current.scale) {
@@ -178,47 +211,61 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     setTimeout(() => {
       onClose();
     }, 500);
-  }, [onExperienceComplete, onClose]);
+  }, [onExperienceComplete, onClose]); 
+
+
+  //memoizing to prevent reloads
+          const experienceProps = useMemo(() => ({
+            onClose: handleExperienceComplete,
+            onNext: handleExperienceComplete,
+            arPosition: arObjectPosition ?? undefined, 
+            arScene: arScene ?? undefined,          
+            arCamera: arCamera ?? undefined, 
+            coordinateScale,
+            onModelRotate: registerRotateHandler,
+            onModelScale: registerScaleHandler,
+            onModelReset: registerResetHandler,
+            onSwipeUp: registerSwipeUpHandler,
+            onSwipeDown: registerSwipeDownHandler
+          }), [
+            arObjectPosition, 
+            arScene, 
+            arCamera, 
+            coordinateScale,
+            handleExperienceComplete,
+            registerRotateHandler,
+            registerScaleHandler,
+            registerResetHandler,
+            registerSwipeUpHandler,
+            registerSwipeDownHandler
+          ]);
+
   
   // Render the appropriate 3D experience
-  const renderExperience = () => {
+const renderExperience = useCallback(() => {
     // Only render experience if AR is ready and we have a position
     if (!experienceReady || !arObjectPosition) {
       return null;
     }
     
-    // Pass AR position to experiences that need it
-    const experienceProps = {
-      onClose: handleExperienceComplete,
-      onNext: handleExperienceComplete,
-      arPosition: arObjectPosition, 
-      arScene: arScene ?? undefined,          
-      arCamera: arCamera ?? undefined, 
-      coordinateScale,
-      onModelRotate: registerRotateHandler,
-      onModelScale: registerScaleHandler,
-      onModelReset: registerResetHandler,
-      onSwipeUp: registerSwipeUpHandler,
-      onSwipeDown: registerSwipeDownHandler
-    };
-    
+    // Use stable props - no new object creation on each render
     switch (experienceType) {
       case 'cube':
-        return <CubeExperience {...experienceProps} />;
+        return <CubeExperience key="cube-experience" {...experienceProps} />;
 
       case '2030-2105':
-        return <WaterRiseExperience {...experienceProps} />;
+        return <WaterRiseExperience key="water-rise-experience" {...experienceProps} />;
       case '1968':
-        return <Experience1968 {...experienceProps} />
+        return <Experience1968 key="1968-experience" {...experienceProps} />
       case '2200_bc':
-        return <BC2200Experience {...experienceProps} />
+        return <BC2200Experience key="2200bc-experience" {...experienceProps} />
         
       case 'helen_s':  
-        return <HelenSExperience {...experienceProps} />;
+        return <HelenSExperience key="helen-experience" {...experienceProps} />;
       case 'volunteers':
-        return <VolunteersExperience {...experienceProps} />;
+        return <VolunteersExperience key="volunteers-experience" {...experienceProps} />;
       case 'mac':
-        return <MacExperience {...experienceProps} />
+        return <MacExperience key="mac-experience" {...experienceProps} />
 
       case 'lily':
          return <LilyExperience key="lily-experience" {...experienceProps} />
@@ -229,10 +276,10 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         
       default:
         console.warn(`Unknown experience type: ${experienceType}, defaulting to cube`);
-        return <CubeExperience {...experienceProps} />;
+        return <CubeExperience key="default-cube-experience" {...experienceProps} />;
     }
-  };
-  
+  }, [experienceType, experienceReady, arObjectPosition, experienceProps]);
+
   // Don't render anything if not open
   if (!isOpen) {
     return null;
