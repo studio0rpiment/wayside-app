@@ -112,9 +112,9 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
           return {
             backgroundColor: baseColor,
             backgroundImage: `
-              radial-gradient(circle 200px at 80% 20%, var(--color-blue) 0%, transparent 70%),
-              radial-gradient(circle 200px at 20% 60%, var(--color-green) 0%, transparent 70%),
-              radial-gradient(circle 200px at 50% 40%, var(--color-blue) 0%, transparent 70%)
+              radial-gradient(circle 200px at 80% 20%, var(--color-dark) 0%, transparent 70%),
+              radial-gradient(circle 200px at 20% 60%, var(--color-dark) 0%, transparent 70%),
+              radial-gradient(circle 200px at 50% 40%, var(--color-light) 0%, transparent 70%)
             `
           };
         }
@@ -123,9 +123,9 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
           return {
             backgroundColor: baseColor,
             backgroundImage: `
-              radial-gradient(circle 200px at 30% 30%, var(--color-green) 0%, transparent 70%),
-              radial-gradient(circle 200px at 70% 50%, var(--color-blue) 0%, transparent 70%),
-              radial-gradient(circle 200px at 40% 70%, var(--color-green) 0%, transparent 70%)
+              radial-gradient(circle 200px at 30% 30%, var(--color-dark) 0%, transparent 70%),
+              radial-gradient(circle 200px at 70% 50%, var(--color-light) 0%, transparent 70%),
+              radial-gradient(circle 200px at 40% 70%, var(--color-dark) 0%, transparent 70%)
             `
           };
         }
@@ -134,9 +134,9 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
           return {
             backgroundColor: baseColor,
             backgroundImage: `
-              radial-gradient(circle 200px at 60% 10%, var(--color-blue) 0%, transparent 70%),
-              radial-gradient(circle 200px at 10% 40%, var(--color-green) 0%, transparent 70%),
-              radial-gradient(circle 200px at 80% 60%, var(--color-blue) 0%, transparent 70%)
+              radial-gradient(circle 200px at 60% 10%, var(--color-light) 0%, transparent 70%),
+              radial-gradient(circle 200px at 10% 40%, var(--color-dark) 0%, transparent 70%),
+              radial-gradient(circle 200px at 80% 60%, var(--color-dark) 0%, transparent 70%)
             `
           };
         }
@@ -145,9 +145,9 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
           return {
             backgroundColor: baseColor,
             backgroundImage: `
-              radial-gradient(circle 200px at 75% 25%, var(--color-blue) 0%, transparent 70%),
-              radial-gradient(circle 200px at 25% 65%, var(--color-green) 0%, transparent 70%),
-              radial-gradient(circle 200px at 50% 45%, var(--color-blue) 0%, transparent 70%)
+              radial-gradient(circle 200px at 75% 25%, var(--color-dark) 0%, transparent 70%),
+              radial-gradient(circle 200px at 25% 65%, var(--color-dark) 0%, transparent 70%),
+              radial-gradient(circle 200px at 50% 45%, var(--color-light) 0%, transparent 70%)
             `
           };
         }
@@ -240,7 +240,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
                 }
               }
             : { 
-                backgroundColor: 'var(--color-pink)',
+                backgroundColor: 'var(--color-dark)',
                 cursor: 'pointer',
                 '&:hover': {
                   opacity: 0.85,
@@ -255,18 +255,20 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
             color: 'var(--color-light)', 
             textShadow: '0 1px 2px rgba(0,0,0,0.3)',
             fontSize: '0.4rem',
-            height: '100px',
-            width: '100px',
-            marginRight: '0.75rem',
+            height: '80px',
+            width: '80px',
+            marginRight: '0.5rem',
+            marginLeft: '1rem',
             flexShrink: 0
           }} /> : 
           <CancelOutlinedIcon sx={{ 
             color: 'var(--color-light)', 
             textShadow: '0 1px 2px rgba(0,0,0,0.3)',
             fontSize: '3.5rem',
-            height: '100px',
-            width: '100px',
-            marginRight: '0.75rem',
+            height: '80px',
+            width: '80px',
+            marginRight: '0.5rem',
+            marginLeft: '1rem',
             flexShrink: 0
           }} />
         }
@@ -282,6 +284,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               textShadow: '0 1px 2px rgba(0,0,0,0.2)',
               textTransform: 'uppercase',
               letterSpacing: '0.3px',
+              // paddingRight: '2rem',
               fontSize: '1.5rem',
               display: 'flex',
               justifyContent: 'space-between',
@@ -302,12 +305,14 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
             sx={{ 
               color: 'var(--color-light)',
               opacity: 1.0,
-              fontSize: '0.7rem',
-              lineHeight: 1.0,
-              maxWidth: '100%',
+              fontSize: '0.8rem',
+              lineHeight: 1.2,
+              fontWeight: '600',
+              maxWidth: '80%',
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start'
+              justifyContent: 'space-evenly',
+              textAlign: 'left',
+              paddingBottom: '0.5rem'
             }}
           >
             <span style={{ paddingRight: '1rem' }}>
@@ -317,7 +322,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               {/* {type === PermissionType.NOTIFICATION && "Receive alerts when you enter experience areas, even when the app is in the background."} */}
 
             </span>
-            <Box component="span" sx={{ 
+            {/* <Box component="span" sx={{ 
               display: 'inline-block',
               ml: 1,
               fontStyle: 'italic',
@@ -326,7 +331,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               flexShrink: 0
             }}>
               {isGranted ? "(Click to verify)" : "(Click to enable)"}
-            </Box>
+            </Box> */}
           </Typography>
         </Box>
         

@@ -267,6 +267,7 @@ const handleReadyForReset = () => {
     container.style.width = '100%';
     container.style.height = '100%';
     container.style.zIndex = '1001';
+   
     
     if (!isArMode) {
       document.body.appendChild(container);
@@ -421,122 +422,123 @@ const handleReadyForReset = () => {
       {/* Morphing Engine Component */}
 
 
-{sceneRef.current && (
-  <OptimizedPointCloudMorphingEngine
-    modelPrefix="lily"
-    scene={isArMode ? arScene! : sceneRef.current!}
-    isArMode={isArMode}
-    arPosition={arPosition}
-    onModelLoaded={handleModelLoaded}
-    onLoadingProgress={handleLoadingProgress}
-    onError={handleError}
-    onReadyForReset={handleReadyForReset}
-  />
-)}
+        {sceneRef.current && (
+          <OptimizedPointCloudMorphingEngine
+            modelPrefix="lily"
+            scene={isArMode ? arScene! : sceneRef.current!}
+            isArMode={isArMode}
+            arPosition={arPosition}
+            onModelLoaded={handleModelLoaded}
+            onLoadingProgress={handleLoadingProgress}
+            onError={handleError}
+            onReadyForReset={handleReadyForReset}
+            
+          />
+        )}
 
-{!hasPointCloud && sceneRef.current && (
-  <div style={{
-    position: 'fixed',
-    top: '50%',
-  left: '50%',
-    width: '80%',
-    height: '50%',
-    transform: 'translate(-50%, -50%)',
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
-    color: 'white',
-    fontFamily: 'var(--font-rigby)',
-  }}>
-    {/* Loading spinner */}
-    <div style={{
-      width: '60px',
-      height: '60px',
-      border: '3px solid rgba(255, 192, 203, 0.3)',
-      borderTop: '3px solid #ff69b4',
-      borderRadius: '50%',
-      animation: 'spin 1s linear infinite',
-      marginBottom: '20px'
-    }} />
-    
-    {/* Loading text */}
-    <h2 style={{
-      margin: '0 0 10px 0',
-      fontSize: '24px',
-      fontWeight: '400',
-      color: '#ff69b4'
-    }}>
-      🪷 Preparing Lily Experience
-    </h2>
-    
-    <p style={{
-      margin: '0',
-      fontSize: '16px',
-      opacity: 0.8,
-      textAlign: 'center',
-      maxWidth: '300px'
-    }}>
-      Setting up AR scene and loading lily growth cycle models...
-    </p>
-    
-    {/* Progress bar if loading progress is available */}
-    {loadingProgress > 0 && (
+    {!hasPointCloud && sceneRef.current && (
       <div style={{
-        marginTop: '20px',
-        width: '200px',
-        height: '4px',
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: '2px',
-        overflow: 'hidden'
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        width: '80%',
+        height: '50%',
+        transform: 'translate(-50%, -50%)',
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        color: 'white',
+        fontFamily: 'var(--font-rigby)',
       }}>
+        {/* Loading spinner */}
         <div style={{
-          width: `${loadingProgress}%`,
-          height: '100%',
-          backgroundColor: '#ff69b4',
-          transition: 'width 0.3s ease',
-          borderRadius: '2px'
+          width: '60px',
+          height: '60px',
+          border: '3px solid rgba(255, 192, 203, 0.3)',
+          borderTop: '3px solid #ff69b4',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '20px'
         }} />
-      </div>
-    )}
     
-    {loadingProgress > 0 && (
-      <p style={{
-        margin: '10px 0 0 0',
-        fontSize: '14px',
-        opacity: 0.7
-      }}>
-        {loadingProgress.toFixed(0)}% loaded
-      </p>
-    )}
-    
-    {/* CSS animation for spinner */}
-    <style>{`
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    `}</style>
-  </div>
-)}
-
-      {/* Debug Panel for Lily Experience */}
-      {SHOW_DEBUG_PANEL && (
-        <div style={{
-          position: 'absolute',
-          bottom: '10px',
-          right: '10px',
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          color: 'white',
-          padding: '10px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          zIndex: 1003,
-          pointerEvents: 'auto',
-          fontFamily: 'monospace'
+        {/* Loading text */}
+        <h2 style={{
+          margin: '0 0 10px 0',
+          fontSize: '24px',
+          fontWeight: '400',
+          color: '#ff69b4'
         }}>
+          🪷 Preparing Lily Experience
+        </h2>
+        
+        <p style={{
+          margin: '0',
+          fontSize: '16px',
+          opacity: 0.8,
+          textAlign: 'center',
+          maxWidth: '300px'
+        }}>
+          Setting up AR scene and loading lily growth cycle models...
+        </p>
+        
+        {/* Progress bar if loading progress is available */}
+        {loadingProgress > 0 && (
+          <div style={{
+            marginTop: '20px',
+            width: '200px',
+            height: '4px',
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            borderRadius: '2px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              width: `${loadingProgress}%`,
+              height: '100%',
+              backgroundColor: '#ff69b4',
+              transition: 'width 0.3s ease',
+              borderRadius: '2px'
+            }} />
+          </div>
+        )}
+    
+        {loadingProgress > 0 && (
+          <p style={{
+            margin: '10px 0 0 0',
+            fontSize: '14px',
+            opacity: 0.7
+          }}>
+            {loadingProgress.toFixed(0)}% loaded
+          </p>
+        )}
+        
+        {/* CSS animation for spinner */}
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+              }
+            `}</style>
+          </div>
+        )}
+
+        {/* Debug Panel for Lily Experience */}
+        {SHOW_DEBUG_PANEL && (
+          <div style={{
+            position: 'absolute',
+            bottom: '10px',
+            right: '10px',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            zIndex: 1003,
+            pointerEvents: 'auto',
+            fontFamily: 'monospace'
+          }}>
           <div style={{ color: 'pink' }}>🪷 Lily MORPHING DEBUG</div>
           <div>Mode: {isArMode ? 'AR Portal' : 'Standalone'}</div>
           {arPosition && (

@@ -207,6 +207,7 @@ const [debugHeading, setDebugHeading] = useState<number | null>(null);
     1000
   );
   camera.position.set(0, 0, 0); // Camera at origin
+  camera.lookAt(0, 0, -1);
   cameraRef.current = camera;
   
   // Create optimized renderer (CHANGED)
@@ -324,22 +325,25 @@ const placeArObject = () => {
     const orientation = { alpha, beta, gamma };
     setDeviceOrientation(orientation);
     
+    //*************************** */ 
     // Convert device orientation to camera rotation
     // Apply rotation to camera to match device orientation
-    const alphaRad = THREE.MathUtils.degToRad(alpha || 0);
-    const betaRad = THREE.MathUtils.degToRad((beta || 0) - 80);
-    const gammaRad = THREE.MathUtils.degToRad(gamma || 0);
+    // const alphaRad = THREE.MathUtils.degToRad(alpha || 0);
+    // const betaRad = THREE.MathUtils.degToRad((beta || 0) - 80);
+    // const gammaRad = THREE.MathUtils.degToRad(gamma || 0);
     
-    // Create rotation matrix from device orientation
-    // Note: These may need adjustment based on device coordinate system
-    const euler = new THREE.Euler(
-      betaRad,  // X-axis rotation (tilt forward/back)
-      alphaRad, // Y-axis rotation (compass heading)
-      -gammaRad, // Z-axis rotation (tilt left/right, negated)
-      'YXZ'     // Rotation order
-    );
+    // // Create rotation matrix from device orientation
+    // // Note: These may need adjustment based on device coordinate system
+    // const euler = new THREE.Euler(
+    //   betaRad,  // X-axis rotation (tilt forward/back)
+    //   alphaRad, // Y-axis rotation (compass heading)
+    //   -gammaRad, // Z-axis rotation (tilt left/right, negated)
+    //   'YXZ'     // Rotation order
+    // );
     
-    cameraRef.current.setRotationFromEuler(euler);
+    // cameraRef.current.setRotationFromEuler(euler);
+
+      //*************************** */ 
     
     // Notify parent about orientation update
     if (onOrientationUpdate) {
@@ -648,7 +652,7 @@ useEffect(() => {
         left: 0,
         width: '100%',
         height: '100%',
-        zIndex: 1000
+        zIndex: 1000,
       }}
     >
       {/* Camera video background */}
@@ -678,7 +682,8 @@ useEffect(() => {
           width: '100%',
           height: '100%',
           zIndex: 1002,
-          pointerEvents: 'auto' 
+          pointerEvents: 'auto', 
+          
         }}
       />
 
