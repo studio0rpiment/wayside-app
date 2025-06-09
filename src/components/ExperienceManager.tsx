@@ -292,9 +292,11 @@ const renderExperience = useCallback(() => {
       left: 0,
       width: '100%',
       height: '100%',
-      zIndex: 2000, // Above map and modals
+      zIndex: 500, // Above map and modals
       backgroundColor: 'transparent'
     }}>
+
+
       {/* AR Camera Component */}
       <ArCameraComponent
         userPosition={userPosition}
@@ -330,7 +332,7 @@ const renderExperience = useCallback(() => {
           border: 'none',
           fontSize: '18px',
           cursor: 'pointer',
-          zIndex: 2001,
+          zIndex: 2010,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
@@ -351,7 +353,7 @@ const renderExperience = useCallback(() => {
           padding: '12px 20px',
           borderRadius: '8px',
           textAlign: 'center',
-          zIndex: 2001,
+          zIndex: 2010,
           fontSize: '14px'
         }}>
           {!arInitialized ? (

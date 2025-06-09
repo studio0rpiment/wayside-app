@@ -266,7 +266,7 @@ const handleReadyForReset = () => {
     container.style.left = '0';
     container.style.width = '100%';
     container.style.height = '100%';
-    container.style.zIndex = '1001';
+    container.style.zIndex = '1010';
    
     
     if (!isArMode) {
@@ -286,7 +286,7 @@ const handleReadyForReset = () => {
     instructions.style.textAlign = 'center';
     instructions.style.fontFamily = 'var(--font-rigby)';
     instructions.style.fontWeight = '400';
-    instructions.style.zIndex = '1002';
+    instructions.style.zIndex = '1020';
     instructions.innerHTML = 'Watch the Lily seasonal growth cycle unfold. Tap continue when ready.';
     container.appendChild(instructions);
 
@@ -300,7 +300,7 @@ const handleReadyForReset = () => {
     continueButton.style.padding = '10px 15px';
     continueButton.style.borderRadius = '8px';
     continueButton.style.border = 'none';
-    continueButton.style.zIndex = '1002';
+    continueButton.style.zIndex = '1020';
     continueButton.innerHTML = 'Continue';
 
     continueButton.onclick = () => {
@@ -535,7 +535,7 @@ const handleReadyForReset = () => {
             padding: '10px',
             borderRadius: '4px',
             fontSize: '12px',
-            zIndex: 1003,
+            zIndex: 1030,
             pointerEvents: 'auto',
             fontFamily: 'monospace'
           }}>
