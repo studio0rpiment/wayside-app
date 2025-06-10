@@ -581,7 +581,7 @@ const handleTouchEnd = (event: TouchEvent) => {
         muted
       />
       {/* Semi-transparent background for lily experience */}
-        {experienceType === 'lily' && (
+        {(experienceType === 'lily' || experienceType === 'lotus' || experienceType === 'cattail') && (
           <div style={{
             position: 'absolute',
             top: 0,
@@ -783,7 +783,7 @@ const handleTouchEnd = (event: TouchEvent) => {
                       <button 
                         onClick={() => {
                           setDebugHeading(null);
-                          // console.log('🧭 Debug heading cleared, using auto');
+                          console.log('🧭 Debug heading cleared, using auto');
                         }}
                         style={{ 
                           fontSize: '8px', 

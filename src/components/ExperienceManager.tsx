@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import * as THREE from 'three';
 import ArCameraComponent from '../components/ar/ArCameraComponent';
 import { useSystemOptimization } from '../utils/systemOptimization';
-
+import { MapOutlined } from '@mui/icons-material';
 
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
@@ -335,10 +335,17 @@ const renderExperience = useCallback(() => {
           zIndex: 2010,
           display: 'flex',
           alignItems: 'center',
+          backgroundImage: '',
           justifyContent: 'center'
         }}
       >
-        ×
+           <MapOutlined 
+      sx={{ 
+        fontSize: '28px', 
+        color: 'white', 
+        opacity: 0.8 
+      }} 
+    />
       </button>
       
       {/* Loading/Status Overlay */}
