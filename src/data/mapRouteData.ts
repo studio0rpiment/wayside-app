@@ -32,9 +32,10 @@ export interface ModalContent {
 
 // Interface for route point properties
 export interface RoutePointProperties {
-  iconName: string;
-  iconScale: number;
-  title: string;
+  id: number
+  iconName: string
+  iconScale: number
+  title: string
   modalContent: ModalContent;
   arAnchor?: ArAnchorPoint;
 }
@@ -62,6 +63,7 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
+        'id': 1,
         'iconName': '2030-2105',
         'iconScale': 1,
         'title': '2030-2150',
@@ -95,6 +97,7 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
+        'id': 7,
         'iconName': 'mac',
         'iconScale': 1,
         'title': 'Mac',
@@ -127,6 +130,7 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
+        'id': 4,
         'iconName': 'lotus',
         'iconScale': 1,
         'title': 'Lotus',
@@ -159,6 +163,7 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
+        'id': 8,
         'iconName': 'volunteers',
         'iconScale': 1,
         'title': 'Volunteers',
@@ -191,6 +196,7 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
+        'id': 9, 
         'iconName': 'helen_s',
         'iconScale': 1,
         'title': 'Helen Fowler',
@@ -223,6 +229,7 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
+        'id': 5,
         'iconName': 'lily',
         'iconScale': 1,
         'title': 'Lily',
@@ -257,6 +264,7 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
+        'id': 2,
         'iconName': '1968',
         'iconScale': 1,
         'title': '1968',
@@ -290,6 +298,7 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
+        'id': 6,
         'iconName': 'cattail',
         'iconScale': 1,
         'title': 'Cattail',
@@ -322,6 +331,7 @@ export const routePointsData: RoutePointCollection = {
     {
       'type': 'Feature',
       'properties': {
+        'id': 3,
         'iconName': '2200_bc',
         'iconScale': 1,
         'title': '2200 BC',

@@ -21,6 +21,7 @@ interface LilyExperienceProps {
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
+  onExperienceReady?: () => void;
 }
 
 const LilyExperience: React.FC<LilyExperienceProps> = ({ 
@@ -34,7 +35,8 @@ const LilyExperience: React.FC<LilyExperienceProps> = ({
   onModelScale,
   onModelReset,
   onSwipeUp,
-  onSwipeDown
+  onSwipeDown,
+  onExperienceReady, 
 }) => {
     console.log('🪷 LilyExperience: modelPrefix will be "lily"'); // Add this line
 
@@ -219,6 +221,7 @@ useEffect(() => {
     }
     
     setHasPointCloud(true);
+    onExperienceReady?.();
     
     console.log('✅ Lily morphing point cloud loaded successfully');
   };
@@ -226,6 +229,7 @@ useEffect(() => {
   // Handle ready for reset callback - triggers auto-reset when models ready
 const handleReadyForReset = () => {
   console.log('🔄 Lily ready for reset - auto-triggering reset for correct positioning');
+   
   
   if (morphingGroupRef.current) {
     // Store initial scale from the GROUP

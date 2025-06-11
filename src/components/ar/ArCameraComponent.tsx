@@ -1,5 +1,5 @@
 // src/components/ar/ArCameraComponent.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { calculateBearing, gpsToThreeJsPosition } from '../../utils/geoArUtils';
 import { usePermissions } from '../../context/PermissionsContext';
@@ -203,19 +203,22 @@ const [debugHeading, setDebugHeading] = useState<number | null>(null);
   
   // Calculate and place AR object
 // In ArCameraComponent.tsx, update the placeArObject function:
-const placeArObject = () => {
-  if (!userPosition || !anchorPosition) return;
+const placeArObject = useCallback(() => {
+console.log('🎯 placeArObject() called');
+  console.log('🎯 onArObjectPlaced exists:', !!onArObjectPlaced);
   
-  // Determine experience type - you'll need to get this from your context
-  // This could come from props, route params, or experience manager
-  const currentExperienceType = experienceType || 'default';
 
-  // Get experience-specific elevation offset
+if (!userPosition || !anchorPosition) {
+    console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
+    return;
+  }
+    
+  const currentExperienceType = experienceType || 'default';
   const experienceOffsets: Record<string, number> = {
-    'lotus': 0.5,      // Water plants at surface level
+    'lotus': 0.5,
     'lily': 0.5,       
     'cattail': 1.0,    
-    'mac': 1.8,        // People at human height
+    'mac': 1.8,
     'helen_s': 1.8,    
     'volunteers': 1.8, 
     'default': 2.0
@@ -224,7 +227,6 @@ const placeArObject = () => {
   const typeKey = experienceType ?? 'default';
   const elevationOffset = experienceOffsets[typeKey] || experienceOffsets['default'];
   
-  // Use terrain-aware positioning
   const result = gpsToThreeJsPositionWithTerrain(
     userPosition,
     anchorPosition,
@@ -232,20 +234,10 @@ const placeArObject = () => {
     coordinateScale
   );
   
-  // console.log(`📍 Terrain-aware AR positioning:`);
-  // console.log(`   Position: (${result.position.x.toFixed(2)}, ${result.position.y.toFixed(2)}, ${result.position.z.toFixed(2)})`);
-  // console.log(`   User elevation: ${result.userElevation?.toFixed(2)}m`);
-  // console.log(`   Anchor elevation: ${result.terrainElevation?.toFixed(2)}m`);
-  // console.log(`   Using terrain data: ${result.usedTerrain ? 'Yes' : 'No (fallback)'}`);
-  
-      // Pass the terrain-aware position to your AR object placement
-      // In the placeArObject function, update the sphere positioning:
-      if (onArObjectPlaced) {
-        onArObjectPlaced(result.position);
-        
-      
-      }
-};
+  if (onArObjectPlaced) {
+    onArObjectPlaced(result.position);
+  }
+}, [userPosition, anchorPosition, coordinateScale, experienceType]); // Remove onArObjectPlaced from deps
   
   // Handle device orientation events
   const handleDeviceOrientation = (event: DeviceOrientationEvent) => {

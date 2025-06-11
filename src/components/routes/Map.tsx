@@ -13,6 +13,8 @@ import ExperienceModal from '../common/ExperienceModal';
 import MapWrapper from './MapWrapper';
 import { useGeofenceContext } from '../../context/GeofenceContext'; 
 import { testKenilworthExperiences } from '../../utils/geoArUtils'
+import ExperienceProgressTracker, { ExperienceProgressTrackerRef } from '../common/ExperienceProgressTracker';
+import { SystemOptimizationManager } from '../../utils/systemOptimization';
 
 // Interface for the modal state
 interface ModalState {
@@ -24,42 +26,38 @@ interface ModalState {
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 const Map: React.FC = () => {
-  // Use refs for values that shouldn't trigger re-renders
+  // Refs for values that shouldn't trigger re-renders
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  
-  // Use the centralized geofence manager
-  // const geofenceManager = useGeofenceManager(routePointsData, {
-  //   debugMode: true, // Enable debugging
-  //   autoStart: true  // Start automatically
-  // });
-    const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
-
-
- const {
-  activeGeofences,
-  isTracking,
-  startTracking,
-  stopTracking,
-  userPosition: geofenceUserPosition, 
-  isInsideGeofence,
-  getDistanceTo,
-  getDistanceToPoint, // Add this new function
-  getCurrentRadius
-} = useGeofenceContext();;
+  const progressTrackerRef = useRef<ExperienceProgressTrackerRef>(null);
   
   // State that should trigger UI updates
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
     pointData: null
   });
-  const [notificationRadius, setNotificationRadius] = useState(3);
+
+  // Context hooks
+  const {
+    userPosition: geofenceUserPosition, 
+    isInsideGeofence,
+    getDistanceTo,
+    getDistanceToPoint,
+    getCurrentRadius
+  } = useGeofenceContext();
   
   const { permissionsState } = usePermissions();
   const navigate = useNavigate();
+
+  // Force reset system optimization on first load
+  useEffect(() => {
+    console.log('🗺️ Map component mounted - resetting system optimization');
+    SystemOptimizationManager.getInstance().forceReset();
+  }, []); // Empty deps = runs only once on mount
   
-  // Stable marker creation function
+  // Create markers on the map - simplified without dots
   const createMarkers = useCallback((map: mapboxgl.Map) => {
     // Clean up any existing markers
     markersRef.current.forEach(marker => marker.remove());
@@ -77,6 +75,8 @@ const Map: React.FC = () => {
       el.style.height = '30px';
       el.style.backgroundSize = 'cover';
       el.style.cursor = 'pointer';
+
+      // No completion dot creation here - moved to ExperienceProgressTracker
       
       // Create marker with click handler
       const marker = new mapboxgl.Marker(el)
@@ -93,19 +93,22 @@ const Map: React.FC = () => {
       
       markersRef.current.push(marker);
     });
-  }, []);
+
+    // Notify progress tracker about markers for dot management
+    if (progressTrackerRef.current) {
+      progressTrackerRef.current.updateMapDots(markersRef.current);
+    }
+  }, []); // No dependencies needed
   
-  // Stable callbacks with no dependencies that could change
+  // Handle map loaded
   const handleMapLoaded = useCallback((map: mapboxgl.Map) => {
-    console.log('Map loaded successfully');
     mapRef.current = map;
     createMarkers(map);
     setMapLoaded(true);
   }, [createMarkers]);
   
+  // Handle map removed
   const handleMapRemoved = useCallback(() => {
-    console.log('Map removed');
-    
     // Clean up markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
@@ -114,15 +117,30 @@ const Map: React.FC = () => {
     setMapLoaded(false);
   }, []);
   
+  // Close modal
   const closeModal = useCallback(() => {
     setModalState({
       isOpen: false,
       pointData: null
     });
   }, []);
+
+  // Handle experience completion - simplified without dot logic
+  const handleMarkExperienceComplete = useCallback((experienceId: string) => {
+    if (progressTrackerRef.current) {
+      progressTrackerRef.current.markComplete(experienceId);
+      // Progress tracker will handle dot updates
+    }
+  }, []); // Truly stable
+
+  // Handle progress tracker experience completion
+  const handleExperienceComplete = useCallback((experienceId: string, totalCompleted: number) => {
+    // Progress tracker will handle its own dot updates when completion state changes
+    console.log(`✅ Experience "${experienceId}" completed. Total: ${totalCompleted}`);
+  }, []); // No dependencies needed
   
-  // Helper functions to get geofence info for the current modal point
-  const getModalGeofenceInfo = useCallback(() => {
+  // Get geofence info for the current modal point - stabilize this function
+  const modalGeofenceInfo = React.useMemo(() => {
     if (!modalState.pointData || !modalState.pointData.iconName) {
       return {
         isInside: false,
@@ -136,14 +154,12 @@ const Map: React.FC = () => {
 
     let distance = getDistanceTo(pointId);
     if (distance === null) {
-    // If not in active geofences, calculate distance directly
-    distance = getDistanceToPoint(pointId);
-  }
+      distance = getDistanceToPoint(pointId);
+    }
     
     // Calculate direction if we have user position and point coordinates
     let direction = null;
     if (userPosition) {
-      // Find the point's coordinates
       const pointFeature = routePointsData.features.find(
         feature => feature.properties.iconName === pointId
       );
@@ -161,9 +177,11 @@ const Map: React.FC = () => {
       distance,
       direction
     };
-  }, [modalState.pointData, isInsideGeofence, getDistanceTo,getDistanceToPoint, userPosition]);
+  }, [modalState.pointData, isInsideGeofence, getDistanceTo, getDistanceToPoint, userPosition]);
   
-  // Check for URL parameters on mount - only run once
+  // Effects
+  
+  // Check for URL parameters on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const experienceId = params.get('showExperience');
@@ -184,22 +202,19 @@ const Map: React.FC = () => {
         window.history.replaceState({}, document.title, newUrl);
       }
     }
-  }, []); // Empty dependency array - only run once
+  }, []);
 
+  // Test coordinate conversion on mount
   useEffect(() => {
-  // Test the coordinate conversion
-  testKenilworthExperiences();
- 
-}, []); // Run once when component mounts
+    testKenilworthExperiences();
+  }, []);
 
-useEffect(() => {
-  if (geofenceUserPosition) {
-    setUserPosition(geofenceUserPosition);
-  }
-}, [geofenceUserPosition]);
-  
-  // Get modal geofence info
-  const modalGeofenceInfo = getModalGeofenceInfo();
+  // Update user position when geofence position changes - REMOVED to prevent infinite loop
+  // useEffect(() => {
+  //   if (geofenceUserPosition) {
+  //     setUserPosition(geofenceUserPosition);
+  //   }
+  // }, [geofenceUserPosition]);
   
   return (
     <div className="map-route">
@@ -210,6 +225,12 @@ useEffect(() => {
         height="100vh"
         fullHeight={true}
       >
+        {/* Experience Progress Tracker - now handles completion dots */}
+        <ExperienceProgressTracker
+          ref={progressTrackerRef}
+          onExperienceComplete={handleExperienceComplete}
+        />
+
         {/* Map wrapper */}
         <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}>
           <MapWrapper
@@ -221,13 +242,11 @@ useEffect(() => {
           />
         </div>
         
-        {/* User location tracker - now only handles visual representation */}
+        {/* User location tracker */}
         {mapLoaded && mapRef.current && (
           <UserLocationTracker 
             map={mapRef.current} 
             userPosition={geofenceUserPosition}
-            // heading={heading} // Add this when we have heading from the hook
-            // accuracy={accuracy} // Add this when we have accuracy from the hook
           />
         )}
         
@@ -237,9 +256,9 @@ useEffect(() => {
         </div>
         
         {/* Geofence debugger */}
-        <GeofenceDebugger  />
+        <GeofenceDebugger />
         
-        {/* Experience modal with centralized geofence data */}
+        {/* Experience modal */}
         <ExperienceModal
           isOpen={modalState.isOpen}
           pointData={modalState.pointData}
@@ -248,6 +267,7 @@ useEffect(() => {
           distanceToGeofence={modalGeofenceInfo.distance}
           directionToGeofence={modalGeofenceInfo.direction}
           currentRadius={getCurrentRadius()}
+          onMarkExperienceComplete={handleMarkExperienceComplete}
         />
       </VerticalSection>
     </div>

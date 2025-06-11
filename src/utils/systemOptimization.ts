@@ -174,17 +174,36 @@ export class SystemOptimizationManager {
   }
 
   // NEW: Force reset if something goes wrong
-  forceReset() {
-    console.log('🚨 Force resetting system optimization manager');
-    this.isArActive = false;
-    this.suspendedSystems.clear();
-    this.originalStates.clear();
-    
-    // Emit reset events
-    window.dispatchEvent(new CustomEvent('ar-performance-mode', {
-      detail: { reduceTracking: false }
-    }));
-  }
+      forceReset() {
+        console.log('🚨 Force resetting system optimization manager');
+        this.isArActive = false;
+        
+        // Restore blurred images before clearing states
+        if (this.suspendedSystems.has('image-optimization')) {
+          const blurredImages = this.originalStates.get('blurred-images') || [];
+          console.log(`🖼️ Force restoring ${blurredImages.length} background images`);
+          
+          blurredImages.forEach(({ element, originalFilter }: any) => {
+            if (element && element.style) {
+              element.style.filter = originalFilter;
+            }
+          });
+        }
+        
+        // Clear all tracking
+        this.suspendedSystems.clear();
+        this.originalStates.clear();
+        
+        // Emit reset events
+        window.dispatchEvent(new CustomEvent('ar-performance-mode', {
+          detail: { reduceTracking: false }
+        }));
+        
+        // Small delay to let DOM updates settle
+        setTimeout(() => {
+          console.log('✅ Force reset complete');
+        }, 100);
+      }
 }
 
 /**

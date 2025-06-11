@@ -24,7 +24,7 @@ export function useGeofenceManager(
   options: GeofenceOptions = {}
 ) {
   const {
-    proximityThreshold = 3, //default geofence threshold
+    proximityThreshold = 5, //default geofence threshold
     debugMode = false,
     autoStart = false
   } = options;

@@ -51,10 +51,16 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
   const [arInitialized, setArInitialized] = useState(false);
   const [arObjectPosition, setArObjectPosition] = useState<THREE.Vector3 | null>(null);
-  const [experienceReady, setExperienceReady] = useState(false);
+  const [experienceReady, setExperienceReady] = useState(true);
 
   const [arScene, setArScene] = useState<THREE.Scene | null>(null);
   const [arCamera, setArCamera] = useState<THREE.PerspectiveCamera | null>(null);
+
+    // Track experience engagement time for completion criteria
+  const [experienceStartTime, setExperienceStartTime] = useState<number | null>(null);
+  const [hasMetMinimumTime, setHasMetMinimumTime] = useState(false);
+
+  console.log("ExperienceReady Init" , experienceReady)
   
   // Use refs to store the current gesture handlers - this prevents recreation
   const gestureHandlersRef = useRef<{
@@ -82,6 +88,8 @@ useEffect(() => {
     setArInitialized(false);
     setArObjectPosition(null);
     setExperienceReady(false);
+     setExperienceStartTime(null);
+      setHasMetMinimumTime(false);
     gestureHandlersRef.current = {}; // Clear handlers
   }
 }, [isOpen]);
@@ -105,26 +113,52 @@ useEffect(() => {
 }, []); // ✅ No dependencies - only cleanup when component truly unmounts
 
 
+  // // Start timer when experience becomes ready
+  // useEffect(() => {
+  //   if (experienceReady && !experienceStartTime) {
+  //     const startTime = Date.now();
+  //     setExperienceStartTime(startTime);
+  //     console.log('⏱️ Experience engagement timer started');
+      
+  //     // Set minimum time flag after 5 seconds
+  //     const timer = setTimeout(() => {
+  //       setHasMetMinimumTime(true);
+  //       console.log('✅ Minimum engagement time (5s) reached');
+  //     }, 5000);
+      
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [experienceReady, experienceStartTime]);
   
- const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {
-  console.log('🎯 AR object placed at:', position);
+  const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {
+    console.log('🎯 AR object placed at:', position);
+    
+    setArObjectPosition(position);
+    setArInitialized(true);
+    setExperienceReady(true);
+
+    console.log('✅ setExperienceReady(true) called');
+  }, []);
   
-  // ✅ SIMPLIFIED: Only prevent duplicate calls if position is exactly the same
-  // if (arObjectPosition && arObjectPosition.equals(position)) {
-  //   console.log('🔄 AR object position exactly the same, skipping update');
-  //   return;
-  // }
+//  const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {
+//   console.log('🎯 AR object placed at:', position);
   
-  // ✅ ALWAYS allow the first position to be set
-  setArObjectPosition(position);
-  setArInitialized(true);
-  setExperienceReady(true);
+//   // ✅ SIMPLIFIED: Only prevent duplicate calls if position is exactly the same
+//   // if (arObjectPosition && arObjectPosition.equals(position)) {
+//   //   console.log('🔄 AR object position exactly the same, skipping update');
+//   //   return;
+//   // }
   
-  // // Auto-start experience after AR is positioned
-  // setTimeout(() => {
-  //   setExperienceReady(true);
-  // }, 1000);
-}, [arObjectPosition]);
+//   // ✅ ALWAYS allow the first position to be set
+//   setArObjectPosition(position);
+//   setArInitialized(true);
+//   setExperienceReady(true);
+  
+//   // // Auto-start experience after AR is positioned
+//   // setTimeout(() => {
+//   //   setExperienceReady(true);
+//   // }, 1000);
+// }, [arObjectPosition]);
   
   // Handler for orientation updates (for debugging)
   const handleOrientationUpdate = useCallback((orientation: { alpha: number; beta: number; gamma: number }) => {
@@ -136,6 +170,19 @@ useEffect(() => {
       }
     }
   }, []);
+
+  const handleExperienceReady = useCallback(() => {
+  if (!experienceStartTime) {
+    const startTime = Date.now();
+    setExperienceStartTime(startTime);
+    console.log('⏱️ Experience ready timer started');
+  }
+
+     const timer = setTimeout(() => {
+      setHasMetMinimumTime(true);
+      console.log('✅ Minimum engagement time (5s) reached');
+    }, 5000);
+}, [experienceStartTime]);
 
   const handleArSceneReady = useCallback((scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
     console.log('🎯 AR scene received in ExperienceManager');
@@ -202,22 +249,38 @@ useEffect(() => {
     gestureHandlersRef.current.swipeDown = handler;
   }, []);
       
-  // Handle experience completion
-  const handleExperienceComplete = useCallback(() => {
+  // Handle experience completion -- checks minimum engagement time
+const handleExperienceComplete = useCallback(() => {
+  const engagementTime = experienceStartTime ? Date.now() - experienceStartTime : 0;
+  
+  console.log(`⏱️ Experience completion requested. Engagement time: ${engagementTime}ms (${(engagementTime/1000).toFixed(1)}s)`);
+  console.log(`⏱️ hasMetMinimumTime: ${hasMetMinimumTime}, geofenceId: ${geofenceId}`);
+  
+  // Only mark as complete if minimum time was met
+  if (hasMetMinimumTime && geofenceId) {
+    console.log(`✅ Experience "${geofenceId}" completed with sufficient engagement time`);
+    console.log(`🎯 Calling onExperienceComplete callback`); // ADD THIS LOG
+
+
     if (onExperienceComplete) {
       onExperienceComplete();
     }
-    // Small delay before closing to allow for completion animations
-    setTimeout(() => {
-      onClose();
-    }, 500);
-  }, [onExperienceComplete, onClose]); 
+  } else {
+    console.log(`⚠️ Experience closed without meeting minimum engagement time`);
+  }
+  
+  // Always close the experience regardless of completion status
+  setTimeout(() => {
+    onClose();
+  }, 50);
+}, [experienceStartTime, hasMetMinimumTime, geofenceId, onExperienceComplete, onClose]);
 
 
   //memoizing to prevent reloads
           const experienceProps = useMemo(() => ({
             onClose: handleExperienceComplete,
             onNext: handleExperienceComplete,
+            
             arPosition: arObjectPosition ?? undefined, 
             arScene: arScene ?? undefined,          
             arCamera: arCamera ?? undefined, 
@@ -226,13 +289,15 @@ useEffect(() => {
             onModelScale: registerScaleHandler,
             onModelReset: registerResetHandler,
             onSwipeUp: registerSwipeUpHandler,
-            onSwipeDown: registerSwipeDownHandler
+            onSwipeDown: registerSwipeDownHandler,
+            onExperienceReady: handleExperienceReady,
           }), [
             arObjectPosition, 
             arScene, 
             arCamera, 
             coordinateScale,
             handleExperienceComplete,
+            handleExperienceReady, 
             registerRotateHandler,
             registerScaleHandler,
             registerResetHandler,
@@ -319,7 +384,7 @@ const renderExperience = useCallback(() => {
       
       {/* Close Button */}
       <button
-        onClick={onClose}
+        onClick={handleExperienceComplete}
         style={{
           position: 'absolute',
           top: '20px',
@@ -377,6 +442,29 @@ const renderExperience = useCallback(() => {
           )}
         </div>
       )}
+
+       {/* Engagement Time Indicator (Development Only) */}
+      {process.env.NODE_ENV === 'development' && experienceReady && (
+        <div style={{
+          position: 'absolute',
+          bottom: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '8px 12px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          zIndex: 2001,
+          fontFamily: 'monospace'
+        }}>
+          <div>Timer: {experienceStartTime ? `${((Date.now() - experienceStartTime) / 1000).toFixed(1)}s` : 'Not started'}</div>
+          <div style={{ color: hasMetMinimumTime ? '#90EE90' : '#FFB6C1' }}>
+            Min time: {hasMetMinimumTime ? '✅ Met' : '⏳ 5.0s required'}
+          </div>
+        </div>
+      )}
+
       
       {/* Debug Info (Development Only) */}
       {/* {process.env.NODE_ENV === 'development' && (

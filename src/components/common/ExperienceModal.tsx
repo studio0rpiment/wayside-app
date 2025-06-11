@@ -1,5 +1,5 @@
 // src/components/common/ExperienceModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import CompassArrow from './CompassArrow';
 import ExperienceManager from '../ExperienceManager'
 import { getArAnchorForPoint } from '../../data/mapRouteData';
@@ -27,11 +27,11 @@ interface ExperienceModalProps {
   pointData: PointData | null;
   onClose: () => void;
   isNotification?: boolean;
-  // New props from the centralized hook
   isInsideGeofence?: boolean;
   distanceToGeofence?: number | null;
   directionToGeofence?: number | null;
   currentRadius?: number;
+  onMarkExperienceComplete?: (experienceId: string) => void;
 }
 
 const ExperienceModal: React.FC<ExperienceModalProps> = ({
@@ -42,30 +42,40 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   isInsideGeofence = false,
   distanceToGeofence = null,
   directionToGeofence = null,
-  currentRadius = 3
+  currentRadius = 5,
+  onMarkExperienceComplete
 }) => {
+  // Debug log to track the prop
+  console.log('🟨 ExperienceModal onMarkExperienceComplete exists:', !!onMarkExperienceComplete, 'isOpen:', isOpen);
   const [showArExperience, setShowArExperience] = useState(false);
   const { userPosition } = useGeofenceContext();
 
-  const handleExperienceStart = () => {
+  // Handle experience start
+  const handleExperienceStart = useCallback(() => {
     if (pointData && pointData.modalContent) {
       setShowArExperience(true);
-      // Keep modal open until AR experience closes
     }
-  };
+  }, [pointData]);
 
-  const handleArExperienceClose = () => {
+  // Handle AR experience close
+  const handleArExperienceClose = useCallback(() => {
     setShowArExperience(false);
-    onClose(); // Close the entire modal system
-  };
+    onClose();
+  }, [onClose]);
+
+  // Handle experience completion - stable callback
+  const handleExperienceComplete = useCallback(() => {
+    if (pointData && onMarkExperienceComplete) {
+      onMarkExperienceComplete(pointData.iconName);
+    }
+  }, [pointData, onMarkExperienceComplete]);
 
   // Get AR anchor data for the experience
-  const getAnchorData = () => {
+  const getAnchorData = useCallback(() => {
     if (!pointData || !userPosition) return null;
     
     const anchorData = getArAnchorForPoint(pointData.iconName, userPosition);
     if (!anchorData) {
-      // Fallback: use user position with small offset
       return {
         position: [userPosition[0] + 0.00001, userPosition[1] + 0.00001] as [number, number],
         elevation: 2.0,
@@ -75,12 +85,10 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     }
     
     return anchorData;
-  };
-
-  const anchorData = getAnchorData();
+  }, [pointData, userPosition]);
 
   // Map experience route to experience type
-  const getExperienceType = (experienceRoute: string) => {
+  const getExperienceType = useCallback((experienceRoute: string) => {
     const routeMap: Record<string, string> = {
       '/2030-2105': '2030-2105',
       '/mac': 'mac',
@@ -94,9 +102,12 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     };
     
     return routeMap[experienceRoute] || 'cube';
-  };
+  }, []);
 
+  // Don't render if not open or no point data
   if (!isOpen || !pointData) return null;
+
+  const anchorData = getAnchorData();
 
   // Show AR Experience Manager if active
   if (showArExperience && userPosition && anchorData) {
@@ -110,12 +121,12 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         anchorElevation={anchorData.elevation}
         geofenceId={pointData.iconName}
         coordinateScale={1.0}
-        onExperienceComplete={handleArExperienceClose}
+        onExperienceComplete={handleExperienceComplete}
       />
     );
   }
 
-  // Show regular modal with compass arrow
+  // Show regular modal
   return (
     <>
       {/* Modal component */}
@@ -139,6 +150,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
           })
         }}
       >
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 style={{ margin: 0, fontSize: '24px' }}>
             {isNotification ? '🔔 ' : ''}{pointData.title}
@@ -157,6 +169,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
           </button>
         </div>
         
+        {/* Image */}
         {pointData.modalContent.imageUrl && (
           <div style={{ marginBottom: '15px' }}>
             <img 
@@ -167,32 +180,22 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
           </div>
         )}
         
+        {/* Description */}
         <div style={{ marginBottom: '15px' }}>
-          {isNotification && (
-            <p style={{ fontWeight: 'bold', color: 'var(--color-blue)' }}>
-             
-            </p>
-          )}
-          <p style={{ fontWeight: 'bold', color: 'var(--color-blue)' }}>{pointData.modalContent.description}</p>
-          
-          {/* {pointData.modalContent.year && (
-            <p><strong>Time Period:</strong> {pointData.modalContent.year}</p>
-          )} */}
-          
-          {/* {pointData.modalContent.additionalInfo?.heading && (
-            <p><strong>Duration:</strong> {pointData.modalContent.additionalInfo.heading}</p>
-          )} */}
+          <p style={{ fontWeight: 'bold', color: 'var(--color-blue)' }}>
+            {pointData.modalContent.description}
+          </p>
         </div>
         
+        {/* Action Area */}
         {isInsideGeofence ? (
-          // Show start button when within geofence, but also show distance info
           <div>
-            {/* Add distance/direction info even when inside */}
+            {/* Distance info when inside geofence */}
             {(distanceToGeofence !== null || directionToGeofence !== null) && (
               <div style={{ 
                 textAlign: 'center', 
                 padding: '10px',
-                backgroundColor: 'rgba(0, 255, 0, 0.1)', // Light green background when inside
+                backgroundColor: 'rgba(0, 255, 0, 0.1)',
                 borderRadius: '8px',
                 marginBottom: '15px',
                 border: '1px solid rgba(0, 255, 0, 0.3)'
@@ -221,6 +224,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
               </div>
             )}
             
+            {/* Start button */}
             <button
               onClick={handleExperienceStart}
               style={{
@@ -240,7 +244,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
             </button>
           </div>
         ) : (
-          // Show direction and distance when not within geofence - WITH COMPASS ARROW
+          // Show direction and distance when not within geofence
           <div style={{ 
             textAlign: 'center', 
             padding: '15px',
