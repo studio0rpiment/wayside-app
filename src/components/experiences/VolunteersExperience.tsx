@@ -21,6 +21,7 @@ interface VolunteersExperienceProps {
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
+   onExperienceReady?: () => void;
 }
 
 const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({ 
@@ -34,7 +35,8 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   onModelScale,
   onModelReset,
   onSwipeUp,
-  onSwipeDown
+  onSwipeDown,
+  onExperienceReady
 }) => {
   // Refs for Three.js objects
   const modelRef = useRef<THREE.Points | null>(null);
@@ -470,6 +472,8 @@ loader.load(
     // Update state
     setHasPointCloud(true);
     setPointCount(finalPointCount);
+    onExperienceReady?.();
+
     
     // Remove loading indicator
     if (container.contains(loadingDiv)) {

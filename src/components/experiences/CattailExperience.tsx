@@ -21,6 +21,7 @@ interface CattailExperienceProps {
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
+  onExperienceReady?: () => void;
 }
 
 const CattailExperience: React.FC<CattailExperienceProps> = ({ 
@@ -34,7 +35,8 @@ const CattailExperience: React.FC<CattailExperienceProps> = ({
   onModelScale,
   onModelReset,
   onSwipeUp,
-  onSwipeDown
+  onSwipeDown,
+  onExperienceReady
 }) => {
     console.log('🪷 CattailExperience: modelPrefix will be "Cattail"'); // Add this line
 
@@ -219,6 +221,7 @@ useEffect(() => {
     }
     
     setHasPointCloud(true);
+    onExperienceReady?.();
     
     console.log('✅ Cattail morphing point cloud loaded successfully');
   };
@@ -465,7 +468,7 @@ const handleReadyForReset = () => {
       margin: '0 0 10px 0',
       fontSize: '24px',
       fontWeight: '400',
-      color: '#ff69b4'
+      color: '#A1887F '
     }}>
       🪷 Preparing Cattail Experience
     </h2>

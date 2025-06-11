@@ -244,45 +244,95 @@ class ModelPreprocessor {
   // 3. Coordinate system conversion (Blender Z-up to Three.js Y-up)
   normalized.rotateX(-Math.PI / 2);
 
-  // 4. ✅ FIXED: Color processing (normalize range + convert to linear)
+  // 4. ✅ FIXED: Handle CloudCompare uchar RGB colors (don't normalize!)
   const colors = normalized.attributes.color;
   if (colors) {
-    console.log('🎨 Processing colors...');
+    console.log('🎨 Processing CloudCompare uchar RGB colors...');
     
-    // Step 4a: Find actual color range and normalize to 0-1
-    let maxR = 0, maxG = 0, maxB = 0;
+    const colorArray = colors.array as Float32Array;
+    
+    // Analyze the color ranges - these should already be properly converted by PLYLoader
+    let minR = Infinity, minG = Infinity, minB = Infinity;
+    let maxR = -Infinity, maxG = -Infinity, maxB = -Infinity;
+    let invalidCount = 0;
+    let whitePixelCount = 0;
+    let grayPixelCount = 0;
+    
     for (let i = 0; i < colors.count; i++) {
-      maxR = Math.max(maxR, colors.getX(i));
-      maxG = Math.max(maxG, colors.getY(i));
-      maxB = Math.max(maxB, colors.getZ(i));
+      const r = colors.getX(i);
+      const g = colors.getY(i);
+      const b = colors.getZ(i);
+      
+      if (isNaN(r) || isNaN(g) || isNaN(b)) {
+        invalidCount++;
+        continue;
+      }
+      
+      minR = Math.min(minR, r);
+      minG = Math.min(minG, g);
+      minB = Math.min(minB, b);
+      maxR = Math.max(maxR, r);
+      maxG = Math.max(maxG, g);
+      maxB = Math.max(maxB, b);
+      
+      // Count white/gray pixels (where RGB values are similar)
+      const maxVal = Math.max(r, g, b);
+      const minVal = Math.min(r, g, b);
+      const diff = maxVal - minVal;
+      
+      if (diff < 0.1 && maxVal > 0.7) whitePixelCount++;
+      else if (diff < 0.1) grayPixelCount++;
     }
     
-    const overallMax = Math.max(maxR, maxG, maxB);
-    console.log(`🎨 Original max color value: ${overallMax.toFixed(3)}`);
+    console.log(`🎨 CloudCompare uchar color analysis:`);
+    console.log(`  Red range:   ${minR.toFixed(3)} - ${maxR.toFixed(3)}`);
+    console.log(`  Green range: ${minG.toFixed(3)} - ${maxG.toFixed(3)}`);
+    console.log(`  Blue range:  ${minB.toFixed(3)} - ${maxB.toFixed(3)}`);
+    console.log(`  White pixels: ${whitePixelCount}, Gray pixels: ${grayPixelCount}`);
+    console.log(`  Invalid colors: ${invalidCount}`);
     
-    if (overallMax > 0) {
-      const colorScale = 1.0 / overallMax;
-      console.log(`🎨 Applying color normalization scale: ${colorScale.toFixed(2)}`);
+    // Only fix invalid values, don't normalize ranges
+    for (let i = 0; i < colors.count; i++) {
+      let r = colors.getX(i);
+      let g = colors.getY(i);
+      let b = colors.getZ(i);
       
-      // Step 4b: Normalize colors to full 0-1 range
-      const colorArray = colors.array as Float32Array;
-      for (let i = 0; i < colorArray.length; i++) {
-        colorArray[i] = colorArray[i] * colorScale;
+      // Handle invalid values only
+      if (isNaN(r) || isNaN(g) || isNaN(b)) {
+        r = g = b = 0; // Default to black for invalid colors
+        
+        const idx = i * 3;
+        colorArray[idx] = r;
+        colorArray[idx + 1] = g;
+        colorArray[idx + 2] = b;
       }
+      // Leave valid colors untouched - PLYLoader conversion should be correct
+    }
+    
+    // Sample colors to see what we actually have
+    console.log(`🎨 Sample colors (as converted by PLYLoader):`);
+    for (let i = 0; i < Math.min(10, colors.count); i += colors.count / 10) {
+      const idx = Math.floor(i);
+      const r = colors.getX(idx);
+      const g = colors.getY(idx);
+      const b = colors.getZ(idx);
       
-      // Step 4c: Convert from sRGB to linear space
-      console.log('🎨 Converting colors from sRGB to linear space...');
-      for (let i = 0; i < colorArray.length; i++) {
-        const srgbValue = colorArray[i];
-        const linearValue = srgbValue <= 0.04045 
-          ? srgbValue / 12.92 
-          : Math.pow((srgbValue + 0.055) / 1.055, 2.4);
-        colorArray[i] = linearValue;
-      }
+      // Estimate original uchar values (for debugging)
+      const origR = Math.round(r * 255);
+      const origG = Math.round(g * 255);
+      const origB = Math.round(b * 255);
       
+      console.log(`    Color ${idx}: RGB(${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)}) [orig ~(${origR}, ${origG}, ${origB})]`);
+    }
+    
+    if (invalidCount > 0) {
       colors.needsUpdate = true;
-      console.log('✅ Colors normalized and converted to linear space');
+      console.log(`✅ Fixed ${invalidCount} invalid colors, preserved original uchar→float conversion`);
+    } else {
+      console.log('✅ All colors valid, no changes needed to PLYLoader conversion');
     }
+  } else {
+    console.log(`ℹ️ No colors found in geometry`);
   }
   
   // 5. Optimize vertex order for GPU cache efficiency
@@ -533,6 +583,9 @@ private async loadPLY(filepath: string): Promise<THREE.BufferGeometry> {
 
       const colors = geometry.attributes.color;
       if (colors) {
+        console.log(`🎨 RAW PLY COLOR ANALYSIS for ${filepath}:`);
+        console.log(`  PLYLoader automatically converts uchar(0-255) → float(0-1)`);
+        
         let maxR = 0, maxG = 0, maxB = 0;
         let minR = 1, minG = 1, minB = 1;
         
@@ -549,7 +602,6 @@ private async loadPLY(filepath: string): Promise<THREE.BufferGeometry> {
           minB = Math.min(minB, b);
         }
         
-        console.log(`🎨 RAW PLY COLOR ANALYSIS for ${filepath}:`);
         console.log(`  Red range:   ${minR.toFixed(3)} - ${maxR.toFixed(3)}`);
         console.log(`  Green range: ${minG.toFixed(3)} - ${maxG.toFixed(3)}`);
         console.log(`  Blue range:  ${minB.toFixed(3)} - ${maxB.toFixed(3)}`);
@@ -560,7 +612,7 @@ private async loadPLY(filepath: string): Promise<THREE.BufferGeometry> {
           console.log(`    Color ${i}: RGB(${colors.getX(i).toFixed(3)}, ${colors.getY(i).toFixed(3)}, ${colors.getZ(i).toFixed(3)})`);
         }
       } else {
-        console.log(`❌ No colors found in ${filepath}`);
+        console.log(`ℹ️ No colors found in ${filepath}`);
       }
 
       resolve(geometry);

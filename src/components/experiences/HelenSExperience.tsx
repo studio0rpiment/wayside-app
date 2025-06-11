@@ -21,6 +21,7 @@ interface HelenSExperienceProps {
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
+  onExperienceReady?: () => void;
 }
 
 const HelenSExperience: React.FC<HelenSExperienceProps> = ({ 
@@ -34,7 +35,8 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
   onModelScale,
   onModelReset,
   onSwipeUp,
-  onSwipeDown
+  onSwipeDown,
+  onExperienceReady
 }) => {
   // Refs for Three.js objects
   const modelRef = useRef<THREE.Points | null>(null);
@@ -471,6 +473,7 @@ loader.load(
     // Update state
     setHasPointCloud(true);
     setPointCount(finalPointCount);
+    onExperienceReady?.();
     
     // Remove loading indicator
     if (container.contains(loadingDiv)) {

@@ -414,7 +414,8 @@ const PointCloudMorphingEngine: React.FC<PointCloudMorphingEngineProps> = ({
    // Load 4 models
    for (let i = 1; i <= 4; i++) {
      const modelPath = getAssetPath(`models/raw/${modelPrefix}_${i}.ply`);
-    //  console.log(`📥 Loading ${modelPrefix}_${i}.ply from:`, modelPath);
+     
+     console.log(`📥 Loading ${modelPrefix}_${i}.ply from:`, modelPath);
      
      loader.load(
        modelPath,

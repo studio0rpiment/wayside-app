@@ -21,6 +21,7 @@ interface LotusExperienceProps {
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
+  onExperienceReady?: () => void;
 }
 
 const LotusExperience: React.FC<LotusExperienceProps> = ({ 
@@ -34,7 +35,8 @@ const LotusExperience: React.FC<LotusExperienceProps> = ({
   onModelScale,
   onModelReset,
   onSwipeUp,
-  onSwipeDown
+  onSwipeDown,
+  onExperienceReady
 }) => {
     console.log('🪷 LotusExperience: modelPrefix will be "Lotus"'); // Add this line
 
@@ -219,6 +221,7 @@ useEffect(() => {
     }
     
     setHasPointCloud(true);
+    onExperienceReady?.();
     
     console.log('✅ Lotus morphing point cloud loaded successfully');
   };
@@ -466,7 +469,7 @@ const handleReadyForReset = () => {
       margin: '0 0 10px 0',
       fontSize: '24px',
       fontWeight: '400',
-      color: '#ff69b4'
+      color: '#D63384'
     }}>
       🪷 Preparing Lotus Experience
     </h2>

@@ -33,7 +33,8 @@ export const TERRAIN_CONFIG = {
   pixelSizeMeters: 1.0,
   
   // Heightmap image path (you'll need to add this to your assets)
-  heightmapPath: getAssetPath('/textures/terrainHeightmap.png')
+  heightmapPath: getAssetPath('textures/terrainHeightmap.png')
+  
 };
 
 // Cache for heightmap data
@@ -45,7 +46,7 @@ let heightmapCanvas: HTMLCanvasElement | null = null;
  */
 export async function loadHeightmap(): Promise<boolean> {
   try {
-    // console.log('🗺️ Loading heightmap data...');
+     console.log('🗺️ Loading heightmap data...');
     
     // Create image element
     const img = new Image();

@@ -1,0 +1,42 @@
+{
+  "generated": "2025-06-11T05:00:49.071Z",
+  "globalMaxDimension": 77.04033279418945,
+  "qualityLevels": [
+    {
+      "name": "high",
+      "vertices": 50000,
+      "description": "High quality for desktop/tablet"
+    },
+    {
+      "name": "low",
+      "vertices": 30000,
+      "description": "Low quality for mobile/low-end"
+    }
+  ],
+  "originalQualityMapping": [
+    {
+      "name": "high",
+      "vertices": 40000,
+      "size": 1,
+      "outputName": "high"
+    },
+    {
+      "name": "low",
+      "vertices": 25000,
+      "size": 1.5,
+      "outputName": "low"
+    }
+  ],
+  "experiences": [
+    "lily",
+    "lotus",
+    "cattail"
+  ],
+  "stages": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "version": "2.0"
+}

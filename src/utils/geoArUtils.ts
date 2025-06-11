@@ -299,11 +299,12 @@ export function validateTerrainCoverage(anchors: Array<{ name: string; coordinat
   anchors.forEach(anchor => {
     const [lon, lat] = anchor.coordinates;
     const elevation = getElevationAtGPS(lon, lat);
-    
     if (elevation !== null) {
+      console.log(`✅ ${anchor.name}: ${elevation.toFixed(2)}m elevation`);
       terrainAvailable++;
       // console.log(`✅ ${anchor.name}: ${elevation.toFixed(2)}m elevation`);
     } else {
+      console.log(`❌ ${anchor.name}: No terrain data`);
       noTerrain++;
       // console.log(`❌ ${anchor.name}: No terrain data`);
     }

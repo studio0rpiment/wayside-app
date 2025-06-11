@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+// import PointCloudMorphingEngine from '../common/PointCloudMorphingEngine'
+// import boundingBoxData from '../../data/seasons-boxdimensions.json'
 import OptimizedPointCloudMorphingEngine from '../common/OptimizedPointCloudMorphingEngine';
 
-// Import the bounding box data
-// Import the bounding box data - USE THE COMPLETE DATA SET
 
 
 const SHOW_DEBUG_PANEL = true;
@@ -428,15 +429,15 @@ const handleReadyForReset = () => {
 
         {sceneRef.current && (
           <OptimizedPointCloudMorphingEngine
-            modelPrefix="lily"
-            scene={isArMode ? arScene! : sceneRef.current!}
-            isArMode={isArMode}
-            arPosition={arPosition}
-            onModelLoaded={handleModelLoaded}
-            onLoadingProgress={handleLoadingProgress}
-            onError={handleError}
-            onReadyForReset={handleReadyForReset}
-            
+          modelPrefix="lily"
+          scene={isArMode ? arScene! : sceneRef.current!}
+          isArMode={isArMode}
+          arPosition={arPosition}
+          onModelLoaded={handleModelLoaded}
+          onLoadingProgress={handleLoadingProgress}
+          onError={handleError}
+          onReadyForReset={handleReadyForReset} 
+         
           />
         )}
 
@@ -473,7 +474,7 @@ const handleReadyForReset = () => {
           margin: '0 0 10px 0',
           fontSize: '24px',
           fontWeight: '400',
-          color: '#ff69b4'
+          color: '#81C784'
         }}>
           🪷 Preparing Lily Experience
         </h2>
