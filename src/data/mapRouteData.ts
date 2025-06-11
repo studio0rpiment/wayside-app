@@ -11,6 +11,7 @@ import { getEnhancedAnchorPosition } from '../utils/geoArUtils';
 // Interface for AR anchor point configuration
 export interface ArAnchorPoint {
   coordinates: [number, number];  // Precise AR position [longitude, latitude]
+  destination: [number, number]    // only used for BC2200 [longitude, latitude]
   elevation?: number;            // Height above sea level in meters (from height map)
   orientation?: number;          // Facing direction in degrees (0 = North, 90 = East)
   scale?: number;                // Size adjustment factor
@@ -82,6 +83,7 @@ export const routePointsData: RoutePointCollection = {
         // Updated coordinates from new data
         'arAnchor': {
           'coordinates': [-76.942076, 38.912485],
+          'destination': [0,0],
           'elevation': 2.0,        // Light gray area - low elevation
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -115,6 +117,7 @@ export const routePointsData: RoutePointCollection = {
         // Updated coordinates from new data
         'arAnchor': {
           'coordinates': [-76.942076, 38.912485],
+          'destination': [0,0],
           'elevation': 4.0,        // Medium gray area - elevated
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -148,6 +151,7 @@ export const routePointsData: RoutePointCollection = {
         // Updated coordinates from new data
         'arAnchor': {
           'coordinates': [-76.942954, 38.912327], 
+          'destination': [0,0],
           'elevation': 2.5,        // Light-medium gray - water/pond area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -181,6 +185,7 @@ export const routePointsData: RoutePointCollection = {
         // Updated coordinates from new data
         'arAnchor': {
           'coordinates': [-76.944148, 38.9125],
+          'destination': [0,0],
           'elevation': 5.0,        // Medium-dark gray - elevated area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -214,6 +219,7 @@ export const routePointsData: RoutePointCollection = {
         // Updated coordinates from new data
         'arAnchor': {
           'coordinates': [-76.943534, 38.913195],
+          'destination': [0,0],
           'elevation': 3.0,        // Light-medium gray area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -249,6 +255,7 @@ export const routePointsData: RoutePointCollection = {
         // Updated coordinates from new data
         'arAnchor': {
           'coordinates': [-76.944643, 38.913399],
+          'destination': [0,0],
           'elevation': 3.5,        // Medium gray - slightly elevated
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -283,6 +290,7 @@ export const routePointsData: RoutePointCollection = {
         // Updated coordinates from new data
         'arAnchor': {
           'coordinates': [-76.949213, 38.910475],
+          'destination': [0,0],
           'elevation': 6.0,        // Darker area - higher elevation (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -316,6 +324,7 @@ export const routePointsData: RoutePointCollection = {
         // Updated coordinates from new data
         'arAnchor': {
           'coordinates': [-76.947519, 38.911934],
+          'destination': [0,0],
           'elevation': 7.0,        // Dark area - elevated terrain (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
@@ -350,6 +359,7 @@ export const routePointsData: RoutePointCollection = {
         // Updated coordinates from new data
         'arAnchor': {
           'coordinates': [-76.949342, 38.912096],
+          'destination': [-76.94867670536043, 38.91237400212842],
           'elevation': 8.0,        // Very dark area - highest elevation (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default

@@ -32,16 +32,27 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     const svgContent = `
       <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 84.24 84.24">
         <defs>
-          <style>
+         
+            <defs>
+          // <radialGradient id="RadialGradient1">
+          //   <stop offset="0%" stop-color="#009449" />
+          //   <stop offset="100%" stop-color="#BE69A9" />
+          // </radialGradient>
+          // <radialGradient id="RadialGradient2" cx="0.25" cy="0.25" r="0.25">
+          //   <stop offset="0%" stop-color="#BE69A9" />
+          //   <stop offset="100%" stop-color="#009449" />
+          // </radialGradient>
+           <style>
             .outer-circle {
-              fill: none;
-              stroke: #FFFFF0;
-              stroke-width: 2.5;
+              fill: #FFFFF0;
+              stroke: #282C35;
+              stroke-width: 4;
             }
             .inner-circle {
-              fill: #FFFFF0;
+              fill: #282C35;
             }
           </style>
+        </defs>
         </defs>
         <g id="location-marker">
           <!-- Outer circle (location indicator) -->
@@ -49,7 +60,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
           
           <!-- Inner circle (bearing indicator) that will rotate -->
           <g class="bearing-indicator" transform="rotate(${heading || 0}, 42.12, 42.12)">
-            <circle class="inner-circle" cx="42.12" cy="35.12" r="8"/>
+            <circle class="inner-circle" cx="42.12" cy="35.12" r="9"/>
           </g>
         </g>
       </svg>

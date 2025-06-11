@@ -1,0 +1,223 @@
+<div id="info">Three.js Water Demo</div>
+<div id="container"></div>
+
+
+<!-- START ANCHOR: latlon:'-76.949342, 38.912096' -->
+<!--  DESTINATION ANCHOR: lonlat: '-76.94867670536043, 38.91237400212842' -->
+
+<script>
+import * as THREE from 'https://cdn.skypack.dev/three@0.136.0';
+import { OrbitControls } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/controls/OrbitControls.js';
+import { Sky } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/objects/Sky.js';
+import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/loaders/GLTFLoader.js';
+
+// ---------- Globals ---------- //
+let camera, scene, renderer, controls;
+let waterParticles, sky, sun;
+let frame = 0;
+let canoeModel; // Variable to store the canoe model
+let canoeScale = 100;
+
+// ---------- Init ---------- //
+init();
+animate();
+
+function init() {
+  // Create scene and background
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87ceeb);
+
+  // Setup camera
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 20000);
+  camera.position.set(0, 50, 100);
+
+  // Setup renderer
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.5;
+  document.body.appendChild(renderer.domElement);
+
+  // Setup orbit controls
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.maxPolarAngle = Math.PI * 0.45;
+  controls.target.set(0, 50, 0);
+  controls.update();
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight.position.set(-40, 80, -80);
+  scene.add(directionalLight);
+
+  // Sky
+  sky = new Sky();
+  sky.scale.setScalar(1000);
+  scene.add(sky);
+  sun = new THREE.Vector3();
+  const uniforms = sky.material.uniforms;
+  uniforms.turbidity.value = 10;
+  uniforms.rayleigh.value = 2;
+  uniforms.mieCoefficient.value = 0.005;
+  uniforms.mieDirectionalG.value = 0.8;
+  sun.setFromSphericalCoords(1, THREE.MathUtils.degToRad(80), THREE.MathUtils.degToRad(180));
+  uniforms.sunPosition.value.copy(sun);
+
+  // Create floor and water particles
+  createFloor();
+  createWaterParticles();
+  loadCanoeModel(); // Load the canoe model
+
+  window.addEventListener('resize', onResize);
+}
+
+function createFloor() {
+  const geometry = new THREE.PlaneGeometry(2000, 2000);
+  const material = new THREE.MeshStandardMaterial({ color: 0x7a5b3c, roughness: 0.95 });
+  const floorMesh = new THREE.Mesh(geometry, material);
+  floorMesh.rotation.x = -Math.PI / 2;
+  floorMesh.position.y = -1;
+  // scene.add(floorMesh);
+}
+
+function createWaterParticles() {
+  // Create a grid of points to simulate the water surface
+  const gridResolution = 200; // Adjust for density/performance
+  const count = gridResolution * gridResolution;
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const size = 2000; // overall size of the grid
+  let index = 0;
+  for (let i = 0; i < gridResolution; i++) {
+    for (let j = 0; j < gridResolution; j++) {
+      // Evenly space out points across the grid
+      const x = (i / (gridResolution - 1) - 0.5) * size * Math.random();
+      const z = (j / (gridResolution - 1) - 0.5) * size * Math.random();
+      positions[index++] = x;
+      positions[index++] = 0; // initial y; will be updated to simulate waves
+      positions[index++] = z;
+    }
+  }
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  
+  const circleTextureUrl = 'https://res.cloudinary.com/djz8b4fhb/image/upload/v1744056568/128x128_textures_93_hha1ac.png';
+  
+  const textureLoader = new THREE.TextureLoader();
+  textureLoader.load(circleTextureUrl, (texture) => {
+    const material = new THREE.PointsMaterial({
+      size: 10,
+      map: texture,            
+      transparent: true,
+      alphaTest: 0.5,         
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      color: 0x0051a0
+    });
+
+    // Create the Points object using the loaded material
+    waterParticles = new THREE.Points(geometry, material);
+    scene.add(waterParticles);
+    console.log("Water particles created");
+  });
+}
+
+function loadCanoeModel() {
+  const loader = new GLTFLoader();
+  const modelUrl = 'https://res.cloudinary.com/djz8b4fhb/image/upload/v1744843253/canoeTestForWayside_lhakcb.glb';
+  
+  loader.load(
+    modelUrl,
+    (gltf) => {
+      canoeModel = gltf.scene;
+      
+      // Scale the model if needed - adjust based on your model's size
+      canoeModel.scale.set(canoeScale, canoeScale, canoeScale);
+      
+      // Position the model to ride on top of the water waves
+      canoeModel.position.set(0, 7, 0);
+      
+      // Add the model to the scene
+      scene.add(canoeModel);
+      
+      console.log('Canoe model loaded successfully');
+    },
+    (xhr) => {
+      console.log(`Loading model: ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
+    },
+    (error) => {
+      console.error('Error loading canoe model:', error);
+    }
+  );
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// ---------- Animation Loop ---------- //
+function animate() {
+  requestAnimationFrame(animate);
+  frame++;
+  updateWaterParticles();
+  updateCanoePosition(); // Update the canoe's position each frame
+  renderer.render(scene, camera);
+}
+
+// ---------- Water Particle Animation ---------- //
+function updateWaterParticles() {
+  if (!waterParticles) return; // Exit early if waterParticles isn't created yet
+
+  // Get time in seconds
+  const time = performance.now() * 0.002;
+  const positions = waterParticles.geometry.attributes.position.array;
+  const gridResolution = Math.sqrt(positions.length / 3);
+  
+  for (let i = 0; i < gridResolution; i++) {
+    for (let j = 0; j < gridResolution; j++) {
+      const index = 3 * (i * gridResolution + j);
+      const x = positions[index];
+      const z = positions[index + 2];
+      const y = Math.sin(x * 0.01 + time) * 5 + Math.cos(z * 0.01 + time) * 5;
+      positions[index + 1] = y;
+    }
+  }
+  waterParticles.geometry.attributes.position.needsUpdate = true;
+}
+
+// ---------- Canoe Animation ---------- //
+function updateCanoePosition() {
+  if (!canoeModel) return; // Exit if canoe isn't loaded yet
+  
+  // Get time in seconds for wave motion
+  const time = performance.now() * 0.002;
+  
+  // Calculate wave height at canoe position
+  const x = canoeModel.position.x;
+  const z = canoeModel.position.z;
+  
+  // Use the same wave formula as in updateWaterParticles
+  const y = Math.sin(x * 0.01 + time) * 5 + Math.cos(z * 0.01 + time) * 5;
+  
+  // Update canoe position to ride the waves
+  canoeModel.position.y = y + 8; // Add offset to position canoe above water
+  
+  // Add slight rotation to simulate bobbing on waves
+  canoeModel.rotation.x = Math.sin(time * 0.5) * 0.05;
+  canoeModel.rotation.z = Math.cos(time * 0.7) * 0.05;
+  
+  // Make the canoe move in a circular path
+  const circleRadius = 50;
+  const circleSpeed = 0.1;
+  canoeModel.position.x = Math.sin(time * circleSpeed) * circleRadius;
+  canoeModel.position.z = Math.cos(time * circleSpeed) * circleRadius -100;
+  
+  // Make the canoe face its direction of travel
+  if (frame % 10 === 0) { // Only update every 10 frames for performance
+    const dx = canoeModel.position.x - (Math.sin((time - 0.01) * circleSpeed) * circleRadius);
+    const dz = canoeModel.position.z - (Math.cos((time - 0.01) * circleSpeed) * circleRadius);
+    canoeModel.rotation.y = Math.atan2(dx, dz);
+  }
+}
+</script>

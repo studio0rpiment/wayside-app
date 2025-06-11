@@ -17,7 +17,8 @@ const MapWrapper: React.FC<MapWrapperProps> = memo(({
   center,
   zoom,
   bearing = 0,
-  style = 'mapbox://styles/mapbox/cj3kbeqzo00022smj7akz3o1e',
+  // style = 'mapbox://styles/mapbox/cj3kbeqzo00022smj7akz3o1e', moonlight
+  style = 'mapbox://styles/studio-orpiment/cmafkvh7f011601s0578l1ri2',
   onMapLoaded,
   onMapRemoved
 }) => {
