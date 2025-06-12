@@ -258,7 +258,7 @@ const Map: React.FC = () => {
         </div>
         
         {/* Geofence debugger */}
-        {/* <GeofenceDebugger /> */}
+        <GeofenceDebugger />
         
         {/* Experience modal */}
         <ExperienceModal

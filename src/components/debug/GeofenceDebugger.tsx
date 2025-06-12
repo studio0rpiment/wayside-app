@@ -44,7 +44,7 @@ const GeofenceDebugger: React.FC<GeofenceDebuggerProps> = () => {
     <div 
       style={{
         position: 'absolute',
-        top: '10px',
+        top: '78px',
         right: '10px',
         zIndex: 100,
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -80,35 +80,36 @@ const GeofenceDebugger: React.FC<GeofenceDebuggerProps> = () => {
         <>
           <div style={{ marginBottom: '10px' }}>
             <label style={{ display: 'block', marginBottom: '5px' }}>
-              Radius: {customRadius}m
+              Geofence Radius: {customRadius}m
             </label>
             <input 
               type="range" 
               min="1" 
-              max="50000" 
+              max="500000" 
               value={customRadius} 
               onChange={(e) => setCustomRadius(parseInt(e.target.value))}
               style={{ width: '100%' }}
             />
+
           </div>
           
           {userPosition ? (
             <>
               <div style={{ marginBottom: '10px' }}>
-                <strong>User Position:</strong><br/>
-                Lng: {userPosition[0].toFixed(6)}<br/>
-                Lat: {userPosition[1].toFixed(6)}
+                {/* <strong>User Position:</strong><br/> */}
+                {userPosition[0].toFixed(6)}
+                +{userPosition[1].toFixed(6)}
               </div>
               
               <div>
-                <strong>Active Geofences ({activeGeofences.length}):</strong>
+                <strong>Active Geofences ({activeGeofences.length})</strong>
                 {activeGeofences.length > 0 ? (
-                  <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
-                    {activeGeofences.map(fence => (
+                  <ul style={{ margin: '0px 0', paddingLeft: '20px' }}>
+                    {/* {activeGeofences.map(fence => (
                       <li key={fence.id}>
                         {fence.title} ({fence.distance.toFixed(2)}m)
                       </li>
-                    ))}
+                    ))} */}
                   </ul>
                 ) : (
                   <p style={{ margin: '5px 0' }}>Not inside any geofence</p>
