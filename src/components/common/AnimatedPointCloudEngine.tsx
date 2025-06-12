@@ -262,6 +262,9 @@ const loadAnimationFrames = useCallback(async () => {
       group.position.set(0, 0, -3);
     }
 
+    const initialScale = 10.0; // SCALE FOR MODEL
+    group.scale.setScalar(initialScale);
+
     currentScene.add(group);
 
     // Start animation

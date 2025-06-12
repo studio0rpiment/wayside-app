@@ -15,6 +15,7 @@ import MacExperience from './experiences/MacExperience';
 import LilyExperience from './experiences/LilyExperience';
 import CattailExperience from './experiences/CattailExperience';
 import LotusExperience from './experiences/LotusExperience';
+import { ExperienceProgressTrackerRef } from './common/ExperienceProgressTracker';
 
 // Define experience types (same as before)
 export type ExperienceType = 'cube' | 'waterRise' | 'lotus' | 'mac' | '2030-2105' | '1968' | '2200_bc' | 'volunteers' | 'helen_s' | 'lily' | 'cattail';
@@ -33,7 +34,9 @@ interface ExperienceManagerProps {
   
   // Optional customization
   coordinateScale?: number;
-  onExperienceComplete?: () => void;
+  // onExperienceComplete?: () => void;
+ 
+
 }
 
 const ExperienceManager: React.FC<ExperienceManagerProps> = ({
@@ -45,8 +48,12 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   anchorElevation = 2.0,
   geofenceId,
   coordinateScale = 1.0,
-  onExperienceComplete
+  // onExperienceComplete,
+
 }) => {
+
+  
+
    const { startArExperience, endArExperience } = useSystemOptimization();
 
   const [arInitialized, setArInitialized] = useState(false);
@@ -250,30 +257,27 @@ useEffect(() => {
   }, []);
       
   // Handle experience completion -- checks minimum engagement time
-const handleExperienceComplete = useCallback(() => {
-  const engagementTime = experienceStartTime ? Date.now() - experienceStartTime : 0;
-  
-  console.log(`⏱️ Experience completion requested. Engagement time: ${engagementTime}ms (${(engagementTime/1000).toFixed(1)}s)`);
-  console.log(`⏱️ hasMetMinimumTime: ${hasMetMinimumTime}, geofenceId: ${geofenceId}`);
-  
-  // Only mark as complete if minimum time was met
-  if (hasMetMinimumTime && geofenceId) {
-    console.log(`✅ Experience "${geofenceId}" completed with sufficient engagement time`);
-    console.log(`🎯 Calling onExperienceComplete callback`); // ADD THIS LOG
 
-
-    if (onExperienceComplete) {
-      onExperienceComplete();
-    }
-  } else {
-    console.log(`⚠️ Experience closed without meeting minimum engagement time`);
-  }
-  
-  // Always close the experience regardless of completion status
-  setTimeout(() => {
-    onClose();
-  }, 50);
-}, [experienceStartTime, hasMetMinimumTime, geofenceId, onExperienceComplete, onClose]);
+      const handleExperienceComplete = useCallback(() => {
+        const engagementTime = experienceStartTime ? Date.now() - experienceStartTime : 0;
+        
+        console.log(`⏱️ Experience completion requested. Engagement time: ${engagementTime}ms (${(engagementTime/1000).toFixed(1)}s)`);
+        
+        // Mark as complete if minimum time was met
+        if (hasMetMinimumTime && geofenceId) {
+          console.log(`✅ Experience "${geofenceId}" completed with sufficient engagement time`);
+          document.dispatchEvent(new CustomEvent('experience-completed', {
+            detail: { experienceId: geofenceId }
+          }));
+        } else {
+          console.log(`⚠️ Experience closed without meeting minimum engagement time`);
+        }
+        
+        // Always close the experience
+        setTimeout(() => {
+          onClose();
+        }, 50);
+      }, [experienceStartTime, hasMetMinimumTime, geofenceId, onClose]);
 
 
   //memoizing to prevent reloads
@@ -349,6 +353,9 @@ const renderExperience = useCallback(() => {
   if (!isOpen) {
     return null;
   }
+  
+    
+
   
   return (
     <div style={{

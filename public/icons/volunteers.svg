@@ -38,7 +38,7 @@
       }
     </style>
   </defs>
-<circle cx="42.12" cy="42.12" r="42.12" fill="black" opacity="0.8"/>
+<circle cx="42.12" cy="42.12" r="41" fill="black" opacity="0.8"/>
   <g id="Layer_1" class="st4">
 
     <g>

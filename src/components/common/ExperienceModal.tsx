@@ -1,9 +1,10 @@
 // src/components/common/ExperienceModal.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import CompassArrow from './CompassArrow';
 import ExperienceManager from '../ExperienceManager'
 import { getArAnchorForPoint } from '../../data/mapRouteData';
 import { useGeofenceContext } from '../../context/GeofenceContext';
+import { ExperienceProgressTrackerRef } from './ExperienceProgressTracker';
 
 interface ModalContent {
   title: string;
@@ -31,7 +32,8 @@ interface ExperienceModalProps {
   distanceToGeofence?: number | null;
   directionToGeofence?: number | null;
   currentRadius?: number;
-  onMarkExperienceComplete?: (experienceId: string) => void;
+
+
 }
 
 const ExperienceModal: React.FC<ExperienceModalProps> = ({
@@ -43,17 +45,22 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   distanceToGeofence = null,
   directionToGeofence = null,
   currentRadius = 5,
-  onMarkExperienceComplete
+ 
 }) => {
-  // Debug log to track the prop
-  console.log('🟨 ExperienceModal onMarkExperienceComplete exists:', !!onMarkExperienceComplete, 'isOpen:', isOpen);
+  
+
   const [showArExperience, setShowArExperience] = useState(false);
   const { userPosition } = useGeofenceContext();
+  // const progressTrackerRef = useRef<ExperienceProgressTrackerRef>(null!);
+
+ 
+
 
   // Handle experience start
   const handleExperienceStart = useCallback(() => {
     if (pointData && pointData.modalContent) {
       setShowArExperience(true);
+      
     }
   }, [pointData]);
 
@@ -63,12 +70,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     onClose();
   }, [onClose]);
 
-  // Handle experience completion - stable callback
-  const handleExperienceComplete = useCallback(() => {
-    if (pointData && onMarkExperienceComplete) {
-      onMarkExperienceComplete(pointData.iconName);
-    }
-  }, [pointData, onMarkExperienceComplete]);
+
+
 
   // Get AR anchor data for the experience
   const getAnchorData = useCallback(() => {
@@ -111,6 +114,10 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
 
   // Show AR Experience Manager if active
   if (showArExperience && userPosition && anchorData) {
+
+    
+
+
     return (
       <ExperienceManager
         isOpen={showArExperience}
@@ -121,7 +128,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         anchorElevation={anchorData.elevation}
         geofenceId={pointData.iconName}
         coordinateScale={1.0}
-        onExperienceComplete={handleExperienceComplete}
+    
+  
       />
     );
   }

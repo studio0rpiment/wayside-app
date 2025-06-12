@@ -1,6 +1,6 @@
 import React, { useState, useCallback, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
 import { routePointsData } from '../../data/mapRouteData';
-import mapboxgl from 'mapbox-gl';
+import { getAssetPath } from '../../utils/assetPaths';
 
 // Define the exposed API interface
 export interface ExperienceProgressTrackerRef {
@@ -24,6 +24,8 @@ interface ExperienceItem {
   themeGroup: 'time' | 'seasons' | 'moments';
   color: string;
 }
+
+
 
 // Process routePointsData outside component to avoid recreation
 const experiences: ExperienceItem[] = routePointsData.features
@@ -53,8 +55,64 @@ const experiences: ExperienceItem[] = routePointsData.features
     };
   });
 
+
+
 const ExperienceProgressTracker = forwardRef<ExperienceProgressTrackerRef, ExperienceProgressTrackerProps>(
   ({ onExperienceComplete }, ref) => {
+
+
+
+  const prevOnExperienceComplete = useRef(onExperienceComplete);
+
+      const markComplete = useCallback((experienceId: string) => {
+    
+      setCompletedExperiences(prev => {
+        if (prev.has(experienceId)) {
+         
+          
+          return prev; // Already completed
+        }
+        
+        const newCompleted = new Set(prev);
+        newCompleted.add(experienceId);
+        
+        
+        
+        // Notify parent
+        if (onExperienceComplete) {
+          onExperienceComplete(experienceId, newCompleted.size);
+        }
+        
+        return newCompleted;
+      });
+    }, [onExperienceComplete]);
+
+
+    useEffect(() => {
+      if (prevOnExperienceComplete.current !== onExperienceComplete) {
+     
+        prevOnExperienceComplete.current = onExperienceComplete;
+      }
+    });
+
+    // Listen for experience completion events
+    useEffect(() => {
+      const handleExperienceCompletion = (event: Event) => {
+        const customEvent = event as CustomEvent;
+        const { experienceId } = customEvent.detail;
+        console.log('📊 ExperienceProgressTracker received completion event for:', experienceId);
+        markComplete(experienceId);
+      };
+
+      document.addEventListener('experience-completed', handleExperienceCompletion);
+      
+      return () => {
+        document.removeEventListener('experience-completed', handleExperienceCompletion);
+      };
+    }, [markComplete]);
+
+ 
+
     // Track completion state
     const [completedExperiences, setCompletedExperiences] = useState<Set<string>>(new Set());
     
@@ -65,10 +123,20 @@ const ExperienceProgressTracker = forwardRef<ExperienceProgressTrackerRef, Exper
     const lastTapTime = useRef<{ [key: string]: number }>({});
     const doubleTapDelay = 300;
 
+    // Debug completed experiences changes
+    useEffect(() => {
+      
+    }, [completedExperiences]);
+
     // Get theme color for an experience based on its ID
     const getThemeColor = useCallback((experienceId: string) => {
       const experience = experiences.find(exp => exp.id === experienceId);
       return experience ? experience.color : 'var(--color-blue)';
+    }, []);
+
+    // Get the inverted icon path for a completed experience
+    const getCompletedIconPath = useCallback((experienceId: string) => {
+      return getAssetPath(`icons/${experienceId}_inv.svg`);
     }, []);
 
     // Create completion dot element
@@ -121,23 +189,7 @@ const ExperienceProgressTracker = forwardRef<ExperienceProgressTrackerRef, Exper
     }, [completedExperiences, updateMapDots]);
 
     // Mark experience as complete - stable function
-    const markComplete = useCallback((experienceId: string) => {
-      setCompletedExperiences(prev => {
-        if (prev.has(experienceId)) {
-          return prev; // Already completed
-        }
-        
-        const newCompleted = new Set(prev);
-        newCompleted.add(experienceId);
-        
-        // Notify parent
-        if (onExperienceComplete) {
-          onExperienceComplete(experienceId, newCompleted.size);
-        }
-        
-        return newCompleted;
-      });
-    }, [onExperienceComplete]); // Only depend on callback prop
+
 
     // Check if experience is complete
     const isComplete = useCallback((experienceId: string) => {
@@ -211,24 +263,38 @@ const ExperienceProgressTracker = forwardRef<ExperienceProgressTrackerRef, Exper
       width: '22px',
       height: '22px',
       borderRadius: '50%',
-    //   border: `2px solid ${'var(--color-dark)'}`,
-      backgroundColor: isCompleted ? experience.color : 'var(--color-dark)',
+      border: `0.5px solid ${'var(--color-light)'}`,
+      backgroundColor: isCompleted ? experience.color : 'var(--color-dark)', // Keep color as fallback
+      backgroundImage: isCompleted ? `url(${getAssetPath(`icons/${experience.id}_inv.svg`)})` : 'none',
+      backgroundSize: 'contain',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
       cursor: isCompleted ? 'pointer' : 'default',
-      transition: 'background-color 200ms ease-in-out',
+      transition: 'background-color 200ms ease-in-out, background-image 200ms ease-in-out',
       flexShrink: 0,
       userSelect: 'none'
-    }), []);
+    }), [getCompletedIconPath]);
+
+    // Icon error handler
+    const handleIconError = useCallback((event: React.SyntheticEvent<HTMLDivElement>, experience: ExperienceItem) => {
+      const target = event.currentTarget;
+      // If icon fails to load, fall back to color fill
+      target.style.backgroundImage = 'none';
+      target.style.backgroundColor = experience.color;
+    }, []);
 
     return (
       <div style={containerStyle}>
         {experiences.map(experience => {
           const isCompleted = completedExperiences.has(experience.id);
-          
+         
+
           return (
             <div
               key={experience.id}
               style={getBubbleStyle(experience, isCompleted)}
               onClick={() => handleCircleTap(experience.id, isCompleted)}
+              onError={(e) => isCompleted && handleIconError(e, experience)}
               title={`${experience.title} ${isCompleted ? '(completed - double-tap to reset)' : '(not completed)'}`}
             />
           );

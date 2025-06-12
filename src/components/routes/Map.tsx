@@ -31,6 +31,12 @@ const Map: React.FC = () => {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const progressTrackerRef = useRef<ExperienceProgressTrackerRef>(null);
   
+  console.log('🗺️ Map created progressTrackerRef:', progressTrackerRef);
+
+    useEffect(() => {
+    console.log('🗺️ Map progressTrackerRef.current changed:', progressTrackerRef.current);
+  }, [progressTrackerRef.current]);
+
   // State that should trigger UI updates
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
@@ -50,6 +56,13 @@ const Map: React.FC = () => {
   
   const { permissionsState } = usePermissions();
   const navigate = useNavigate();
+
+  useEffect(() => {
+  console.log('🗺️ Map component MOUNTED');
+  return () => {
+    console.log('🗺️ Map component UNMOUNTED');
+  };
+}, []);
 
   // Force reset system optimization on first load
   useEffect(() => {
@@ -125,59 +138,73 @@ const Map: React.FC = () => {
     });
   }, []);
 
-  // Handle experience completion - simplified without dot logic
-  const handleMarkExperienceComplete = useCallback((experienceId: string) => {
-    if (progressTrackerRef.current) {
-      progressTrackerRef.current.markComplete(experienceId);
-      // Progress tracker will handle dot updates
-    }
-  }, []); // Truly stable
+  const currentRadius = React.useMemo(() => {
+  return modalState.isOpen ? getCurrentRadius() : 0;
+}, [modalState.isOpen, getCurrentRadius]);
+
+
+  //**************EXPERIENCE TRACKER REF */
+// const handleMarkExperienceComplete = useCallback((experienceId: string) => {
+//   console.log('🗺️ Map.handleMarkExperienceComplete called with:', experienceId);
+//   if (progressTrackerRef.current) {
+//     console.log('🗺️ Calling progressTrackerRef.markComplete with:', experienceId);
+//     progressTrackerRef.current.markComplete(experienceId);
+//   } else {
+//     console.log('🗺️ progressTrackerRef.current is null!');
+//   }
+// }, []);
 
   // Handle progress tracker experience completion
-  const handleExperienceComplete = useCallback((experienceId: string, totalCompleted: number) => {
-    // Progress tracker will handle its own dot updates when completion state changes
-    console.log(`✅ Experience "${experienceId}" completed. Total: ${totalCompleted}`);
-  }, []); // No dependencies needed
+  // const handleExperienceComplete = useCallback((experienceId: string, totalCompleted: number) => {
+  //   // Progress tracker will handle its own dot updates when completion state changes
+  //   console.log(`✅ Experience "${experienceId}" completed. Total: ${totalCompleted}`);
+  // }, []); // No dependencies needed
   
   // Get geofence info for the current modal point - stabilize this function
-  const modalGeofenceInfo = React.useMemo(() => {
-    if (!modalState.pointData || !modalState.pointData.iconName) {
-      return {
-        isInside: false,
-        distance: null,
-        direction: null
-      };
-    }
-    
-    const pointId = modalState.pointData.iconName;
-    const isInside = isInsideGeofence(pointId);
-
-    let distance = getDistanceTo(pointId);
-    if (distance === null) {
-      distance = getDistanceToPoint(pointId);
-    }
-    
-    // Calculate direction if we have user position and point coordinates
-    let direction = null;
-    if (userPosition) {
-      const pointFeature = routePointsData.features.find(
-        feature => feature.properties.iconName === pointId
-      );
-      
-      if (pointFeature) {
-        const pointCoords = pointFeature.geometry.coordinates;
-        const dx = pointCoords[0] - userPosition[0];
-        const dy = pointCoords[1] - userPosition[1];
-        direction = Math.atan2(dy, dx) * (180 / Math.PI);
-      }
-    }
-    
+  
+const modalGeofenceInfo = React.useMemo(() => {
+  // Only calculate when modal is actually open
+  if (!modalState.isOpen || !modalState.pointData || !modalState.pointData.iconName) {
     return {
-      isInside,
-      distance,
-      direction
+      isInside: false,
+      distance: null,
+      direction: null
     };
-  }, [modalState.pointData, isInsideGeofence, getDistanceTo, getDistanceToPoint, userPosition]);
+  }
+  
+  const pointId = modalState.pointData.iconName;
+  const isInside = isInsideGeofence(pointId);
+
+  let distance = getDistanceTo(pointId);
+  if (distance === null) {
+    distance = getDistanceToPoint(pointId);
+  }
+  
+  // Calculate direction if we have user position and point coordinates
+  let direction = null;
+  if (userPosition) {
+    const pointFeature = routePointsData.features.find(
+      feature => feature.properties.iconName === pointId
+    );
+    
+    if (pointFeature) {
+      const pointCoords = pointFeature.geometry.coordinates;
+      const dx = pointCoords[0] - userPosition[0];
+      const dy = pointCoords[1] - userPosition[1];
+      direction = Math.atan2(dy, dx) * (180 / Math.PI);
+    }
+  }
+  
+  return {
+    isInside,
+    distance,
+    direction
+  };
+}, [
+  modalState.isOpen, // Only recalculate when modal opens/closes
+  modalState.pointData?.iconName, // Only when the point changes
+  // Remove rapidly changing dependencies like isInsideGeofence updates
+]);
   
   // Effects
   
@@ -204,6 +231,8 @@ const Map: React.FC = () => {
     }
   }, []);
 
+
+
   // Test coordinate conversion on mount
   useEffect(() => {
     testKenilworthExperiences();
@@ -215,6 +244,8 @@ const Map: React.FC = () => {
   //     setUserPosition(geofenceUserPosition);
   //   }
   // }, [geofenceUserPosition]);
+
+  
   
   return (
     <div className="map-route">
@@ -228,7 +259,7 @@ const Map: React.FC = () => {
         {/* Experience Progress Tracker - now handles completion dots */}
         <ExperienceProgressTracker
           ref={progressTrackerRef}
-          onExperienceComplete={handleExperienceComplete}
+          
         />
 
         {/* Map wrapper */}
@@ -259,7 +290,9 @@ const Map: React.FC = () => {
         
         {/* Geofence debugger */}
         <GeofenceDebugger />
-        
+
+ 
+
         {/* Experience modal */}
         <ExperienceModal
           isOpen={modalState.isOpen}
@@ -268,9 +301,10 @@ const Map: React.FC = () => {
           isInsideGeofence={modalGeofenceInfo.isInside}
           distanceToGeofence={modalGeofenceInfo.distance}
           directionToGeofence={modalGeofenceInfo.direction}
-          currentRadius={getCurrentRadius()}
-          onMarkExperienceComplete={handleMarkExperienceComplete}
+          currentRadius={currentRadius}
+      
         />
+       
       </VerticalSection>
     </div>
   );
