@@ -55,9 +55,9 @@ const Experience1968: React.FC<Experience1968Props> = ({
 
   // Refs for particle system parameters (avoid re-renders)
   const smokeParamsRef = useRef({
-    particleCount: 150,
+    particleCount: 1,
     maxParticleCount: 5000, // Reduced for mobile AR
-    emissionRate: 70,
+    emissionRate: 100,
     particleLifetime: 10.0,
     windSpeed: 5.0,
     windDirection: new THREE.Vector3(1, 0.1, 0),
