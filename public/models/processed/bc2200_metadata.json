@@ -1,0 +1,25 @@
+{
+  "generated": "2025-06-11T16:28:35.904Z",
+  "modelType": "animated",
+  "modelName": "bc2200",
+  "globalMaxDimension": 5.095020294189453,
+  "animation": {
+    "totalFrames": 24,
+    "duration": 1,
+    "fps": 24
+  },
+  "qualityLevels": [
+    {
+      "name": "high",
+      "vertices": 40000,
+      "description": "High quality for desktop/tablet"
+    },
+    {
+      "name": "low",
+      "vertices": 25000,
+      "description": "Low quality for mobile/low-end"
+    }
+  ],
+  "frameCount": 24,
+  "version": "2.0"
+}

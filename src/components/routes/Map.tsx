@@ -243,20 +243,22 @@ const Map: React.FC = () => {
         </div>
         
         {/* User location tracker */}
+        
         {mapLoaded && mapRef.current && (
           <UserLocationTracker 
             map={mapRef.current} 
             userPosition={geofenceUserPosition}
           />
         )}
+
         
         {/* Permission status indicators */}
-        <div style={{ position: 'absolute', bottom: '20px', left: '20px', zIndex: 10 }}>
+        <div style={{ position: 'absolute', bottom: '10px', left: '20px', zIndex: 10 }}>
           <PermissionsStatus compact={true} />
         </div>
         
         {/* Geofence debugger */}
-        <GeofenceDebugger />
+        {/* <GeofenceDebugger /> */}
         
         {/* Experience modal */}
         <ExperienceModal

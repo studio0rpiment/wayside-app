@@ -39,6 +39,7 @@ export interface RoutePointProperties {
   title: string
   modalContent: ModalContent;
   arAnchor?: ArAnchorPoint;
+  
 }
 
 // Interface for GeoJSON feature with specific properties
@@ -426,6 +427,7 @@ export const getArAnchorForPoint = (
   userPosition?: [number, number]
 ): {
   position: [number, number];
+  destination: [number, number];
   elevation: number;
   orientation: number;
   scale: number;
@@ -435,6 +437,7 @@ export const getArAnchorForPoint = (
   if (!point || !point.properties.arAnchor || !userPosition) return null;
   
   const anchor = point.properties.arAnchor;
+  const destination = point.properties.arAnchor.destination
   
   // Use terrain-aware positioning
   const result = getEnhancedAnchorPosition(
@@ -446,6 +449,7 @@ export const getArAnchorForPoint = (
   
   return {
     position: anchor.coordinates,
+    destination: destination,
     elevation: result.terrainElevation !== null 
       ? result.terrainElevation + result.experienceOffset 
       : anchor.elevation || 2.0,

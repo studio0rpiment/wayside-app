@@ -13,6 +13,10 @@
     "moduleDetection": "force",
     "noEmit": true,
 
+    "types": ["node"],
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
@@ -20,5 +24,9 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["vite.config.ts"]
+  "include": [    
+    "vite.config.ts",
+    "scripts/preprocessModels.ts",
+    "scripts/preprocessAnimatedModels.ts"
+    ]
 }

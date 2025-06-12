@@ -9,7 +9,7 @@ import EdgeChevrons from './EdgeChevrons';
 import { loadHeightmap, testTerrainLookup, gpsToThreeJsPositionWithTerrain } from '../../utils/terrainUtils';
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 
-const SHOW_DEBUG_PANEL = true;
+const SHOW_DEBUG_PANEL = false;
 
 interface ArCameraProps {
   userPosition: [number, number];
@@ -573,7 +573,7 @@ const handleTouchEnd = (event: TouchEvent) => {
         muted
       />
       {/* Semi-transparent background for lily experience */}
-        {(experienceType === 'lily' || experienceType === 'lotus' || experienceType === 'cattail') && (
+        {(experienceType === 'lily' || experienceType === 'lotus' || experienceType === 'cattail' || experienceType === '1968') && (
           <div style={{
             position: 'absolute',
             top: 0,
@@ -701,7 +701,7 @@ const handleTouchEnd = (event: TouchEvent) => {
                   cursor: 'pointer', 
                   userSelect: 'none',
                   marginBottom: debugCollapsed ? '0' : '5px'
-                }}
+                }}  
               >
                 <span style={{ fontSize: '14px', marginRight: '8px' }}>
                   {debugCollapsed ? '▶' : '▼'}

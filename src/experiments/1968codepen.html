@@ -1,0 +1,741 @@
+<html>
+
+    <div id="canvas-container"></div>
+</html>
+
+<style>
+  /* Remove default margin and ensure a full viewport display */
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+      }
+      /* Container that holds the canvas */
+      #canvas-container {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+      }
+      /* Ensure the canvas fills its container */
+      canvas {
+        display: block;
+      }
+
+</style>
+
+<script>
+    import * as THREE from 'https://cdn.skypack.dev/three@0.136.0'; 
+
+let scene, camera, renderer, particleSystem;
+let clock = new THREE.Clock();
+let time = 0;
+
+// Configurable parameters
+let params = {
+  particleCount: 500, // Maximum number of particles
+  maxParticleCount: 10000,
+  activeParticles: 0, // Currently active particles
+  emissionRate: 50, // Particles per second
+  particleLifetime: 10.0, // Base lifetime in seconds
+  nextEmissionTime: 0, // Next time to emit particles
+  windSpeed: 5.0,
+  windDirection: new THREE.Vector3(1, 0.1, 0),
+  turbulenceStrength: 3.0,
+  smokeRiseSpeed: 8.0,
+  smokeSpread: 2.0,
+  baseColor: new THREE.Color(0.7, 0.7, 0.7)
+};
+
+// Position the emitter far away to create distance perspective
+const emitterPos = new THREE.Vector3(0, 5, -50);
+
+// Track current zoom level
+let currentZoomLevel = 100; // Percentage value
+const minZoom = 100; // Original view
+const maxZoom = 400; // Maximum zoom level
+const zoomStep = 25; // Percentage per step
+
+function init() {
+  const container = document.getElementById("canvas-container");
+  if (!container) {
+    // Create container if it doesn't exist in the CodePen
+    const newContainer = document.createElement("div");
+    newContainer.id = "canvas-container";
+    newContainer.style.width = "100%";
+    newContainer.style.height = "100vh";
+    document.body.appendChild(newContainer);
+    container = newContainer;
+  }
+  
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87ceeb); // Sky blue background
+  
+  // Add basic fog for atmospheric depth
+  scene.fog = new THREE.FogExp2(0x87ceeb, 0.002);
+  
+  // Set up camera
+  camera = new THREE.PerspectiveCamera(
+    60,
+    container.clientWidth / container.clientHeight,
+    1,
+    1000
+  );
+  camera.position.set(0, 15, 50); // Position camera higher, looking toward horizon
+  camera.lookAt(0, 10, -100); // Look toward the distance
+  
+  // Create renderer
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+  
+  // Add light to better visualize the scene
+  const ambientLight = new THREE.AmbientLight(0x606060);
+  scene.add(ambientLight);
+  
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight.position.set(50, 200, 100);
+  scene.add(directionalLight);
+  
+  // Create a ground plane - large dirt brown plane
+  const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
+  const groundMaterial = new THREE.MeshLambertMaterial({ 
+    color: 0x704214, // Dirt brown
+    side: THREE.DoubleSide 
+  });
+  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+  ground.rotation.x = Math.PI / 2; // Rotate to horizontal
+  ground.position.y = -5; // Position below eye level
+  scene.add(ground);
+  
+  // Create a fixed chimney/stack in the distance
+  const chimneyGeo = new THREE.CylinderGeometry(3, 4, 25, 16);
+  const chimneyMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+  const chimney = new THREE.Mesh(chimneyGeo, chimneyMat);
+  chimney.position.set(emitterPos.x, emitterPos.y - 12.5, emitterPos.z); // Position with top at emitter point
+  scene.add(chimney);
+  
+  // Create smoke particle system - initial creation
+  createParticleSystem();
+   
+  
+  // Add controls
+  addControls();
+  
+  // Add zoom controls
+  createZoomControls();
+  
+  // Set camera rotation to inactive
+  scene.userData.cameraRotation = {
+    active: false,
+    speed: 0.05,
+    radius: 100
+  };
+  
+  window.addEventListener("resize", onWindowResize, false);
+}
+
+function createParticleSystem() {
+  // Create particle geometry
+  const geometry = new THREE.BufferGeometry();
+  
+  // Initialize all buffers for maximum particle count
+  const positions = new Float32Array(params.maxParticleCount * 3);
+  const velocities = new Float32Array(params.maxParticleCount * 3);
+  const lifetimes = new Float32Array(params.maxParticleCount);
+  const startTimes = new Float32Array(params.maxParticleCount);
+  const sizes = new Float32Array(params.maxParticleCount);
+  const colorSeeds = new Float32Array(params.maxParticleCount);
+  const windFactors = new Float32Array(params.maxParticleCount);
+  const active = new Float32Array(params.maxParticleCount);
+  
+  // Set all particles as inactive initially
+  for (let i = 0; i < params.maxParticleCount; i++) {
+    active[i] = 0.0; // 0 = inactive, 1 = active
+  }
+  
+  // Assign attributes to geometry
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("velocity", new THREE.BufferAttribute(velocities, 3));
+  geometry.setAttribute("lifetime", new THREE.BufferAttribute(lifetimes, 1));
+  geometry.setAttribute("startTime", new THREE.BufferAttribute(startTimes, 1));
+  geometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
+  geometry.setAttribute("colorSeed", new THREE.BufferAttribute(colorSeeds, 1));
+  geometry.setAttribute("windFactor", new THREE.BufferAttribute(windFactors, 1));
+  geometry.setAttribute("active", new THREE.BufferAttribute(active, 1));
+  
+  // Load textures
+  const textureLoader = new THREE.TextureLoader();
+  const particleTexture = textureLoader.load(
+    "https://res.cloudinary.com/djz8b4fhb/image/upload/v1744159471/AdobeStock_smoke-small_lzjtfz.png"
+  );
+  const noiseTexture = textureLoader.load(
+    "https://res.cloudinary.com/djz8b4fhb/image/upload/v1744161602/noiseTexture_owv6vg.png"
+  );
+  
+  // Create shader material
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      time: { value: 0.0 },
+      pointTexture: { value: particleTexture },
+      noiseTexture: { value: noiseTexture },
+      baseColor: { value: params.baseColor },
+      sizeMultiplier: { value: 2.0 },
+      colorVariation: { value: 0.3 },
+      windDirection: { value: params.windDirection },
+      windSpeed: { value: params.windSpeed },
+      turbulenceStrength: { value: params.turbulenceStrength }
+    },
+    vertexShader: `
+      uniform float time;
+      uniform vec3 windDirection;
+      uniform float windSpeed;
+      uniform float sizeMultiplier;
+      
+      attribute vec3 velocity;
+      attribute float lifetime;
+      attribute float startTime;
+      attribute float size;
+      attribute float colorSeed;
+      attribute float windFactor;
+      
+      varying float vAge;
+      varying float vNormalizedAge;
+      varying float vColorSeed;
+      varying float vFadeOpacity;
+      varying vec2 vUv;
+      
+      const float PI = 3.14159265359;
+      
+      void main() {
+        // Calculate age of this particle
+        float particleAge = time - startTime;
+        float normalizedAge = particleAge / lifetime;
+        
+        // Early discard of dead particles
+        if (normalizedAge <= 0.0 || normalizedAge >= 1.0) {
+          gl_Position = vec4(0.0, 0.0, 10000.0, 1.0);
+          gl_PointSize = 0.0;
+          return;
+        }
+        
+        // Pass values to fragment shader
+        vAge = particleAge;
+        vNormalizedAge = normalizedAge;
+        vColorSeed = colorSeed;
+        
+        // Calculate fade opacity - simpler curve
+        vFadeOpacity = sin(normalizedAge * PI);
+        
+        // Basic movement based on velocity
+        vec3 pos = position + velocity * particleAge;
+        
+        // Apply wind effect (increases with height)
+        pos += windDirection * windSpeed * particleAge * windFactor;
+        
+        // Simplified expansion
+        float expansionFactor = normalizedAge * 0.6;
+        pos.xz *= (1.0 + expansionFactor);
+        
+        // Transform to camera space
+        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        
+        // Calculate point size - simplified
+        float sizeScale = sin(normalizedAge * PI) + 0.5;
+        gl_PointSize = size * sizeMultiplier * sizeScale * (300.0 / -mvPosition.z);
+        
+        // Pass noise coordinate to fragment shader instead of calculating in vertex
+        vUv = vec2(pos.x * 0.01 + time * 0.05, pos.y * 0.01);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 baseColor;
+      uniform sampler2D pointTexture;
+      uniform sampler2D noiseTexture;
+      uniform float colorVariation;
+      uniform float turbulenceStrength;
+      
+      varying float vAge;
+      varying float vNormalizedAge;
+      varying float vColorSeed;
+      varying float vFadeOpacity;
+      varying vec2 vUv;
+      
+      void main() {
+        // Sample texture only once
+        vec4 texColor = texture2D(pointTexture, gl_PointCoord);
+        
+        // Alpha test for better performance than discard
+        if (texColor.a < 0.1) {
+          discard;
+        }
+        
+        // Sample noise texture in fragment shader (more efficient)
+        float noise = texture2D(noiseTexture, vUv).r;
+        
+        // Predefined colors to avoid calculation
+        vec3 orangeColor = vec3(0.9, 0.4, 0.1);
+        vec3 darkColor = vec3(0.2, 0.2, 0.2);
+        
+        // Simplified color mixing
+        float fireAmount = smoothstep(0.7, 1.0, vColorSeed * noise * colorVariation);
+        vec3 smokeColor = mix(darkColor, baseColor, vColorSeed * 0.7);
+        vec3 finalColor = mix(smokeColor, orangeColor, fireAmount);
+        
+        gl_FragColor = vec4(finalColor, texColor.a * vFadeOpacity);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  
+  // Create and add the particle system
+  particleSystem = new THREE.Points(geometry, material);
+  scene.add(particleSystem);
+  
+  // Reset emission parameters
+  params.activeParticles = 0;
+  params.nextEmissionTime = 0;
+}
+
+function emitParticles(currentTime, deltaTime) {
+  if (!particleSystem) return;
+  
+  // Calculate how many particles to emit this frame
+  const emitCount = Math.floor(params.emissionRate * deltaTime);
+  if (emitCount <= 0) return;
+  
+  // Get attribute buffers
+  const positions = particleSystem.geometry.attributes.position.array;
+  const velocities = particleSystem.geometry.attributes.velocity.array;
+  const lifetimes = particleSystem.geometry.attributes.lifetime.array;
+  const startTimes = particleSystem.geometry.attributes.startTime.array;
+  const sizes = particleSystem.geometry.attributes.size.array;
+  const colorSeeds = particleSystem.geometry.attributes.colorSeed.array;
+  const windFactors = particleSystem.geometry.attributes.windFactor.array;
+  const active = particleSystem.geometry.attributes.active.array;
+  
+  // Counter for how many particles were actually emitted
+  let emitted = 0;
+  
+  // Look for inactive particles to activate
+  for (let i = 0; i < params.maxParticleCount && emitted < emitCount; i++) {
+    if (active[i] < 0.5) { // If inactive
+      // Activate this particle
+      active[i] = 1.0;
+      
+      // Set particle properties
+      const i3 = i * 3;
+      
+      // Position at emitter with small random offset
+      positions[i3] = emitterPos.x + (Math.random() - 0.5) * 2;
+      positions[i3 + 1] = emitterPos.y + (Math.random() - 0.5) * 2;
+      positions[i3 + 2] = emitterPos.z + (Math.random() - 0.5) * 2;
+      
+      // Random velocity
+      velocities[i3] = (Math.random() - 0.5) * params.smokeSpread;
+      velocities[i3 + 1] = Math.random() * 3.0 + params.smokeRiseSpeed;
+      velocities[i3 + 2] = (Math.random() - 0.5) * (params.smokeSpread * 0.5);
+      
+      // Lifetime and start time
+      lifetimes[i] = params.particleLifetime + Math.random() * params.particleLifetime * 0.5;
+      startTimes[i] = currentTime;
+      
+      // Size, color, and wind factor
+      sizes[i] = 0.2 + Math.random() * 0.4;
+      colorSeeds[i] = Math.random();
+      windFactors[i] = 0.5 + Math.random() * 0.8;
+      
+      emitted++;
+      params.activeParticles++;
+    }
+  }
+  
+  // Update all buffers
+  particleSystem.geometry.attributes.position.needsUpdate = true;
+  particleSystem.geometry.attributes.velocity.needsUpdate = true;
+  particleSystem.geometry.attributes.lifetime.needsUpdate = true;
+  particleSystem.geometry.attributes.startTime.needsUpdate = true;
+  particleSystem.geometry.attributes.size.needsUpdate = true;
+  particleSystem.geometry.attributes.colorSeed.needsUpdate = true;
+  particleSystem.geometry.attributes.windFactor.needsUpdate = true;
+  particleSystem.geometry.attributes.active.needsUpdate = true;
+  
+  // Update info display
+  updateInfoDisplay();
+}
+
+function updateParticleLifecycle(currentTime) {
+  if (!particleSystem) return;
+  
+  // Get attribute buffers
+  const lifetimes = particleSystem.geometry.attributes.lifetime.array;
+  const startTimes = particleSystem.geometry.attributes.startTime.array;
+  const active = particleSystem.geometry.attributes.active.array;
+  
+  // Track how many particles were deactivated
+  let deactivated = 0;
+  
+  // Check for particles that have exceeded their lifetime
+  for (let i = 0; i < params.maxParticleCount; i++) {
+    if (active[i] > 0.5) { // If active
+      const age = currentTime - startTimes[i];
+      if (age > lifetimes[i]) {
+        // Deactivate this particle
+        active[i] = 0.0;
+        deactivated++;
+      }
+    }
+  }
+  
+  // Update the active particle count
+  params.activeParticles -= deactivated;
+  
+  // Update buffer only if there were deactivations
+  if (deactivated > 0) {
+    particleSystem.geometry.attributes.active.needsUpdate = true;
+    updateInfoDisplay();
+  }
+}
+
+function updateInfoDisplay() {
+  const infoElement = document.getElementById("info-text");
+  if (infoElement) {
+    infoElement.innerHTML = `Active Particles: ${params.activeParticles} / ${params.maxParticleCount} | Emission Rate: ${params.emissionRate}/sec`;
+  }
+}
+
+function createZoomControls() {
+  const zoomContainer = document.createElement("div");
+  zoomContainer.style.position = "absolute";
+  zoomContainer.style.top = "20px";
+  zoomContainer.style.right = "20px";
+  zoomContainer.style.zIndex = "100";
+  zoomContainer.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+  zoomContainer.style.padding = "10px";
+  zoomContainer.style.borderRadius = "5px";
+  zoomContainer.style.display = "flex";
+  zoomContainer.style.flexDirection = "column";
+  zoomContainer.style.gap = "10px";
+  
+  // Zoom level display
+  const zoomLevelDisplay = document.createElement("div");
+  zoomLevelDisplay.id = "zoom-level";
+  zoomLevelDisplay.innerHTML = "Zoom: 100%";
+  zoomLevelDisplay.style.color = "white";
+  zoomLevelDisplay.style.textAlign = "center";
+  zoomLevelDisplay.style.marginBottom = "5px";
+  
+  // Zoom buttons container
+  const buttonContainer = document.createElement("div");
+  buttonContainer.style.display = "flex";
+  buttonContainer.style.justifyContent = "space-between";
+  
+  // Zoom in button
+  const zoomInButton = document.createElement("button");
+  zoomInButton.innerHTML = "Zoom In (+)";
+  zoomInButton.style.padding = "5px 10px";
+  zoomInButton.style.margin = "0 5px";
+  zoomInButton.style.cursor = "pointer";
+  zoomInButton.addEventListener("click", function() {
+    zoomToFire(true);
+  });
+  
+  // Zoom out button
+  const zoomOutButton = document.createElement("button");
+  zoomOutButton.innerHTML = "Zoom Out (-)";
+  zoomOutButton.style.padding = "5px 10px";
+  zoomOutButton.style.margin = "0 5px";
+  zoomOutButton.style.cursor = "pointer";
+  zoomOutButton.addEventListener("click", function() {
+    zoomToFire(false);
+  });
+  
+  // Reset view button
+  const resetViewButton = document.createElement("button");
+  resetViewButton.innerHTML = "Reset View";
+  resetViewButton.style.padding = "5px 10px";
+  resetViewButton.style.margin = "5px 0 0 0";
+  resetViewButton.style.cursor = "pointer";
+  resetViewButton.addEventListener("click", function() {
+    resetCameraView();
+  });
+  
+  // Assemble the controls
+  buttonContainer.appendChild(zoomInButton);
+  buttonContainer.appendChild(zoomOutButton);
+  zoomContainer.appendChild(zoomLevelDisplay);
+  zoomContainer.appendChild(buttonContainer);
+  zoomContainer.appendChild(resetViewButton);
+  
+  document.body.appendChild(zoomContainer);
+}
+
+// Function to handle zooming in/out of the fire
+function zoomToFire(zoomIn) {
+  // Update zoom level
+  if (zoomIn) {
+    currentZoomLevel = Math.min(currentZoomLevel + zoomStep, maxZoom);
+  } else {
+    currentZoomLevel = Math.max(currentZoomLevel - zoomStep, minZoom);
+  }
+  
+  // Update display
+  const zoomDisplay = document.getElementById("zoom-level");
+  if (zoomDisplay) {
+    zoomDisplay.innerHTML = `Zoom: ${currentZoomLevel}%`;
+  }
+  
+  // Calculate new camera position based on zoom level
+  // The higher the zoom level, the closer to the emitter
+  const zoomFactor = currentZoomLevel / 100;
+  const zoomDirection = new THREE.Vector3(
+    emitterPos.x, 
+    emitterPos.y + 15, // Look slightly above the emitter 
+    emitterPos.z
+  ).sub(new THREE.Vector3(0, 15, 50)).normalize();
+  
+  // Position the camera based on zoom level
+  const distanceFromEmitter = 250 / zoomFactor; // Further out when zoom is low
+  camera.position.set(
+    emitterPos.x - zoomDirection.x * distanceFromEmitter,
+    Math.max(15, emitterPos.y + 15 - zoomDirection.y * distanceFromEmitter),
+    emitterPos.z - zoomDirection.z * distanceFromEmitter
+  );
+  
+  // Always look toward the emitter
+  camera.lookAt(emitterPos.x, emitterPos.y + 15, emitterPos.z);
+}
+
+// Function to reset camera view
+function resetCameraView() {
+  // Reset zoom level
+  currentZoomLevel = 100;
+  
+  // Update display
+  const zoomDisplay = document.getElementById("zoom-level");
+  if (zoomDisplay) {
+    zoomDisplay.innerHTML = `Zoom: ${currentZoomLevel}%`;
+  }
+  
+  // Reset camera position
+  camera.position.set(0, 15, 50);
+  camera.lookAt(0, 10, -100);
+}
+
+function addControls() {
+  const controls = document.createElement("div");
+  controls.style.position = "absolute";
+  controls.style.bottom = "20px";
+  controls.style.width = "100%";
+  controls.style.textAlign = "center";
+  controls.style.zIndex = "100";
+  controls.style.display = "flex";
+  controls.style.flexDirection = "column";
+  controls.style.alignItems = "center";
+  controls.style.gap = "10px";
+  controls.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+  controls.style.padding = "10px";
+  controls.style.borderRadius = "5px";
+  
+  // Size control
+  const sizeContainer = document.createElement("div");
+  const sizeLabel = document.createElement("label");
+  sizeLabel.innerHTML = "Particle Size: ";
+  sizeLabel.style.color = "white";
+  
+  const sizeSlider = document.createElement("input");
+  sizeSlider.type = "range";
+  sizeSlider.min = "0.1";
+  sizeSlider.max = "10.0";
+  sizeSlider.step = "0.1";
+  sizeSlider.value = "5";
+  sizeSlider.style.width = "200px";
+  sizeSlider.addEventListener("input", function() {
+    if (particleSystem) {
+      particleSystem.material.uniforms.sizeMultiplier.value = parseFloat(this.value);
+    }
+  });
+  
+  sizeContainer.appendChild(sizeLabel);
+  sizeContainer.appendChild(sizeSlider);
+  
+  // Color variation control
+  const colorContainer = document.createElement("div");
+  const colorLabel = document.createElement("label");
+  colorLabel.innerHTML = "Color Variation: ";
+  colorLabel.style.color = "white";
+  
+  const colorSlider = document.createElement("input");
+  colorSlider.type = "range";
+  colorSlider.min = "0";
+  colorSlider.max = "1.0";
+  colorSlider.step = "0.1";
+  colorSlider.value = "0.3";
+  colorSlider.style.width = "200px";
+  colorSlider.addEventListener("input", function() {
+    if (particleSystem) {
+      particleSystem.material.uniforms.colorVariation.value = parseFloat(this.value);
+    }
+  });
+  
+  colorContainer.appendChild(colorLabel);
+  colorContainer.appendChild(colorSlider);
+  
+  // Max particles control
+  const maxParticleContainer = document.createElement("div");
+  const maxParticleLabel = document.createElement("label");
+  maxParticleLabel.innerHTML = "Max Particles: ";
+  maxParticleLabel.style.color = "white";
+  
+  const maxParticleValueDisplay = document.createElement("span");
+  maxParticleValueDisplay.innerHTML = params.maxParticleCount;
+  maxParticleValueDisplay.style.color = "white";
+  maxParticleValueDisplay.style.marginLeft = "10px";
+  
+  const maxParticleSlider = document.createElement("input");
+  maxParticleSlider.type = "range";
+  maxParticleSlider.min = "100";
+  maxParticleSlider.max = "10000";
+  maxParticleSlider.step = "100";
+  maxParticleSlider.value = params.maxParticleCount.toString();
+  maxParticleSlider.style.width = "200px";
+  maxParticleSlider.addEventListener("input", function() {
+    const newCount = parseInt(this.value);
+    maxParticleValueDisplay.innerHTML = newCount;
+    params.maxParticleCount = newCount;
+  });
+  
+  maxParticleSlider.addEventListener("change", function() {
+    // Recreate particle system with new max count
+    if (particleSystem) {
+      scene.remove(particleSystem);
+      particleSystem.geometry.dispose();
+      particleSystem.material.dispose();
+      particleSystem = null;
+    }
+    createParticleSystem();
+  });
+  
+  maxParticleContainer.appendChild(maxParticleLabel);
+  maxParticleContainer.appendChild(maxParticleSlider);
+  maxParticleContainer.appendChild(maxParticleValueDisplay);
+  
+  // Emission rate control
+  const emissionContainer = document.createElement("div");
+  const emissionLabel = document.createElement("label");
+  emissionLabel.innerHTML = "Emission Rate: ";
+  emissionLabel.style.color = "white";
+  
+  const emissionValueDisplay = document.createElement("span");
+  emissionValueDisplay.innerHTML = params.emissionRate + "/sec";
+  emissionValueDisplay.style.color = "white";
+  emissionValueDisplay.style.marginLeft = "10px";
+  
+  const emissionSlider = document.createElement("input");
+  emissionSlider.type = "range";
+  emissionSlider.min = "1";
+  emissionSlider.max = "500";
+  emissionSlider.step = "1";
+  emissionSlider.value = params.emissionRate.toString();
+  emissionSlider.style.width = "200px";
+  emissionSlider.addEventListener("input", function() {
+    params.emissionRate = parseInt(this.value);
+    emissionValueDisplay.innerHTML = params.emissionRate + "/sec";
+  });
+  
+  emissionContainer.appendChild(emissionLabel);
+  emissionContainer.appendChild(emissionSlider);
+  emissionContainer.appendChild(emissionValueDisplay);
+  
+  // Wind speed control
+  const windContainer = document.createElement("div");
+  const windLabel = document.createElement("label");
+  windLabel.innerHTML = "Wind Speed: ";
+  windLabel.style.color = "white";
+  
+  const windSlider = document.createElement("input");
+  windSlider.type = "range";
+  windSlider.min = "0";
+  windSlider.max = "20.0";
+  windSlider.step = "0.5";
+  windSlider.value = params.windSpeed.toString();
+  windSlider.style.width = "200px";
+  windSlider.addEventListener("input", function() {
+    params.windSpeed = parseFloat(this.value);
+    if (particleSystem) {
+      particleSystem.material.uniforms.windSpeed.value = params.windSpeed;
+    }
+  });
+  
+  windContainer.appendChild(windLabel);
+  windContainer.appendChild(windSlider);
+  
+  // Add all controls
+  controls.appendChild(sizeContainer);
+  controls.appendChild(colorContainer);
+  controls.appendChild(maxParticleContainer);
+  controls.appendChild(emissionContainer);
+  controls.appendChild(windContainer);
+  
+  document.body.appendChild(controls);
+}
+
+function onWindowResize() {
+  const container = document.getElementById("canvas-container");
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const deltaTime = clock.getDelta();
+  time += deltaTime;
+  
+  if (particleSystem) {
+    // Update the time uniform to drive the movement
+    particleSystem.material.uniforms.time.value = time;
+    
+    // Emit new particles based on emission rate
+    emitParticles(time, deltaTime);
+    
+    // Update particle lifecycle - check for expired particles
+    updateParticleLifecycle(time);
+  }
+  
+  renderer.render(scene, camera);
+}
+
+// Add HTML elements if not present in CodePen HTML
+document.addEventListener("DOMContentLoaded", function() {
+  if (!document.getElementById("canvas-container")) {
+    const container = document.createElement("div");
+    container.id = "canvas-container";
+    container.style.width = "100%";
+    container.style.height = "100vh";
+    container.style.position = "absolute";
+    container.style.top = "0";
+    container.style.left = "0";
+    document.body.appendChild(container);
+  }
+  
+  // Add info text
+  const info = document.createElement("div");
+  info.id = "info-text";
+  info.style.position = "absolute";
+  info.style.top = "10px";
+  info.style.width = "100%";
+  info.style.textAlign = "center";
+  info.style.color = "white";
+  info.style.zIndex = "100";
+  info.style.textShadow = "1px 1px 2px black";
+  info.innerHTML = "Distant Smoke Effect - Kenilworth Dump (1968)";
+  document.body.appendChild(info);
+  
+  init();
+  animate();
+});
+
+</script>

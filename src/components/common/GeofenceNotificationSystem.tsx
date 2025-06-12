@@ -195,7 +195,7 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
       />
       
       {/* Optional: Debug info for development */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div style={{
           position: 'fixed',
           top: '10px',
@@ -218,7 +218,7 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
           <div>Notified: {notifiedGeofences.length}</div>
           <div>Radius: {getCurrentRadius()}m</div>
         </div>
-      )}
+      )} */}
     </>
   );
 };

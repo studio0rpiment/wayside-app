@@ -7,7 +7,7 @@ import OptimizedPointCloudMorphingEngine from '../common/OptimizedPointCloudMorp
 // Import the bounding box data - USE THE COMPLETE DATA SET
 
 
-const SHOW_DEBUG_PANEL = true;
+const SHOW_DEBUG_PANEL = false;
 
 interface LotusExperienceProps {
   onClose: () => void;

@@ -444,7 +444,7 @@ const renderExperience = useCallback(() => {
       )}
 
        {/* Engagement Time Indicator (Development Only) */}
-      {process.env.NODE_ENV === 'development' && experienceReady && (
+      {/* {process.env.NODE_ENV === 'development' && experienceReady && (
         <div style={{
           position: 'absolute',
           bottom: '80px',
@@ -463,7 +463,7 @@ const renderExperience = useCallback(() => {
             Min time: {hasMetMinimumTime ? '✅ Met' : '⏳ 5.0s required'}
           </div>
         </div>
-      )}
+      )} */}
 
       
       {/* Debug Info (Development Only) */}

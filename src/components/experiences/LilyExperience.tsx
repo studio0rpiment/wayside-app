@@ -8,7 +8,7 @@ import OptimizedPointCloudMorphingEngine from '../common/OptimizedPointCloudMorp
 
 
 
-const SHOW_DEBUG_PANEL = true;
+const SHOW_DEBUG_PANEL = false;
 
 interface LilyExperienceProps {
   onClose: () => void;

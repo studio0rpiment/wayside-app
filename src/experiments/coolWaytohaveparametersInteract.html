@@ -1,0 +1,58 @@
+<script>
+// Single slider: 0.0 to 1.0
+smokeIntensity: 0.7  // Your DJ slider value
+
+// Calculate the approach mix
+function calculateSmokeParameters(intensity: number) {
+  // Approach factor: 0 = high emission, 1 = high count
+  const approachFactor = intensity; // Can be nonlinear
+  
+  // Base values for visual equivalence
+  const baseVisualDensity = 2000; // Constant visual "weight"
+  
+  // Nonlinear curves for each parameter
+  const maxCount = 500 + (1500 * Math.pow(approachFactor, 1.5));
+  const emissionRate = 80 - (60 * Math.pow(approachFactor, 0.7));
+  const lifetime = 4 + (8 * Math.pow(approachFactor, 1.2));
+  
+  // Ensure visual equivalence by keeping density constant
+  const calculatedDensity = (maxCount * lifetime * emissionRate) / 100;
+  const scaleFactor = baseVisualDensity / calculatedDensity;
+  
+  return {
+    maxParticleCount: Math.round(maxCount * scaleFactor),
+    emissionRate: Math.round(emissionRate * scaleFactor),
+    particleLifetime: lifetime,
+    approach: approachFactor < 0.5 ? 'dynamic' : 'dense'
+  };
+}
+
+// 0.0 - "Wispy/Dynamic" (high emission, low count)
+{ maxCount: 400, emission: 80, lifetime: 4 }
+
+// 0.3 - "Balanced Light"  
+{ maxCount: 800, emission: 60, lifetime: 6 }
+
+// 0.5 - "Optimal Balance" (sweet spot)
+{ maxCount: 1200, emission: 45, lifetime: 8 }
+
+// 0.7 - "Dense Smoke"
+{ maxCount: 1600, emission: 35, lifetime: 10 }
+
+// 1.0 - "Thick Clouds" (low emission, high count)
+{ maxCount: 2000, emission: 25, lifetime: 12 }
+
+// Add to your smoke params ref:
+const smokeIntensityRef = useRef(0.7); // Your slider value
+
+// Update function:
+const updateSmokeIntensity = (newIntensity: number) => {
+  const params = calculateSmokeParameters(newIntensity);
+  smokeParamsRef.current.maxParticleCount = params.maxParticleCount;
+  smokeParamsRef.current.emissionRate = params.emissionRate;
+  smokeParamsRef.current.particleLifetime = params.particleLifetime;
+  
+  console.log(`🔥 Smoke intensity ${newIntensity}: ${params.approach} approach`, params);
+};
+
+</script>
