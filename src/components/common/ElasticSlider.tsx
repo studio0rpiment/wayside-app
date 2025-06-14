@@ -10,6 +10,22 @@ interface ElasticSliderProps {
   leftLabel?: string;
   rightLabel?: string;
   className?: string;
+  // New size props
+  trackHeight?: number;
+  labelFontSize?: number;
+  showValueDisplay?: boolean;
+  trackBorderRadius?: number;
+  // New styling props
+  labelFontWeight?: string | number;
+  valueFontWeight?: string | number;
+  labelColor?: string;
+  valueColor?: string;
+  labelPosition?: 'top' | 'bottom' | 'sides';
+  labelGap?: number;
+  trackFillColor?: string;
+  trackFillGradient?: string;
+
+
 }
 
 const ElasticSlider: React.FC<ElasticSliderProps> = ({
@@ -21,13 +37,24 @@ const ElasticSlider: React.FC<ElasticSliderProps> = ({
   formatValue = (val) => val.toString(),
   leftLabel,
   rightLabel,
-  className = ''
+  className = '',
+  trackHeight = 6,
+  labelFontSize = 14,
+  showValueDisplay = true,
+  trackBorderRadius = 3,
+  labelFontWeight = 700,
+  valueFontWeight = 600,
+  labelColor = 'rgba(255, 255, 255, 0.8)',
+  valueColor = 'white',
+  labelPosition = 'sides',
+  labelGap = 16,
+  trackFillColor,
+  trackFillGradient
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartValue, setDragStartValue] = useState(0);
   const sliderRef = useRef<HTMLDivElement>(null);
-  const thumbRef = useRef<HTMLDivElement>(null);
 
   // Calculate percentage from value
   const percentage = ((value - min) / (max - min)) * 100;
@@ -80,14 +107,14 @@ const ElasticSlider: React.FC<ElasticSliderProps> = ({
 
   // Native touch event handlers (non-passive)
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    e.preventDefault(); // This will now work properly
+    e.preventDefault();
     if (e.touches.length > 0) {
       handleStart(e.touches[0].clientX);
     }
   }, [handleStart]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    e.preventDefault(); // Prevent scrolling during drag
+    e.preventDefault();
     if (e.touches.length > 0) {
       handleMove(e.touches[0].clientX);
     }
@@ -133,63 +160,152 @@ const ElasticSlider: React.FC<ElasticSliderProps> = ({
     }
   }, [isDragging, handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
-  // Touch event listeners for thumb (non-passive)
+  // Touch event listeners for track (non-passive)
   useEffect(() => {
-    const thumbElement = thumbRef.current;
-    if (!thumbElement) return;
+    const trackElement = sliderRef.current;
+    if (!trackElement) return;
 
-    // Add touch event listeners with { passive: false }
-    thumbElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+    trackElement.addEventListener('touchstart', handleTouchStart, { passive: false });
     
     return () => {
-      thumbElement.removeEventListener('touchstart', handleTouchStart);
+      trackElement.removeEventListener('touchstart', handleTouchStart);
     };
   }, [handleTouchStart]);
 
   return (
     <div className={`elastic-slider ${className}`}>
-      {/* Value display */}
-      <div className="slider-value">
-        {formatValue(value)}
-      </div>
+      {/* Value display - conditionally rendered */}
+      {showValueDisplay && (
+        <div 
+          className="slider-value" 
+          style={{ 
+            fontSize: `${labelFontSize + 10}px`,
+            color: valueColor,
+            fontWeight: valueFontWeight
+          }}
+        >
+          {formatValue(value)}
+        </div>
+      )}
+      
+      {/* Labels positioned above track (top position) */}
+      {labelPosition === 'top' && (leftLabel || rightLabel) && (
+        <div className="slider-labels-top" style={{ marginBottom: `${labelGap}px` }}>
+          <div 
+            className="slider-label" 
+            style={{ 
+              fontSize: `${labelFontSize}px`,
+              color: labelColor,
+              fontWeight: labelFontWeight
+            }}
+          >
+            {leftLabel || ''}
+          </div>
+          <div 
+            className="slider-label" 
+            style={{ 
+              fontSize: `${labelFontSize}px`,
+              color: labelColor ,
+              fontWeight: labelFontWeight
+            }}
+          >
+            {rightLabel || ''}
+          </div>
+        </div>
+      )}
       
       {/* Slider track container */}
-      <div className="slider-container">
-        {/* Left label */}
-        {leftLabel && (
-          <div className="slider-label slider-label-left">
+      <div className={`slider-container ${labelPosition}`}>
+        {/* Left label for sides position */}
+        {labelPosition === 'sides' && leftLabel && (
+          <div 
+            className="slider-label slider-label-left" 
+            style={{ 
+              fontSize: `${labelFontSize}px`,
+              color: labelColor,
+              marginRight: `${labelGap}px`
+            }}
+          >
             {leftLabel}
           </div>
         )}
         
-        {/* Slider track */}
+        {/* Slider track - now the entire track is interactive */}
         <div 
           ref={sliderRef}
-          className="slider-track"
+          className={`slider-track ${isDragging ? 'dragging' : ''}`}
+          style={{ 
+            height: `${trackHeight}px`,
+            borderRadius: `${trackBorderRadius}px`
+          }}
           onClick={handleTrackClick}
+          onMouseDown={handleMouseDown}
         >
-          {/* Progress fill */}
+          {/* Progress fill - this replaces the thumb and shows current position */}
           <div 
             className="slider-progress"
-            style={{ width: `${percentage}%` }}
+            style={{ 
+              width: `${percentage}%`,
+              background: trackFillGradient || trackFillColor,
+              borderRadius: `${trackBorderRadius}px`,
+            //  borderRadius: '50%', 
+              height: '100%'
+           
+
+            }}
           />
           
-          {/* Thumb - removed onTouchStart to use native event listener */}
-          <div
-            ref={thumbRef}
-            className={`slider-thumb ${isDragging ? 'dragging' : ''}`}
-            style={{ left: `${percentage}%` }}
-            onMouseDown={handleMouseDown}
+          {/* Optional: End indicator for better visual feedback */}
+          <div 
+            className="slider-end-indicator"
+            style={{ 
+              left: `calc(${percentage}% - 10px)`,
+              background: 'var(--color-dark)',
+              borderRadius: '50%', 
+              height: `${trackHeight}px`,
+              width: `${trackHeight}px`,
+            }}
           />
         </div>
         
-        {/* Right label */}
-        {rightLabel && (
-          <div className="slider-label slider-label-right">
+        {/* Right label for sides position */}
+        {labelPosition === 'sides' && rightLabel && (
+          <div 
+            className="slider-label slider-label-right" 
+            style={{ 
+              fontSize: `${labelFontSize}px`,
+              color: labelColor,
+              marginLeft: `${labelGap}px`
+            }}
+          >
             {rightLabel}
           </div>
         )}
       </div>
+      
+      {/* Labels positioned below track (bottom position) */}
+      {labelPosition === 'bottom' && (leftLabel || rightLabel) && (
+        <div className="slider-labels-bottom" style={{ marginTop: `${labelGap}px` }}>
+          <div 
+            className="slider-label" 
+            style={{ 
+              fontSize: `${labelFontSize}px`,
+              color: labelColor 
+            }}
+          >
+            {leftLabel || ''}
+          </div>
+          <div 
+            className="slider-label" 
+            style={{ 
+              fontSize: `${labelFontSize}px`,
+              color: labelColor 
+            }}
+          >
+            {rightLabel || ''}
+          </div>
+        </div>
+      )}
       
       <style>{`
         .elastic-slider {
@@ -200,9 +316,7 @@ const ElasticSlider: React.FC<ElasticSliderProps> = ({
         
         .slider-value {
           text-align: center;
-          font-size: 24px;
           font-weight: 600;
-          color: white;
           margin-bottom: 20px;
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
@@ -210,14 +324,22 @@ const ElasticSlider: React.FC<ElasticSliderProps> = ({
         .slider-container {
           display: flex;
           align-items: center;
-          gap: 16px;
+          width: 100%;
+        }
+        
+        .slider-container.sides {
+          gap: 0; /* Gap controlled by margin props */
+        }
+        
+        .slider-labels-top,
+        .slider-labels-bottom {
+          display: flex;
+          justify-content: space-between;
           width: 100%;
         }
         
         .slider-label {
-          font-size: 14px;
           font-weight: 500;
-          color: rgba(255, 255, 255, 0.8);
           min-width: 40px;
           text-align: center;
         }
@@ -225,74 +347,54 @@ const ElasticSlider: React.FC<ElasticSliderProps> = ({
         .slider-track {
           position: relative;
           flex: 1;
-          height: 6px;
           background: rgba(255, 255, 255, 0.2);
-          border-radius: 3px;
           cursor: pointer;
           transition: all 0.2s ease;
+          overflow: hidden;
         }
         
         .slider-track:hover {
           background: rgba(255, 255, 255, 0.25);
         }
         
+        .slider-track.dragging {
+          cursor: grabbing;
+        }
+        
         .slider-progress {
           position: absolute;
           top: 0;
           left: 0;
-          height: 100%;
           background: linear-gradient(90deg, #3b82f6, #1d4ed8);
-          border-radius: 3px;
           transition: width 0.1s ease;
           box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+          pointer-events: none;
+          border-radius: 50%;
         }
         
-        .slider-thumb {
+        .slider-end-indicator {
           position: absolute;
-          top: 50%;
-          width: 24px;
-          height: 24px;
-          background: white;
-          border-radius: 50%;
-          transform: translate(-50%, -50%);
-          cursor: grab;
+          top: 0;
+          width: 3px;
+          background: rgba(255, 255, 255, 0.9);
+          border-radius: 0 2px 2px 0;
+          transform: translateX(-1.5px);
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 
-            0 2px 8px rgba(0, 0, 0, 0.15),
-            0 0 0 2px rgba(59, 130, 246, 0.2);
-        }
-        
-        .slider-thumb:hover {
-          transform: translate(-50%, -50%) scale(1.1);
-          box-shadow: 
-            0 4px 12px rgba(0, 0, 0, 0.2),
-            0 0 0 3px rgba(59, 130, 246, 0.3);
-        }
-        
-        .slider-thumb.dragging {
-          cursor: grabbing;
-          transform: translate(-50%, -50%) scale(1.15);
-          box-shadow: 
-            0 6px 16px rgba(0, 0, 0, 0.25),
-            0 0 0 4px rgba(59, 130, 246, 0.4);
-        }
-        
-        .slider-thumb::before {
-          content: '';
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 8px;
-          height: 8px;
-          background: #3b82f6;
+          pointer-events: none;
+          // box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
           border-radius: 50%;
-          transform: translate(-50%, -50%);
-          transition: all 0.2s ease;
         }
         
-        .slider-thumb:hover::before,
-        .slider-thumb.dragging::before {
-          background: #1d4ed8;
+        .slider-track:hover .slider-end-indicator {
+          background: rgba(255, 255, 255, 1);
+          box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+        }
+        
+        .slider-track.dragging .slider-end-indicator {
+          background: rgba(255, 255, 255, 1);
+          width: 4px;
+          transform: translateX(-2px);
+          box-shadow: 0 0 12px rgba(255, 255, 255, 1);
         }
         
         /* Elastic animation for the track */
@@ -314,26 +416,12 @@ const ElasticSlider: React.FC<ElasticSliderProps> = ({
         
         /* Responsive adjustments */
         @media (max-width: 480px) {
-          .slider-container {
-            gap: 12px;
+          .slider-container.sides {
+            gap: 0;
           }
           
           .slider-label {
-            font-size: 12px;
             min-width: 35px;
-          }
-          
-          .slider-value {
-            font-size: 20px;
-          }
-          
-          .slider-thumb {
-            width: 28px;
-            height: 28px;
-          }
-          
-          .slider-track {
-            height: 8px;
           }
         }
       `}</style>

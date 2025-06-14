@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { getAssetPath } from '../../utils/assetPaths';
+import ElasticSlider from '../common/ElasticSlider';
 
 const SHOW_DEBUG_PANEL = false;
 
@@ -36,49 +37,22 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({
 }) => {
   console.log('🌊 WaterRiseExperience: Creating water level rise experience');
 
-  //Consts first
-  // Store initial camera position for reset
-  const initialCameraPos = useRef(new THREE.Vector3(0, 30, 100));
-  // State to track override status
-  const [arTestingOverride, setArTestingOverride] = useState(() => {  
-    return (window as any).arTestingOverride ?? true;
-  });
-
-  // State for UI updates only (minimal)
-  const [hasWaterSystem, setHasWaterSystem] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  // Define isArMode at the component level
-  const isArMode = !!(arScene && arCamera && arPosition);
-  // Helper math
-  const degreesToRadians = (degrees: number) => degrees * (Math.PI / 180);
-
+//********REFS REFS REFS */
   // Refs for Three.js objects ()
   const waterSystemRef = useRef<THREE.Group | null>(null);
   const waterParticlesRef = useRef<THREE.Points | null>(null);
-  // ✅ NEW: Underwater particles ref
-  const underwaterParticlesRef = useRef<THREE.Points | null>(null);
+
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
-  const initialScaleRef = useRef<number>(1);
   const clockRef = useRef(new THREE.Clock());
 
-  // ✅ NEW: Refs for DOM elements to avoid React state
-  const yearDisplayRef = useRef<HTMLDivElement | null>(null);
-  const sliderRef = useRef<HTMLInputElement | null>(null);
-  const sliderTrackRef = useRef<HTMLDivElement | null>(null);
-  const sliderThumbRef = useRef<HTMLDivElement | null>(null);
+  const initialCameraPos = useRef(new THREE.Vector3(0, 30, 100));
+  const initialScaleRef = useRef<number>(1);
 
-  //Caustics
-  const causticsPlaneRef = useRef<THREE.Mesh | null>(null);
-  const causticsTexturesRef = useRef<THREE.Texture[]>([]);
-  const causticsStateRef = useRef({
-    currentTextureIndex: 0,
-    frameCount: 0,
-    time: 0,
-    isVisible: false
-  });
-
+  // ✅ UPDATED: Refs for debouncing
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Refs for water state (no re-renders during animation)
   const waterStateRef = useRef({
     currentWaterLevel: 0,
@@ -86,7 +60,7 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({
     time: 0,
     sliderValue: 0
   });
-
+  
   // Refs for water system parameters (avoid re-renders)
   const waterParamsRef = useRef({
     maxWaterRise: 2,
@@ -98,313 +72,87 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({
     particleColor: new THREE.Color().setHSL(210/360, 0.8, 0.7),
     waveSpeed: 0.001,
     waveAmplitude: 1.0,
-
-    // NEW: Underwater particles parameters
-   underwater: {
-    particleCount: isArMode ? 2000 : 3000,
-    volumeSize: 60,
-    layerCount: 10,
-    baseOpacity: 0.1, // ← Change from 0.1 to 0.5
-    maxOpacity: 0.1,  // ← Change from 0.4 to 0.8
-    particleSize: 1, // ← Change from 0.15 to 2.0
-    driftSpeed: 0.0005,
-    color: {
-      hue: 0,    // Blue hue
-      saturation: 0,   // Full saturation
-      lightness: 0.0  // Very dark
-    }
-  },
-
-    caustics: {
-      textureUrls: [
-        getAssetPath('textures/c1.bmp'),
-        getAssetPath('textures/c2.bmp'),
-        getAssetPath('textures/c3.bmp'),
-        getAssetPath('textures/c4.bmp'),
-        getAssetPath('textures/c5.bmp')
-      ],
-      planeSize: 20, // Smaller for AR performance
-      animationSpeed: 5, // Change texture every 5 frames
-      opacity: 0.3,
-      color: 0xffffff,
-      moveSpeed: 0.1
-    }
+    floodExpansionFactor: 3.0,  
+    particleBaseSize: 0.3,        // ADD THIS
+    particleSizeMultiplier: 2.0
   });
 
-  // ✅ NEW: Load caustics textures function
-  const loadCausticsTextures = useCallback(() => {
-    console.log('🌊 Loading caustics textures...');
-    const textureLoader = new THREE.TextureLoader();
-    const causticUrls = waterParamsRef.current.caustics.textureUrls;
-    
-    let loadedCount = 0;
-    const textures: THREE.Texture[] = [];
-    
-    causticUrls.forEach((url, index) => {
-      textureLoader.load(
-        url,
-        (texture) => {
-          // Configure texture for better performance
-          texture.wrapS = THREE.RepeatWrapping;
-          texture.wrapT = THREE.RepeatWrapping;
-          texture.repeat.set(4, 4); // Tile the texture
-          texture.minFilter = THREE.LinearFilter; // Faster than MipMap
-          texture.magFilter = THREE.LinearFilter;
-          
-          textures[index] = texture;
-          loadedCount++;
-          
-          console.log(`✅ Caustic texture ${loadedCount}/${causticUrls.length} loaded`);
-          
-          if (loadedCount === causticUrls.length) {
-            causticsTexturesRef.current = textures;
-            console.log('🌊 All caustics textures loaded successfully');
-          }
-        },
-        undefined,
-        (error) => {
-          console.warn(`⚠️ Failed to load caustic texture ${index}:`, error);
-        }
-      );
-    });
-  }, [isArMode]);
+//***** STATE STATE STATE */
+  const [arTestingOverride, setArTestingOverride] = useState(() => {  
+    return (window as any).arTestingOverride ?? true;
+  });
 
-  // ✅ NEW: Create caustics plane function
-  const createCausticsPlane = useCallback((scene: THREE.Scene) => {
-    console.log('🌊 Creating caustics plane...');
-    
-    const causticsParams = waterParamsRef.current.caustics;
-    const geometry = new THREE.PlaneGeometry(causticsParams.planeSize, causticsParams.planeSize);
-    
-    // Create material with first texture (or fallback)
-    const material = new THREE.MeshBasicMaterial({
-      map: causticsTexturesRef.current[0] || null,
-      transparent: true,
-      opacity: causticsParams.opacity,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      color: causticsParams.color,
-      side: THREE.DoubleSide
-    });
-    
-    const causticsPlane = new THREE.Mesh(geometry, material);
-    
-    // Position caustics plane slightly above ground
-    causticsPlane.rotation.y = degreesToRadians(0); // Horizontal
-    causticsPlane.position.z =  40; 
-    causticsPlane.position.y = -200 ; 
-    causticsPlane.visible = true; // Start hidden
-    
-    causticsPlaneRef.current = causticsPlane;
-    
-    // Add to water system group (not directly to scene)
-    if (waterSystemRef.current) {
-      waterSystemRef.current.add(causticsPlane);
-      console.log('✅ Caustics plane added to water system');
-    } else {
-      scene.add(causticsPlane);
-      console.log('✅ Caustics plane added to scene');
+  // ✅ NEW: State for ElasticSlider (minimal state for UI only)
+  const [sliderValue, setSliderValue] = useState(0);
+  const [currentYear, setCurrentYear] = useState(2030);
+
+  // State for UI updates only (minimal)
+  const [hasWaterSystem, setHasWaterSystem] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  //******* CONST, UTILITIES */
+  // Helper math
+  const degreesToRadians = (degrees: number) => degrees * (Math.PI / 180);
+  //flodd estimation
+
+const progress = waterStateRef.current.currentWaterLevel / waterParamsRef.current.maxWaterRise;
+const curvedProgress = Math.pow(progress, 1.5); // Slight acceleration
+const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFactor;
+
+  // Define isArMode at the component level
+  const isArMode = !!(arScene && arCamera && arPosition);
+
+  const scale = 0.1;
+  initialScaleRef.current = scale; 
+  const initialScale = initialScaleRef.current;
+
+  //************ SLIDER UTILITIES */
+  
+  // ✅ NEW: Debounced water level update function
+  const debouncedUpdateWaterLevel = useCallback((newSliderValue: number) => {
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
-    
-    return causticsPlane;
+
+    // Set new timeout for smooth animation updates
+    debounceTimeoutRef.current = setTimeout(() => {
+      // Update water state through refs (no re-render)
+      waterStateRef.current.sliderValue = newSliderValue;
+      waterStateRef.current.targetWaterLevel = newSliderValue;
+      
+      console.log('🌊 Debounced water level update:', {
+        sliderValue: newSliderValue,
+        targetLevel: waterStateRef.current.targetWaterLevel
+      });
+    }, 16); // 16ms = ~60fps for smooth animation
   }, []);
 
-  // ✅ NEW: Create underwater particles function
-  const createUnderwaterParticles = useCallback(() => {
-    console.log('🌊 Creating underwater particle volume...');
-    
-    const underwaterParams = waterParamsRef.current.underwater;
-    const count = underwaterParams.particleCount;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(count * 3);
-    const opacityFactors = new Float32Array(count); // For depth-based opacity
-    const driftOffsets = new Float32Array(count * 3); // For subtle movement
-    
-    const volumeSize = underwaterParams.volumeSize;
-    const maxWaterRise = waterParamsRef.current.maxWaterRise;
-
-  for (let i = 0; i < count; i++) {
-    const i3 = i * 3;
-    
-    // ✅ Simple, direct sizing:
-    positions[i3] = (Math.random() - 0.5) * 200;     // x: wide spread
-    positions[i3 + 1] = (Math.random() - 0.5) * 500; // y: tall spread
-    positions[i3 + 2] = -5; // z: fixed depth
-    
-    // Simple opacity based on Y position
-    const normalizedHeight = (positions[i3 + 1] + 75) / 150; // Normalize to 0-1
-    opacityFactors[i] = Math.pow(1 - normalizedHeight, 0.5); // Lower = more opaque
-    
-    // Drift offsets
-    driftOffsets[i3] = Math.random() * Math.PI * 2;
-    driftOffsets[i3 + 1] = Math.random() * Math.PI * 2;  
-    driftOffsets[i3 + 2] = Math.random() * Math.PI * 2;
-  }
-    
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('opacityFactor', new THREE.BufferAttribute(opacityFactors, 1));
-    geometry.setAttribute('driftOffset', new THREE.BufferAttribute(driftOffsets, 3));
-    
-    // Create material for underwater particles
-    const material = new THREE.PointsMaterial({
-      size: underwaterParams.particleSize,
-      transparent: true,
-      opacity: underwaterParams.baseOpacity,
-      blending: THREE.NormalBlending,
-      depthWrite: false,
-        color: new THREE.Color().setHSL(
-          underwaterParams.color.hue,
-          underwaterParams.color.saturation, 
-          underwaterParams.color.lightness
-        ), // Deeper blue than surface
-      vertexColors: false
-    });
-    
-    const underwaterParticles = new THREE.Points(geometry, material);
-    underwaterParticles.visible = false; // Start hidden
-    underwaterParticlesRef.current = underwaterParticles;
-    
-    // Add to water system group
-    if (waterSystemRef.current) {
-      waterSystemRef.current.add(underwaterParticles);
-      console.log('✅ Underwater particles added to water system');
-    }
-    
-    console.log(`🌊 Underwater particle volume created: ${count} particles`);
-    return underwaterParticles;
+  // ✅ NEW: Calculate year from slider value
+  const calculateYear = useCallback((value: number): number => {
+    const percentage = (value / waterParamsRef.current.maxWaterRise) * 100;
+    return Math.floor(
+      waterParamsRef.current.startYear + 
+      (percentage / 100) * (waterParamsRef.current.endYear - waterParamsRef.current.startYear)
+    );
   }, []);
 
-  // ✅ NEW: Update underwater particles function
- // In updateUnderwaterParticles(), replace the complex per-particle logic:
-const updateUnderwaterParticles = useCallback((time: number) => {
-  if (!underwaterParticlesRef.current) return;
-  
-  const underwaterParams = waterParamsRef.current.underwater;
-  const currentWaterLevel = waterStateRef.current.currentWaterLevel -7;
-  
-  // Always keep particles visible
-  underwaterParticlesRef.current.visible = true;
-  
-  // Global fade logic 
-  const targetGlobalOpacity = currentWaterLevel < 0.2 ? 
-    underwaterParams.maxOpacity : 0.0;
-  
-  const currentMaterial = underwaterParticlesRef.current.material as THREE.PointsMaterial;
-  const currentGlobalOpacity = currentMaterial.opacity;
-  const fadeSpeed = 0.02;
-  
-  if (Math.abs(currentGlobalOpacity - targetGlobalOpacity) > 0.01) {
-    const newOpacity = currentGlobalOpacity + (targetGlobalOpacity - currentGlobalOpacity) * fadeSpeed;
-    currentMaterial.opacity = newOpacity;
-  }
-  
-  // ✅ REMOVE any camera dimension calculations here
-  // ✅ Simple particle animation with fixed boundaries:
-  const positions = underwaterParticlesRef.current.geometry.attributes.position.array as Float32Array;
-  const driftOffsets = underwaterParticlesRef.current.geometry.attributes.driftOffset.array as Float32Array;
-  const particleCount = underwaterParams.particleCount;
-  
-  const driftAmount = underwaterParams.driftSpeed * time;
-  
-  for (let i = 0; i < particleCount; i++) {
-    const i3 = i * 3;
+  // ✅ NEW: Immediate slider change handler (for visual feedback)
+  const handleSliderChange = useCallback((newValue: number) => {
+    // Immediate UI updates (React state for visual feedback)
+    setSliderValue(newValue);
+    setCurrentYear(calculateYear(newValue));
     
-    // ✅ Simple drift animation:
-    positions[i3] += Math.sin(driftOffsets[i3] + driftAmount) * 0.01;     // x drift
-    positions[i3 + 1] += Math.cos(driftOffsets[i3 + 1] + driftAmount) * 0.005; // y drift
-    
-    // ✅ Keep particles within your simple fixed bounds:
-    const maxX = 100; // Half of your 200 spread
-    const maxY = 75;  // Half of your 150 spread
-    
-    // Wrap particles that drift too far
-    if (Math.abs(positions[i3]) > maxX) {
-      positions[i3] = (Math.random() - 0.5) * 200; // Reset to random position in range
-    }
-    if (Math.abs(positions[i3 + 1]) > maxY) {
-      positions[i3 + 1] = (Math.random() - 0.5) * 150; // Reset to random position in range
-    }
-    
-    // Optional: Keep particles below water level
-    if (positions[i3 + 1] > currentWaterLevel + 2) {
-      positions[i3 + 1] = currentWaterLevel - Math.random() * 3;
-    }
-  }
-  
-  underwaterParticlesRef.current.geometry.attributes.position.needsUpdate = true;
-}, []);
+    // Debounced animation updates (refs for performance)
+    debouncedUpdateWaterLevel(newValue);
+  }, [calculateYear, debouncedUpdateWaterLevel]);
 
-  // ✅ NEW: Update caustics function
-  const updateCaustics = useCallback(() => {
-    if (!causticsPlaneRef.current || causticsTexturesRef.current.length === 0) return;
-    
-    const plane = causticsPlaneRef.current;
-    const material = plane.material as THREE.MeshBasicMaterial;
-    const state = causticsStateRef.current;
-    const params = waterParamsRef.current.caustics;
-    
-    // Update time
-    state.time += 0.016; // Approximately 60fps delta
-    state.frameCount++;
-    
-    // Show/hide caustics based on water level
-    const shouldShow = waterStateRef.current.currentWaterLevel > -5;
-    if (shouldShow !== state.isVisible) {
-      plane.visible = shouldShow;
-      state.isVisible = shouldShow;
-    }
-    
-    if (!plane.visible) return;
-    
-    // Animate texture switching (every N frames for performance)
-    if (state.frameCount % params.animationSpeed === 0) {
-      state.currentTextureIndex = (state.currentTextureIndex + 1) % causticsTexturesRef.current.length;
-      material.map = causticsTexturesRef.current[state.currentTextureIndex];
-      material.needsUpdate = true;
-    }
-    
-    // Animate texture offset for flowing effect
-    if (material.map) {
-      const speed = params.moveSpeed;
-      material.map.offset.x = Math.cos(state.time * 0.5) * speed;
-      material.map.offset.y = Math.sin(state.time * 0.3) * speed;
-    }
-    
-    // Adjust opacity based on water depth
-    const waterDepth = waterStateRef.current.currentWaterLevel;
-    const maxDepth = waterParamsRef.current.maxWaterRise;
-    const depthFactor = Math.min(waterDepth / maxDepth, 1.0);
-    
-    // Fade in caustics as water level rises
-    material.opacity = params.opacity * depthFactor;
-    
-    // Optional: Move caustics plane with water level for better effect
-    if (isArMode) {
-      plane.position.y = waterStateRef.current.currentWaterLevel - 5; // Below water surface
-    }
-  }, [isArMode]);
+  // ✅ NEW: Format value for slider display
+  const formatSliderValue = useCallback((value: number): string => {
+    const year = calculateYear(value);
+    return `${year}`;
+  }, [calculateYear]);
 
- //************FOR SLIDER UPDATE */
-    const updateYearDisplay = useCallback((sliderValue: number) => {
-      if (yearDisplayRef.current) {
-        const percentage = (sliderValue / waterParamsRef.current.maxWaterRise) * 100;
-        const year = Math.floor(
-          waterParamsRef.current.startYear + 
-          (percentage / 100) * (waterParamsRef.current.endYear - waterParamsRef.current.startYear)
-        );
-        yearDisplayRef.current.textContent = `Year: ${year}`;
-      }
-    }, []);
-
-    // ✅ NEW: Helper function to update slider visual without React state
-    const updateSliderVisual = useCallback((sliderValue: number) => {
-      if (sliderTrackRef.current && sliderThumbRef.current) {
-    const percentage = (sliderValue / waterParamsRef.current.maxWaterRise) * 100.1;
-    sliderTrackRef.current.style.width = `${percentage.toFixed(1)}%`;
-    sliderThumbRef.current.style.left = `${percentage.toFixed(1)}%`;
-      }
-    }, []);
-    
   // Effect 1: Override status polling
   useEffect(() => {
     const checkOverride = () => {
@@ -458,7 +206,7 @@ const updateUnderwaterParticles = useCallback((time: number) => {
   useEffect(() => {
     // Register rotation handler - operates on the water GROUP
     if (onModelRotate) {
-      onModelRotate((deltaX: number, deltaY: number) => {
+      onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
         if (waterSystemRef.current) {
           // Store current position to prevent drift
           const currentPosition = waterSystemRef.current.position.clone();
@@ -466,6 +214,9 @@ const updateUnderwaterParticles = useCallback((time: number) => {
           // Apply rotation
           waterSystemRef.current.rotation.y += deltaX;
           waterSystemRef.current.rotation.x += deltaY;
+           if (deltaZ !== 0) {
+            waterSystemRef.current.rotation.z += deltaZ;
+          }
 
           // Restore position to prevent drift
           waterSystemRef.current.position.copy(currentPosition);
@@ -495,8 +246,7 @@ const updateUnderwaterParticles = useCallback((time: number) => {
         console.log('🔄 Water RESET HANDLER CALLED');
         if (waterSystemRef.current) {
           // Reset rotation and scale
-          waterSystemRef.current.rotation.set(0, 0, 0);
-          const initialScale = initialScaleRef.current;
+          waterSystemRef.current.rotation.set(degreesToRadians(25), 0, 0);
           waterSystemRef.current.scale.set(initialScale, initialScale, initialScale);
           
           // Reset position based on current mode
@@ -515,17 +265,14 @@ const updateUnderwaterParticles = useCallback((time: number) => {
             console.log('🔄 Reset: Water positioned at standalone location');
           }
           
-          // Reset water level
+          // Reset water level (both refs and React state)
           waterStateRef.current.currentWaterLevel = 0;
           waterStateRef.current.targetWaterLevel = 0;
           waterStateRef.current.sliderValue = 0;
           
-          // ✅ NEW: Update UI through DOM manipulation
-          updateYearDisplay(0);
-          updateSliderVisual(0);
-          if (sliderRef.current) {
-            sliderRef.current.value = '0';
-          }
+          // ✅ UPDATED: Reset React state for UI
+          setSliderValue(0);
+          setCurrentYear(waterParamsRef.current.startYear);
           
           console.log('🔄 Water reset completed');
         }
@@ -535,46 +282,20 @@ const updateUnderwaterParticles = useCallback((time: number) => {
     // Register swipe handlers
     if (onSwipeUp) {
       onSwipeUp(() => {
-        console.log('👆 Swipe up detected on water - increase water level');
-        const newSliderValue = Math.min(100, waterStateRef.current.sliderValue + 10);
-        waterStateRef.current.sliderValue = newSliderValue;
-        waterStateRef.current.targetWaterLevel = (newSliderValue / 100) * waterParamsRef.current.maxWaterRise;
-        
-        // ✅ NEW: Update UI through DOM manipulation
-        updateYearDisplay(newSliderValue);
-        updateSliderVisual(newSliderValue);
-        if (sliderRef.current) {
-          sliderRef.current.value = newSliderValue.toString();
-        }
-
-        // Optional: Increase caustics animation speed
-        if (waterParamsRef.current.caustics.animationSpeed > 2) {
-          waterParamsRef.current.caustics.animationSpeed -= 1;
-        }
+        // console.log('👆 Swipe up detected on water - increase water level');
+        // const newSliderValue = Math.min(waterParamsRef.current.maxWaterRise, sliderValue + 0.2);
+        // handleSliderChange(newSliderValue);
       });
     }
 
     if (onSwipeDown) {
       onSwipeDown(() => {
-        console.log('👇 Swipe down detected on water - decrease water level');
-        const newSliderValue = Math.max(0, waterStateRef.current.sliderValue - 10);
-        waterStateRef.current.sliderValue = newSliderValue;
-        waterStateRef.current.targetWaterLevel = (newSliderValue / 100) * waterParamsRef.current.maxWaterRise;
-        
-        // ✅ NEW: Update UI through DOM manipulation
-        updateYearDisplay(newSliderValue);
-        updateSliderVisual(newSliderValue);
-        if (sliderRef.current) {
-          sliderRef.current.value = newSliderValue.toString();
-        }
-
-        // Optional: Decrease caustics animation speed  
-        if (waterParamsRef.current.caustics.animationSpeed < 10) {
-          waterParamsRef.current.caustics.animationSpeed += 1;
-        }
+        // console.log('👇 Swipe down detected on water - decrease water level');
+        // const newSliderValue = Math.max(0, sliderValue - 0.2);
+        // handleSliderChange(newSliderValue);
       });
     }
-  }, [isArMode, arPosition, updateYearDisplay, updateSliderVisual]); // Dependencies for gesture handlers
+  }, [isArMode, arPosition, onModelRotate, onModelScale, onModelReset, onSwipeUp, onSwipeDown, sliderValue, handleSliderChange]);
 
   // Water particle animation function
   const updateWaterParticles = useCallback((time: number) => {
@@ -585,25 +306,33 @@ const updateUnderwaterParticles = useCallback((time: number) => {
     
     // Move the entire water system up/down
     if (waterSystemRef.current) {
-      waterSystemRef.current.position.y = waterStateRef.current.currentWaterLevel;
-    }
+    const progress = waterStateRef.current.currentWaterLevel / waterParamsRef.current.maxWaterRise;
+    const curvedProgress = Math.pow(progress, 1.5); // Matches research acceleration
+    const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFactor;
+    waterSystemRef.current.scale.setScalar(initialScaleRef.current * floodScale);
 
-    // Only update wave animation occasionally, not every frame
-    // if (Math.floor(time * 10) % 2 === 0) { // Update waves every ~0.2 seconds
-      for (let i = 0; i < gridResolution; i++) {
-        for (let j = 0; j < gridResolution; j++) {
-          const index = 3 * (i * gridResolution + j);
-          const x = positions[index];
-          const z = positions[index + 2];
-          
-          const y = Math.sin(x * 0.01 + time * waterParamsRef.current.waveSpeed * 1000) * waterParamsRef.current.waveAmplitude + 
-                    Math.cos(z * 0.01 + time * waterParamsRef.current.waveSpeed * 1000) * waterParamsRef.current.waveAmplitude;
-          positions[index + 1] = y;
-        }
+    if (waterParticlesRef.current?.material instanceof THREE.PointsMaterial) {
+    const newSize = waterParamsRef.current.particleBaseSize * 
+    (1 + curvedProgress * waterParamsRef.current.particleSizeMultiplier);
+    waterParticlesRef.current.material.size = newSize;
+  }
+
+  }
+
+    // Wave animation
+    for (let i = 0; i < gridResolution; i++) {
+      for (let j = 0; j < gridResolution; j++) {
+        const index = 3 * (i * gridResolution + j);
+        const x = positions[index];
+        const z = positions[index + 2];
+        
+        const y = Math.sin(x * 0.01 + time * waterParamsRef.current.waveSpeed * 1000) * waterParamsRef.current.waveAmplitude + 
+                  Math.cos(z * 0.01 + time * waterParamsRef.current.waveSpeed * 1000) * waterParamsRef.current.waveAmplitude;
+        positions[index + 1] = y;
       }
-      
-      waterParticlesRef.current.geometry.attributes.position.needsUpdate = true;
-    // }
+    }
+    
+    waterParticlesRef.current.geometry.attributes.position.needsUpdate = true;
     
     // Update water color based on depth
     if (waterParticlesRef.current.material instanceof THREE.PointsMaterial) {
@@ -643,7 +372,7 @@ const updateUnderwaterParticles = useCallback((time: number) => {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
     // Add rotation to make water lay on ground at slight angle
-    waterSystemRef.current.rotation.x = degreesToRadians(15);
+    waterSystemRef.current.rotation.x = degreesToRadians(25);
     waterSystemRef.current.rotation.z = degreesToRadians(0);
     
     // Load texture and create material
@@ -688,34 +417,22 @@ const updateUnderwaterParticles = useCallback((time: number) => {
       gridResolution,
       size: waterParamsRef.current.waterSize
     });
-
-    // ✅ NEW: Create underwater particles
-    createUnderwaterParticles();
-
-    // ✅ NEW: Load and create caustics system
-    loadCausticsTextures();
-
-    // Create caustics plane after a short delay to ensure textures are loading
-    setTimeout(() => {
-      createCausticsPlane(scene);
-    }, 100);
     
     // Position the entire group
     if (isArMode && arPosition) {
       const currentOverride = (window as any).arTestingOverride ?? true;
       if (currentOverride) {
-        waterGroup.position.set(0, 0, -10); // Far distance for development
+        waterSystemRef.current.position.set(0, 0, -5);
+        console.log('🔄 Reset: Water positioned at override location (distant)');
       } else {
-        waterGroup.position.copy(arPosition); // At AR anchor
+        waterSystemRef.current.position.copy(arPosition);
+        console.log('🔄 Reset: Water positioned at AR anchor location');
       }
     } else {
       waterGroup.position.set(0, 0, -30); // Standalone mode
     }
     
-    // Set initial scale
-    const scale = isArMode ? 0.1 : 1.0; // Much smaller for AR
-    initialScaleRef.current = scale;
-    waterGroup.scale.setScalar(scale);
+    waterGroup.scale.setScalar(initialScaleRef.current);
     
     // Add to scene
     scene.add(waterGroup);
@@ -725,7 +442,7 @@ const updateUnderwaterParticles = useCallback((time: number) => {
     
     console.log('✅ Water particle system created successfully');
     return waterGroup;
-  }, [isArMode, arPosition, onExperienceReady, loadCausticsTextures, createCausticsPlane, createUnderwaterParticles]);
+  }, [isArMode, arPosition, onExperienceReady]);
 
   // Main effect for scene setup 
   useEffect(() => {
@@ -743,122 +460,9 @@ const updateUnderwaterParticles = useCallback((time: number) => {
     container.style.height = '100%';
     container.style.zIndex = '1020';
     
-if (!isArMode){
-    document.body.appendChild(container);
+    if (!isArMode) {
+      document.body.appendChild(container);
     }
-
-    // ✅ NEW: Create control panel using DOM manipulation 
-    const controlPanel = document.createElement('div');
-    controlPanel.style.position = 'absolute';
-    controlPanel.style.bottom = '80px';
-    controlPanel.style.left = '50%';
-    controlPanel.style.transform = 'translateX(-50%)';
-    controlPanel.style.width = '300px';
-    controlPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    controlPanel.style.color = 'white';
-    controlPanel.style.padding = '15px';
-    controlPanel.style.borderRadius = '8px';
-    controlPanel.style.textAlign = 'center';
-    controlPanel.style.fontFamily = 'var(--font-rigby)';
-    controlPanel.style.fontWeight = '400';
-    controlPanel.style.zIndex = '1030';
-    controlPanel.style.pointerEvents = 'auto';
-    document.body.appendChild(controlPanel);
-
-    // ✅ NEW: Create year display using DOM
-    const yearDisplay = document.createElement('div');
-    yearDisplay.textContent = 'Year: 2030';
-    yearDisplay.style.marginBottom = '10px';
-    yearDisplay.style.fontSize = '18px';
-    yearDisplay.style.fontWeight = '600';
-    controlPanel.appendChild(yearDisplay);
-    yearDisplayRef.current = yearDisplay;
-
-    // ✅ NEW: Create custom slider using DOM (following your original pattern)
-    const sliderContainer = document.createElement('div');
-    sliderContainer.style.position = 'relative';
-    sliderContainer.style.height = '4px';
-    sliderContainer.style.width = '100%';
-    sliderContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-    sliderContainer.style.borderRadius = '2px';
-    sliderContainer.style.margin = '16px 0';
-    
-    const sliderTrack = document.createElement('div');
-    sliderTrack.style.position = 'absolute';
-    sliderTrack.style.height = '100%';
-    sliderTrack.style.width = '0%';
-    sliderTrack.style.backgroundColor = '#0066cc';
-    sliderTrack.style.borderRadius = '2px';
-    sliderTrack.style.transition = 'width 0.1s';
-    sliderContainer.appendChild(sliderTrack);
-    sliderTrackRef.current = sliderTrack;
-    
-    const sliderThumb = document.createElement('div');
-    sliderThumb.style.position = 'absolute';
-    sliderThumb.style.top = '50%';
-    sliderThumb.style.transform = 'translate(-50%, -50%)';
-    sliderThumb.style.width = '16px';
-    sliderThumb.style.height = '16px';
-    sliderThumb.style.backgroundColor = '#0066cc';
-    sliderThumb.style.borderRadius = '50%';
-    sliderThumb.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
-    sliderThumb.style.cursor = 'pointer';
-    sliderThumb.style.left = '0%';
-    sliderContainer.appendChild(sliderThumb);
-    sliderThumbRef.current = sliderThumb;
-    
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = waterParamsRef.current.maxWaterRise.toString();;
-    slider.step = '0.01';
-    slider.value = '0';
-    slider.style.width = '100%';
-    slider.style.position = 'absolute';
-    slider.style.top = '0';
-    slider.style.left = '0';
-    slider.style.margin = '0';
-    slider.style.opacity = '0';
-    slider.style.height = '100%';
-    slider.style.cursor = 'pointer';
-    sliderContainer.appendChild(slider);
-    sliderRef.current = slider;
-    
-    controlPanel.appendChild(sliderContainer);
-
-    // Create slider labels
-    const sliderLabels = document.createElement('div');
-    sliderLabels.style.display = 'flex';
-    sliderLabels.style.justifyContent = 'space-between';
-    sliderLabels.style.fontSize = '12px';
-    sliderLabels.innerHTML = '<span>2030</span><span>2100</span>';
-    controlPanel.appendChild(sliderLabels);
-
-    // ✅ NEW: Setup slider event listener WITHOUT React state
-    slider.addEventListener('input', function(event: Event) {
-      const target = event.target as HTMLInputElement;
-      const sliderValue = parseFloat(target.value)
-      
-      // Update visual slider through DOM manipulation
-      updateSliderVisual(sliderValue);
-      
-      // Update water state through refs (no re-render)
-      waterStateRef.current.sliderValue = sliderValue;
-      waterStateRef.current.targetWaterLevel = sliderValue
-      
-      // Update year display through DOM manipulation
-      updateYearDisplay(sliderValue);
-      
-      // console.log('🌊 Slider changed:', { sliderValue, targetLevel: waterStateRef.current.targetWaterLevel });
-    });
-
-    // Instructions
-    const instructions = document.createElement('div');
-    instructions.style.marginTop = '15px';
-    instructions.style.fontSize = '14px';
-    instructions.style.opacity = '0.8';
-    instructions.innerHTML = 'Experience rising water levels from 2030-2100. Use the slider or gestures to control time.';
-    controlPanel.appendChild(instructions);
 
     // Initialize Three.js components
     let scene: THREE.Scene;
@@ -913,17 +517,6 @@ if (!isArMode){
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
       directionalLight.position.set(50, 200, 100);
       scene.add(directionalLight);
-
-      // // Add ground plane in standalone mode
-      // const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
-      // const groundMaterial = new THREE.MeshLambertMaterial({ 
-      //   color: 0x654321, // Brown earth
-      //   side: THREE.DoubleSide 
-      // });
-      // const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-      // ground.rotation.x = Math.PI / 2;
-      // ground.position.y = -5;
-      // scene.add(ground);
     }
 
     // Create water particle system
@@ -953,13 +546,7 @@ if (!isArMode){
       
       // Update water particles
       updateWaterParticles(waterStateRef.current.time);
-      
-      // ✅ NEW: Update underwater particles
-      updateUnderwaterParticles(waterStateRef.current.time);
-      
-      // ✅ NEW: Update caustics animation
-      updateCaustics();
-      
+
       if (controls) {
         controls.update();
       }
@@ -977,25 +564,10 @@ if (!isArMode){
       
       window.removeEventListener('resize', handleResize);
       
-      // ✅ NEW: Clean up caustics system
-      if (causticsPlaneRef.current) {
-        if (causticsPlaneRef.current.material instanceof THREE.MeshBasicMaterial) {
-          if (causticsPlaneRef.current.material.map) {
-            causticsPlaneRef.current.material.map.dispose();
-          }
-          causticsPlaneRef.current.material.dispose();
-        }
-        if (causticsPlaneRef.current.geometry) {
-          causticsPlaneRef.current.geometry.dispose();
-        }
+      // ✅ UPDATED: Clear debounce timeout
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
-
-      // Dispose caustics textures
-      causticsTexturesRef.current.forEach(texture => {
-        if (texture) texture.dispose();
-      });
-      causticsTexturesRef.current = [];
-      causticsPlaneRef.current = null;
       
       // Clean up water system first
       if (waterSystemRef.current) {
@@ -1033,29 +605,6 @@ if (!isArMode){
         waterSystemRef.current = null;
       }
       
-      // ✅ NEW: Clean up underwater particles
-      if (underwaterParticlesRef.current) {
-        if (underwaterParticlesRef.current.geometry) {
-          const geometry = underwaterParticlesRef.current.geometry;
-          geometry.dispose();
-        }
-        
-        if (underwaterParticlesRef.current.material) {
-          if (Array.isArray(underwaterParticlesRef.current.material)) {
-            underwaterParticlesRef.current.material.forEach(material => {
-              if ('map' in material && (material as any).map) (material as any).map.dispose();
-              material.dispose();
-            });
-          } else {
-            if ('map' in underwaterParticlesRef.current.material && (underwaterParticlesRef.current.material as any).map) {
-              (underwaterParticlesRef.current.material as any).map.dispose();
-            }
-            underwaterParticlesRef.current.material.dispose();
-          }
-        }
-      }
-      underwaterParticlesRef.current = null;
-      
       // Clean up particle system ref
       waterParticlesRef.current = null;
       
@@ -1070,18 +619,9 @@ if (!isArMode){
         renderer.dispose();
       }
       
-      // ✅ NEW: Clear DOM refs
-      yearDisplayRef.current = null;
-      sliderRef.current = null;
-      sliderTrackRef.current = null;
-      sliderThumbRef.current = null;
-      
       // Remove container
       if (document.body.contains(container)) {
         document.body.removeChild(container);
-      }
-      if (document.body.contains(controlPanel)) {
-        document.body.removeChild(controlPanel);
       }
       
       // Clear refs
@@ -1089,10 +629,54 @@ if (!isArMode){
       cameraRef.current = null;
       controlsRef.current = null;
     };
-  }, [isArMode, createWaterParticleSystem, updateWaterParticles, updateUnderwaterParticles, updateYearDisplay, updateSliderVisual, updateCaustics]);
+  }, [isArMode, createWaterParticleSystem, updateWaterParticles]);
 
   return (
     <>
+      {/* ✅ NEW: ElasticSlider Control Panel */}
+      {hasWaterSystem && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '95vw',
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          color: '',
+          padding: '0px',
+          borderRadius: '2rem',
+          fontFamily: 'var(--font-rigby)',
+          fontWeight: '400',
+          zIndex: 1030,
+          pointerEvents: 'auto',
+          // backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0)',
+          // boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+        }}>
+          {/* ElasticSlider */}
+          <ElasticSlider
+            min={0}
+            max={waterParamsRef.current.maxWaterRise}
+            value={sliderValue}
+            step={0.001}
+            onChange={handleSliderChange}
+            leftLabel="2030"
+            rightLabel="2150"
+            labelPosition="top"
+            labelColor="var(--color-light)"
+            labelFontWeight="bold"     // or 400, "normal", "bold"
+            valueFontWeight="700" 
+            trackFillColor="var(--color-dark)"
+            trackBorderRadius={10}
+            labelGap={12}
+            trackHeight={15}     
+            labelFontSize={20}     
+            showValueDisplay={false} // this is the literal slider value not 
+            className="water-rise-slider"
+          />
+        </div>
+      )}
+
       {/* Loading indicator */}
       {!hasWaterSystem && sceneRef.current && (
         <div style={{
@@ -1129,7 +713,7 @@ if (!isArMode){
             fontWeight: '400',
             color: '#0099cc'
           }}>
-            🌊 Preparing Water Rise Experience
+            🌊 Preparing Experience
           </h2>
           
           <p style={{
@@ -1139,7 +723,7 @@ if (!isArMode){
             textAlign: 'center',
             maxWidth: '300px'
           }}>
-            Loading water simulation for years 2030-2100
+            ... Loading ...
           </p>
           
           {/* Progress bar if loading progress is available */}
@@ -1205,25 +789,13 @@ if (!isArMode){
             Current Level: {waterStateRef.current.currentWaterLevel.toFixed(1)}/{waterParamsRef.current.maxWaterRise}
           </div>
           <div style={{ color: 'lightblue', fontSize: '10px' }}>
-            Slider: {waterStateRef.current.sliderValue}%
+            Slider: {sliderValue.toFixed(2)} | Year: {currentYear}
+          </div>
+          <div style={{ color: 'lightblue', fontSize: '10px' }}>
+            Target Level: {waterStateRef.current.targetWaterLevel.toFixed(2)}
           </div>
           <div style={{ color: 'lightblue', fontSize: '10px' }}>
             Surface Particles: {waterParamsRef.current.particleCount}
-          </div>
-          <div style={{ color: 'lightblue', fontSize: '10px' }}>
-            Underwater Particles: {waterParamsRef.current.underwater.particleCount}
-          </div>
-          <div style={{ color: 'lightblue', fontSize: '10px' }}>
-            Caustics: {causticsTexturesRef.current.length}/5 loaded, Frame: {causticsStateRef.current.currentTextureIndex}
-          </div>
-          <div style={{ color: 'lightgreen', fontSize: '10px' }}>
-            Caustics visible: {causticsStateRef.current.isVisible ? '✅' : '❌'}
-          </div>
-          <div style={{ color: 'lightgreen', fontSize: '10px' }}>
-            Underwater visible: {underwaterParticlesRef.current?.visible ? '✅' : '❌'}
-          </div>
-          <div style={{ color: 'lightgreen', fontSize: '10px' }}>
-            Multi-layer water system with caustics + underwater volume
           </div>
           
           <div 
