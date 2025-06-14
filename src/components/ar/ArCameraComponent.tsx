@@ -9,7 +9,7 @@ import EdgeChevrons from './EdgeChevrons';
 import { loadHeightmap, testTerrainLookup, gpsToThreeJsPositionWithTerrain } from '../../utils/terrainUtils';
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 
-const SHOW_DEBUG_PANEL = false;
+const SHOW_DEBUG_PANEL = true;
 
 interface ArCameraProps {
   userPosition: [number, number];
@@ -45,7 +45,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onSwipeDown,
   children
 }) => {
-  // Refs for DOM elements and Three.js objects
+
+//********** REFS REFS REFS  */
+ 
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -62,13 +64,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const initialPinchDistance = useRef(0);
   const initialTwoFingerAngle = useRef(0);
 
-  
 
-  // Touch constants
-  const minSwipeDistance = 50;
-  const doubleTapDelay = 300;
-  
-  // State
+//******** STATE STATE STATE */
+
   const [isInitialized, setIsInitialized] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [deviceOrientation, setDeviceOrientation] = useState<{
@@ -77,25 +75,91 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     gamma: number;
   } | null>(null);
 
-
-//chevrons for directions
-const [showChevrons, setShowChevrons] = useState(true);
-const [debugHeading, setDebugHeading] = useState<number | null>(null);
-
-
-  // Debug/testing override state
-  const [debugCollapsed, setDebugCollapsed] = useState(false);
-
-  const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
-    // Initialize from global if available, otherwise false
-    return typeof (window as any).arTestingOverride === 'boolean'
-      ? (window as any).arTestingOverride
-      : false;
-  });
   
-  // Permission handling - use existing system
-  const { isPermissionGranted, requestPermission } = usePermissions();
+
+    //chevrons for directions
+    const [showChevrons, setShowChevrons] = useState(true);
+    const [debugHeading, setDebugHeading] = useState<number | null>(null);
+    const [adjustedAnchorPosition, setAdjustedAnchorPosition] = useState<[number, number] | null>(null);
+    const [manualElevationOffset, setManualElevationOffset] = useState(0);
+
   
+
+    // Add this state to ArCameraComponent
+    const [gpsOffset, setGpsOffset] = useState({ lon: 0, lat: 0 }); 
+    const [accumulatedTransforms, setAccumulatedTransforms] = useState({
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: 1.0
+    });
+    // Debug/testing override state
+    const [debugCollapsed, setDebugCollapsed] = useState(false);
+
+    const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
+      // Initialize from global if available, otherwise false
+      return typeof (window as any).arTestingOverride === 'boolean'
+        ? (window as any).arTestingOverride
+        : false;
+    });
+
+//******** DECLARATIONS AND HELPERS */
+    // Touch constants
+    const minSwipeDistance = 50;
+    const doubleTapDelay = 300;
+    // Permission handling - use existing system
+    const { isPermissionGranted, requestPermission } = usePermissions();
+    const activeAnchorPosition = adjustedAnchorPosition || anchorPosition;
+
+    const currentExperienceType = experienceType || 'default';
+    const experienceOffsets: Record<string, number> = {
+      'lotus': 0.5,
+      'lily': 0.5,       
+      'cattail': 1.0,    
+      'mac': 1.8,
+      'helen_s': 1.8,    
+      'volunteers': 1.8, 
+      'default': 2.0
+    };
+
+    const typeKey = experienceType ?? 'default';
+    const elevationOffset = experienceOffsets[typeKey] || experienceOffsets['default'];
+    
+
+    //helper
+    const formatWithSign = (num: number, decimals: number = 1, totalWidth: number = 10) => {
+      const sign = num >= 0 ? '+' : '';
+      return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
+    };
+
+  const updateElevationOffset = useCallback((deltaElevation: number) => {
+  const newOffset = manualElevationOffset + deltaElevation;
+  setManualElevationOffset(newOffset);
+    console.log('📏 Manual elevation offset:', newOffset);
+  }, [manualElevationOffset]);
+
+
+    const updateAnchorPosition = useCallback((deltaLon: number, deltaLat: number) => {
+  // Update the GPS offset state for display
+  const newOffset = {
+    lon: gpsOffset.lon + deltaLon,
+    lat: gpsOffset.lat + deltaLat
+  };
+  setGpsOffset(newOffset);
+
+
+    
+  // Calculate new anchor position (use current anchor + total offset)
+  const newAnchorPosition: [number, number] = [
+    anchorPosition[0] + newOffset.lon,
+    anchorPosition[1] + newOffset.lat
+  ];
+  
+  // Store adjusted position locally
+  setAdjustedAnchorPosition(newAnchorPosition);
+  
+  console.log('📍 Anchor moved to:', newAnchorPosition);
+  console.log('📍 Total offset:', newOffset);
+}, [anchorPosition, gpsOffset]);
+
   // Initialize camera stream
   const initializeCamera = async () => {
     try {
@@ -205,40 +269,30 @@ const [debugHeading, setDebugHeading] = useState<number | null>(null);
   // Calculate and place AR object
 // In ArCameraComponent.tsx, update the placeArObject function:
 const placeArObject = useCallback(() => {
-console.log('🎯 placeArObject() called');
+  console.log('🎯 placeArObject() called');
   console.log('🎯 onArObjectPlaced exists:', !!onArObjectPlaced);
   
 
-if (!userPosition || !anchorPosition) {
-    console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
-    return;
-  }
-    
-  const currentExperienceType = experienceType || 'default';
-  const experienceOffsets: Record<string, number> = {
-    'lotus': 0.5,
-    'lily': 0.5,       
-    'cattail': 1.0,    
-    'mac': 1.8,
-    'helen_s': 1.8,    
-    'volunteers': 1.8, 
-    'default': 2.0
-  };
-  
-  const typeKey = experienceType ?? 'default';
-  const elevationOffset = experienceOffsets[typeKey] || experienceOffsets['default'];
-  
-  const result = gpsToThreeJsPositionWithTerrain(
-    userPosition,
-    anchorPosition,
-    elevationOffset,
-    coordinateScale
-  );
+  if (!userPosition || !anchorPosition) {
+      console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
+      return;
+    }
+
+    const finalElevationOffset = elevationOffset + manualElevationOffset;
+
+    const result = gpsToThreeJsPositionWithTerrain(
+      userPosition,
+      activeAnchorPosition,
+      finalElevationOffset,
+      coordinateScale
+    );
+
   
   if (onArObjectPlaced) {
     onArObjectPlaced(result.position);
   }
-}, [userPosition, anchorPosition, coordinateScale, experienceType]); // Remove onArObjectPlaced from deps
+
+}, [userPosition,anchorPosition, adjustedAnchorPosition, coordinateScale, experienceType, manualElevationOffset]); // Remove onArObjectPlaced from deps
   
   // Handle device orientation events
   const handleDeviceOrientation = (event: DeviceOrientationEvent) => {
@@ -448,6 +502,11 @@ if (!userPosition || !anchorPosition) {
       if (timeSince < doubleTapDelay && timeSince > 0) {
         // This is a double tap
         // console.log('👆 Double tap detected - reset');
+            setAccumulatedTransforms({
+              rotation: { x: 0, y: 0, z: 0 },
+              scale: 1.0
+            });
+
         if (onModelReset) {
           onModelReset();
           // console.log('onModelReset called');
@@ -468,11 +527,24 @@ const handleTouchMove = (event: TouchEvent) => {
     
     const deltaX = currentX - lastTouchX.current;
     const deltaY = currentY - lastTouchY.current;
-    
+
     // Only rotate if significant movement
     if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+      const rotDeltaX = deltaX * 0.01;
+      const rotDeltaY = deltaY * 0.01;
+      
+      // Update accumulated rotation
+      setAccumulatedTransforms(prev => ({
+        ...prev,
+        rotation: {
+          x: prev.rotation.x + rotDeltaY,
+          y: prev.rotation.y + rotDeltaX,
+          z: prev.rotation.z
+        }
+      }));
+
       if (onModelRotate) {
-        onModelRotate(deltaX * 0.01, deltaY * 0.01, 0);
+        onModelRotate(rotDeltaX, rotDeltaY, 0);
       }
     }
     
@@ -491,17 +563,35 @@ const handleTouchMove = (event: TouchEvent) => {
     const scaleChange = currentDistance / initialPinchDistance.current;
     
     if (scaleChange > 0.1 && scaleChange < 10) {
+      // Update accumulated scale
+      setAccumulatedTransforms(prev => ({
+        ...prev,
+        scale: prev.scale * scaleChange
+      }));
+      
       if (onModelScale) {
         onModelScale(scaleChange);
       }
     }
-      const currentAngle = Math.atan2(
-      touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX);
-      const rotationDelta = currentAngle - initialTwoFingerAngle.current;
-        if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
-          onModelRotate(0, 0, rotationDelta * 0.5);
-      }
 
+    const currentAngle = Math.atan2(
+      touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX);
+    const rotationDelta = currentAngle - initialTwoFingerAngle.current;
+    
+    if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
+      const zRotDelta = rotationDelta * 0.5;
+      
+      // Update accumulated Z rotation
+      setAccumulatedTransforms(prev => ({
+        ...prev,
+        rotation: {
+          ...prev.rotation,
+          z: prev.rotation.z + zRotDelta
+        }
+      }));
+      
+      onModelRotate(0, 0, zRotDelta);
+    }
   }
   
   event.preventDefault();
@@ -552,7 +642,7 @@ const handleTouchEnd = (event: TouchEvent) => {
     }
   }, [userPosition, anchorPosition, coordinateScale, isInitialized]);
 
-  const [gpsOffset, setGpsOffset] = useState({ lon: 0, lat: 0 });
+
   
   return (
     <div 
@@ -693,13 +783,14 @@ const handleTouchEnd = (event: TouchEvent) => {
          {SHOW_DEBUG_PANEL && (
               <div style={{
                 position: 'absolute',
-                top: '10px',
-                left: '10px',
+                top: '1vh',
+                left: '1vw',
+                right: '40vw',
                 backgroundColor: 'rgba(0, 0, 0, 0.7)',
                 color: 'white',
                 padding: '10px',
                 borderRadius: '4px',
-                fontSize: '12px',
+                fontSize: '10px',
                 zIndex: 1030,
                 pointerEvents: 'auto',
                 fontFamily: 'monospace'
@@ -721,369 +812,59 @@ const handleTouchEnd = (event: TouchEvent) => {
 
                {!debugCollapsed && (
               <div>    
-
-                {deviceOrientation ? (
-                  <>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <span>α: {deviceOrientation.alpha?.toFixed(1)}°</span>
-                      <span>β: {deviceOrientation.beta?.toFixed(1)}°</span>
-                      <span>γ: {deviceOrientation.gamma?.toFixed(1)}°</span>
-                    </div>
-                  </>
-                ) : (
-                  <div>Orientation: Desktop</div>
-                )}
-                
-                <div>Scale: {coordinateScale}x</div>
                 <div>User: [{userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}]</div>
-                <div>Anchor: [{anchorPosition[0].toFixed(6)}, {anchorPosition[1].toFixed(6)}]</div>
-                <div>Elevation: {anchorElevation}m</div>
-
-            
-               
-                  
-                  <div style={{ 
-                      marginTop: '8px', 
-                      borderTop: '1px solid rgba(255,255,255,0.3)', 
-                      paddingTop: '5px' 
-                    }}>
-                      {/* <div style={{ color: 'yellow', fontSize: '10px' }}>🧭 EDGE CHEVRONS</div>
-                      
-                      <div 
-                        onClick={() => {
-                          setShowChevrons(!showChevrons);
-                          // console.log('🧭 Edge chevrons:', !showChevrons ? 'ON' : 'OFF');
-                        }}
-                        style={{ 
-                          cursor: 'pointer', 
-                          userSelect: 'none', 
-                          padding: '2px 4px',
-                          backgroundColor: showChevrons ? 'rgba(190, 105, 169, 0.3)' : 'rgba(100, 100, 100, 0.3)',
-                          borderRadius: '2px',
-                          fontSize: '9px',
-                          marginTop: '2px'
-                        }}
-                      >
-                        Chevrons: {showChevrons ? '✅ ON' : '❌ OFF'}
-                      </div> */}
-
-                      <div style={{ marginTop: '2px', fontSize: '9px' }}>
-                      <label>Debug Heading: {debugHeading?.toFixed(1) || 'Auto'}°</label>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="360" 
-                        step="10" 
-                        value={debugHeading || 0}
-                        onChange={(e) => {
-                          const value = parseFloat(e.target.value);
-                          setDebugHeading(value);
-                          // console.log('🧭 Debug heading set to:', value);
-                        }}
-                        style={{ width: '80px', marginLeft: '5px' }}
-                      />
-                      <button 
-                        onClick={() => {
-                          setDebugHeading(null);
-                          console.log('🧭 Debug heading cleared, using auto');
-                        }}
-                        style={{ 
-                          fontSize: '8px', 
-                          padding: '1px 3px', 
-                          marginLeft: '3px',
-                          backgroundColor: 'rgba(255,255,255,0.2)', 
-                          border: 'none', 
-                          color: 'white' 
-                        }}
-                      >
-                        Auto
-                      </button>
-                    </div>
-                      
-                  {deviceOrientation && (
-                    <div style={{ fontSize: '9px', marginTop: '2px' }}>
-                      Heading: {getDeviceHeading()?.toFixed(1)}°
-                    </div>
-                  )}
-                  
-                  {userPosition && anchorPosition && (
-                    <div style={{ fontSize: '9px' }}>
-                      GPS Bearing: {calculateBearing(userPosition, anchorPosition).toFixed(1)}°
-                    </div>
-                  )}
-                </div>
-                              
-            
-
-                <div 
-                  onClick={() => {
-                    const newValue = !arTestingOverride;
-                    (window as any).arTestingOverride = newValue;
-                    setArTestingOverride(newValue);
-                    // console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
-                  }}
-                  style={{ cursor: 'pointer', userSelect: 'none', marginTop: '5px' }}
-                >
-                  Override: {arTestingOverride ? '✅' : '❌'}
+                <div>Anchor: [{anchorPosition[0].toFixed(6)}, {anchorPosition[1].toFixed(6)}]</div>            
+                <div >
+                  GPS Bearing: {calculateBearing(userPosition, anchorPosition).toFixed(1)}°
                 </div>
 
-                {/* Terrain Testing Section */}
+
                 <div style={{ 
-                  marginTop: '8px', 
-                  borderTop: '1px solid rgba(255,255,255,0.3)', 
-                  paddingTop: '5px' 
-                }}>
-                  <div style={{ color: 'yellow', fontSize: '10px' }}>🗺️ TERRAIN DEBUG</div>
-                  
-                  <div style={{ display: 'flex', gap: '4px', marginTop: '3px' }}>
-                    <button 
-                      onClick={() => {
-                        import('../../utils/terrainUtils').then(utils => {
-                          // console.log('🧪 Testing terrain lookup...');
-                          utils.testTerrainLookup();
-                        }).catch(err => console.error('❌ Terrain test failed:', err));
-                      }}
-                      style={{ 
-                        fontSize: '9px', 
-                        padding: '2px 4px', 
-                        backgroundColor: 'rgba(0, 150, 255, 0.3)',
-                        border: '1px solid rgba(0, 150, 255, 0.5)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        borderRadius: '2px'
-                      }}
-                    >
-                      Test Lookup
-                    </button>
-                    
-                    <button 
-                      onClick={() => {
-                        import('../../utils/geoArUtils').then(utils => {
-                          // console.log('🧪 Testing all Kenilworth experiences...');
-                          utils.testKenilworthExperiences();
-                        }).catch(err => console.error('❌ Experience test failed:', err));
-                      }}
-                      style={{ 
-                        fontSize: '9px', 
-                        padding: '2px 4px', 
-                        backgroundColor: 'rgba(0, 200, 100, 0.3)',
-                        border: '1px solid rgba(0, 200, 100, 0.5)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        borderRadius: '2px'
-                      }}
-                    >
-                      Test All
-                    </button>
-                  </div>
-                  
-                  <button 
+                    display: 'flex', 
+                    flexDirection: 'row' ,
+                    gap: '8px'
+                  }}>
+                  <div 
                     onClick={() => {
-                      import('../../utils/geoArUtils').then(utils => {
-                        import('../../data/mapRouteData').then(data => {
-                          // console.log('🔍 Validating terrain coverage...');
-                          const anchors = data.routePointsData.features.map(f => ({
-                            name: f.properties.iconName,
-                            coordinates: f.properties.arAnchor?.coordinates || f.geometry.coordinates
-                          }));
-                          utils.validateTerrainCoverage(anchors);
-                        });
-                      }).catch(err => console.error('❌ Validation failed:', err));
+                      const newValue = !arTestingOverride;
+                      (window as any).arTestingOverride = newValue;
+                      setArTestingOverride(newValue);
+                      // console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
                     }}
-                    style={{ 
-                      fontSize: '9px', 
-                      padding: '2px 4px', 
-                      marginTop: '2px',
-                      width: '100%',
-                      backgroundColor: 'rgba(255, 150, 0, 0.3)',
-                      border: '1px solid rgba(255, 150, 0, 0.5)',
-                      color: 'white',
-                      cursor: 'pointer',
-                      borderRadius: '2px'
-                    }}
+                    style={{ cursor: 'pointer', 
+                      userSelect: 'none', 
+                      margin: '0rem', 
+                      padding: '4px 8px',
+                      backgroundColor: 'rgba(0,0,255,0.3)',
+                       marginTop: '8px',
+                      // border: '1px solid white', 
+                      width: '100%' }}
                   >
-                    Validate Coverage
-                  </button>
-                  <button 
-                      onClick={() => {
-                        import('../../utils/terrainUtils').then(utils => {
-                          // console.log('🔧 Running coordinate conversion debug...');
-                          utils.debugCoordinateConversion();
-                        });
-                      }}
-                      style={{ 
-                        fontSize: '9px', 
-                        padding: '2px 4px', 
-                        backgroundColor: 'rgba(255, 100, 100, 0.3)',
-                        border: '1px solid rgba(255, 100, 100, 0.5)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        borderRadius: '2px'
-                      }}
-                    >
-                      Debug Coords
-                    </button>
-                      <button 
-                        onClick={() => {
-                          import('../../utils/terrainUtils').then(utils => {
-                            // Test around the mac anchor point that showed (444, 95)
-                            // console.log('🔍 Sampling area around mac anchor...');
-                            utils.debugPixelArea(444, 95, 15);
-                          });
-                        }}
-                        style={{ 
-                          fontSize: '9px', 
-                          padding: '2px 4px', 
-                          backgroundColor: 'rgba(0, 255, 255, 0.3)',
-                          border: '1px solid rgba(0, 255, 255, 0.5)',
-                          color: 'white',
-                          cursor: 'pointer',
-                          borderRadius: '2px'
-                        }}
+                    Override: {arTestingOverride ? '✅' : '❌'}
+                  </div>
+                      <button
+                          onClick={() => {
+                            setGpsOffset({ lon: 0, lat: 0 });
+                            setManualElevationOffset(0);
+                            setAdjustedAnchorPosition(null);
+                            console.log('🔄 GPS and elevation offsets reset');
+                          }}
+                          style={{
+                            fontSize: '10px',
+                            padding: '4px 8px',
+                            backgroundColor: 'rgba(255,0,0,0.3)',
+                            border: 'none',
+                            color: 'white',
+                            cursor: 'pointer',
+                            width: '100%',
+                            marginTop: '8px'
+                          }}
                       >
-                        Sample Area
-                      </button>
-                    <button 
-                      onClick={() => {
-                        import('../../utils/terrainUtils').then(utils => {
-                          // console.log('📊 Sampling heightmap distribution...');
-                          utils.sampleHeightmapDistribution();
-                        });
-                      }}
-                      style={{ 
-                        fontSize: '9px', 
-                        padding: '2px 4px', 
-                        backgroundColor: 'rgba(150, 100, 255, 0.3)',
-                        border: '1px solid rgba(150, 100, 255, 0.5)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        borderRadius: '2px'
-                      }}
-                    >
-                      Sample Map
-                    </button>
-                    
-                    <button 
-                      onClick={() => {
-                        import('../../utils/terrainUtils').then(utils => {
-                          // console.log('🔍 Analyzing raw pixel data...');
-                          utils.debugPixelData();
-                        });
-                      }}
-                      style={{ 
-                        fontSize: '9px', 
-                        padding: '2px 4px', 
-                        backgroundColor: 'rgba(255, 0, 255, 0.3)',
-                        border: '1px solid rgba(255, 0, 255, 0.5)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        borderRadius: '2px'
-                      }}
-                    >
-                      Debug Pixels
-                    </button>
-
-                    <button 
-                      onClick={() => {
-                        import('../../utils/terrainUtils').then(utils => {
-                          // console.log('🧪 Testing pixel interpretation methods...');
-                          utils.testPixelInterpretation();
-                        });
-                      }}
-                      style={{ 
-                        fontSize: '9px', 
-                        padding: '2px 4px', 
-                        backgroundColor: 'rgba(255, 255, 0, 0.3)',
-                        border: '1px solid rgba(255, 255, 0, 0.5)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        borderRadius: '2px'
-                      }}
-                    >
-                      Test Methods
-                    </button>
-                </div>
-              
-                <div style={{ 
-                  marginTop: '5px', 
-                  borderTop: '1px solid rgba(255,255,255,0.3)', 
-                  paddingTop: '5px' 
-                }}>
-                  <div style={{ color: 'yellow', fontSize: '10px' }}>🎯 GPS CALIBRATION</div>
-                  
-                  <div style={{ display: 'flex', gap: '2px', marginTop: '2px' }}>
-                    <button onClick={() => setGpsOffset(prev => ({...prev, lon: prev.lon - 0.00001}))}
-                            style={{ fontSize: '8px', padding: '1px 3px', backgroundColor: 'rgba(255,255,255,0.2)', border: 'none', color: 'white' }}>
-                      W
-                    </button>
-                    <button onClick={() => setGpsOffset(prev => ({...prev, lon: prev.lon + 0.00001}))}
-                            style={{ fontSize: '8px', padding: '1px 3px', backgroundColor: 'rgba(255,255,255,0.2)', border: 'none', color: 'white' }}>
-                      E
-                    </button>
-                    <button onClick={() => setGpsOffset(prev => ({...prev, lat: prev.lat + 0.00001}))}
-                            style={{ fontSize: '8px', padding: '1px 3px', backgroundColor: 'rgba(255,255,255,0.2)', border: 'none', color: 'white' }}>
-                      N
-                    </button>
-                    <button onClick={() => setGpsOffset(prev => ({...prev, lat: prev.lat - 0.00001}))}
-                            style={{ fontSize: '8px', padding: '1px 3px', backgroundColor: 'rgba(255,255,255,0.2)', border: 'none', color: 'white' }}>
-                      S
-                    </button>
-                  </div>
-                  
-                  <div style={{ fontSize: '9px' }}>
-                    Offset: {gpsOffset.lon.toFixed(6)}, {gpsOffset.lat.toFixed(6)}
-                  </div>
-                  
-                  <button 
-                    onClick={() => {
-                      import('../../utils/terrainUtils').then(utils => {
-                        // console.log(`🎯 Testing with GPS offset: ${gpsOffset.lon}, ${gpsOffset.lat}`);
-                        // Test current anchor position with offset
-                        const testLon = anchorPosition[0] + gpsOffset.lon;
-                        const testLat = anchorPosition[1] + gpsOffset.lat;
-                        const elevation = utils.getElevationAtGPS(testLon, testLat);
-                        // console.log(`📍 Adjusted anchor elevation: ${elevation?.toFixed(2)}m`);
-                      });
-                    }}
-                    style={{ 
-                      fontSize: '9px', 
-                      padding: '2px 4px', 
-                      marginTop: '2px',
-                      width: '100%',
-                      backgroundColor: 'rgba(255, 200, 0, 0.3)',
-                      border: '1px solid rgba(255, 200, 0, 0.5)',
-                      color: 'white',
-                      cursor: 'pointer',
-                      borderRadius: '2px'
-                    }}
-                  >
-                    Test Offset
+                    Reset Calibration
                   </button>
-                  <button 
-                    onClick={() => {
-                      import('../../utils/terrainUtils').then(utils => {
-                        // console.log('🧪 Testing area sampling for all anchors...');
-                        utils.testAreaSampling();
-                      });
-                    }}
-                    style={{ 
-                      fontSize: '9px', 
-                      padding: '2px 4px', 
-                      backgroundColor: 'rgba(0, 150, 255, 0.3)',
-                      border: '1px solid rgba(0, 150, 255, 0.5)',
-                      color: 'white',
-                      cursor: 'pointer',
-                      borderRadius: '2px'
-                    }}
-                  >
-                    Test Area Sample
-                  </button>
-                  
                 </div>
-
-                </div>)}
-              
-              </div>
+              </div>)}
+            </div>
             
               
             )}
@@ -1110,6 +891,108 @@ const handleTouchEnd = (event: TouchEvent) => {
           </div>
         </div>
       )}
+      
+      {isInitialized && (
+        <div style={{
+          position: 'absolute',
+          bottom: '15vh',
+          left: '50%',
+          width: '90vw',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          backdropFilter: 'blur(20px)',
+          color: 'white',
+          padding: '0',
+          borderRadius: '1rem',
+          fontSize: '0.8rem',
+          fontFamily: 'monospace',
+          
+          zIndex: 1025,
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
+          <div>Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}°</div>
+          <div>Scale: {formatWithSign(accumulatedTransforms.scale, 2)}</div>
+          <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
+        {deviceOrientation ? (
+          <>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <span>α: {deviceOrientation.alpha?.toFixed(1)}°</span>
+              <span>β: {deviceOrientation.beta?.toFixed(1)}°</span>
+              <span>γ: {deviceOrientation.gamma?.toFixed(1)}°</span>
+            </div>
+          </>
+        ) : (
+          <div>Orientation: Desktop</div>
+        )}
+
+
+        <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
+        <div style={{ color: 'yellow', fontSize: '0.7rem' }}>USE BUTTONS TO MOVE ANCHOR: [{(adjustedAnchorPosition || anchorPosition)[0].toFixed(6)}, {(adjustedAnchorPosition || anchorPosition)[1].toFixed(6)}]</div>
+
+        {(() => {
+          const buttonStyle = {
+            fontSize: '20px',
+            padding: '8px 12px',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            border: 'none',
+            borderRadius: '0.5rem',
+            color: 'white',
+            cursor: 'pointer'
+          };
+          
+          return (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+              <button onClick={() => updateAnchorPosition(-0.00001, 0)} style={buttonStyle}>WEST</button>
+              <button onClick={() => updateAnchorPosition(0.00001, 0)} style={buttonStyle}>EAST</button>
+              <button onClick={() => updateAnchorPosition(0, 0.00001)} style={buttonStyle}>NORTH</button>
+              <button onClick={() => updateAnchorPosition(0, -0.00001)} style={buttonStyle}>SOUTH</button>
+            </div>
+          );
+        })()}
+        {/* ELEVATION */}
+        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
+          <div style={{ color: 'yellow', fontSize: '10px' }}>ELEVATION:  {((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: {manualElevationOffset.toFixed(3)}m</div>
+          
+          {(() => {
+            const elevButtonStyle = {
+            fontSize: '20px',
+            padding: '8px 12px',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            border: 'none',
+            borderRadius: '0.5rem',
+            color: 'white',
+            cursor: 'pointer'
+            };
+            
+            return (
+              <div style={{  display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem'  }}>
+                <button onClick={() => updateElevationOffset(-0.1)} style={elevButtonStyle}>-0.1m</button>
+                <button onClick={() => updateElevationOffset(-0.01)} style={elevButtonStyle}>-1cm</button>
+                <button onClick={() => updateElevationOffset(0.01)} style={elevButtonStyle}>+1cm</button>
+                <button onClick={() => updateElevationOffset(0.1)} style={elevButtonStyle}>+0.1m</button>
+              </div>
+            );
+          })()}
+      
+        </div>
+
+
+         
+
+
+      </div>
+
+
+
+
+        </div>
+        
+
+        
+      )}
+
+      
       
       {/* Child components (AR objects will be added here) */}
       {children}
