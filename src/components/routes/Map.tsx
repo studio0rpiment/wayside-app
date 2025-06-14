@@ -31,10 +31,10 @@ const Map: React.FC = () => {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const progressTrackerRef = useRef<ExperienceProgressTrackerRef>(null);
   
-  console.log('🗺️ Map created progressTrackerRef:', progressTrackerRef);
+  // console.log('🗺️ Map created progressTrackerRef:', progressTrackerRef);
 
     useEffect(() => {
-    console.log('🗺️ Map progressTrackerRef.current changed:', progressTrackerRef.current);
+    // console.log('🗺️ Map progressTrackerRef.current changed:', progressTrackerRef.current);
   }, [progressTrackerRef.current]);
 
   // State that should trigger UI updates
@@ -142,25 +142,6 @@ const Map: React.FC = () => {
   return modalState.isOpen ? getCurrentRadius() : 0;
 }, [modalState.isOpen, getCurrentRadius]);
 
-
-  //**************EXPERIENCE TRACKER REF */
-// const handleMarkExperienceComplete = useCallback((experienceId: string) => {
-//   console.log('🗺️ Map.handleMarkExperienceComplete called with:', experienceId);
-//   if (progressTrackerRef.current) {
-//     console.log('🗺️ Calling progressTrackerRef.markComplete with:', experienceId);
-//     progressTrackerRef.current.markComplete(experienceId);
-//   } else {
-//     console.log('🗺️ progressTrackerRef.current is null!');
-//   }
-// }, []);
-
-  // Handle progress tracker experience completion
-  // const handleExperienceComplete = useCallback((experienceId: string, totalCompleted: number) => {
-  //   // Progress tracker will handle its own dot updates when completion state changes
-  //   console.log(`✅ Experience "${experienceId}" completed. Total: ${totalCompleted}`);
-  // }, []); // No dependencies needed
-  
-  // Get geofence info for the current modal point - stabilize this function
   
 const modalGeofenceInfo = React.useMemo(() => {
   // Only calculate when modal is actually open

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import OptimizedPointCloudMorphingEngine from '../common/OptimizedPointCloudMorphingEngine';
+import OptimizedPointCloudMorphingEngine from '../engines/OptimizedPointCloudMorphingEngine';
 
 // Import the bounding box data
 // Import the bounding box data - USE THE COMPLETE DATA SET

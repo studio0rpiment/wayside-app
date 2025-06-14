@@ -20,7 +20,7 @@ interface ArCameraProps {
   onArObjectPlaced?: (position: THREE.Vector3) => void;
   onOrientationUpdate?: (orientation: { alpha: number; beta: number; gamma: number }) => void;
   onSceneReady?: (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => void; 
-  onModelRotate?: (deltaX: number, deltaY: number) => void;
+  onModelRotate?: (deltaX: number, deltaY: number, deltaZ: number) => void;
   onModelScale?: (scaleFactor: number) => void;
   onModelReset?: () => void;
   onSwipeUp?: () => void;
@@ -60,6 +60,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const lastTouchX = useRef(0);
   const lastTouchY = useRef(0);
   const initialPinchDistance = useRef(0);
+  const initialTwoFingerAngle = useRef(0);
 
   
 
@@ -439,6 +440,8 @@ if (!userPosition || !anchorPosition) {
           touch2.clientX - touch1.clientX,
           touch2.clientY - touch1.clientY
         );
+        initialTwoFingerAngle.current = Math.atan2(
+        touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX);
       }
 
       // Multi-tap detection - SIMPLIFIED
@@ -469,7 +472,7 @@ const handleTouchMove = (event: TouchEvent) => {
     // Only rotate if significant movement
     if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
       if (onModelRotate) {
-        onModelRotate(deltaX * 0.01, deltaY * 0.01);
+        onModelRotate(deltaX * 0.01, deltaY * 0.01, 0);
       }
     }
     
@@ -492,6 +495,13 @@ const handleTouchMove = (event: TouchEvent) => {
         onModelScale(scaleChange);
       }
     }
+      const currentAngle = Math.atan2(
+      touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX);
+      const rotationDelta = currentAngle - initialTwoFingerAngle.current;
+        if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
+          onModelRotate(0, 0, rotationDelta * 0.5);
+      }
+
   }
   
   event.preventDefault();

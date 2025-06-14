@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 // import PointCloudMorphingEngine from '../common/PointCloudMorphingEngine'
 // import boundingBoxData from '../../data/seasons-boxdimensions.json'
-import OptimizedPointCloudMorphingEngine from '../common/OptimizedPointCloudMorphingEngine';
+import OptimizedPointCloudMorphingEngine from '../engines/OptimizedPointCloudMorphingEngine';
 
 
 

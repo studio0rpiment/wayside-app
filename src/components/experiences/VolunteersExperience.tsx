@@ -16,7 +16,8 @@ interface VolunteersExperienceProps {
   arScene?: THREE.Scene;
   arCamera?: THREE.PerspectiveCamera;
   coordinateScale?: number;
-  onModelRotate?: (handler: (deltaX: number, deltaY: number) => void) => void;
+    onModelRotate?: (handler: (deltaX: number, deltaY: number, deltaZ: number) => void) => void;
+
   onModelScale?: (handler: (scaleFactor: number) => void) => void;
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
@@ -45,6 +46,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   const controlsRef = useRef<OrbitControls | null>(null);
   const initialScaleRef = useRef<number>(1);
   
+  
   // Store original geometry for density/size adjustments
   const originalGeometryRef = useRef<THREE.BufferGeometry | null>(null);
   
@@ -62,6 +64,14 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
 
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
+    // Use known dimensions from Cloud Compare - NO expensive bounding box calculation
+  const knownMaxDim = 14.8577; // Y dimension from Cloud Compare
+  const knownCenter = new THREE.Vector3(-1.545095, -1.040582, 4.833244);
+
+    //SCALE
+  const scale = 2.5/ knownMaxDim;
+  initialScaleRef.current = scale; 
+  const initialScale = initialScaleRef.current;
 
   // Point cloud configuration (fixed as requested)
   const POINT_SIZE = 2; // Reduced from 1.0 - pixels can be very large
@@ -105,30 +115,33 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   useEffect(() => {
     // Register rotation handler
     if (onModelRotate) {
-      onModelRotate((deltaX: number, deltaY: number) => {
+      onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
         if (modelRef.current) {
           modelRef.current.rotation.y += deltaX;
           modelRef.current.rotation.x += deltaY;
-        }
-      });
+          if (deltaZ !== 0) {
+            modelRef.current.rotation.z += deltaZ;
+          } 
+         }
+       });
     }
 
-    // Register scale handler
-    if (onModelScale) {
-      onModelScale((scaleFactor: number) => {
-        if (modelRef.current) {
-          const currentScale = modelRef.current.scale.x;
-          const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
-         console.log('🔍 Scale handler called AFTER RESET:', {
-            scaleFactor,
-            currentScale: currentScale.toFixed(3),
-            newScale: newScale.toFixed(3),
-            timestamp: new Date().getTime()
-          });
-          modelRef.current.scale.setScalar(newScale);
-        }
-      });
-    }
+    // // Register scale handler
+    // if (onModelScale) {
+    //   onModelScale((scaleFactor: number) => {
+    //     if (modelRef.current) {
+    //       const currentScale = modelRef.current.scale.x;
+    //       const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
+    //      console.log('🔍 Scale handler called AFTER RESET:', {
+    //         scaleFactor,
+    //         currentScale: currentScale.toFixed(3),
+    //         newScale: newScale.toFixed(3),
+    //         timestamp: new Date().getTime()
+    //       });
+    //       modelRef.current.scale.setScalar(newScale);
+    //     }
+    //   });
+    // }
 
     // Register reset handler
     if (onModelReset) {
@@ -137,8 +150,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
         if (modelRef.current) {
           // Reset rotation and scale
           modelRef.current.rotation.set(-Math.PI / 2, 0, 0); // Keep Z-up to Y-up conversion
-          // Reset to initial calculated scale, not 1
-            const initialScale = initialScaleRef.current;
+        
             modelRef.current.scale.set(initialScale, initialScale, initialScale);
           
           // Reset position based on current mode
@@ -261,48 +273,22 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     }
 
     // Create instructions
-    const instructions = document.createElement('div');
-    instructions.style.position = 'absolute';
-    instructions.style.bottom = '20px';
-    instructions.style.left = '50%';
-    instructions.style.transform = 'translateX(-50%)';
-    instructions.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    instructions.style.color = 'white';
-    instructions.style.padding = '12px 20px';
-    instructions.style.borderRadius = '8px';
-    instructions.style.textAlign = 'center';
-    instructions.style.fontFamily = 'var(--font-rigby)';
-    instructions.style.fontWeight = '400';
-    instructions.style.zIndex = '1002';
-    instructions.innerHTML = 'Explore the volunteers point cloud. Tap continue when ready.';
-    container.appendChild(instructions);
+    // const instructions = document.createElement('div');
+    // instructions.style.position = 'absolute';
+    // instructions.style.bottom = '20px';
+    // instructions.style.left = '50%';
+    // instructions.style.transform = 'translateX(-50%)';
+    // instructions.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    // instructions.style.color = 'white';
+    // instructions.style.padding = '12px 20px';
+    // instructions.style.borderRadius = '8px';
+    // instructions.style.textAlign = 'center';
+    // instructions.style.fontFamily = 'var(--font-rigby)';
+    // instructions.style.fontWeight = '400';
+    // instructions.style.zIndex = '1002';
+    // instructions.innerHTML = 'Explore the volunteers point cloud. Tap continue when ready.';
+    // container.appendChild(instructions);
 
-    // Create continue button
-    const continueButton = document.createElement('button');
-    continueButton.style.position = 'absolute';
-    continueButton.style.bottom = '20px';
-    continueButton.style.right = '20px';
-    continueButton.style.backgroundColor = 'rgba(0, 120, 0, 0.7)';
-    continueButton.style.color = 'white';
-    continueButton.style.padding = '10px 15px';
-    continueButton.style.borderRadius = '8px';
-    continueButton.style.border = 'none';
-    continueButton.style.zIndex = '1002';
-    continueButton.innerHTML = 'Continue';
-
-    continueButton.onclick = () => {
-      if (onNext) {
-        onNext();
-      }
-    };
-    
-    continueButton.addEventListener('touchstart', () => {
-      if (onNext) {
-        onNext();
-      }
-    }, { passive: false });
-
-    container.appendChild(continueButton);
 
     // Initialize Three.js components
     let scene: THREE.Scene;
@@ -423,9 +409,7 @@ loader.load(
     const pointCloud = new THREE.Points(sampledGeometry, material);
     modelRef.current = pointCloud;
     
-    // Use known dimensions from Cloud Compare - NO expensive bounding box calculation
-    const knownMaxDim = 14.8577; // Y dimension from Cloud Compare
-    const knownCenter = new THREE.Vector3(-1.545095, -1.040582, 4.833244);
+
     
     console.log('📐 Using known model dimensions:', {
       maxDim: knownMaxDim,
@@ -437,9 +421,7 @@ loader.load(
     pointCloud.position.y = -knownCenter.y;
     pointCloud.position.z = -knownCenter.z;
 
-    // Calculate and apply scale using known max dimension
-    const scale = (isArMode ? 2 : 8) / knownMaxDim;
-    initialScaleRef.current = scale; // Store for reset function
+
     pointCloud.scale.set(scale, scale, scale);
     
     console.log('🔧 Applied scale:', scale.toFixed(3));
@@ -451,15 +433,13 @@ loader.load(
     if (isArMode && arPosition) {
       const currentOverride = (window as any).arTestingOverride ?? true;
       
-      if (currentOverride) {
-        // Add override offset to centered position
-        pointCloud.position.add(new THREE.Vector3(0, 0, -5));
-        console.log('🎯 Volunteers positioned at TESTING override location');
-      } else {
-        // Add AR anchor offset to centered position  
-        pointCloud.position.add(arPosition);
-        console.log('🎯 Volunteers positioned at AR anchor location');
-      }
+    if (currentOverride) {
+            modelRef.current.position.set(0, 0, -5);
+            console.log('🔄 Reset: Volunteers positioned at override location');
+          } else {
+            modelRef.current.position.copy(arPosition);
+            console.log('🔄 Reset: Volunteers positioned at AR anchor location');
+          }
     } else {
       // Add standalone offset to centered position
       pointCloud.position.add(new THREE.Vector3(0, 0, -3));
@@ -533,21 +513,21 @@ loader.load(
     window.addEventListener('resize', handleResize);
     
     // Animation loop (no model animations needed for point clouds)
-    const animate = function () {
-      if (!isMounted) return;
+    // const animate = function () {
+    //   if (!isMounted) return;
       
-      requestAnimationFrame(animate);
+    //   requestAnimationFrame(animate);
       
-      if (controls) {
-        controls.update();
-      }
+    //   if (controls) {
+    //     controls.update();
+    //   }
       
-      if (renderer && scene && camera) {
-        renderer.render(scene, camera);
-      }
-    };
+    //   if (renderer && scene && camera) {
+    //     renderer.render(scene, camera);
+    //   }
+    // };
     
-    animate();
+    // animate();
     
     // Cleanup function
     return () => {

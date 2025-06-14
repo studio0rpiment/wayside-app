@@ -237,47 +237,84 @@ function getPixelElevation(pixelX: number, pixelY: number, sampleRadius: number 
   
   return finalElevation;
 }
-/**
- * Get terrain elevation at GPS coordinates
- * Returns elevation in meters above sea level, or null if outside bounds
- */
-export function getElevationAtGPS(longitude: number, latitude: number): number | null {
-  if (!heightmapImageData) {
-    console.warn('⚠️ Heightmap not loaded. Call loadHeightmap() first.');
-    return null;
-  }
-  
-  try {
-    // Convert GPS to state plane
-    const { x, y } = gpsToStatePlane(longitude, latitude);
-    
-    // Check if coordinates are within heightmap bounds
-    const { extentMeters } = TERRAIN_CONFIG;
-    if (x < extentMeters.minX || x > extentMeters.maxX || 
-        y < extentMeters.minY || y > extentMeters.maxY) {
-      console.warn(`📍 Coordinates outside heightmap bounds: ${longitude}, ${latitude}`);
-      return null;
-    }
-    
-    
 
-    // Convert to pixel coordinates
-    const { pixelX, pixelY } = statePlaneToPixel(x, y);
-    
-    // Get elevation from pixel
-    const elevation = getPixelElevation(pixelX, pixelY);
-    
-    if (elevation !== null) {
-      // console.log(`🗺️ GPS (${longitude.toFixed(6)}, ${latitude.toFixed(6)}) -> Elevation: ${elevation.toFixed(2)}m`);
+//********** */
+    function getRegionalFallbackElevation(longitude: number, latitude: number): number {
+      // Kenilworth Aquatic Gardens area - use realistic elevation
+      const kenilworthBounds = {
+        minLon: -76.95,
+        maxLon: -76.94,
+        minLat: 38.910,
+        maxLat: 38.915
+      };
+      
+      if (longitude >= kenilworthBounds.minLon && longitude <= kenilworthBounds.maxLon &&
+          latitude >= kenilworthBounds.minLat && latitude <= kenilworthBounds.maxLat) {
+        return 2.5; // Actual Kenilworth pond elevation
+      }
+      
+      // Everywhere else - just return something reasonable to prevent crashes
+      return 10.0; // Arbitrary but reasonable elevation for testing
+    }/**
+ * Get terrain elevation at GPS coordinates with fallback for remote testing
+ * Returns elevation in meters above sea level, or fallback value if outside bounds
+ */
+    export function getElevationAtGPS(
+      longitude: number, 
+      latitude: number, 
+      allowFallback: boolean = true
+    ): number | null {
+      if (!heightmapImageData) {
+        if (allowFallback) {
+          console.warn('⚠️ Heightmap not loaded, using fallback elevation');
+          return getRegionalFallbackElevation(longitude, latitude);
+        }
+        console.warn('⚠️ Heightmap not loaded. Call loadHeightmap() first.');
+        return null;
+      }
+      
+      try {
+        // Convert GPS to state plane
+        const { x, y } = gpsToStatePlane(longitude, latitude);
+        
+        // Check if coordinates are within heightmap bounds
+        const { extentMeters } = TERRAIN_CONFIG;
+        if (x < extentMeters.minX || x > extentMeters.maxX || 
+            y < extentMeters.minY || y > extentMeters.maxY) {
+          
+          if (allowFallback) {
+            console.warn(`📍 Coordinates outside heightmap bounds: ${longitude}, ${latitude} - using regional fallback`);
+            return getRegionalFallbackElevation(longitude, latitude);
+          } else {
+            console.warn(`📍 Coordinates outside heightmap bounds: ${longitude}, ${latitude}`);
+            return null;
+          }
+        }
+        
+        // Convert to pixel coordinates
+        const { pixelX, pixelY } = statePlaneToPixel(x, y);
+        
+        // Get elevation from pixel
+        const elevation = getPixelElevation(pixelX, pixelY);
+        
+        if (elevation !== null) {
+          // console.log(`🗺️ GPS (${longitude.toFixed(6)}, ${latitude.toFixed(6)}) -> Elevation: ${elevation.toFixed(2)}m`);
+        } else if (allowFallback) {
+          console.warn(`⚠️ Pixel elevation failed, using regional fallback for ${longitude}, ${latitude}`);
+          return getRegionalFallbackElevation(longitude, latitude);
+        }
+        
+        return elevation;
+        
+      } catch (error) {
+        if (allowFallback) {
+          console.warn('❌ Error getting elevation, using fallback:', error);
+          return getRegionalFallbackElevation(longitude, latitude);
+        }
+        console.error('❌ Error getting elevation:', error);
+        return null;
+      }
     }
-    
-    return elevation;
-    
-  } catch (error) {
-    console.error('❌ Error getting elevation:', error);
-    return null;
-  }
-}
 
 /**
  * Enhanced version of gpsToThreeJsPosition that uses terrain elevation
@@ -683,6 +720,8 @@ export function debugPixelArea(centerX: number, centerY: number, radius: number 
     console.warn('⚠️ Heightmap not loaded');
     return;
   }
+
+  
   
   // console.log(`🔍 SAMPLING ${radius*2+1}x${radius*2+1} AREA AROUND PIXEL (${centerX}, ${centerY})`);
   // console.log('═'.repeat(60));
@@ -762,4 +801,11 @@ export function testAreaSampling(): void {
     const gpsElevation = getElevationAtGPS(anchor.coordinates[0], anchor.coordinates[1]);
     // console.log(`  GPS elevation lookup: ${gpsElevation?.toFixed(2)}m`);
   });
+}
+
+export { getPixelElevation, gpsToStatePlane, statePlaneToPixel };
+
+// Export heightmap data access
+export function getHeightmapImageData(): ImageData | null {
+  return heightmapImageData;
 }

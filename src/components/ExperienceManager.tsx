@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import * as THREE from 'three';
 import ArCameraComponent from '../components/ar/ArCameraComponent';
 import { useSystemOptimization } from '../utils/systemOptimization';
-import { MapOutlined } from '@mui/icons-material';
+
 
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
@@ -15,7 +15,8 @@ import MacExperience from './experiences/MacExperience';
 import LilyExperience from './experiences/LilyExperience';
 import CattailExperience from './experiences/CattailExperience';
 import LotusExperience from './experiences/LotusExperience';
-import { ExperienceProgressTrackerRef } from './common/ExperienceProgressTracker';
+
+import MapOutlined from '@mui/icons-material/MapOutlined';
 
 // Define experience types (same as before)
 export type ExperienceType = 'cube' | 'waterRise' | 'lotus' | 'mac' | '2030-2105' | '1968' | '2200_bc' | 'volunteers' | 'helen_s' | 'lily' | 'cattail';
@@ -67,7 +68,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   const [experienceStartTime, setExperienceStartTime] = useState<number | null>(null);
   const [hasMetMinimumTime, setHasMetMinimumTime] = useState(false);
 
-  console.log("ExperienceReady Init" , experienceReady)
+  // console.log("ExperienceReady Init" , experienceReady)
   
   // Use refs to store the current gesture handlers - this prevents recreation
   const gestureHandlersRef = useRef<{
@@ -79,14 +80,14 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   }>({});
 
   useEffect(() => {
-  console.log('🔄 ExperienceManager effect - checking what changed:', {
-    isOpen,
-    experienceType,
-    userPosition: userPosition?.slice(0, 2),
-    anchorPosition: anchorPosition?.slice(0, 2),
-    anchorElevation,
-    geofenceId
-  });
+  // console.log('🔄 ExperienceManager effect - checking what changed:', {
+  //   isOpen,
+  //   experienceType,
+  //   userPosition: userPosition?.slice(0, 2),
+  //   anchorPosition: anchorPosition?.slice(0, 2),
+  //   anchorElevation,
+  //   geofenceId
+  // });
 }, [isOpen, experienceType, userPosition, anchorPosition, anchorElevation, geofenceId]);
 
 // ✅ Reset state when modal opens/closes - keep this unchanged
@@ -119,23 +120,6 @@ useEffect(() => {
   };
 }, []); // ✅ No dependencies - only cleanup when component truly unmounts
 
-
-  // // Start timer when experience becomes ready
-  // useEffect(() => {
-  //   if (experienceReady && !experienceStartTime) {
-  //     const startTime = Date.now();
-  //     setExperienceStartTime(startTime);
-  //     console.log('⏱️ Experience engagement timer started');
-      
-  //     // Set minimum time flag after 5 seconds
-  //     const timer = setTimeout(() => {
-  //       setHasMetMinimumTime(true);
-  //       console.log('✅ Minimum engagement time (5s) reached');
-  //     }, 5000);
-      
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [experienceReady, experienceStartTime]);
   
   const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {
     console.log('🎯 AR object placed at:', position);
@@ -144,28 +128,8 @@ useEffect(() => {
     setArInitialized(true);
     setExperienceReady(true);
 
-    console.log('✅ setExperienceReady(true) called');
+    // console.log('✅ setExperienceReady(true) called');
   }, []);
-  
-//  const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {
-//   console.log('🎯 AR object placed at:', position);
-  
-//   // ✅ SIMPLIFIED: Only prevent duplicate calls if position is exactly the same
-//   // if (arObjectPosition && arObjectPosition.equals(position)) {
-//   //   console.log('🔄 AR object position exactly the same, skipping update');
-//   //   return;
-//   // }
-  
-//   // ✅ ALWAYS allow the first position to be set
-//   setArObjectPosition(position);
-//   setArInitialized(true);
-//   setExperienceReady(true);
-  
-//   // // Auto-start experience after AR is positioned
-//   // setTimeout(() => {
-//   //   setExperienceReady(true);
-//   // }, 1000);
-// }, [arObjectPosition]);
   
   // Handler for orientation updates (for debugging)
   const handleOrientationUpdate = useCallback((orientation: { alpha: number; beta: number; gamma: number }) => {
@@ -187,16 +151,16 @@ useEffect(() => {
 
      const timer = setTimeout(() => {
       setHasMetMinimumTime(true);
-      console.log('✅ Minimum engagement time (5s) reached');
+      // console.log('✅ Minimum engagement time (5s) reached');
     }, 5000);
 }, [experienceStartTime]);
 
   const handleArSceneReady = useCallback((scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
-    console.log('🎯 AR scene received in ExperienceManager');
+    // console.log('🎯 AR scene received in ExperienceManager');
     
     // Prevent duplicate calls
     if (arScene === scene && arCamera === camera) {
-      console.log('🔄 AR scene unchanged, skipping update');
+      // console.log('🔄 AR scene unchanged, skipping update');
       return;
     }
     
@@ -265,7 +229,7 @@ useEffect(() => {
         
         // Mark as complete if minimum time was met
         if (hasMetMinimumTime && geofenceId) {
-          console.log(`✅ Experience "${geofenceId}" completed with sufficient engagement time`);
+          // console.log(`✅ Experience "${geofenceId}" completed with sufficient engagement time`);
           document.dispatchEvent(new CustomEvent('experience-completed', {
             detail: { experienceId: geofenceId }
           }));

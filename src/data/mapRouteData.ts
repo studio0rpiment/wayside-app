@@ -83,7 +83,8 @@ export const routePointsData: RoutePointCollection = {
         },
         // Updated coordinates from new data
         'arAnchor': {
-          'coordinates': [-76.942076, 38.912485],
+          'coordinates': [-76.94269537925722, 38.912991765346206],
+
           'destination': [0,0],
           'elevation': 2.0,        // Light gray area - low elevation
           'orientation': 180,      // Facing south

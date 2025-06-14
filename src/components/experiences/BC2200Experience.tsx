@@ -1,33 +1,36 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
+import { getAssetPath } from '../../utils/assetPaths';
+
+// Import PLYLoader separately to avoid Vite optimization issues
+import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import AnimatedPointCloudEngine from '../common/AnimatedPointCloudEngine';
 
+const SHOW_DEBUG_PANEL = false;
 
-const SHOW_DEBUG_PANEL = true;
 
 interface BC2200ExperienceProps {
   onClose: () => void;
+  onNext?: () => void;
   arPosition?: THREE.Vector3;
   arScene?: THREE.Scene;
   arCamera?: THREE.PerspectiveCamera;
   coordinateScale?: number;
-  userPosition?: [number, number];
-  onModelRotate?: (handler: (deltaX: number, deltaY: number) => void) => void;
+  onModelRotate?: (handler: (deltaX: number, deltaY: number, deltaZ: number) => void) => void;
   onModelScale?: (handler: (scaleFactor: number) => void) => void;
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
-  onExperienceReady?: () => void;
+   onExperienceReady?: () => void;
 }
 
-const BC2200Experience: React.FC<BC2200ExperienceProps> = ({
-  onClose,
+const BC2200Experience: React.FC<BC2200ExperienceProps> = ({ 
+  onClose, 
+  onNext,
   arPosition,
   arScene,
   arCamera,
   coordinateScale = 1.0,
-  userPosition,
   onModelRotate,
   onModelScale,
   onModelReset,
@@ -35,100 +38,92 @@ const BC2200Experience: React.FC<BC2200ExperienceProps> = ({
   onSwipeDown,
   onExperienceReady
 }) => {
+
+
   // Refs for Three.js objects
-  const animatedPointCloudRef = useRef<THREE.Points | null>(null);
-  const animatedGroupRef = useRef<THREE.Group | null>(null);
+  const modelRef = useRef<THREE.Points | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const initialScaleRef = useRef<number>(1);
-
   
- 
+  // Store original geometry for density/size adjustments
+  const originalGeometryRef = useRef<THREE.BufferGeometry | null>(null);
   
   // Store initial camera position for reset
   const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
-  //Destination lonlat
-  const BC2200_DESTINATION: [number, number] = [-76.94867670536043, 38.91237400212842];
-
+  
   // State to track override status
   const [arTestingOverride, setArTestingOverride] = useState(() => {  
     return (window as any).arTestingOverride ?? true;
   });
 
-  // Animation state
+  // Point cloud state
   const [hasPointCloud, setHasPointCloud] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [currentFrame, setCurrentFrame] = useState(0);
-  const [animationProgress, setAnimationProgress] = useState(0);
+  const [pointCount, setPointCount] = useState(0);
+
+const knownMaxDim = 509.362; // Y dimension from bounding box
+const knownCenter = new THREE.Vector3(21.945226669312, -23.668239593506, 60.161674499512);
+
 
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
 
-
-const destinationPosition = BC2200_DESTINATION;
+  //SCALE
+  const scale = 2.5/ knownMaxDim;
+  initialScaleRef.current = scale; 
+  const initialScale = initialScaleRef.current;
   
 
+  // Point cloud configuration (fixed as requested)
+  const POINT_SIZE = 2; // Reduced from 1.0 - pixels can be very large
+  const POINT_DENSITY = 0.7;
 
-  // Listen for override changes (same pattern as other experiences)
+  // Listen for override changes
   useEffect(() => {
     const checkOverride = () => {
       const currentOverride = (window as any).arTestingOverride ?? true;
       if (currentOverride !== arTestingOverride) {
         setArTestingOverride(currentOverride);
-        console.log('🛶 BC2200Experience override changed:', currentOverride);
+        console.log('🎯 BC2200Experience override changed:', currentOverride);
         
-        if (animatedGroupRef.current && isArMode && arPosition) {
+        if (modelRef.current && isArMode && arPosition) {
           if (currentOverride) {
-            console.log('🎯 Setting group override position (0, 0, -5)');
-            animatedGroupRef.current.position.set(0, 0, -5);
+            console.log('🎯 Setting override position (0, 0, -5)');
+            modelRef.current.position.set(0, 0, -5);
           } else {
-            console.log('🎯 Setting group anchor position:', arPosition);
-            animatedGroupRef.current.position.copy(arPosition);
+            console.log('🎯 Setting anchor position:', arPosition);
+            modelRef.current.position.copy(arPosition);
           }
           
           // Force visual update
-          animatedGroupRef.current.visible = false;
+          modelRef.current.visible = false;
           setTimeout(() => {
-            if (animatedGroupRef.current) {
-              animatedGroupRef.current.visible = true;
+            if (modelRef.current) {
+              modelRef.current.visible = true;
             }
           }, 50);
           
-          console.log('🎯 Group position after change:', animatedGroupRef.current.position);
+          console.log('🎯 Model position after change:', modelRef.current.position);
         }
       }
     };
     
     const interval = setInterval(checkOverride, 100);
     return () => clearInterval(interval);
-  }, [arTestingOverride]);
-
-  // Separate effect for position updates when AR data changes
-  useEffect(() => {
-    if (animatedGroupRef.current && isArMode && arPosition) {
-      const currentOverride = (window as any).arTestingOverride ?? true;
-      
-      if (currentOverride) {
-        animatedGroupRef.current.position.set(0, 0, -5);
-      } else {
-        animatedGroupRef.current.position.copy(arPosition);
-      }
-      
-      console.log('🎯 Position updated due to AR change:', animatedGroupRef.current.position);
-    }
-  }, [isArMode, arPosition]);
+  }, [arTestingOverride, isArMode, arPosition]);
 
   // Register gesture handlers on mount
   useEffect(() => {
     // Register rotation handler
     if (onModelRotate) {
-      onModelRotate((deltaX: number, deltaY: number) => {
-        if (animatedGroupRef.current) {
-          const currentPosition = animatedGroupRef.current.position.clone();
-          animatedGroupRef.current.rotation.y += deltaX;
-          animatedGroupRef.current.rotation.x += deltaY;
-          animatedGroupRef.current.position.copy(currentPosition);
+      onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
+        if (modelRef.current) {
+          modelRef.current.rotation.y += deltaX;
+          modelRef.current.rotation.x += deltaY;
+          if (deltaZ !== 0) {
+            modelRef.current.rotation.z += deltaZ;
+          }
         }
       });
     }
@@ -136,15 +131,16 @@ const destinationPosition = BC2200_DESTINATION;
     // Register scale handler
     if (onModelScale) {
       onModelScale((scaleFactor: number) => {
-        if (animatedGroupRef.current) {
-          const currentScale = animatedGroupRef.current.scale.x;
+        if (modelRef.current) {
+          const currentScale = modelRef.current.scale.x;
           const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
-          console.log('🛶 BC2200 Scale handler called:', {
+         console.log('🔍 Scale handler called AFTER RESET:', {
             scaleFactor,
             currentScale: currentScale.toFixed(3),
-            newScale: newScale.toFixed(3)
+            newScale: newScale.toFixed(3),
+            timestamp: new Date().getTime()
           });
-          animatedGroupRef.current.scale.setScalar(newScale);
+          modelRef.current.scale.setScalar(newScale);
         }
       });
     }
@@ -152,29 +148,32 @@ const destinationPosition = BC2200_DESTINATION;
     // Register reset handler
     if (onModelReset) {
       onModelReset(() => {
-        console.log('🔄 BC2200 RESET HANDLER CALLED');
-        if (animatedGroupRef.current) {
-          animatedGroupRef.current.rotation.set(0, 0, 0);
-          const initialScale = initialScaleRef.current;
-          animatedGroupRef.current.scale.set(initialScale, initialScale, initialScale);
+        console.log('🔄 RESET HANDLER CALLED - Starting reset...');
+        if (modelRef.current) {
+          // Reset rotation and scale
+          modelRef.current.rotation.set(-Math.PI / 2, 0, Math.PI / 2); // Keep Z-up to Y-up conversion
+         
+          
+            
+          modelRef.current.scale.set(initialScale, initialScale, initialScale);
           
           // Reset position based on current mode
           if (isArMode && arPosition) {
             const currentOverride = (window as any).arTestingOverride ?? true;
             
             if (currentOverride) {
-              animatedGroupRef.current.position.set(0, 0, -5);
+              modelRef.current.position.set(0, 0, -5);
               console.log('🔄 Reset: BC2200 positioned at override location');
             } else {
-              animatedGroupRef.current.position.copy(arPosition);
+              modelRef.current.position.copy(arPosition);
               console.log('🔄 Reset: BC2200 positioned at AR anchor location');
             }
           } else {
-            animatedGroupRef.current.position.set(0, 0, -3);
+            modelRef.current.position.set(0, 0, -3);
             console.log('🔄 Reset: BC2200 positioned at standalone location');
           }
           
-          console.log('🔄 BC2200 reset completed');
+          console.log('🔄 Model reset completed - Scale is now:', modelRef.current.scale.x);
         }
       });
     }
@@ -182,52 +181,86 @@ const destinationPosition = BC2200_DESTINATION;
     // Register swipe handlers
     if (onSwipeUp) {
       onSwipeUp(() => {
-        console.log('👆 Swipe up detected on BC2200 (animation playing)');
+        console.log('👆 Swipe up detected on BC2200');
       });
     }
 
     if (onSwipeDown) {
       onSwipeDown(() => {
-        console.log('👇 Swipe down detected on BC2200 (animation playing)');
+        console.log('👇 Swipe down detected on BC2200');
       });
     }
-  }, []);
+  }, []); // Empty dependency array - register once on mount
 
-  // Callback functions for AnimatedPointCloudEngine
-  const handleModelLoaded = (pointCloud: THREE.Points) => {
-    animatedPointCloudRef.current = pointCloud;
+  // Geometry sampling function (ported from CodePen)
+  const sampleGeometry = (geometry: THREE.BufferGeometry, density: number): THREE.BufferGeometry => {
+    if (density >= 1.0) return geometry;
     
-    // Get the group reference from the point cloud's parent
-    if (pointCloud.parent && pointCloud.parent instanceof THREE.Group) {
-      animatedGroupRef.current = pointCloud.parent;
-      initialScaleRef.current = animatedGroupRef.current.scale.x;
+    const positions = geometry.attributes.position;
+    const colors = geometry.attributes.color;
+    const normals = geometry.attributes.normal;
+    
+    const totalPoints = positions.count;
+    const sampleCount = Math.floor(totalPoints * density);
+    
+    // Create new geometry
+    const sampledGeometry = new THREE.BufferGeometry();
+    
+    // Sample positions
+    const sampledPositions = new Float32Array(sampleCount * 3);
+    const sampledColors = colors ? new Float32Array(sampleCount * 3) : null;
+    const sampledNormals = normals ? new Float32Array(sampleCount * 3) : null;
+    
+    // Random sampling with consistent distribution
+    const indices = [];
+    for (let i = 0; i < totalPoints; i++) indices.push(i);
+    
+    // Shuffle for random sampling
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
     }
     
-    setHasPointCloud(true);
-    onExperienceReady?.();
-    console.log('✅ BC2200 animated point cloud loaded successfully');
+    // Copy sampled data
+    for (let i = 0; i < sampleCount; i++) {
+      const idx = indices[i];
+      
+      // Positions
+      sampledPositions[i * 3] = positions.getX(idx);
+      sampledPositions[i * 3 + 1] = positions.getY(idx);
+      sampledPositions[i * 3 + 2] = positions.getZ(idx);
+      
+      // Colors
+      if (colors && sampledColors) {
+        sampledColors[i * 3] = colors.getX(idx);
+        sampledColors[i * 3 + 1] = colors.getY(idx);
+        sampledColors[i * 3 + 2] = colors.getZ(idx);
+      }
+      
+      // Normals
+      if (normals && sampledNormals) {
+        sampledNormals[i * 3] = normals.getX(idx);
+        sampledNormals[i * 3 + 1] = normals.getY(idx);
+        sampledNormals[i * 3 + 2] = normals.getZ(idx);
+      }
+    }
+    
+    sampledGeometry.setAttribute('position', new THREE.BufferAttribute(sampledPositions, 3));
+    if (sampledColors) {
+      sampledGeometry.setAttribute('color', new THREE.BufferAttribute(sampledColors, 3));
+    }
+    if (sampledNormals) {
+      sampledGeometry.setAttribute('normal', new THREE.BufferAttribute(sampledNormals, 3));
+    }
+    
+    return sampledGeometry;
   };
 
-  const handleLoadingProgress = (progress: number) => {
-    setLoadingProgress(progress);
-  };
-
-  const handleError = (error: string) => {
-    console.error('❌ BC2200 loading error:', error);
-  };
-
- 
-
-  const handleAnimationLoop = (frameIndex: number, progress: number) => {
-    setCurrentFrame(frameIndex);
-    setAnimationProgress(progress);
-  };
-
-  // Main effect for scene setup (following pattern from other experiences)
+  // Main effect for model loading and scene setup
   useEffect(() => {
     let isMounted = true;
     
-    console.log('🛶 BC2200Experience mode:', isArMode ? 'AR' : 'Standalone');
+    console.log('🎯 BC2200Experience mode:', isArMode ? 'AR' : 'Standalone');
     
     // Create container for standalone mode
     const container = document.createElement('div');
@@ -243,25 +276,7 @@ const destinationPosition = BC2200_DESTINATION;
       document.body.appendChild(container);
     }
 
-    // Create instructions
-    const instructions = document.createElement('div');
-    instructions.style.position = 'absolute';
-    instructions.style.bottom = '20px';
-    instructions.style.left = '50%';
-    instructions.style.transform = 'translateX(-50%)';
-    instructions.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    instructions.style.color = 'white';
-    instructions.style.padding = '12px 20px';
-    instructions.style.borderRadius = '8px';
-    instructions.style.textAlign = 'center';
-    instructions.style.fontFamily = 'var(--font-rigby)';
-    instructions.style.fontWeight = '400';
-    instructions.style.zIndex = '1002';
-    instructions.innerHTML = 'The ancient Anacostia River (2200 BC).';
-    container.appendChild(instructions);
-
-  
-    // Initialize Three.js components (same pattern as other experiences)
+    // Initialize Three.js components
     let scene: THREE.Scene;
     let camera: THREE.PerspectiveCamera;
     let renderer: THREE.WebGLRenderer | null = null;
@@ -273,7 +288,7 @@ const destinationPosition = BC2200_DESTINATION;
       camera = arCamera!;
       sceneRef.current = scene;
       cameraRef.current = camera;
-      console.log('🛶 BC2200Experience using AR scene and camera');
+      console.log('🎯 BC2200Experience using AR scene and camera');
     } else {
       // Standalone Mode: Create own scene/camera/renderer
       scene = new THREE.Scene();
@@ -313,6 +328,166 @@ const destinationPosition = BC2200_DESTINATION;
       scene.add(directionalLight);
     }
 
+    // Create loader
+    const loader = new PLYLoader();
+    
+    // Create loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.style.position = 'absolute';
+    loadingDiv.style.top = '50%';
+    loadingDiv.style.left = '50%';
+    loadingDiv.style.transform = 'translate(-50%, -50%)';
+    loadingDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    loadingDiv.style.color = 'white';
+    loadingDiv.style.padding = '20px';
+    loadingDiv.style.borderRadius = '10px';
+    loadingDiv.style.zIndex = '1003';
+    loadingDiv.innerHTML = '.... Loading ....';
+    container.appendChild(loadingDiv);
+
+    // Load the PLY model
+    const modelPath = getAssetPath('models/BC2200.ply');
+    console.log('🎯 Loading BC2200 PLY model:', modelPath);
+
+    // Fixed PLY loader.load function
+   // Optimized PLY loader using known Cloud Compare dimensions
+loader.load(
+  modelPath,
+  (geometry) => {
+    if (!isMounted) return;
+
+    console.log('📊 Original PLY loaded:', {
+      vertices: geometry.attributes.position.count,
+      hasColors: !!geometry.attributes.color,
+      hasNormals: !!geometry.attributes.normal
+    });
+
+    // Store original geometry
+    originalGeometryRef.current = geometry.clone();
+    
+    // Apply density sampling
+    const sampledGeometry = sampleGeometry(geometry, POINT_DENSITY);
+    const finalPointCount = sampledGeometry.attributes.position.count;
+    
+    console.log('📊 Sampled geometry:', {
+      originalPoints: geometry.attributes.position.count,
+      sampledPoints: finalPointCount,
+      density: POINT_DENSITY,
+      reduction: `${(100 - (finalPointCount / geometry.attributes.position.count) * 100).toFixed(1)}%`
+    });
+
+    // Create point material with simple fixed size
+    const material = new THREE.PointsMaterial({
+      size: 1.0, // Fixed size - scale will handle the visual sizing
+      sizeAttenuation: false, // Keep consistent size
+      vertexColors: !!sampledGeometry.attributes.color
+    });
+
+    // Set fallback color if no vertex colors
+    if (!sampledGeometry.attributes.color) {
+      material.color.setHex(0xff6b6b); // red fallback 
+      console.log('⚠️ No vertex colors found, using fallback color');
+    } else {
+      console.log('✅ Using embedded vertex colors from PLY');
+    }
+
+    // Create point cloud
+    const pointCloud = new THREE.Points(sampledGeometry, material);
+    modelRef.current = pointCloud;
+    
+      // Use known dimensions from Cloud Compare - NO expensive bounding box calculation
+
+    
+    console.log('📐 Using known model dimensions:', {
+      maxDim: knownMaxDim,
+      center: knownCenter
+    });
+
+    // Apply centering - move model so its center is at origin
+    pointCloud.position.x = -knownCenter.x;
+    pointCloud.position.y = -knownCenter.y;
+    pointCloud.position.z = -knownCenter.z;
+
+
+    pointCloud.scale.set(initialScale, initialScale, initialScale);
+    
+    console.log('🔧 Applied scale:', scale.toFixed(3));
+
+    // Apply Z-up to Y-up rotation (Blender to Three.js conversion)
+    pointCloud.rotation.z = Math.PI / 2;
+    pointCloud.rotation.x = -Math.PI / 2;
+
+    // Apply final positioning - ADD to the centered position, don't replace it
+    if (isArMode && arPosition) {
+      const currentOverride = (window as any).arTestingOverride ?? true;
+      
+      if (currentOverride) {
+            modelRef.current.position.set(-0.4, 0, -5);
+            console.log('🔄 Reset: BC2200 positioned at override location');
+          } else {
+            modelRef.current.position.copy(arPosition);
+            console.log('🔄 Reset: BC2200 positioned at AR anchor location');
+          }
+    } else {
+      // Add standalone offset to centered position
+      pointCloud.position.add(new THREE.Vector3(0, 0, -3));
+      console.log('🎯 BC2200 positioned at standalone location');
+    }
+    
+    // Add point cloud to scene
+    scene.add(pointCloud);
+    
+    // Update state
+    setHasPointCloud(true);
+    setPointCount(finalPointCount);
+    onExperienceReady?.();
+    
+    // Remove loading indicator
+    if (container.contains(loadingDiv)) {
+      container.removeChild(loadingDiv);
+    }
+    
+    console.log('✅ BC2200 point cloud loaded successfully');
+    console.log('📊 Final model stats:', {
+      position: {
+        x: pointCloud.position.x.toFixed(3),
+        y: pointCloud.position.y.toFixed(3), 
+        z: pointCloud.position.z.toFixed(3)
+      },
+      rotation: {
+        x: pointCloud.rotation.x.toFixed(3),
+        y: pointCloud.rotation.y.toFixed(3),
+        z: pointCloud.rotation.z.toFixed(3)
+      },
+      scale: {
+        x: pointCloud.scale.x.toFixed(3),
+        y: pointCloud.scale.y.toFixed(3),
+        z: pointCloud.scale.z.toFixed(3)
+      },
+      pointCount: finalPointCount,
+      pointSize: material.size,
+      materialType: material.type
+    });
+  },
+  
+  // Progress callback
+  (xhr) => {
+    const percent = (xhr.loaded / xhr.total) * 100;
+    console.log(`📥 BC2200 PLY ${percent.toFixed(1)}% loaded`);
+    if (loadingDiv && container.contains(loadingDiv)) {
+      loadingDiv.innerHTML = `Loading MAA Point Cloud... ${percent.toFixed(0)}%`;
+    }
+  },
+  
+  // Error callback
+  (error) => {
+    console.error('❌ Error loading BC2200 PLY:', error);
+    if (container.contains(loadingDiv)) {
+      loadingDiv.innerHTML = 'Error loading BC2200 PLY file. File may be missing or invalid.';
+      loadingDiv.style.color = '#ff6666';
+    }
+  }
+);
     // Handle window resize
     const handleResize = () => {
       if (isMounted && camera && renderer) {
@@ -324,22 +499,22 @@ const destinationPosition = BC2200_DESTINATION;
     
     window.addEventListener('resize', handleResize);
     
-    // Animation loop (no model animations needed - AnimatedPointCloudEngine handles it)
-    const animate = function () {
-      if (!isMounted) return;
+    // // Animation loop (no model animations needed for point clouds)
+    // const animate = function () {
+    //   if (!isMounted) return;
       
-      requestAnimationFrame(animate);
+    //   requestAnimationFrame(animate);
       
-      if (controls) {
-        controls.update();
-      }
+    //   if (controls) {
+    //     controls.update();
+    //   }
       
-      if (renderer && scene && camera) {
-        renderer.render(scene, camera);
-      }
-    };
+    //   if (renderer && scene && camera) {
+    //     renderer.render(scene, camera);
+    //   }
+    // };
     
-    animate();
+    // animate();
     
     // Cleanup function
     return () => {
@@ -355,120 +530,31 @@ const destinationPosition = BC2200_DESTINATION;
         renderer.dispose();
       }
       
+      // Clean up geometries
+      if (originalGeometryRef.current) {
+        originalGeometryRef.current.dispose();
+      }
+      
+      if (modelRef.current && modelRef.current.geometry) {
+        modelRef.current.geometry.dispose();
+      }
+      
+      if (modelRef.current && modelRef.current.material) {
+        if (Array.isArray(modelRef.current.material)) {
+          modelRef.current.material.forEach(material => material.dispose());
+        } else {
+          modelRef.current.material.dispose();
+        }
+      }
+      
       if (document.body.contains(container)) {
         document.body.removeChild(container);
       }
     };
-  }, [isArMode]);
+  }, [isArMode]); // Only isArMode dependency
 
   return (
     <>
-      {/* Animated Point Cloud Engine */}
-      {sceneRef.current && (
-        <AnimatedPointCloudEngine
-          modelName="bc2200"
-          scene={isArMode ? arScene! : sceneRef.current!}
-          isArMode={isArMode}
-          arPosition={arPosition}
-          userPosition={userPosition}
-          destinationPosition={destinationPosition}
-          coordinateScale={coordinateScale}
-          onModelLoaded={handleModelLoaded}
-          onLoadingProgress={handleLoadingProgress}
-          onError={handleError}
-          onAnimationLoop={handleAnimationLoop}
-        />
-      )}
-
-      {/* Loading Screen */}
-      {!hasPointCloud && sceneRef.current && (
-        <div style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          width: '80%',
-          height: '50%',
-          transform: 'translate(-50%, -50%)',
-          backgroundColor: 'rgba(0, 0, 0, 0.9)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          color: 'white',
-          fontFamily: 'var(--font-rigby)',
-        }}>
-          {/* Loading spinner */}
-          <div style={{
-            width: '60px',
-            height: '60px',
-            border: '3px solid rgba(139, 69, 19, 0.3)',
-            borderTop: '3px solid #8B4513',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '20px'
-          }} />
-      
-          {/* Loading text */}
-          <h2 style={{
-            margin: '0 0 10px 0',
-            fontSize: '24px',
-            fontWeight: '400',
-            color: '#DEB887'
-          }}>
-            🛶 Preparing BC2200 Experience
-          </h2>
-          
-          <p style={{
-            margin: '0',
-            fontSize: '16px',
-            opacity: 0.8,
-            textAlign: 'center',
-            maxWidth: '300px'
-          }}>
-            Loading animated canoe model with {loadingProgress > 0 ? '24 animation frames' : 'paddling animation'}...
-          </p>
-          
-          {/* Progress bar */}
-          {loadingProgress > 0 && (
-            <div style={{
-              marginTop: '20px',
-              width: '200px',
-              height: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: '2px',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${loadingProgress}%`,
-                height: '100%',
-                backgroundColor: '#8B4513',
-                transition: 'width 0.3s ease',
-                borderRadius: '2px'
-              }} />
-            </div>
-          )}
-      
-          {loadingProgress > 0 && (
-            <p style={{
-              margin: '10px 0 0 0',
-              fontSize: '14px',
-              opacity: 0.7
-            }}>
-              {loadingProgress.toFixed(0)}% loaded
-            </p>
-          )}
-          
-          {/* CSS animation for spinner */}
-          <style>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
-        </div>
-      )}
-
       {/* Debug Panel for BC2200 Experience */}
       {SHOW_DEBUG_PANEL && (
         <div style={{
@@ -484,46 +570,22 @@ const destinationPosition = BC2200_DESTINATION;
           pointerEvents: 'auto',
           fontFamily: 'monospace'
         }}>
-          <div style={{ color: '#DEB887' }}>🛶 BC2200 ANIMATION DEBUG</div>
+          <div style={{ color: 'yellow' }}>🖥️ BC2200 POINT CLOUD DEBUG</div>
           <div>Mode: {isArMode ? 'AR Portal' : 'Standalone'}</div>
-          
           {arPosition && (
             <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
           )}
-          
-          {destinationPosition && (
-            <div>Destination: [{destinationPosition[0].toFixed(6)}, {destinationPosition[1].toFixed(6)}]</div>
-          )}
-          
-          {animatedGroupRef.current && (
+          {modelRef.current && (
             <div style={{ color: 'cyan' }}>
-              Group Pos: [{animatedGroupRef.current.position.x.toFixed(3)}, {animatedGroupRef.current.position.y.toFixed(3)}, {animatedGroupRef.current.position.z.toFixed(3)}]
+              Model Pos: [{modelRef.current.position.x.toFixed(3)}, {modelRef.current.position.y.toFixed(3)}, {modelRef.current.position.z.toFixed(3)}]
             </div>
           )}
-          
           <div>Scale: {coordinateScale}x</div>
-          
           <div style={{ color: hasPointCloud ? 'lightgreen' : 'orange' }}>
-            Animation: {hasPointCloud ? '✅ Playing' : `❌ Loading ${loadingProgress.toFixed(0)}%`}
+            Point Cloud: {hasPointCloud ? `✅ ${pointCount.toLocaleString()} pts` : '❌ None'}
           </div>
-          
-          {hasPointCloud && (
-            <>
-              <div style={{ color: 'lightblue', fontSize: '10px' }}>
-                Frame: {currentFrame + 1}/24 ({(animationProgress * 100).toFixed(1)}%)
-              </div>
-              <div style={{ color: 'lightblue', fontSize: '10px' }}>
-                24fps paddling animation + spatial movement
-              </div>
-            </>
-          )}
-          
-          <div style={{ color: 'lightgreen', fontSize: '10px' }}>
-            Binary format: Fast frame switching
-          </div>
-          
-          <div style={{ color: 'yellow', fontSize: '10px' }}>
-            Spatial: Anchor → Destination over animation cycle
+          <div style={{ color: 'lightblue', fontSize: '10px' }}>
+            Size: {POINT_SIZE}px | Density: {(POINT_DENSITY * 100).toFixed(0)}%
           </div>
           
           <div 
@@ -533,16 +595,16 @@ const destinationPosition = BC2200_DESTINATION;
               setArTestingOverride(newValue);
               console.log('🎯 AR Override toggled:', newValue ? 'ON' : 'OFF');
               
-              // Immediately update group position if we have the group
-              if (animatedGroupRef.current && isArMode && arPosition) {
+              // Immediately update model position if we have the model
+              if (modelRef.current && isArMode && arPosition) {
                 if (newValue) {
-                  console.log('🎯 Immediately setting group override position (0, 0, -5)');
-                  animatedGroupRef.current.position.set(0, 0, -5);
+                  console.log('🎯 Immediately setting override position (0, 0, -5)');
+                  modelRef.current.position.set(0, 0, -5);
                 } else {
-                  console.log('🎯 Immediately setting group anchor position:', arPosition);
-                  animatedGroupRef.current.position.copy(arPosition);
+                  console.log('🎯 Immediately setting anchor position:', arPosition);
+                  modelRef.current.position.copy(arPosition);
                 }
-                console.log('🎯 Group position updated to:', animatedGroupRef.current.position);
+                console.log('🎯 Model position updated to:', modelRef.current.position);
               }
             }}
             style={{ 
