@@ -570,7 +570,7 @@ const handleTouchMove = (event: TouchEvent) => {
       }));
       
       if (onModelScale) {
-        onModelScale(scaleChange);
+        // onModelScale(scaleChange);
       }
     }
 
