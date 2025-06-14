@@ -18,7 +18,7 @@ const Home: React.FC = () => {
   const buttonConfig = ContentConfigHelper.getTemplateById('buttonToOnboarding') as ContentContainerProps;
 
   return (
-    <div className="home-route">
+    <div className="home-route" style = {{height: '100svh'}}>
       <GradientElement 
         color="gradient(  var(--color-dark), var(--color-light) , var(--color-dark))" 
         gradientType="aurora"

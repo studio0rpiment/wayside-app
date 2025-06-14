@@ -4,7 +4,7 @@ import GradientElement from '../../utils/GradientElement';
 import SwipeableCarousel from '../carousel/SwipeableCarousel';
 import SnappingCard from '../carousel/SnappingCard';
 import PermissionsStatus from '../common/PermissionsStatus';
-import DemoExperience from '../DemoExperience';
+
 import { 
   PermissionType, 
   PermissionStatus, 
@@ -183,7 +183,7 @@ const goToNextCard = useCallback(() => {
   return (
     <div 
       className="onboarding-route"
-      style={{ touchAction: 'manipulation' }} // Only allow essential touch actions
+      style={{ touchAction: 'manipulation', height: '100svh' }} // Only allow essential touch actions
     >
       <GradientElement 
         color="gradient(var(--color-dark), var(--color-pink), var(--color-blue), var(--color-dark), var(--color-green))" 
@@ -330,12 +330,12 @@ const goToNextCard = useCallback(() => {
 
       
       {/* Render AR experience through Portal when active */}
-      {showARExperience && (
+      {/* {showARExperience && (
         <DemoExperience 
           onClose={() => setShowARExperience(false)} 
           onNext={handleNextARStep}
         />
-      )}
+      )} */}
     </div>
   ); 
 };

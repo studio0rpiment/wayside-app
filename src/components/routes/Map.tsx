@@ -234,7 +234,7 @@ const modalGeofenceInfo = React.useMemo(() => {
         id="mapSection" 
         title="Map"
         color="transparent"
-        height="100vh"
+        height="100svh"
         fullHeight={true}
       >
         {/* Experience Progress Tracker - now handles completion dots */}
