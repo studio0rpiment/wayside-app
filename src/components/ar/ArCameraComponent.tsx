@@ -20,7 +20,7 @@ interface ArCameraProps {
   onArObjectPlaced?: (position: THREE.Vector3) => void;
   onOrientationUpdate?: (orientation: { alpha: number; beta: number; gamma: number }) => void;
   onSceneReady?: (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => void; 
-  onModelRotate?: (deltaX: number, deltaY: number, deltaZ: number) => void;
+  onModelRotate?: (deltaX: number, deltaY: number, deltaZ?: number) => void;
   onModelScale?: (scaleFactor: number) => void;
   onModelReset?: () => void;
   onSwipeUp?: () => void;
@@ -777,6 +777,29 @@ const handleTouchEnd = (event: TouchEvent) => {
           </p>
         </div>
       )}
+
+            {/* Loading indicator - show permission request instead of error */}
+      {!isInitialized && !cameraError && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '20px',
+          borderRadius: '8px',
+          textAlign: 'center',
+          zIndex: 1030
+        }}>
+          <div>🎥 Starting AR Camera...</div>
+          <div style={{ fontSize: '14px', marginTop: '10px', opacity: 0.8 }}>
+            {!isPermissionGranted(PermissionType.CAMERA) && 'Please allow camera access when prompted'}
+            {isPermissionGranted(PermissionType.CAMERA) && !isPermissionGranted(PermissionType.ORIENTATION) && 'Please allow motion sensors for best experience'}
+            {isPermissionGranted(PermissionType.CAMERA) && isPermissionGranted(PermissionType.ORIENTATION) && 'Initializing AR positioning...'}
+          </div>
+        </div>
+      )}
       
           {/* Minimal Debug Panel */}
      
@@ -869,28 +892,7 @@ const handleTouchEnd = (event: TouchEvent) => {
               
             )}
                   
-      {/* Loading indicator - show permission request instead of error */}
-      {!isInitialized && !cameraError && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
-          padding: '20px',
-          borderRadius: '8px',
-          textAlign: 'center',
-          zIndex: 1030
-        }}>
-          <div>🎥 Starting AR Camera...</div>
-          <div style={{ fontSize: '14px', marginTop: '10px', opacity: 0.8 }}>
-            {!isPermissionGranted(PermissionType.CAMERA) && 'Please allow camera access when prompted'}
-            {isPermissionGranted(PermissionType.CAMERA) && !isPermissionGranted(PermissionType.ORIENTATION) && 'Please allow motion sensors for best experience'}
-            {isPermissionGranted(PermissionType.CAMERA) && isPermissionGranted(PermissionType.ORIENTATION) && 'Initializing AR positioning...'}
-          </div>
-        </div>
-      )}
+
       
       {isInitialized && (
         <div style={{
@@ -974,23 +976,11 @@ const handleTouchEnd = (event: TouchEvent) => {
               </div>
             );
           })()}
-      
         </div>
-
-
-         
-
-
       </div>
-
-
-
-
-        </div>
+    </div>
         
-
-        
-      )}
+   )}
 
       
       

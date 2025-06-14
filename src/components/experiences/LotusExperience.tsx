@@ -16,7 +16,7 @@ interface LotusExperienceProps {
   arScene?: THREE.Scene;
   arCamera?: THREE.PerspectiveCamera;
   coordinateScale?: number;
-  onModelRotate?: (handler: (deltaX: number, deltaY: number) => void) => void;
+  onModelRotate?: (handler: (deltaX: number, deltaY: number, deltaZ: number) => void) => void;
   onModelScale?: (handler: (scaleFactor: number) => void) => void;
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
@@ -127,8 +127,8 @@ useEffect(() => {
   // Register gesture handlers on mount
   useEffect(() => {
     // Register rotation handler - now operates on the GROUP
-    if (onModelRotate) {
-      onModelRotate((deltaX: number, deltaY: number) => {
+     if (onModelRotate) {
+      onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
         if (morphingGroupRef.current) {
           // Store current position
           const currentPosition = morphingGroupRef.current.position.clone();
@@ -136,6 +136,9 @@ useEffect(() => {
           // Apply rotation
           morphingGroupRef.current.rotation.y += deltaX;
           morphingGroupRef.current.rotation.x += deltaY;
+             if (deltaZ !== 0) {
+            morphingGroupRef.current.rotation.z += deltaZ;
+          }
 
           // Restore position to prevent drift
           morphingGroupRef.current.position.copy(currentPosition);

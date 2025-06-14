@@ -16,6 +16,7 @@ import LilyExperience from './experiences/LilyExperience';
 import CattailExperience from './experiences/CattailExperience';
 import LotusExperience from './experiences/LotusExperience';
 
+
 import MapOutlined from '@mui/icons-material/MapOutlined';
 
 // Define experience types (same as before)
@@ -72,7 +73,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   
   // Use refs to store the current gesture handlers - this prevents recreation
   const gestureHandlersRef = useRef<{
-    rotate?: (deltaX: number, deltaY: number) => void;
+    rotate?: (deltaX: number, deltaY: number, deltaZ: number) => void;  
     scale?: (scaleFactor: number) => void;
     reset?: () => void;
     swipeUp?: () => void;
@@ -169,11 +170,11 @@ useEffect(() => {
   }, [arScene, arCamera]);
 
   // *** FIXED: Stable gesture handlers using useCallback ***
-  const handleModelRotate = useCallback((deltaX: number, deltaY: number) => {
-    if (gestureHandlersRef.current.rotate) {
-      gestureHandlersRef.current.rotate(deltaX, deltaY);
-    }
-  }, []); // No dependencies - uses ref
+const handleModelRotate = useCallback((deltaX: number, deltaY: number, deltaZ: number = 0) => {
+  if (gestureHandlersRef.current.rotate) {
+    gestureHandlersRef.current.rotate(deltaX, deltaY, deltaZ);
+  }
+}, []);
 
   const handleModelScale = useCallback((scaleFactor: number) => {
     if (gestureHandlersRef.current.scale) {
@@ -200,9 +201,9 @@ useEffect(() => {
   }, []);
 
   // *** FIXED: Registration functions that don't cause re-renders ***
-  const registerRotateHandler = useCallback((handler: (deltaX: number, deltaY: number) => void) => {
-    gestureHandlersRef.current.rotate = handler;
-  }, []);
+const registerRotateHandler = useCallback((handler: (deltaX: number, deltaY: number, deltaZ: number) => void) => {
+  gestureHandlersRef.current.rotate = handler;
+}, []);
 
   const registerScaleHandler = useCallback((handler: (scaleFactor: number) => void) => {
     gestureHandlersRef.current.scale = handler;

@@ -139,7 +139,7 @@ const Experience1968: React.FC<Experience1968Props> = ({
   useEffect(() => {
     // Register rotation handler - operates on the smoke GROUP
     if (onModelRotate) {
-      onModelRotate((deltaX: number, deltaY: number) => {
+      onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
         if (smokeSystemRef.current) {
           // Store current position to prevent drift
           const currentPosition = smokeSystemRef.current.position.clone();
@@ -147,6 +147,9 @@ const Experience1968: React.FC<Experience1968Props> = ({
           // Apply rotation
           smokeSystemRef.current.rotation.y += deltaX;
           smokeSystemRef.current.rotation.x += deltaY;
+          if (deltaZ !== 0) {
+            smokeSystemRef.current.rotation.z += deltaZ;
+          }
 
           // Restore position to prevent drift
           smokeSystemRef.current.position.copy(currentPosition);
