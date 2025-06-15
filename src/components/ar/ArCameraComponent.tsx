@@ -483,74 +483,73 @@ const placeArObject = useCallback(() => {
 
     // Add these touch handlers in ArCameraComponent
 // Updated touch handlers:
-    const handleTouchStart = (event: TouchEvent) => {
-      const now = new Date().getTime();
-      const timeSince = now - lastTapTime.current;
-      const timeSinceMultiTouch = now - lastMultiTouchTime.current;
+const handleTouchStart = (event: TouchEvent) => {
+  const now = new Date().getTime();
+  const timeSince = now - lastTapTime.current;
+  const timeSinceMultiTouch = now - lastMultiTouchTime.current;
 
+  if (event.touches.length === 1) {
+    // Store positions first
+    touchStartX.current = event.touches[0].clientX;
+    touchStartY.current = event.touches[0].clientY;
+    lastTouchX.current = event.touches[0].clientX;
+    lastTouchY.current = event.touches[0].clientY;
 
-      if (event.touches.length === 1) {
+    // Check for double-tap FIRST (before cooldown check)
+    if (timeSince < doubleTapDelay && timeSince > 0) {
+      // Double-tap detected - this takes priority over cooldown
+      console.log('👆 Double tap detected - reset');
+      setAccumulatedTransforms({
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: 1.0
+      });
 
-        if (timeSinceMultiTouch < 200) { // 200ms cooldown
-          console.log('🚫 Ignoring single finger - just ended multi-touch');
-          return;
-        }
+      if (onModelReset) {
+        onModelReset();
+      }
+      event.preventDefault();
+      lastTapTime.current = 0;
+      return; // Exit early - don't check cooldown
+    }
 
+    // ONLY apply cooldown for non-double-tap single touches
+    if (timeSinceMultiTouch < 200) {
+      console.log('🚫 Ignoring single finger - just ended multi-touch');
+      return;
+    }
 
-      // Store BOTH starting positions
-        touchStartX.current = event.touches[0].clientX;  // ADD THIS LINE
-        touchStartY.current = event.touches[0].clientY;
-        
-        // Store BOTH current positions  
-        lastTouchX.current = event.touches[0].clientX;
-        lastTouchY.current = event.touches[0].clientY;
+    // Regular single tap
+    lastTapTime.current = now;
+    
+  } else if (event.touches.length === 2) {
+    // Clear any pending double-tap when two fingers detected
+    lastTapTime.current = 0;
+    
+    // Two finger setup...
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+    const fingerDistance = Math.hypot(
+      touch2.clientX - touch1.clientX,
+      touch2.clientY - touch1.clientY
+    );
+    
+    const MIN_TWO_FINGER_DISTANCE = 100;
+    
+    if (fingerDistance > MIN_TWO_FINGER_DISTANCE) {
+      console.log(`🤲 Two fingers detected ${fingerDistance.toFixed(0)}px apart`);
+    }
+    
+    initialPinchDistance.current = fingerDistance;
+    initialTwoFingerAngle.current = Math.atan2(
+      touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX
+    );
+    previousTwoFingerAngle.current = initialTwoFingerAngle.current;
 
-      if (timeSince < doubleTapDelay && timeSince > 0) {
-          // Double-tap detected with single finger
-          console.log('👆 Double tap detected - reset');
-          setAccumulatedTransforms({
-            rotation: { x: 0, y: 0, z: 0 },
-            scale: 1.0
-          });
-
-          if (onModelReset) {
-            onModelReset();
-          }
-          event.preventDefault();
-          lastTapTime.current = 0;
-        } else {
-          lastTapTime.current = now;
-        }
-        
-        } else if (event.touches.length === 2) {
-        // TWO FINGERS: Check if they're too far apart to be accidental double-tap
-          const touch1 = event.touches[0];
-          const touch2 = event.touches[1];
-          const fingerDistance = Math.hypot(
-            touch2.clientX - touch1.clientX,
-            touch2.clientY - touch1.clientY
-          );
-        
-        // If fingers are far apart, this is intentional two-finger gesture
-        const MIN_TWO_FINGER_DISTANCE = 100; // pixels - adjust as needed
-        
-        if (fingerDistance > MIN_TWO_FINGER_DISTANCE) {
-          // Clear any pending double-tap detection
-          lastTapTime.current = 0;
-          console.log(`🤲 Two fingers detected ${fingerDistance.toFixed(0)}px apart - clearing double-tap`);
-        }
-        
-        // Setup for pinch/rotate
-          initialPinchDistance.current = fingerDistance;
-          initialTwoFingerAngle.current = Math.atan2(
-            touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX
-        );
-
-        } else {
-        // More than 2 fingers: clear tap detection
-        lastTapTime.current = 0;
-        }
-      };
+  } else {
+    // More than 2 fingers: clear tap detection
+    lastTapTime.current = 0;
+  }
+};
 
     const handleTouchMove = (event: TouchEvent) => {
       if (event.touches.length === 1) {
