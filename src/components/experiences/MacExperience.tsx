@@ -6,7 +6,7 @@ import { getAssetPath } from '../../utils/assetPaths';
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-const SHOW_DEBUG_PANEL = false;
+const SHOW_DEBUG_PANEL = true;
 
 
 interface MacExperienceProps {
