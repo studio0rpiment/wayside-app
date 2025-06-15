@@ -549,7 +549,7 @@ const placeArObject = useCallback(() => {
       // More than 2 fingers: clear tap detection
       lastTapTime.current = 0;
     }
-    
+
   };
   
   const handleTouchMove = (event: TouchEvent) => {
@@ -963,7 +963,7 @@ const placeArObject = useCallback(() => {
           <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
         {deviceOrientation ? (
           <>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex',  justifyContent: 'center', gap: '10px' }}>
               <span>α: {deviceOrientation.alpha?.toFixed(1)}°</span>
               <span>β: {deviceOrientation.beta?.toFixed(1)}°</span>
               <span>γ: {deviceOrientation.gamma?.toFixed(1)}°</span>
