@@ -483,156 +483,157 @@ const placeArObject = useCallback(() => {
 
     // Add these touch handlers in ArCameraComponent
 // Updated touch handlers:
-const handleTouchStart = (event: TouchEvent) => {
-  const now = new Date().getTime();
-  const timeSince = now - lastTapTime.current;
-  const timeSinceMultiTouch = now - lastMultiTouchTime.current;
+  const handleTouchStart = (event: TouchEvent) => {
+    const now = new Date().getTime();
+    const timeSince = now - lastTapTime.current;
+    const timeSinceMultiTouch = now - lastMultiTouchTime.current;
 
-  if (event.touches.length === 1) {
-    // Store positions first
-    touchStartX.current = event.touches[0].clientX;
-    touchStartY.current = event.touches[0].clientY;
-    lastTouchX.current = event.touches[0].clientX;
-    lastTouchY.current = event.touches[0].clientY;
+    if (event.touches.length === 1) {
+      // Store positions first
+      touchStartX.current = event.touches[0].clientX;
+      touchStartY.current = event.touches[0].clientY;
+      lastTouchX.current = event.touches[0].clientX;
+      lastTouchY.current = event.touches[0].clientY;
 
-    // Check for double-tap FIRST (before cooldown check)
-    if (timeSince < doubleTapDelay && timeSince > 0) {
-      // Double-tap detected - this takes priority over cooldown
-      console.log('👆 Double tap detected - reset');
-      setAccumulatedTransforms({
-        rotation: { x: 0, y: 0, z: 0 },
-        scale: 1.0
-      });
+      // Check for double-tap FIRST (before cooldown check)
+      if (timeSince < doubleTapDelay && timeSince > 0) {
+        // Double-tap detected - this takes priority over cooldown
+        console.log('👆 Double tap detected - reset');
+        setAccumulatedTransforms({
+          rotation: { x: 0, y: 0, z: 0 },
+          scale: 1.0
+        });
 
-      if (onModelReset) {
-        onModelReset();
+        if (onModelReset) {
+          onModelReset();
+        }
+        event.preventDefault();
+        lastTapTime.current = 0;
+        return; // Exit early - don't check cooldown
       }
-      event.preventDefault();
+
+      // ONLY apply cooldown for non-double-tap single touches
+      if (timeSinceMultiTouch < 200) {
+        console.log('🚫 Ignoring single finger - just ended multi-touch');
+        return;
+      }
+
+      // Regular single tap
+      lastTapTime.current = now;
+      
+    } else if (event.touches.length === 2) {
+      // Clear any pending double-tap when two fingers detected
       lastTapTime.current = 0;
-      return; // Exit early - don't check cooldown
-    }
-
-    // ONLY apply cooldown for non-double-tap single touches
-    if (timeSinceMultiTouch < 200) {
-      console.log('🚫 Ignoring single finger - just ended multi-touch');
-      return;
-    }
-
-    // Regular single tap
-    lastTapTime.current = now;
-    
-  } else if (event.touches.length === 2) {
-    // Clear any pending double-tap when two fingers detected
-    lastTapTime.current = 0;
-    
-    // Two finger setup...
-    const touch1 = event.touches[0];
-    const touch2 = event.touches[1];
-    const fingerDistance = Math.hypot(
-      touch2.clientX - touch1.clientX,
-      touch2.clientY - touch1.clientY
-    );
-    
-    const MIN_TWO_FINGER_DISTANCE = 100;
-    
-    if (fingerDistance > MIN_TWO_FINGER_DISTANCE) {
-      console.log(`🤲 Two fingers detected ${fingerDistance.toFixed(0)}px apart`);
-    }
-    
-    initialPinchDistance.current = fingerDistance;
-    initialTwoFingerAngle.current = Math.atan2(
-      touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX
-    );
-    previousTwoFingerAngle.current = initialTwoFingerAngle.current;
-
-  } else {
-    // More than 2 fingers: clear tap detection
-    lastTapTime.current = 0;
-  }
-};
-
-    const handleTouchMove = (event: TouchEvent) => {
-      if (event.touches.length === 1) {
-        // Single finger drag: rotate model - THIS SECTION IS PERFECT, KEEP AS-IS
-        const currentX = event.touches[0].clientX;
-        const currentY = event.touches[0].clientY;
-        
-        const deltaX = currentX - lastTouchX.current;
-        const deltaY = currentY - lastTouchY.current;
-
-        // Only rotate if significant movement
-        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-          const rotDeltaX = deltaX * 0.01;
-          const rotDeltaY = deltaY * 0.01;
-          
-          // Update accumulated rotation
-          setAccumulatedTransforms(prev => ({
-            ...prev,
-            rotation: {
-              x: prev.rotation.x + rotDeltaY,
-              y: prev.rotation.y + rotDeltaX,
-              z: prev.rotation.z
-            }
-          }));
-
-          if (onModelRotate) {
-            onModelRotate(rotDeltaX, rotDeltaY, 0);
-          }
-        }
-        
-        lastTouchX.current = currentX;
-        lastTouchY.current = currentY;
-        
-      } else if (event.touches.length === 2) {
-        // Two finger: Z-rotation only (scale removed)
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        
-        const currentAngle = Math.atan2(
-          touch2.clientY - touch1.clientY, 
-          touch2.clientX - touch1.clientX
-        );
-        
-        // FIXED: Use incremental rotation delta
-        const rotationDelta = currentAngle - previousTwoFingerAngle.current;
-        
-        if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
-          const zRotDelta = rotationDelta * 0.5;
-          
-          // FIXED: Use functional setState to avoid race conditions
-          setAccumulatedTransforms(prev => {
-            const newZRotation = prev.rotation.z + zRotDelta;
-            
-            // Apply limits: clamp between -180° and +180°
-            const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
-            
-            // Only update if the rotation actually changed (not hitting limits)
-            if (limitedZRotation !== prev.rotation.z) {
-              const actualDelta = limitedZRotation - prev.rotation.z;
-              
-              // Send the actual applied delta to the experience
-              onModelRotate(0, 0, actualDelta);
-              
-              return {
-                ...prev,
-                rotation: {
-                  ...prev.rotation,
-                  z: limitedZRotation
-                }
-              };
-            }
-            
-            // No change if hitting limits
-            return prev;
-          });
-        }
-        
-        // FIXED: Update previous angle for next frame
-        previousTwoFingerAngle.current = currentAngle;
+      
+      // Two finger setup...
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      const fingerDistance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      
+      const MIN_TWO_FINGER_DISTANCE = 100;
+      
+      if (fingerDistance > MIN_TWO_FINGER_DISTANCE) {
+        console.log(`🤲 Two fingers detected ${fingerDistance.toFixed(0)}px apart`);
       }
       
-      event.preventDefault();
-    };
+      initialPinchDistance.current = fingerDistance;
+      initialTwoFingerAngle.current = Math.atan2(
+        touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX
+      );
+      previousTwoFingerAngle.current = initialTwoFingerAngle.current;
+
+    } else {
+      // More than 2 fingers: clear tap detection
+      lastTapTime.current = 0;
+    }
+    
+  };
+  
+  const handleTouchMove = (event: TouchEvent) => {
+    if (event.touches.length === 1) {
+      // ADD THIS: Check if we just ended multi-touch
+      const now = new Date().getTime();
+      const timeSinceMultiTouch = now - lastMultiTouchTime.current;
+      
+      if (timeSinceMultiTouch < 200) {
+        console.log('🚫 Ignoring single finger move - just ended multi-touch');
+        return;
+      }
+
+      // Single finger drag: rotate model
+      const currentX = event.touches[0].clientX;
+      const currentY = event.touches[0].clientY;
+      
+      const deltaX = currentX - lastTouchX.current;
+      const deltaY = currentY - lastTouchY.current;
+
+      // Only rotate if significant movement
+      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        const rotDeltaX = deltaX * 0.01;
+        const rotDeltaY = deltaY * 0.01;
+        
+        // Update accumulated rotation
+        setAccumulatedTransforms(prev => ({
+          ...prev,
+          rotation: {
+            x: prev.rotation.x + rotDeltaY,
+            y: prev.rotation.y + rotDeltaX,
+            z: prev.rotation.z
+          }
+        }));
+
+        if (onModelRotate) {
+          onModelRotate(rotDeltaX, rotDeltaY, 0);
+        }
+      }
+      
+      lastTouchX.current = currentX;
+      lastTouchY.current = currentY;
+      
+    } else if (event.touches.length === 2) {
+      // Two finger Z-rotation (stays the same)...
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      
+      const currentAngle = Math.atan2(
+        touch2.clientY - touch1.clientY, 
+        touch2.clientX - touch1.clientX
+      );
+      
+      const rotationDelta = currentAngle - previousTwoFingerAngle.current;
+      
+      if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
+        const zRotDelta = rotationDelta * 0.5;
+        
+        setAccumulatedTransforms(prev => {
+          const newZRotation = prev.rotation.z + zRotDelta;
+          const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
+          
+          if (limitedZRotation !== prev.rotation.z) {
+            const actualDelta = limitedZRotation - prev.rotation.z;
+            onModelRotate(0, 0, actualDelta);
+            
+            return {
+              ...prev,
+              rotation: {
+                ...prev.rotation,
+                z: limitedZRotation
+              }
+            };
+          }
+          
+          return prev;
+        });
+      }
+      
+      previousTwoFingerAngle.current = currentAngle;
+    }
+    
+    event.preventDefault();
+  };
 
     const handleTouchEnd = (event: TouchEvent) => {
       // Track when multi-touch gestures end
