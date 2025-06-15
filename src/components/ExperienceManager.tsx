@@ -170,41 +170,18 @@ useEffect(() => {
   }, [arScene, arCamera]);
 
   // *** FIXED: Stable gesture handlers using useCallback ***
-const handleModelRotate = useCallback((deltaX: number, deltaY: number, deltaZ: number = 0) => {
-  if (gestureHandlersRef.current.rotate) {
-    gestureHandlersRef.current.rotate(deltaX, deltaY, deltaZ);
-  }
-}, []);
+  const handleModelRotate = useCallback((deltaX: number, deltaY: number, deltaZ: number = 0) => {
+    if (gestureHandlersRef.current.rotate) {
+      gestureHandlersRef.current.rotate(deltaX, deltaY, deltaZ);
+    }
+  }, []);
 
-const handleModelScale = useCallback((scaleFactor: number) => {
-  // Scale the input to a smaller, controlled range
-  const scaledFactor = scaleInputToRange(scaleFactor);
-  
-  if (gestureHandlersRef.current.scale) {
-    gestureHandlersRef.current.scale(scaledFactor);
-  }
-}, []);
-
-// Scaling function - maps any input to a controlled output range
-const scaleInputToRange = (input: number): number => {
-  // Define input range (what gestures typically produce)
-  const inputMin = 0.1;   // Extreme pinch in
-  const inputMax = 10.0;   // Extreme pinch out
-  
-  // Define desired output range (what we want to send to experiences)
-  const outputMin = 0.5;  // Smallest scale change we want
-  const outputMax = 3;  // Largest scale change we want
-  
-  // Clamp input to expected range first
-  const clampedInput = Math.max(inputMin, Math.min(inputMax, input));
-  
-  // Scale to output range
-  const inputRange = inputMax - inputMin;
-  const outputRange = outputMax - outputMin;
-  const normalizedInput = (clampedInput - inputMin) / inputRange;
-  
-  return outputMin + (normalizedInput * outputRange);
-};
+  const handleModelScale = useCallback((scaleFactor: number) => {
+    // Simple pass-through for future button-based scaling
+    if (gestureHandlersRef.current.scale) {
+      gestureHandlersRef.current.scale(scaleFactor);
+    }
+  }, []);
 
   const handleModelReset = useCallback(() => {
     if (gestureHandlersRef.current.reset) {

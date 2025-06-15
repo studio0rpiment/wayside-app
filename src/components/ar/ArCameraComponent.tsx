@@ -65,6 +65,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const lastTouchY = useRef(0);
   const initialPinchDistance = useRef(0);
   const initialTwoFingerAngle = useRef(0);
+  const previousTwoFingerAngle = useRef(0);
+
+
 
 
 //******** STATE STATE STATE */
@@ -539,116 +542,94 @@ const placeArObject = useCallback(() => {
         }
       };
 
-const handleTouchMove = (event: TouchEvent) => {
-  if (event.touches.length === 1) {
-    // Single finger drag: rotate model
-    const currentX = event.touches[0].clientX;
-    const currentY = event.touches[0].clientY;
-    
-    const deltaX = currentX - lastTouchX.current;
-    const deltaY = currentY - lastTouchY.current;
-
-    // Only rotate if significant movement
-    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-      const rotDeltaX = deltaX * 0.01;
-      const rotDeltaY = deltaY * 0.01;
-      
-      // Update accumulated rotation
-      setAccumulatedTransforms(prev => ({
-        ...prev,
-        rotation: {
-          x: prev.rotation.x + rotDeltaY,
-          y: prev.rotation.y + rotDeltaX,
-          z: prev.rotation.z
-        }
-      }));
-
-      if (onModelRotate) {
-        onModelRotate(rotDeltaX, rotDeltaY, 0);
-      }
-    }
-    
-    lastTouchX.current = currentX;
-    lastTouchY.current = currentY;
-    
-  } else if (event.touches.length === 2) {
-    // Two finger pinch: scale model
-    const touch1 = event.touches[0];
-    const touch2 = event.touches[1];
-    const currentDistance = Math.hypot(
-      touch2.clientX - touch1.clientX,
-      touch2.clientY - touch1.clientY
-    );
-    
-    const scaleChange = currentDistance / initialPinchDistance.current;
-    
-    if (scaleChange > 0.1 && scaleChange < 10) {
-      // Update accumulated scale
-      setAccumulatedTransforms(prev => ({
-        ...prev,
-        scale: prev.scale * scaleChange
-      }));
-      
-      if (onModelScale) {
-        // onModelScale(scaleChange);
-      }
-    }
-
-    const currentAngle = Math.atan2(
-      touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX);
-    const rotationDelta = currentAngle - initialTwoFingerAngle.current;
-    
-    if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
-      const zRotDelta = rotationDelta * 0.5;
-      
-      // Update accumulated Z rotation
-      // setAccumulatedTransforms(prev => ({
-      //   ...prev,
-      //   rotation: {
-      //     ...prev.rotation,
-      //     z: prev.rotation.z + zRotDelta
-      //   }
-      // }));
-      
-      // onModelRotate(0, 0, zRotDelta);
-        const currentZRotation = accumulatedTransforms.rotation.z;
-        const newZRotation = currentZRotation + zRotDelta;
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length === 1) {
+        // Single finger drag: rotate model - THIS SECTION IS PERFECT, KEEP AS-IS
+        const currentX = event.touches[0].clientX;
+        const currentY = event.touches[0].clientY;
         
-        // Apply limits: clamp between -180° and +180°
-        const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
-        
-        // Only update if the rotation actually changed (not hitting limits)
-        if (limitedZRotation !== currentZRotation) {
-          const actualDelta = limitedZRotation - currentZRotation;
+        const deltaX = currentX - lastTouchX.current;
+        const deltaY = currentY - lastTouchY.current;
+
+        // Only rotate if significant movement
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+          const rotDeltaX = deltaX * 0.01;
+          const rotDeltaY = deltaY * 0.01;
           
-            setAccumulatedTransforms(prev => ({
-              ...prev,
-              rotation: {
-                ...prev.rotation,
-                z: limitedZRotation
-              }
-            } ));
+          // Update accumulated rotation
+          setAccumulatedTransforms(prev => ({
+            ...prev,
+            rotation: {
+              x: prev.rotation.x + rotDeltaY,
+              y: prev.rotation.y + rotDeltaX,
+              z: prev.rotation.z
+            }
+          }));
+
+          if (onModelRotate) {
+            onModelRotate(rotDeltaX, rotDeltaY, 0);
+          }
+        }
         
-        onModelRotate(0, 0, actualDelta);
+        lastTouchX.current = currentX;
+        lastTouchY.current = currentY;
         
+      } else if (event.touches.length === 2) {
+        // Two finger: Z-rotation only (scale removed)
+        const touch1 = event.touches[0];
+        const touch2 = event.touches[1];
+        
+        const currentAngle = Math.atan2(
+          touch2.clientY - touch1.clientY, 
+          touch2.clientX - touch1.clientX
+        );
+        
+        // FIXED: Use incremental rotation delta
+        const rotationDelta = currentAngle - previousTwoFingerAngle.current;
+        
+        if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
+          const zRotDelta = rotationDelta * 0.5;
+          
+          // FIXED: Use functional setState to avoid race conditions
+          setAccumulatedTransforms(prev => {
+            const newZRotation = prev.rotation.z + zRotDelta;
+            
+            // Apply limits: clamp between -180° and +180°
+            const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
+            
+            // Only update if the rotation actually changed (not hitting limits)
+            if (limitedZRotation !== prev.rotation.z) {
+              const actualDelta = limitedZRotation - prev.rotation.z;
+              
+              // Send the actual applied delta to the experience
+              onModelRotate(0, 0, actualDelta);
+              
+              return {
+                ...prev,
+                rotation: {
+                  ...prev.rotation,
+                  z: limitedZRotation
+                }
+              };
+            }
+            
+            // No change if hitting limits
+            return prev;
+          });
+        }
+        
+        // FIXED: Update previous angle for next frame
+        previousTwoFingerAngle.current = currentAngle;
       }
-
-
-
       
-    }
-  }
-  
-  event.preventDefault();
-};
+      event.preventDefault();
+    };
 
-const handleTouchEnd = (event: TouchEvent) => {
-  // console.log('👆 Touch ended');
-  // Could add swipe detection here if needed
-};
-
-
-    
+    const handleTouchEnd = (event: TouchEvent) => {
+      // console.log('👆 Touch ended');
+      // Could add swipe detection here if needed
+    };
+        
     // Add resize listener
     window.addEventListener('resize', handleResize);
     
@@ -959,8 +940,8 @@ const handleTouchEnd = (event: TouchEvent) => {
         }}>
           <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
      
-<div>Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)</div>
-          <div>Scale: {formatWithSign(accumulatedTransforms.scale, 2)}</div>
+          <div>Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)</div>
+          {/* <div>Scale: {formatWithSign(accumulatedTransforms.scale, 2)}</div> */}
           <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
         {deviceOrientation ? (
           <>
