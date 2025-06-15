@@ -56,7 +56,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const touchEndX = useRef(0);
   const touchEndY = useRef(0);
   const lastTapTime = useRef(0);
   const lastTouchX = useRef(0);
@@ -482,42 +484,60 @@ const placeArObject = useCallback(() => {
       const timeSince = now - lastTapTime.current;
 
       if (event.touches.length === 1) {
-        // Single touch: store positions for rotation
+      // Store BOTH starting positions
+        touchStartX.current = event.touches[0].clientX;  // ADD THIS LINE
         touchStartY.current = event.touches[0].clientY;
+        
+        // Store BOTH current positions  
         lastTouchX.current = event.touches[0].clientX;
         lastTouchY.current = event.touches[0].clientY;
-      } else if (event.touches.length === 2) {
-        // Two finger pinch: store initial distance
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        initialPinchDistance.current = Math.hypot(
-          touch2.clientX - touch1.clientX,
-          touch2.clientY - touch1.clientY
-        );
-        initialTwoFingerAngle.current = Math.atan2(
-        touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX);
-      }
 
-      // Multi-tap detection - SIMPLIFIED
       if (timeSince < doubleTapDelay && timeSince > 0) {
-        // This is a double tap
-        // console.log('👆 Double tap detected - reset');
-            setAccumulatedTransforms({
-              rotation: { x: 0, y: 0, z: 0 },
-              scale: 1.0
-            });
+          // Double-tap detected with single finger
+          console.log('👆 Double tap detected - reset');
+          setAccumulatedTransforms({
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: 1.0
+          });
 
-        if (onModelReset) {
-          onModelReset();
-          // console.log('onModelReset called');
+          if (onModelReset) {
+            onModelReset();
+          }
+          event.preventDefault();
+          lastTapTime.current = 0;
+        } else {
+          lastTapTime.current = now;
         }
-        event.preventDefault();
-        lastTapTime.current = 0; // Reset to prevent further detection
-      } else {
-        // This is a single tap (or first tap)
-        lastTapTime.current = now;
-      }
-    };
+        
+        } else if (event.touches.length === 2) {
+        // TWO FINGERS: Check if they're too far apart to be accidental double-tap
+          const touch1 = event.touches[0];
+          const touch2 = event.touches[1];
+          const fingerDistance = Math.hypot(
+            touch2.clientX - touch1.clientX,
+            touch2.clientY - touch1.clientY
+          );
+        
+        // If fingers are far apart, this is intentional two-finger gesture
+        const MIN_TWO_FINGER_DISTANCE = 100; // pixels - adjust as needed
+        
+        if (fingerDistance > MIN_TWO_FINGER_DISTANCE) {
+          // Clear any pending double-tap detection
+          lastTapTime.current = 0;
+          console.log(`🤲 Two fingers detected ${fingerDistance.toFixed(0)}px apart - clearing double-tap`);
+        }
+        
+        // Setup for pinch/rotate
+          initialPinchDistance.current = fingerDistance;
+          initialTwoFingerAngle.current = Math.atan2(
+            touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX
+        );
+
+        } else {
+        // More than 2 fingers: clear tap detection
+        lastTapTime.current = 0;
+        }
+      };
 
 const handleTouchMove = (event: TouchEvent) => {
   if (event.touches.length === 1) {
@@ -582,15 +602,40 @@ const handleTouchMove = (event: TouchEvent) => {
       const zRotDelta = rotationDelta * 0.5;
       
       // Update accumulated Z rotation
-      setAccumulatedTransforms(prev => ({
-        ...prev,
-        rotation: {
-          ...prev.rotation,
-          z: prev.rotation.z + zRotDelta
-        }
-      }));
+      // setAccumulatedTransforms(prev => ({
+      //   ...prev,
+      //   rotation: {
+      //     ...prev.rotation,
+      //     z: prev.rotation.z + zRotDelta
+      //   }
+      // }));
       
-      onModelRotate(0, 0, zRotDelta);
+      // onModelRotate(0, 0, zRotDelta);
+        const currentZRotation = accumulatedTransforms.rotation.z;
+        const newZRotation = currentZRotation + zRotDelta;
+        
+        // Apply limits: clamp between -180° and +180°
+        const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
+        
+        // Only update if the rotation actually changed (not hitting limits)
+        if (limitedZRotation !== currentZRotation) {
+          const actualDelta = limitedZRotation - currentZRotation;
+          
+            setAccumulatedTransforms(prev => ({
+              ...prev,
+              rotation: {
+                ...prev.rotation,
+                z: limitedZRotation
+              }
+            } ));
+        
+        onModelRotate(0, 0, actualDelta);
+        
+      }
+
+
+
+      
     }
   }
   
@@ -897,7 +942,7 @@ const handleTouchEnd = (event: TouchEvent) => {
       {isInitialized && (
         <div style={{
           position: 'absolute',
-          bottom: '15vh',
+          bottom: experienceType === '2030-2105' ? '11svh' : '2svh',
           left: '50%',
           width: '90vw',
           transform: 'translateX(-50%)',
@@ -913,7 +958,8 @@ const handleTouchEnd = (event: TouchEvent) => {
           textAlign: 'center'
         }}>
           <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
-          <div>Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}°</div>
+     
+<div>Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)</div>
           <div>Scale: {formatWithSign(accumulatedTransforms.scale, 2)}</div>
           <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
         {deviceOrientation ? (

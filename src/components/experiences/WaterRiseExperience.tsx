@@ -637,7 +637,7 @@ const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFac
       {hasWaterSystem && (
         <div style={{
           position: 'fixed',
-          bottom: '20px',
+          bottom: '0.5svh',
           left: '50%',
           transform: 'translateX(-50%)',
           width: '95vw',

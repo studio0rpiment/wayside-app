@@ -379,7 +379,7 @@ const ElasticSlider: React.FC<ElasticSliderProps> = ({
           background: rgba(255, 255, 255, 0.9);
           border-radius: 0 2px 2px 0;
           transform: translateX(-1.5px);
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.1s ease;
           pointer-events: none;
           // box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
           border-radius: 50%;
