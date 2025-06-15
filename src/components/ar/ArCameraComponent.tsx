@@ -66,6 +66,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const initialPinchDistance = useRef(0);
   const initialTwoFingerAngle = useRef(0);
   const previousTwoFingerAngle = useRef(0);
+  const lastMultiTouchTime = useRef(0);
 
 
 
@@ -485,8 +486,17 @@ const placeArObject = useCallback(() => {
     const handleTouchStart = (event: TouchEvent) => {
       const now = new Date().getTime();
       const timeSince = now - lastTapTime.current;
+      const timeSinceMultiTouch = now - lastMultiTouchTime.current;
+
 
       if (event.touches.length === 1) {
+
+        if (timeSinceMultiTouch < 200) { // 200ms cooldown
+          console.log('🚫 Ignoring single finger - just ended multi-touch');
+          return;
+        }
+
+
       // Store BOTH starting positions
         touchStartX.current = event.touches[0].clientX;  // ADD THIS LINE
         touchStartY.current = event.touches[0].clientY;
@@ -626,10 +636,18 @@ const placeArObject = useCallback(() => {
     };
 
     const handleTouchEnd = (event: TouchEvent) => {
-      // console.log('👆 Touch ended');
-      // Could add swipe detection here if needed
+      // Track when multi-touch gestures end
+      if (event.touches.length === 0) {
+        // All fingers lifted
+        lastMultiTouchTime.current = new Date().getTime();
+        console.log('👆 All touches ended');
+      } else if (event.touches.length === 1) {
+        // Went from multi-touch to single touch
+        lastMultiTouchTime.current = new Date().getTime();
+        console.log('👆 Multi-touch ended, one finger remains');
+      }
     };
-        
+
     // Add resize listener
     window.addEventListener('resize', handleResize);
     
