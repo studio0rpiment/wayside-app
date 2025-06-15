@@ -568,24 +568,24 @@ loader.load(
           fontFamily: 'monospace'
         }}>
           <div style={{ color: 'yellow' }}>🖥️ MAC POINT CLOUD DEBUG</div>
-          <div>Mode: {isArMode ? 'AR Portal' : 'Standalone'}</div>
-          {arPosition && (
+          {/* <div>Mode: {isArMode ? 'AR Portal' : 'Standalone'}</div> */}
+          {/* {arPosition && (
             <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
-          )}
+          )} */}
           {modelRef.current && (
             <div style={{ color: 'cyan' }}>
               Model Pos: [{modelRef.current.position.x.toFixed(3)}, {modelRef.current.position.y.toFixed(3)}, {modelRef.current.position.z.toFixed(3)}]
             </div>
           )}
           <div>Scale: {coordinateScale}x</div>
-          <div style={{ color: hasPointCloud ? 'lightgreen' : 'orange' }}>
+          {/* <div style={{ color: hasPointCloud ? 'lightgreen' : 'orange' }}>
             Point Cloud: {hasPointCloud ? `✅ ${pointCount.toLocaleString()} pts` : '❌ None'}
           </div>
           <div style={{ color: 'lightblue', fontSize: '10px' }}>
             Size: {POINT_SIZE}px | Density: {(POINT_DENSITY * 100).toFixed(0)}%
-          </div>
+          </div> */}
           
-          <div 
+          {/* <div 
             onClick={() => {
               const newValue = !arTestingOverride;
               (window as any).arTestingOverride = newValue;
@@ -614,7 +614,7 @@ loader.load(
             }}
           >
             Override: {arTestingOverride ? '✅ (0,0,-5)' : '❌ (AR Anchor)'}
-          </div>
+          </div> */}
         </div>
       )}
     </>

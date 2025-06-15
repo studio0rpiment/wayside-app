@@ -880,7 +880,8 @@ const placeArObject = useCallback(() => {
                {!debugCollapsed && (
               <div>    
                 <div>User: [{userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}]</div>
-                <div>Anchor: [{anchorPosition[0].toFixed(6)}, {anchorPosition[1].toFixed(6)}]</div>            
+                <div>Anchor: [{anchorPosition[0].toFixed(6)}, {anchorPosition[1].toFixed(6)}]</div>  
+                          
                 <div >
                   GPS Bearing: {calculateBearing(userPosition, anchorPosition).toFixed(1)}°
                 </div>
