@@ -221,9 +221,10 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                     />
                   )}
                   <div style={{ fontSize: '14px', opacity: 0.9, marginTop: '5px' }}>
-                    {distanceToGeofence !== null && (
-                      <span><strong>{distanceToGeofence.toFixed(1)}m</strong> from center</span>
-                    )}
+                    {distanceToGeofence !== null 
+                    ? `${(distanceToGeofence * 3.28084).toFixed(0)}ft away` 
+                    : 'Distance unknown'
+                   }
                     <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>
                       Within {currentRadius}m range ✓
                     </div>
