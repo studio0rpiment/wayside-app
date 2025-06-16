@@ -155,6 +155,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     };
 
     const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
+     
       if (!userPosition || !activeAnchorPosition) return null;
       
       const finalElevationOffset = elevationOffset + manualElevationOffset;
@@ -401,7 +402,7 @@ useEffect(() => {
       clearInterval(cameraUpdateIntervalRef.current);
     }
   };
-}, [isInitialized, getCurrentExpectedModelPosition, deviceOrientation]);
+}, [isInitialized, deviceOrientation]);
   
   // Your onOrientationUpdate callback still works:
   useEffect(() => {
