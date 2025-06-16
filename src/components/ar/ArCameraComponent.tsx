@@ -348,7 +348,7 @@ useEffect(() => {
   if (!isInitialized || !cameraRef.current) return;
   
   if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined) {
-    const x = Math.sin(THREE.MathUtils.degToRad(deviceOrientation.alpha));
+    const x = -Math.sin(THREE.MathUtils.degToRad(deviceOrientation.alpha));
     const z = -Math.cos(THREE.MathUtils.degToRad(deviceOrientation.alpha));
     cameraRef.current.lookAt(x, 0, z);
     console.log('📱 Camera rotated to:', deviceOrientation.alpha);
