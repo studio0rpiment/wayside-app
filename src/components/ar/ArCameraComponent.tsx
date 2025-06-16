@@ -343,20 +343,27 @@ const placeArObject = useCallback(() => {
 
 }, [userPosition,anchorPosition, adjustedAnchorPosition, coordinateScale, experienceType, manualElevationOffset]); // Remove onArObjectPlaced from deps
   
-
+// Effect 1: Update camera rotation when device orientation changes
 useEffect(() => {
   if (!isInitialized || !cameraRef.current) return;
-
-    if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined) {
+  
+  if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined) {
     const x = Math.sin(THREE.MathUtils.degToRad(deviceOrientation.alpha));
     const z = -Math.cos(THREE.MathUtils.degToRad(deviceOrientation.alpha));
     cameraRef.current.lookAt(x, 0, z);
+    console.log('📱 Camera rotated to:', deviceOrientation.alpha);
   }
+}, [isInitialized, deviceOrientation]); // ← This updates camera rotation immediately
+
+// Effect 2: Update calculations on interval  
+useEffect(() => {
+  if (!isInitialized || !cameraRef.current) return;
   
   const updateCameraDirection = () => {
+    if (!cameraRef.current) return;
 
     // Get camera world direction
-    cameraRef.current!.getWorldDirection(cameraDirectionVector.current);
+    cameraRef.current.getWorldDirection(cameraDirectionVector.current);
     
     // Convert to compass bearing
     const bearing = Math.atan2(
@@ -384,7 +391,7 @@ useEffect(() => {
       modelDistance = cameraPosition.distanceTo(expectedModelPosition);
     }
     
-    // Update state (React batches these updates)
+    // Update state
     setCameraLookDirection({
       vector: cameraDirectionVector.current.clone(),
       bearing: normalizedBearing,
@@ -394,7 +401,7 @@ useEffect(() => {
     });
   };
   
-  // Use setInterval instead of requestAnimationFrame for more predictable timing
+  // Create interval
   cameraUpdateIntervalRef.current = window.setInterval(updateCameraDirection, 200);
   
   return () => {
@@ -402,7 +409,7 @@ useEffect(() => {
       clearInterval(cameraUpdateIntervalRef.current);
     }
   };
-}, [isInitialized, deviceOrientation]);
+}, [isInitialized]); // ← Minimal dependencies, only recreate when component initializes
   
   // Your onOrientationUpdate callback still works:
   useEffect(() => {
