@@ -1064,8 +1064,8 @@ useEffect(() => {
                             : `⬅ TURN LEFT ${turnAmount}° ⬅`;
                         } else {
                           return turnDirection > 0 
-                            ? `⮕⮕ TURN RIGHT ${turnAmount}° ⮕⮕` 
-                            : `⬅⬅ TURN LEFT ${turnAmount}° ⬅⬅`;
+                            ? `⮕⮕ TURN RIGHT ${turnAmount}° ->⮕⮕` 
+                            : `⬅⬅ TURN LEFT ${turnAmount}° <-⬅⬅`;
                         }
                 }
               })
