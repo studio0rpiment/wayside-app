@@ -69,8 +69,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const initialTwoFingerAngle = useRef(0);
   const previousTwoFingerAngle = useRef(0);
   const lastMultiTouchTime = useRef(0);
-
-
+  const cameraDirectionVector = useRef(new THREE.Vector3());
+  const lastCameraUpdateRef = useRef(0);
+  const cameraUpdateIntervalRef = useRef<number | null>(null);
 
 
 //******** STATE STATE STATE */
@@ -87,31 +88,40 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     debugMode: SHOW_DEBUG_PANEL 
   });
 
-  
+  //chevrons for directions
+  const [showChevrons, setShowChevrons] = useState(true);
+  const [debugHeading, setDebugHeading] = useState<number | null>(null);
+  const [adjustedAnchorPosition, setAdjustedAnchorPosition] = useState<[number, number] | null>(null);
+  const [manualElevationOffset, setManualElevationOffset] = useState(0);
+//for comparing camera lookat inthe debug
+  const [cameraLookDirection, setCameraLookDirection] = useState<{
+    vector: THREE.Vector3 | null;
+    bearing: number | null;
+    expectedModelPosition: THREE.Vector3 | null;
+    aimError: number | null;
+    modelDistance: number | null;
+  }>({
+    vector: null,
+    bearing: null,
+    expectedModelPosition: null,
+    aimError: null,
+    modelDistance: null
+  });
+//For Offseting in the debug panel
+  const [gpsOffset, setGpsOffset] = useState({ lon: 0, lat: 0 }); 
+  const [accumulatedTransforms, setAccumulatedTransforms] = useState({
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: 1.0
+  });
+  // Debug/testing override state
+  const [debugCollapsed, setDebugCollapsed] = useState(false);
 
-    //chevrons for directions
-    const [showChevrons, setShowChevrons] = useState(true);
-    const [debugHeading, setDebugHeading] = useState<number | null>(null);
-    const [adjustedAnchorPosition, setAdjustedAnchorPosition] = useState<[number, number] | null>(null);
-    const [manualElevationOffset, setManualElevationOffset] = useState(0);
-
-  
-
-    // Add this state to ArCameraComponent
-    const [gpsOffset, setGpsOffset] = useState({ lon: 0, lat: 0 }); 
-    const [accumulatedTransforms, setAccumulatedTransforms] = useState({
-      rotation: { x: 0, y: 0, z: 0 },
-      scale: 1.0
-    });
-    // Debug/testing override state
-    const [debugCollapsed, setDebugCollapsed] = useState(false);
-
-    const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
-      // Initialize from global if available, otherwise false
-      return typeof (window as any).arTestingOverride === 'boolean'
-        ? (window as any).arTestingOverride
-        : false;
-    });
+  const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
+    // Initialize from global if available, otherwise false
+    return typeof (window as any).arTestingOverride === 'boolean'
+      ? (window as any).arTestingOverride
+      : false;
+  });
 
 //******** DECLARATIONS AND HELPERS */
     // Touch constants
@@ -120,6 +130,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     // Permission handling - use existing system
     const { isPermissionGranted, requestPermission } = usePermissions();
     const activeAnchorPosition = adjustedAnchorPosition || anchorPosition;
+
+    const CAMERA_UPDATE_INTERVAL = 200; 
 
     const currentExperienceType = experienceType || 'default';
     const experienceOffsets: Record<string, number> = {
@@ -141,6 +153,22 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       const sign = num >= 0 ? '+' : '';
       return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
     };
+
+    const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
+      if (!userPosition || !activeAnchorPosition) return null;
+      
+      const finalElevationOffset = elevationOffset + manualElevationOffset;
+      
+      // Use the SAME function your experiences use
+      const result = gpsToThreeJsPositionWithTerrain(
+        userPosition,
+        activeAnchorPosition,
+        finalElevationOffset,
+        coordinateScale
+      );
+      
+      return result.position;
+    }, [userPosition, activeAnchorPosition, elevationOffset, manualElevationOffset, coordinateScale]);
 
   const updateElevationOffset = useCallback((deltaElevation: number) => {
   const newOffset = manualElevationOffset + deltaElevation;
@@ -313,44 +341,58 @@ const placeArObject = useCallback(() => {
 
 }, [userPosition,anchorPosition, adjustedAnchorPosition, coordinateScale, experienceType, manualElevationOffset]); // Remove onArObjectPlaced from deps
   
-  // Handle device orientation events
-  // const handleDeviceOrientation = (event: DeviceOrientationEvent) => {
-  //   if (!cameraRef.current) return;
-    
-  //   const { alpha, beta, gamma } = event;
-    
-  //   // Validate orientation data
-  //   if (alpha === null || beta === null || gamma === null) return;
-    
-  //   // Store orientation data
-  //   const orientation = { alpha, beta, gamma };
-  //   setDeviceOrientation(orientation);
-    
-  //   //*************************** */ 
-  //   // Convert device orientation to camera rotation
-  //   // Apply rotation to camera to match device orientation
-  //   // const alphaRad = THREE.MathUtils.degToRad(alpha || 0);
-  //   // const betaRad = THREE.MathUtils.degToRad((beta || 0) - 80);
-  //   // const gammaRad = THREE.MathUtils.degToRad(gamma || 0);
-    
-  //   // // Create rotation matrix from device orientation
-  //   // // Note: These may need adjustment based on device coordinate system
-  //   // const euler = new THREE.Euler(
-  //   //   betaRad,  // X-axis rotation (tilt forward/back)
-  //   //   alphaRad, // Y-axis rotation (compass heading)
-  //   //   -gammaRad, // Z-axis rotation (tilt left/right, negated)
-  //   //   'YXZ'     // Rotation order
-  //   // );
-    
-  //   // cameraRef.current.setRotationFromEuler(euler);
 
-  //     //*************************** */ 
+useEffect(() => {
+  if (!isInitialized || !cameraRef.current) return;
+  
+  const updateCameraDirection = () => {
+    // Get camera world direction
+    cameraRef.current!.getWorldDirection(cameraDirectionVector.current);
     
-  //   // Notify parent about orientation update
-  //   if (onOrientationUpdate) {
-  //     onOrientationUpdate(orientation);
-  //   }
-  // };
+    // Convert to compass bearing
+    const bearing = Math.atan2(
+      cameraDirectionVector.current.x,
+      -cameraDirectionVector.current.z
+    ) * (180 / Math.PI);
+    const normalizedBearing = (bearing + 360) % 360;
+    
+    // Get expected model position
+    const expectedModelPosition = getCurrentExpectedModelPosition();
+    
+    // Calculate aim error and distance
+    let aimError = null;
+    let modelDistance = null;
+    
+    if (expectedModelPosition && cameraRef.current) {
+      const cameraPosition = cameraRef.current.position;
+      const expectedDirection = expectedModelPosition.clone().sub(cameraPosition).normalize();
+      
+      const dotProduct = cameraDirectionVector.current.dot(expectedDirection);
+      const angleDifference = Math.acos(Math.max(-1, Math.min(1, dotProduct))) * (180 / Math.PI);
+      aimError = angleDifference;
+      
+      modelDistance = cameraPosition.distanceTo(expectedModelPosition);
+    }
+    
+    // Update state (React batches these updates)
+    setCameraLookDirection({
+      vector: cameraDirectionVector.current.clone(),
+      bearing: normalizedBearing,
+      expectedModelPosition,
+      aimError,
+      modelDistance
+    });
+  };
+  
+  // Use setInterval instead of requestAnimationFrame for more predictable timing
+  cameraUpdateIntervalRef.current = window.setInterval(updateCameraDirection, 200);
+  
+  return () => {
+    if (cameraUpdateIntervalRef.current) {
+      clearInterval(cameraUpdateIntervalRef.current);
+    }
+  };
+}, [isInitialized, getCurrentExpectedModelPosition]);
   
   // Your onOrientationUpdate callback still works:
   useEffect(() => {
@@ -398,28 +440,6 @@ const placeArObject = useCallback(() => {
     
     rendererRef.current.setSize(width, height);
   };
-  
-  // Request device orientation permission (iOS) - use existing system
-  // const requestOrientationPermission = async () => {
-  //   // Check if orientation permission is already granted via existing system
-  //   if (isPermissionGranted(PermissionType.ORIENTATION)) {
-  //     return true;
-  //   }
-    
-  //   // // On iOS, we still need to explicitly request DeviceOrientationEvent permission
-  //   // if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-  //   //   try {
-  //   //     const permission = await (DeviceOrientationEvent as any).requestPermission();
-  //   //     return permission === 'granted';
-  //   //   } catch (error) {
-  //   //     console.error('Orientation permission error:', error);
-  //   //     return false;
-  //   //   }
-  //   // }
-    
-  //   // For non-iOS devices, rely on existing permission system
-  //   return isPermissionGranted(PermissionType.ORIENTATION);
-  // };
   
   // Initialize everything
   useEffect(() => {
@@ -694,7 +714,6 @@ const placeArObject = useCallback(() => {
   
 
 
-
   // Update AR object position when GPS coordinates change
   useEffect(() => {
     if (isInitialized) {
@@ -901,9 +920,19 @@ const placeArObject = useCallback(() => {
                 <div >
                   GPS Bearing: {calculateBearing(userPosition, anchorPosition).toFixed(1)}°
                 </div>
-                 <div style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</div>
-                  <div>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}° | Available: {orientationAvailable ? '✅' : '❌'}</div>
-    {orientationError && <div style={{color: 'red'}}>Orient Error: {orientationError}</div>}
+         
+                <div>
+                  <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
+                  <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
+                </div>
+
+                
+
+                {/* NEW: Model targeting validation */}
+              
+    
+                  {orientationError && 
+                    <div style={{color: 'red'}}> Orient Error: {orientationError} </div>}
 
 
                 <div style={{ 
@@ -958,7 +987,7 @@ const placeArObject = useCallback(() => {
                   
 
       
-      {isInitialized && (
+      {SHOW_DEBUG_PANEL && isInitialized && (
         <div style={{
           position: 'absolute',
           bottom: experienceType === '2030-2105' ? '11svh' : '2svh',
@@ -993,6 +1022,62 @@ const placeArObject = useCallback(() => {
           <div>Orientation: Desktop</div>
         )}
 
+          <div style = {{fontSize: '0.5rem'}}>
+            <span style={{ color: 'yellow'  }}>Camera Lookat: {cameraLookDirection.bearing?.toFixed(1) ?? 'N/A'}°</span>
+              <span> Aim Error: </span>
+                <span style={{ 
+                  color: 'yellow'
+                }}>
+                  {cameraLookDirection.aimError !== null ? `${cameraLookDirection.aimError.toFixed(1)}°` : 'N/A'}
+                </span>
+          </div>
+           {cameraLookDirection.expectedModelPosition ? (
+            <>
+              <div style={{ fontSize: '0.5rem' }}>
+                Model Position: [{cameraLookDirection.expectedModelPosition.x.toFixed(1)}, {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] | Distance: {cameraLookDirection.modelDistance?.toFixed(1)}m
+              </div>
+
+         {cameraLookDirection.aimError !== null && (
+            <div style={{ fontSize: '0.8rem', opacity: 1, color: 'yellow' }}>
+              {(() => {
+                if (cameraLookDirection.aimError < 2) {
+                  return '⮕⮕ RIGHT THERE ⬅⬅';
+                 } else {
+                  // Calculate which direction to turn
+                  const gpsToAnchor = calculateBearing(userPosition, activeAnchorPosition);
+                  const currentLooking = cameraLookDirection.bearing || 0;
+                  
+                  let turnDirection = gpsToAnchor - currentLooking;
+                  
+                  // Handle wraparound (e.g., 350° to 10°)
+                  if (turnDirection > 180) turnDirection -= 360;
+                  if (turnDirection < -180) turnDirection += 360;
+                  
+                  const turnAmount = Math.abs(turnDirection).toFixed(0);
+                       if (cameraLookDirection.aimError < 10) {
+                        return turnDirection > 0 
+                          ? `→  Close - turn RIGHT ${turnAmount}° →` 
+                          : `← Close - turn LEFT ${turnAmount}° ←`
+                        } else if (cameraLookDirection.aimError < 30) {
+                          return turnDirection > 0 
+                            ? `⮕ TURN RIGHT ${turnAmount}° ⮕` 
+                            : `⬅ TURN LEFT ${turnAmount}° ⬅`;
+                        } else {
+                          return turnDirection > 0 
+                            ? `⮕⮕ TURN RIGHT ${turnAmount}° ⮕⮕` 
+                            : `⬅⬅ TURN LEFT ${turnAmount}° ⬅⬅`;
+                        }
+                }
+              })
+              ()}
+            </div>
+          )}
+            
+            </>
+          ) : (
+            <div style={{ fontSize: '9px', opacity: 0.6 }}>No position calculated</div>
+          )}
+
 
         <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
         <div style={{ color: 'yellow', fontSize: '0.7rem' }}>USE BUTTONS TO MOVE ANCHOR: [{(adjustedAnchorPosition || anchorPosition)[0].toFixed(6)}, {(adjustedAnchorPosition || anchorPosition)[1].toFixed(6)}]</div>
@@ -1000,7 +1085,7 @@ const placeArObject = useCallback(() => {
         {(() => {
           const buttonStyle = {
             fontSize: '20px',
-            padding: '8px 12px',
+            padding: '4px 12px',
             backgroundColor: 'rgba(255,255,255,0.2)',
             border: 'none',
             borderRadius: '0.5rem',
@@ -1024,7 +1109,7 @@ const placeArObject = useCallback(() => {
           {(() => {
             const elevButtonStyle = {
             fontSize: '20px',
-            padding: '8px 12px',
+            padding: '4px 12px',
             backgroundColor: 'rgba(255,255,255,0.2)',
             border: 'none',
             borderRadius: '0.5rem',
