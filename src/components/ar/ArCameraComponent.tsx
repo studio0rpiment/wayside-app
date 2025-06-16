@@ -227,7 +227,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     1000
   );
   camera.position.set(0, 0, 0); // Camera at origin
-  camera.lookAt(0, 0, -1);
+  if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined) {
+    let x = Math.sin(deviceOrientation.alpha);  // East-West component
+    let z = -Math.cos(deviceOrientation.alpha); // North-South component (negative because of your coordinate system)
+    camera.lookAt(x, 0, z);
+  } else {
+    // Default camera look direction when no orientation data
+    camera.lookAt(0, 0, -1);
+  }
   cameraRef.current = camera;
   
   // Create optimized renderer (CHANGED)

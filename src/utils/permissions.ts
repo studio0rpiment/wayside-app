@@ -1,4 +1,4 @@
-// src/utils/permissions.ts
+// src/utils/permissions.ts - Revised for iOS Safari compatibility
 
 /**
  * Permission types supported by the AR application
@@ -54,12 +54,16 @@ const DEFAULT_OPTIONS: PermissionOptions = {
   requiredPermissions: [
     PermissionType.CAMERA,
     PermissionType.LOCATION,
-    PermissionType.ORIENTATION,
-    PermissionType.NOTIFICATION
+    PermissionType.ORIENTATION
+    // MICROPHONE: Available for future features, not required by default
+    // NOTIFICATION: Removed - geofencing handles in-app notifications better
   ],
   showUI: true,
   onStatusChange: () => {}
 };
+
+// Local storage key for tracking orientation permission state
+const ORIENTATION_PERMISSION_KEY = 'wayside-orientation-permission';
 
 /**
  * Initialize permissions system
@@ -123,24 +127,29 @@ export async function checkAllPermissions(
     requiredPermissions.map(async (type) => {
       let status: PermissionStatus;
       
-      switch (type) {
-        case PermissionType.CAMERA:
-          status = await checkCameraPermission();
-          break;
-        case PermissionType.LOCATION:
-          status = await checkLocationPermission();
-          break;
-        case PermissionType.ORIENTATION:
-          status = await checkOrientationPermission();
-          break;
-        case PermissionType.MICROPHONE:
-          status = await checkMicrophonePermission();
-          break;
-        case PermissionType.NOTIFICATION:
-          status = await checkNotificationPermission();
-          break;
-        default:
-          status = PermissionStatus.UNKNOWN;
+      try {
+        switch (type) {
+          case PermissionType.CAMERA:
+            status = await checkCameraPermission();
+            break;
+          case PermissionType.LOCATION:
+            status = await checkLocationPermission();
+            break;
+          case PermissionType.ORIENTATION:
+            status = await checkOrientationPermission();
+            break;
+          case PermissionType.MICROPHONE:
+            status = await checkMicrophonePermission();
+            break;
+          case PermissionType.NOTIFICATION:
+            status = await checkNotificationPermission();
+            break;
+          default:
+            status = PermissionStatus.UNKNOWN;
+        }
+      } catch (error) {
+        console.error(`Error checking permission ${type}:`, error);
+        status = PermissionStatus.UNKNOWN;
       }
       
       results[type] = status;
@@ -168,19 +177,29 @@ export async function checkCameraPermission(): Promise<PermissionStatus> {
   try {
     // First check if the Permission API is available
     if (navigator.permissions && navigator.permissions.query) {
-      const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
-      return result.state as PermissionStatus;
+      try {
+        const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
+        return result.state as PermissionStatus;
+      } catch (e) {
+        // Permission API might not support camera query on some browsers
+        console.log('Permission API query failed for camera, using fallback');
+      }
     }
     
-    // Fallback: Try to access the camera
+    // Fallback: Try to access the camera with minimal constraints
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      // If we get here, permission is granted
-      // Clean up the stream we just created
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 1, height: 1 } // Minimal request
+      });
+      // Clean up immediately
       stream.getTracks().forEach(track => track.stop());
       return PermissionStatus.GRANTED;
-    } catch (e) {
-      return PermissionStatus.DENIED;
+    } catch (e: any) {
+      // Check specific error types
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        return PermissionStatus.DENIED;
+      }
+      return PermissionStatus.UNKNOWN;
     }
   } catch (error) {
     console.error('Error checking camera permission:', error);
@@ -195,22 +214,28 @@ export async function checkLocationPermission(): Promise<PermissionStatus> {
   try {
     // First check if the Permission API is available
     if (navigator.permissions && navigator.permissions.query) {
-      const result = await navigator.permissions.query({ name: 'geolocation' });
-      return result.state as PermissionStatus;
+      try {
+        const result = await navigator.permissions.query({ name: 'geolocation' });
+        return result.state as PermissionStatus;
+      } catch (e) {
+        console.log('Permission API query failed for geolocation, using fallback');
+      }
     }
     
     // Fallback: Try to access location
-    try {
-      return new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          () => resolve(PermissionStatus.GRANTED),
-          () => resolve(PermissionStatus.DENIED),
-          { timeout: 3000 }
-        );
-      });
-    } catch (e) {
-      return PermissionStatus.DENIED;
-    }
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        () => resolve(PermissionStatus.GRANTED),
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            resolve(PermissionStatus.DENIED);
+          } else {
+            resolve(PermissionStatus.UNKNOWN);
+          }
+        },
+        { timeout: 5000, enableHighAccuracy: false, maximumAge: 300000 }
+      );
+    });
   } catch (error) {
     console.error('Error checking location permission:', error);
     return PermissionStatus.UNKNOWN;
@@ -219,27 +244,70 @@ export async function checkLocationPermission(): Promise<PermissionStatus> {
 
 /**
  * Check device orientation permission status
- * Note: This is mostly relevant for iOS which has a explicit permission
+ * iOS Safari specific: Cannot check without requesting, so we use localStorage to track state
  */
 export async function checkOrientationPermission(): Promise<PermissionStatus> {
   try {
-    // iOS 13+ requires explicit permission for DeviceMotionEvent
+    // iOS 13+ Safari - has explicit permission system
     if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      try {
-        const permissionState = await (DeviceOrientationEvent as any).requestPermission();
-        return permissionState === 'granted' ? PermissionStatus.GRANTED : PermissionStatus.DENIED;
-      } catch (e) {
-        return PermissionStatus.PROMPT;
+      
+      // Check our localStorage cache first
+      const cachedStatus = localStorage.getItem(ORIENTATION_PERMISSION_KEY);
+      if (cachedStatus === 'granted') {
+        // Verify it's still working by testing if events fire
+        const isActuallyWorking = await testOrientationEvents();
+        if (isActuallyWorking) {
+          return PermissionStatus.GRANTED;
+        } else {
+          // Clear stale cache
+          localStorage.removeItem(ORIENTATION_PERMISSION_KEY);
+        }
+      } else if (cachedStatus === 'denied') {
+        return PermissionStatus.DENIED;
       }
+      
+      // No cached state or cache was stale - need to prompt user
+      return PermissionStatus.PROMPT;
     }
     
-    // For other browsers, assume it's available (no permission needed)
-    return PermissionStatus.GRANTED;
+    // Non-iOS browsers - test if orientation events work
+    const hasOrientation = await testOrientationEvents();
+    return hasOrientation ? PermissionStatus.GRANTED : PermissionStatus.UNKNOWN;
+    
   } catch (error) {
     console.error('Error checking orientation permission:', error);
     return PermissionStatus.UNKNOWN;
   }
+}
+
+/**
+ * Test if device orientation events are actually working
+ * Returns true if events fire within timeout period
+ */
+function testOrientationEvents(): Promise<boolean> {
+  return new Promise((resolve) => {
+    let hasOrientation = false;
+    const timeout = 1000; // 1 second timeout
+    
+    const testHandler = (event: DeviceOrientationEvent) => {
+      // Check if we got real data (not all zeros)
+      if (event.alpha !== null || event.beta !== null || event.gamma !== null) {
+        hasOrientation = true;
+        window.removeEventListener('deviceorientation', testHandler);
+        resolve(true);
+      }
+    };
+    
+    // Add listener
+    window.addEventListener('deviceorientation', testHandler);
+    
+    // Timeout fallback
+    setTimeout(() => {
+      window.removeEventListener('deviceorientation', testHandler);
+      resolve(hasOrientation);
+    }, timeout);
+  });
 }
 
 /**
@@ -249,19 +317,25 @@ export async function checkMicrophonePermission(): Promise<PermissionStatus> {
   try {
     // First check if the Permission API is available
     if (navigator.permissions && navigator.permissions.query) {
-      const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-      return result.state as PermissionStatus;
+      try {
+        const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        return result.state as PermissionStatus;
+      } catch (e) {
+        console.log('Permission API query failed for microphone, using fallback');
+      }
     }
     
     // Fallback: Try to access the microphone
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // If we get here, permission is granted
-      // Clean up the stream we just created
+      // Clean up immediately
       stream.getTracks().forEach(track => track.stop());
       return PermissionStatus.GRANTED;
-    } catch (e) {
-      return PermissionStatus.DENIED;
+    } catch (e: any) {
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        return PermissionStatus.DENIED;
+      }
+      return PermissionStatus.UNKNOWN;
     }
   } catch (error) {
     console.error('Error checking microphone permission:', error);
@@ -281,12 +355,15 @@ export async function checkNotificationPermission(): Promise<PermissionStatus> {
     }
     
     // Direct check of Notification permission status
-    if (Notification.permission === 'granted') {
-      return PermissionStatus.GRANTED;
-    } else if (Notification.permission === 'denied') {
-      return PermissionStatus.DENIED;
-    } else {
-      return PermissionStatus.PROMPT;
+    switch (Notification.permission) {
+      case 'granted':
+        return PermissionStatus.GRANTED;
+      case 'denied':
+        return PermissionStatus.DENIED;
+      case 'default':
+        return PermissionStatus.PROMPT;
+      default:
+        return PermissionStatus.UNKNOWN;
     }
   } catch (error) {
     console.error('Error checking notification permission:', error);
@@ -303,8 +380,11 @@ export async function requestCameraPermission(): Promise<boolean> {
     // Clean up the stream
     stream.getTracks().forEach(track => track.stop());
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error requesting camera permission:', error);
+    if (error.name === 'NotAllowedError') {
+      console.log('Camera permission explicitly denied by user');
+    }
     return false;
   }
 }
@@ -315,33 +395,60 @@ export async function requestCameraPermission(): Promise<boolean> {
 export async function requestLocationPermission(): Promise<boolean> {
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
-      () => resolve(true),
+      () => {
+        console.log('Location permission granted');
+        resolve(true);
+      },
       (error) => {
         console.error('Location permission denied:', error);
         resolve(false);
-      }
+      },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 300000 }
     );
   });
 }
 
 /**
  * Request device orientation permission
+ * IMPORTANT: Must be called from a user gesture (click event)
  */
 export async function requestOrientationPermission(): Promise<boolean> {
-  // iOS 13+ requires explicit permission
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-    try {
+  try {
+    // iOS 13+ requires explicit permission
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      
+      console.log('Requesting iOS orientation permission...');
       const permission = await (DeviceOrientationEvent as any).requestPermission();
-      return permission === 'granted';
-    } catch (error) {
-      console.error('Error requesting orientation permission:', error);
+      
+      // Cache the result in localStorage
+      localStorage.setItem(ORIENTATION_PERMISSION_KEY, permission);
+      
+      if (permission === 'granted') {
+        console.log('iOS orientation permission granted');
+        return true;
+      } else {
+        console.log('iOS orientation permission denied');
+        return false;
+      }
+    }
+    
+    // Non-iOS browsers - test if orientation works
+    const hasOrientation = await testOrientationEvents();
+    if (hasOrientation) {
+      console.log('Orientation events available (non-iOS)');
+      return true;
+    } else {
+      console.log('Orientation events not available');
       return false;
     }
+    
+  } catch (error) {
+    console.error('Error requesting orientation permission:', error);
+    // Cache denial on error
+    localStorage.setItem(ORIENTATION_PERMISSION_KEY, 'denied');
+    return false;
   }
-  
-  // For other browsers, assume it's granted
-  return true;
 }
 
 /**
@@ -352,9 +459,13 @@ export async function requestMicrophonePermission(): Promise<boolean> {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     // Clean up the stream
     stream.getTracks().forEach(track => track.stop());
+    console.log('Microphone permission granted');
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error requesting microphone permission:', error);
+    if (error.name === 'NotAllowedError') {
+      console.log('Microphone permission explicitly denied by user');
+    }
     return false;
   }
 }
@@ -372,7 +483,15 @@ export async function requestNotificationPermission(): Promise<boolean> {
     
     // Request permission
     const permission = await Notification.requestPermission();
-    return permission === 'granted';
+    const granted = permission === 'granted';
+    
+    if (granted) {
+      console.log('Notification permission granted');
+    } else {
+      console.log('Notification permission denied');
+    }
+    
+    return granted;
   } catch (error) {
     console.error('Error requesting notification permission:', error);
     return false;
@@ -398,22 +517,27 @@ export async function requestAllPermissions(
   for (const type of requiredPermissions) {
     let granted = false;
     
-    switch (type) {
-      case PermissionType.CAMERA:
-        granted = await requestCameraPermission();
-        break;
-      case PermissionType.LOCATION:
-        granted = await requestLocationPermission();
-        break;
-      case PermissionType.ORIENTATION:
-        granted = await requestOrientationPermission();
-        break;
-      case PermissionType.MICROPHONE:
-        granted = await requestMicrophonePermission();
-        break;
-      case PermissionType.NOTIFICATION:
-        granted = await requestNotificationPermission();
-        break;
+    try {
+      switch (type) {
+        case PermissionType.CAMERA:
+          granted = await requestCameraPermission();
+          break;
+        case PermissionType.LOCATION:
+          granted = await requestLocationPermission();
+          break;
+        case PermissionType.ORIENTATION:
+          granted = await requestOrientationPermission();
+          break;
+        case PermissionType.MICROPHONE:
+          granted = await requestMicrophonePermission();
+          break;
+        case PermissionType.NOTIFICATION:
+          granted = await requestNotificationPermission();
+          break;
+      }
+    } catch (error) {
+      console.error(`Error requesting permission ${type}:`, error);
+      granted = false;
     }
     
     results[type] = granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED;
@@ -428,6 +552,23 @@ export async function requestAllPermissions(
     allGranted,
     isFirstTimeUser: false
   };
+}
+
+/**
+ * Clear orientation permission cache
+ * Useful for debugging or when user wants to reset their choice
+ */
+export function clearOrientationPermissionCache(): void {
+  localStorage.removeItem(ORIENTATION_PERMISSION_KEY);
+  console.log('Orientation permission cache cleared');
+}
+
+/**
+ * Check if device supports orientation permission requests (iOS Safari specific)
+ */
+export function isOrientationPermissionRequired(): boolean {
+  return typeof DeviceOrientationEvent !== 'undefined' &&
+         typeof (DeviceOrientationEvent as any).requestPermission === 'function';
 }
 
 // UI-related functions that would connect to your UI system
@@ -467,15 +608,15 @@ async function showStreamlinedPermissionUI(
 export function getPermissionExplanation(type: PermissionType): string {
   switch (type) {
     case PermissionType.CAMERA:
-      return 'Camera access is needed to see AR elements in the park through your device.';
+      return 'Camera access enables the AR experience - your phone becomes a window into the augmented world of Kenilworth Aquatic Gardens.';
     case PermissionType.LOCATION:
-      return 'Location access helps place AR elements in the correct spots as you move around the park.';
+      return 'Location access places AR elements at their correct real-world positions as you move around the park.';
     case PermissionType.ORIENTATION:
-      return 'Device orientation helps position AR elements correctly as you move your device.';
+      return 'Device orientation allows you to look around naturally - point your phone in any direction to explore the AR world.';
     case PermissionType.MICROPHONE:
-      return 'Microphone access enables interactive audio features in the AR experience.';
+      return 'Microphone access enables voice interactions and audio features in future AR experiences.';
     case PermissionType.NOTIFICATION:
-      return 'Notification permission allows us to alert you when you enter experience areas, even when the app is in the background.';
+      return 'Background notifications are handled by our in-app geofencing system for better battery life and user experience.';
     default:
       return 'This permission is needed for the AR experience to work properly.';
   }

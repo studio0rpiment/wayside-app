@@ -1,15 +1,11 @@
 import React from 'react';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType, PermissionStatus } from '../../utils/permissions';
-import { 
-  Chip, 
-  Box, 
-  Stack, 
-  Typography, 
-  Button, 
-  Card, 
-  CardContent 
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
@@ -32,7 +28,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
   showCamera = true,
   showLocation = true,
   showOrientation = true,
-  // showNotification = true, 
+  // showNotification = false, // Changed from true to false to match updated permissions.ts
   compact = false,
   onRequestPermission,
   className = '',
@@ -47,34 +43,8 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
     if (onRequestPermission) {
       onRequestPermission(type);
     } else {
-      // Force re-request the permission regardless of current state
-      try {
-        switch (type) {
-          case PermissionType.CAMERA:
-            // Force camera check
-            await navigator.mediaDevices.getUserMedia({ video: true })
-              .then(stream => stream.getTracks().forEach(track => track.stop()));
-            break;
-          case PermissionType.LOCATION:
-            // Force location check
-            navigator.geolocation.getCurrentPosition(() => {}, () => {});
-            break;
-          case PermissionType.ORIENTATION:
-            // For orientation, there's no way to force re-prompt on most browsers
-            // But we can still call the API
-            if (typeof DeviceOrientationEvent !== 'undefined' &&
-                typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-              await (DeviceOrientationEvent as any).requestPermission();
-            }
-            break;
-        }
-        
-        // After directly accessing APIs, call the normal permission flow
-        await requestPermission(type);
-      } catch (error) {
-        // If direct API access fails, fall back to normal flow
-        await requestPermission(type);
-      }
+      // Use the permission system directly - removed dangerous direct API calls
+      await requestPermission(type);
     }
   };
 
@@ -295,6 +265,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               {type === PermissionType.CAMERA && "CAMERA ACCESS"}
               {type === PermissionType.LOCATION && "LOCATION"}
               {type === PermissionType.ORIENTATION && "MOTION"}
+              {/* Better: "LOOK AROUND" or "DEVICE ROTATION" - enables the AR portal experience */}
               {/* {type === PermissionType.NOTIFICATION && "NOTIFICATIONS"} */}
                 
             </span>
@@ -319,6 +290,7 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
               {type === PermissionType.CAMERA && "Wayside.at is an augmented reality experience and needs your camera to see the world."}
               {type === PermissionType.LOCATION && "We use geolocation for certain features such as the real-time map."}
               {type === PermissionType.ORIENTATION && "We need access to your device's gyroscope."}
+              {/* Better: "Point your phone in any direction to explore the AR world naturally." */}
               {/* {type === PermissionType.NOTIFICATION && "Receive alerts when you enter experience areas, even when the app is in the background."} */}
 
             </span>
