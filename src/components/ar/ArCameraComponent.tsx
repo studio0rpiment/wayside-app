@@ -261,6 +261,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     1000
   );
   camera.position.set(0, 0, 0); // Camera at origin
+
   if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined) {
     let x = Math.sin(deviceOrientation.alpha);  // East-West component
     let z = -Math.cos(deviceOrientation.alpha); // North-South component (negative because of your coordinate system)
@@ -346,6 +347,7 @@ useEffect(() => {
   if (!isInitialized || !cameraRef.current) return;
   
   const updateCameraDirection = () => {
+
     // Get camera world direction
     cameraRef.current!.getWorldDirection(cameraDirectionVector.current);
     
@@ -354,6 +356,7 @@ useEffect(() => {
       cameraDirectionVector.current.x,
       -cameraDirectionVector.current.z
     ) * (180 / Math.PI);
+
     const normalizedBearing = (bearing + 360) % 360;
     
     // Get expected model position
@@ -392,7 +395,7 @@ useEffect(() => {
       clearInterval(cameraUpdateIntervalRef.current);
     }
   };
-}, [isInitialized, getCurrentExpectedModelPosition]);
+}, [isInitialized, getCurrentExpectedModelPosition, deviceOrientation]);
   
   // Your onOrientationUpdate callback still works:
   useEffect(() => {
