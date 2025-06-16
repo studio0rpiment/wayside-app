@@ -736,7 +736,7 @@ useEffect(() => {
     if (isInitialized) {
       placeArObject();
     }
-  }, [userPosition, anchorPosition, coordinateScale, isInitialized]);
+  }, [userPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized]);
 
 
   
