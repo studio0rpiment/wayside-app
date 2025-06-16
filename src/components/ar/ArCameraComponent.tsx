@@ -8,6 +8,8 @@ import { validateTerrainCoverage, getEnhancedAnchorPosition } from '../../utils/
 import EdgeChevrons from './EdgeChevrons';
 import { loadHeightmap, testTerrainLookup, gpsToThreeJsPositionWithTerrain } from '../../utils/terrainUtils';
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
+import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
+
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -75,11 +77,15 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [deviceOrientation, setDeviceOrientation] = useState<{
-    alpha: number;
-    beta: number;
-    gamma: number;
-  } | null>(null);
+  const { 
+    heading: deviceHeading,
+    deviceOrientation, 
+    isAvailable: orientationAvailable,
+    error: orientationError 
+  } = useDeviceOrientation({ 
+    enableSmoothing: true,
+    debugMode: SHOW_DEBUG_PANEL 
+  });
 
   
 
@@ -308,61 +314,67 @@ const placeArObject = useCallback(() => {
 }, [userPosition,anchorPosition, adjustedAnchorPosition, coordinateScale, experienceType, manualElevationOffset]); // Remove onArObjectPlaced from deps
   
   // Handle device orientation events
-  const handleDeviceOrientation = (event: DeviceOrientationEvent) => {
-    if (!cameraRef.current) return;
+  // const handleDeviceOrientation = (event: DeviceOrientationEvent) => {
+  //   if (!cameraRef.current) return;
     
-    const { alpha, beta, gamma } = event;
+  //   const { alpha, beta, gamma } = event;
     
-    // Validate orientation data
-    if (alpha === null || beta === null || gamma === null) return;
+  //   // Validate orientation data
+  //   if (alpha === null || beta === null || gamma === null) return;
     
-    // Store orientation data
-    const orientation = { alpha, beta, gamma };
-    setDeviceOrientation(orientation);
+  //   // Store orientation data
+  //   const orientation = { alpha, beta, gamma };
+  //   setDeviceOrientation(orientation);
     
-    //*************************** */ 
-    // Convert device orientation to camera rotation
-    // Apply rotation to camera to match device orientation
-    // const alphaRad = THREE.MathUtils.degToRad(alpha || 0);
-    // const betaRad = THREE.MathUtils.degToRad((beta || 0) - 80);
-    // const gammaRad = THREE.MathUtils.degToRad(gamma || 0);
+  //   //*************************** */ 
+  //   // Convert device orientation to camera rotation
+  //   // Apply rotation to camera to match device orientation
+  //   // const alphaRad = THREE.MathUtils.degToRad(alpha || 0);
+  //   // const betaRad = THREE.MathUtils.degToRad((beta || 0) - 80);
+  //   // const gammaRad = THREE.MathUtils.degToRad(gamma || 0);
     
-    // // Create rotation matrix from device orientation
-    // // Note: These may need adjustment based on device coordinate system
-    // const euler = new THREE.Euler(
-    //   betaRad,  // X-axis rotation (tilt forward/back)
-    //   alphaRad, // Y-axis rotation (compass heading)
-    //   -gammaRad, // Z-axis rotation (tilt left/right, negated)
-    //   'YXZ'     // Rotation order
-    // );
+  //   // // Create rotation matrix from device orientation
+  //   // // Note: These may need adjustment based on device coordinate system
+  //   // const euler = new THREE.Euler(
+  //   //   betaRad,  // X-axis rotation (tilt forward/back)
+  //   //   alphaRad, // Y-axis rotation (compass heading)
+  //   //   -gammaRad, // Z-axis rotation (tilt left/right, negated)
+  //   //   'YXZ'     // Rotation order
+  //   // );
     
-    // cameraRef.current.setRotationFromEuler(euler);
+  //   // cameraRef.current.setRotationFromEuler(euler);
 
-      //*************************** */ 
+  //     //*************************** */ 
     
-    // Notify parent about orientation update
-    if (onOrientationUpdate) {
-      onOrientationUpdate(orientation);
+  //   // Notify parent about orientation update
+  //   if (onOrientationUpdate) {
+  //     onOrientationUpdate(orientation);
+  //   }
+  // };
+  
+  // Your onOrientationUpdate callback still works:
+  useEffect(() => {
+    if (onOrientationUpdate && deviceOrientation && 
+        deviceOrientation.alpha !== null && 
+        deviceOrientation.beta !== null && 
+        deviceOrientation.gamma !== null) {
+      onOrientationUpdate({
+        alpha: deviceOrientation.alpha,
+        beta: deviceOrientation.beta,
+        gamma: deviceOrientation.gamma
+      });
     }
-  };
-  
+  }, [deviceOrientation, onOrientationUpdate]);
+
   const getDeviceHeading = (): number | null => {
-  // Use debug override if set
-  if (debugHeading !== null) {
-    return debugHeading;
-  }
-  
-  if (!deviceOrientation || deviceOrientation.alpha === null) {
-    // Fallback for desktop testing
-    return 0; // Point north
-  }
-  
-  let heading = deviceOrientation.alpha;
-  while (heading < 0) heading += 360;
-  while (heading >= 360) heading -= 360;
-  
-  return heading;
-};
+    // Use debug override if set
+    if (debugHeading !== null) {
+      return debugHeading;
+    }
+    
+    // Return heading from hook (already normalized to 0-360)
+    return deviceHeading;
+  };
 
   // Animation loop
   const animate = () => {
@@ -388,26 +400,26 @@ const placeArObject = useCallback(() => {
   };
   
   // Request device orientation permission (iOS) - use existing system
-  const requestOrientationPermission = async () => {
-    // Check if orientation permission is already granted via existing system
-    if (isPermissionGranted(PermissionType.ORIENTATION)) {
-      return true;
-    }
+  // const requestOrientationPermission = async () => {
+  //   // Check if orientation permission is already granted via existing system
+  //   if (isPermissionGranted(PermissionType.ORIENTATION)) {
+  //     return true;
+  //   }
     
-    // On iOS, we still need to explicitly request DeviceOrientationEvent permission
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      try {
-        const permission = await (DeviceOrientationEvent as any).requestPermission();
-        return permission === 'granted';
-      } catch (error) {
-        console.error('Orientation permission error:', error);
-        return false;
-      }
-    }
+  //   // // On iOS, we still need to explicitly request DeviceOrientationEvent permission
+  //   // if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+  //   //   try {
+  //   //     const permission = await (DeviceOrientationEvent as any).requestPermission();
+  //   //     return permission === 'granted';
+  //   //   } catch (error) {
+  //   //     console.error('Orientation permission error:', error);
+  //   //     return false;
+  //   //   }
+  //   // }
     
-    // For non-iOS devices, rely on existing permission system
-    return isPermissionGranted(PermissionType.ORIENTATION);
-  };
+  //   // For non-iOS devices, rely on existing permission system
+  //   return isPermissionGranted(PermissionType.ORIENTATION);
+  // };
   
   // Initialize everything
   useEffect(() => {
@@ -440,9 +452,7 @@ const placeArObject = useCallback(() => {
       if (!threeInitialized) return;
       
       // Setup orientation listener if permission is granted
-      const orientationSupported = await requestOrientationPermission();
-      if (orientationSupported) {
-        window.addEventListener('deviceorientation', handleDeviceOrientation);
+      if (isPermissionGranted(PermissionType.ORIENTATION)) {
         // console.log('📱 Device orientation tracking enabled');
       } else {
         console.warn('⚠️ Device orientation not available or permission denied');
@@ -666,7 +676,6 @@ const placeArObject = useCallback(() => {
       }
       
       // Remove event listeners
-      window.removeEventListener('deviceorientation', handleDeviceOrientation);
       window.removeEventListener('resize', handleResize);
       if (canvasRef.current) {
         canvasRef.current.removeEventListener('touchstart', handleTouchStart);
