@@ -274,8 +274,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
               )}
               <div style={{ marginTop: '8px' }}>
                 <strong>
-                  {distanceToGeofence !== null 
-                    ? `${distanceToGeofence.toFixed(0)}m away` 
+                 {distanceToGeofence !== null 
+                    ? `${(distanceToGeofence * 3.28084).toFixed(0)}ft away` 
                     : 'Distance unknown'
                   }
                 </strong>
