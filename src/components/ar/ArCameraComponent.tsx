@@ -924,7 +924,7 @@ useEffect(() => {
                {!debugCollapsed && (
               <div>    
                 <div>User: [{userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}]</div>
-                <div>Anchor: [{anchorPosition[0].toFixed(6)}, {anchorPosition[1].toFixed(6)}]</div>  
+                <div>Anchor: [{activeAnchorPosition[0].toFixed(6)}, {activeAnchorPosition[1].toFixed(6)}]</div>  
                           
                 <div >
                   GPS Bearing: {calculateBearing(userPosition, anchorPosition).toFixed(1)}°
@@ -1073,8 +1073,8 @@ useEffect(() => {
                             : `⬅ TURN LEFT ${turnAmount}° ⬅`;
                         } else {
                           return turnDirection > 0 
-                            ? `⮕⮕ TURN RIGHT ${turnAmount}° ->⮕⮕` 
-                            : `⬅⬅ TURN LEFT ${turnAmount}° <-⬅⬅`;
+                            ? `⮕⮕ TURN RIGHT ${turnAmount}° ⮕⮕` 
+                            : `⬅⬅ TURN LEFT ${turnAmount}° ⬅⬅`;
                         }
                 }
               })
