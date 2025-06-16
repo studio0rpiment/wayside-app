@@ -901,6 +901,8 @@ const placeArObject = useCallback(() => {
                 <div >
                   GPS Bearing: {calculateBearing(userPosition, anchorPosition).toFixed(1)}°
                 </div>
+                  <div>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}° | Available: {orientationAvailable ? '✅' : '❌'}</div>
+    {orientationError && <div style={{color: 'red'}}>Orient Error: {orientationError}</div>}
 
 
                 <div style={{ 
