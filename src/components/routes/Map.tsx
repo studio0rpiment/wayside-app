@@ -184,7 +184,7 @@ const modalGeofenceInfo = React.useMemo(() => {
 }, [
   modalState.isOpen, // Only recalculate when modal opens/closes
   modalState.pointData?.iconName, // Only when the point changes
-  // Remove rapidly changing dependencies like isInsideGeofence updates
+  geofenceUserPosition 
 ]);
   
   // Effects
