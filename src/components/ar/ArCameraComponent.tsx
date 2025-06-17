@@ -1040,6 +1040,7 @@ useEffect(() => {
           <>
             <div style={{ display: 'flex',  justifyContent: 'center', gap: '10px' }}>
               <div>Raw Alpha: {deviceOrientation.alpha?.toFixed(1)}</div>
+              <div>Raw Beta: {deviceOrientation.beta?.toFixed(1)}</div>
                   <div>Absolute: {deviceOrientation.absolute ? 'Yes' : 'No'}</div>
                   <div>WebKit: {(deviceOrientation as any).webkitCompassHeading?.toFixed(1) ?? 'N/A'}</div>
                   <div>Hook Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}</div>
