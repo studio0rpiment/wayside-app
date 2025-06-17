@@ -278,13 +278,13 @@ const modalGeofenceInfo = React.useMemo(() => {
        {/* Compass calibration Debugger */}
 <div style={{
   position: 'absolute',
-  top: '10px',
+  bottom: '10px',
   right: '10px',
   backgroundColor: 'rgba(0, 0, 0, 0.7)',
   color: 'white',
-  padding: '10px',
+  padding: '6px',
   borderRadius: '4px',
-  fontSize: '12px',
+  fontSize: '8px',
   zIndex: 1030,
   pointerEvents: 'auto'
 }}>
