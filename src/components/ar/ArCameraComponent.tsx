@@ -350,17 +350,32 @@ useEffect(() => {
   }
   
   try {
-    // Apply quaternion to camera
+    // Apply quaternion from hook
     cameraRef.current.quaternion.copy(cameraQuaternion);
     
-    // COMPENSATE: Apply inverse transformation to maintain model visibility
-    // This rotates the camera coordinate system back to match the old system
-    const compensation = new THREE.Quaternion().setFromAxisAngle(
-      new THREE.Vector3(1, 0, 0), 
-      Math.PI / 2  // Opposite of the correction in createQuaternionFromDeviceOrientation
+    // CORRECTED COMPENSATION: Fix both upside-down and coordinate inversion
+    const compensation = new THREE.Quaternion();
+    
+    // Step 1: Fix the upside-down (rotate around Z-axis)
+    const flipY = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 0, 1), 
+      Math.PI  // 180° flip around Z
     );
     
-    cameraRef.current.quaternion.multiplyQuaternions(cameraRef.current.quaternion, compensation);
+    // Step 2: Fix the X-Z coordinate inversion (rotate around Y-axis) 
+    const flipXZ = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 1, 0), 
+      Math.PI  // 180° flip around Y
+    );
+    
+    // Combine the corrections
+    compensation.multiplyQuaternions(flipY, flipXZ);
+    
+    // Apply combined compensation
+    cameraRef.current.quaternion.multiplyQuaternions(
+      cameraRef.current.quaternion, 
+      compensation
+    );
     
   } catch (error) {
     console.warn('Error updating camera orientation:', error);
