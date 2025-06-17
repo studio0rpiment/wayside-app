@@ -163,6 +163,21 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       const sign = num >= 0 ? '+' : '';
       return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
     };
+//*****ADDING FOR SCREEN ROTATION TO LANDSCAPE */
+    const getScreenOrientationCompensation = (): number => {
+      // Get current screen orientation
+      let screenOrientation = 0;
+      
+      if (screen && screen.orientation) {
+        screenOrientation = screen.orientation.angle;
+      } else if (window.orientation !== undefined) {
+        screenOrientation = window.orientation;
+      }
+      
+      // Convert to radians and return negative to compensate
+      return -screenOrientation * (Math.PI / 180);
+    }
+
 
 //******************* SWIPES FOR DEBUG PANEL */
     const handleSwipeStart = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -390,110 +405,117 @@ const placeArObject = useCallback(() => {
 
 }, [userPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
   
+//***********Effect 1: Update camera rotation using quaternions (with debug logging)
+    useEffect(() => {
+      if (!isInitialized || !cameraRef.current) return;
+      
+      const cameraQuaternion = getCameraQuaternion();
+      if (!cameraQuaternion) {
+        cameraRef.current.lookAt(0, 0, -1);
+        return;
+      }
+      
+      try {
+        // Apply quaternion from hook
+        cameraRef.current.quaternion.copy(cameraQuaternion);
+        
+        // Fix Y-axis (beta) - keep this since it's working
+        const betaCorrection = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(1, 0, 0), 
+          Math.PI / 2  // +90° for correct Y-axis
+        );
+        
+        // Fix upside down (rotate around Z-axis)
+        const flipUpDown = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(0, 0, 1), 
+          Math.PI  // 180° flip around Z
+        );
+        
+        // Fix 180° rotation in X-Z plane (rotate around Y-axis)
+        const flipXZ = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(0, 1, 0), 
+          Math.PI  // 180° flip around Y
+        );
 
-// Effect 1: Update camera rotation using quaternions (with debug logging)
-useEffect(() => {
-  if (!isInitialized || !cameraRef.current) return;
-  
-  const cameraQuaternion = getCameraQuaternion();
-  if (!cameraQuaternion) {
-    cameraRef.current.lookAt(0, 0, -1);
-    return;
-  }
-  
-  try {
-    // Apply quaternion from hook
-    cameraRef.current.quaternion.copy(cameraQuaternion);
-    
-    // Fix Y-axis (beta) - keep this since it's working
-    const betaCorrection = new THREE.Quaternion().setFromAxisAngle(
-      new THREE.Vector3(1, 0, 0), 
-      Math.PI / 2  // +90° for correct Y-axis
-    );
-    
-    // Fix upside down (rotate around Z-axis)
-    const flipUpDown = new THREE.Quaternion().setFromAxisAngle(
-      new THREE.Vector3(0, 0, 1), 
-      Math.PI  // 180° flip around Z
-    );
-    
-    // Fix 180° rotation in X-Z plane (rotate around Y-axis)
-    const flipXZ = new THREE.Quaternion().setFromAxisAngle(
-      new THREE.Vector3(0, 1, 0), 
-      Math.PI  // 180° flip around Y
-    );
-    
-    // Apply all corrections in order
-    let finalQuaternion = cameraRef.current.quaternion.clone();
-    finalQuaternion.multiply(betaCorrection);  // Fix Y-axis first
-    finalQuaternion.multiply(flipUpDown);      // Fix upside down
-    finalQuaternion.multiply(flipXZ);          // Fix X-Z rotation
-    
-    cameraRef.current.quaternion.copy(finalQuaternion);
-    
-  } catch (error) {
-    console.warn('Error updating camera orientation:', error);
-    cameraRef.current.lookAt(0, 0, -1);
-  }
-  
-}, [isInitialized, getCameraQuaternion]);
+        // Compensate for screen orientation to keep world coordinates fixed
+        const screenCompensation = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(0, 0, 1), 
+          getScreenOrientationCompensation()
+        );
+        
+        // Apply all corrections in order
+        let finalQuaternion = cameraRef.current.quaternion.clone();
+        finalQuaternion.multiply(betaCorrection);  // Fix Y-axis first
+        finalQuaternion.multiply(flipUpDown);      // Fix upside down
+        finalQuaternion.multiply(flipXZ);          // Fix X-Z rotation
+        finalQuaternion.multiply(screenCompensation); //Cancel screen rotation
+
+        
+        cameraRef.current.quaternion.copy(finalQuaternion);
+        
+      } catch (error) {
+        console.warn('Error updating camera orientation:', error);
+        cameraRef.current.lookAt(0, 0, -1);
+      }
+      
+    }, [isInitialized, getCameraQuaternion]);
 
 // Effect 2: Update calculations on interval  
-useEffect(() => {
-  if (!isInitialized || !cameraRef.current) return;
-  
-  const updateCameraDirection = () => {
-    if (!cameraRef.current) return;
-
-    // Get camera world direction
-    cameraRef.current.getWorldDirection(cameraDirectionVector.current);
-    
-    // Convert to compass bearing
-    const bearing = Math.atan2(
-      cameraDirectionVector.current.x,
-      -cameraDirectionVector.current.z
-    ) * (180 / Math.PI);
-
-    const normalizedBearing = (bearing + 360) % 360;
-    
-    // Get expected model position
-    const expectedModelPosition = getCurrentExpectedModelPosition();
-    
-    // Calculate aim error and distance
-    let aimError = null;
-    let modelDistance = null;
-    
-    if (expectedModelPosition && cameraRef.current) {
-      const cameraPosition = cameraRef.current.position;
-      const expectedDirection = expectedModelPosition.clone().sub(cameraPosition).normalize();
+    useEffect(() => {
+      if (!isInitialized || !cameraRef.current) return;
       
-      const dotProduct = cameraDirectionVector.current.dot(expectedDirection);
-      const angleDifference = Math.acos(Math.max(-1, Math.min(1, dotProduct))) * (180 / Math.PI);
-      aimError = angleDifference;
+      const updateCameraDirection = () => {
+        if (!cameraRef.current) return;
+
+        // Get camera world direction
+        cameraRef.current.getWorldDirection(cameraDirectionVector.current);
+        
+        // Convert to compass bearing
+        const bearing = Math.atan2(
+          cameraDirectionVector.current.x,
+          -cameraDirectionVector.current.z
+        ) * (180 / Math.PI);
+
+        const normalizedBearing = (bearing + 360) % 360;
+        
+        // Get expected model position
+        const expectedModelPosition = getCurrentExpectedModelPosition();
+        
+        // Calculate aim error and distance
+        let aimError = null;
+        let modelDistance = null;
+        
+        if (expectedModelPosition && cameraRef.current) {
+          const cameraPosition = cameraRef.current.position;
+          const expectedDirection = expectedModelPosition.clone().sub(cameraPosition).normalize();
+          
+          const dotProduct = cameraDirectionVector.current.dot(expectedDirection);
+          const angleDifference = Math.acos(Math.max(-1, Math.min(1, dotProduct))) * (180 / Math.PI);
+          aimError = angleDifference;
+          
+          modelDistance = cameraPosition.distanceTo(expectedModelPosition);
+        }
+        
+        // Update state
+        setCameraLookDirection({
+          vector: cameraDirectionVector.current.clone(),
+          bearing: normalizedBearing,
+          expectedModelPosition,
+          aimError,
+          modelDistance
+        });
+      };
       
-      modelDistance = cameraPosition.distanceTo(expectedModelPosition);
-    }
-    
-    // Update state
-    setCameraLookDirection({
-      vector: cameraDirectionVector.current.clone(),
-      bearing: normalizedBearing,
-      expectedModelPosition,
-      aimError,
-      modelDistance
-    });
-  };
-  
-  // Create interval
-  cameraUpdateIntervalRef.current = window.setInterval(updateCameraDirection, 200);
-  
-  return () => {
-    if (cameraUpdateIntervalRef.current) {
-      clearInterval(cameraUpdateIntervalRef.current);
-    }
-  };
-}, [isInitialized, activeAnchorPosition, manualElevationOffset, coordinateScale, experienceType]);
-  
+      // Create interval
+      cameraUpdateIntervalRef.current = window.setInterval(updateCameraDirection, 200);
+      
+      return () => {
+        if (cameraUpdateIntervalRef.current) {
+          clearInterval(cameraUpdateIntervalRef.current);
+        }
+      };
+    }, [isInitialized, activeAnchorPosition, manualElevationOffset, coordinateScale, experienceType]);
+      
   // Your onOrientationUpdate callback still works:
   useEffect(() => {
     if (onOrientationUpdate && deviceOrientation && 
