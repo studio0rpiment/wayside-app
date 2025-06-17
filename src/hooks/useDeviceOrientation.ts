@@ -79,12 +79,12 @@ export function createQuaternionFromDeviceOrientation(
     const quaternion = new THREE.Quaternion().setFromEuler(euler);
     
     // Apply coordinate system correction (device space to Three.js camera space)
-    const correction = new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(1, 0, 0), 
-        Math.PI / 2  // CHANGED: Positive correction instead of negative
-    );
+    // const correction = new THREE.Quaternion().setFromAxisAngle(
+    //     new THREE.Vector3(1, 0, 0), 
+    //     Math.PI / 2  // CHANGED: Positive correction instead of negative
+    // );
     
-    quaternion.multiplyQuaternions(correction, quaternion);
+    // quaternion.multiplyQuaternions(correction, quaternion);
     
     return quaternion;
     }
