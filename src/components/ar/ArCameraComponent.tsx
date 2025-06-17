@@ -9,10 +9,6 @@ import EdgeChevrons from './EdgeChevrons';
 import { loadHeightmap, testTerrainLookup, gpsToThreeJsPositionWithTerrain } from '../../utils/terrainUtils';
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
-import { 
-  getCorrectedOrientation, 
-  createQuaternionFromDeviceOrientation 
-} from '../../hooks/useDeviceOrientation';
 
 
 const SHOW_DEBUG_PANEL = true;
@@ -89,11 +85,13 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     heading: deviceHeading,
     deviceOrientation, 
     isAvailable: orientationAvailable,
-    error: orientationError 
+    error: orientationError,
+    getCameraQuaternion  // Get the camera quaternion function
   } = useDeviceOrientation({ 
     enableSmoothing: true,
     debugMode: SHOW_DEBUG_PANEL 
   });
+
 
   //chevrons for directions
   const [showChevrons, setShowChevrons] = useState(true);
@@ -343,40 +341,24 @@ const placeArObject = useCallback(() => {
   
 // Effect 1: Update camera rotation when device orientation changes
 useEffect(() => {
-  if (!isInitialized || !cameraRef.current || !deviceOrientation) return;
+  if (!isInitialized || !cameraRef.current) return;
   
-  const { alpha, beta, gamma } = deviceOrientation;
-  if (alpha === null || beta === null || gamma === null) return;
-  
-  try {
-    // Get corrected orientation with quaternion
-    const corrected = getCorrectedOrientation(deviceOrientation);
-    if (!corrected) return;
-    
-    // Apply quaternion directly to camera (no lookAt!)
-    cameraRef.current.quaternion.copy(corrected.quaternion);
-    
-    // Optional: Apply smoothing to reduce jitter
-    if (enableSmoothing) {
-      const currentQuat = cameraRef.current.quaternion.clone();
-      const previousQuat = lastCameraQuaternionRef.current || currentQuat;
-      
-      // Smooth interpolation between quaternions
-      cameraRef.current.quaternion.slerpQuaternions(
-        previousQuat, 
-        corrected.quaternion, 
-        0.1 // Smoothing factor (0 = no change, 1 = immediate)
-      );
-      
-      lastCameraQuaternionRef.current = cameraRef.current.quaternion.clone();
-    }
-    
-  } catch (error) {
-    console.warn('Error updating camera orientation:', error);
-    // Fallback to previous working method if needed
+  const cameraQuaternion = getCameraQuaternion();
+  if (!cameraQuaternion) {
+    // Fallback to default orientation
+    cameraRef.current.lookAt(0, 0, -1);
+    return;
   }
   
-}, [isInitialized, deviceOrientation]);
+  try {
+    // Apply quaternion directly to camera (no more gimbal lock!)
+    cameraRef.current.quaternion.copy(cameraQuaternion);
+  } catch (error) {
+    console.warn('Error updating camera orientation:', error);
+    cameraRef.current.lookAt(0, 0, -1);
+  }
+  
+}, [isInitialized, getCameraQuaternion]);
 
 // Effect 2: Update calculations on interval  
 useEffect(() => {

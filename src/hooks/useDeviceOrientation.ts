@@ -34,19 +34,11 @@ export interface UseDeviceOrientationReturn {
   error: string | null;                      // Error message if something went wrong
   accuracy: number | null;                   // iOS compass accuracy (if available)
   requestPermission: () => Promise<boolean>; // Function to request permission
+  getCameraQuaternion: () => THREE.Quaternion | null;  // NEW: Camera quaternion for AR
 }
-
-export interface CorrectedOrientationData {
-  alpha: number;
-  beta: number; 
-  gamma: number;
-  quaternion: THREE.Quaternion;
-}
-
-
 
 /**
- * Create Three.js quaternion from device orientation
+ * Create Three.js quaternion from device orientation for camera use
  * Handles iOS/Android differences and coordinate system conversion
  */
 export function createQuaternionFromDeviceOrientation(
@@ -62,70 +54,23 @@ export function createQuaternionFromDeviceOrientation(
   // Detect platform for coordinate system corrections
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   
-  // Create Euler rotation with platform-specific corrections
+  // Create Euler rotation with platform-specific corrections for CAMERA
   const euler = new THREE.Euler();
   
   if (isIOS) {
-    // iOS DeviceOrientation to Three.js conversion
-    euler.set(betaRad, alphaRad, -gammaRad, 'YXZ');
+    // iOS DeviceOrientation to Three.js camera conversion
+    euler.set(betaRad - Math.PI/2, alphaRad, -gammaRad, 'YXZ');
   } else {
-    // Android DeviceOrientation to Three.js conversion
-    euler.set(betaRad, alphaRad, gammaRad, 'YXZ');
+    // Android DeviceOrientation to Three.js camera conversion  
+    euler.set(betaRad - Math.PI/2, -alphaRad, gammaRad, 'YXZ');
   }
   
-  // Convert to quaternion
+  // Convert to quaternion (no additional correction needed for this approach)
   const quaternion = new THREE.Quaternion().setFromEuler(euler);
-  
-  // Apply coordinate system correction (device space to camera space)
-  const correction = new THREE.Quaternion().setFromAxisAngle(
-    new THREE.Vector3(1, 0, 0), 
-    -Math.PI / 2
-  );
-  
-  quaternion.multiplyQuaternions(correction, quaternion);
   
   return quaternion;
 }
 
-/**
- * Get corrected orientation data for Three.js
- */
-
-export function getCorrectedOrientation(
-  orientation: DeviceOrientationData
-): CorrectedOrientationData | null {
-  if (!orientation.alpha || !orientation.beta || !orientation.gamma) {
-    return null;
-  }
-
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  
-  let correctedAlpha = orientation.alpha;
-  let correctedBeta = orientation.beta;
-  let correctedGamma = orientation.gamma;
-  
-  if (isIOS) {
-    // iOS specific corrections
-    correctedBeta = orientation.beta - 90;
-  } else {
-    // Android specific corrections  
-    correctedAlpha = 360 - orientation.alpha;
-  }
-  
-  // Create quaternion
-  const quaternion = createQuaternionFromDeviceOrientation(
-    correctedAlpha, 
-    correctedBeta, 
-    correctedGamma
-  );
-  
-  return {
-    alpha: correctedAlpha,
-    beta: correctedBeta,
-    gamma: correctedGamma,
-    quaternion
-  };
-}
 /**
  * Custom hook for device orientation with cross-platform compatibility
  * 
@@ -143,7 +88,6 @@ export function useDeviceOrientation(
     fallbackHeading = 0,
     debugMode = false
   } = options;
-
 
 //************* REFS REFS REFS */
   // Refs for smoothing and cleanup
@@ -168,61 +112,85 @@ export function useDeviceOrientation(
     }
   }, [debugMode]);
 
-
   /**
    * Calculate compass heading from device orientation alpha value
+   * THIS FUNCTION STAYS UNCHANGED - Used for GPS/world positioning
    */
   const calculateHeading = useCallback((orientation: DeviceOrientationData): number | null => {
-  // Priority 1: iOS webkitCompassHeading (true compass)
-        if ('webkitCompassHeading' in orientation) {
-            const webkitHeading = (orientation as any).webkitCompassHeading;
-            if (typeof webkitHeading === 'number') {
-            debugLog('Using iOS webkitCompassHeading', webkitHeading);
-            return webkitHeading; // Already normalized 0-360 and compass-corrected
-            }
-        }
+    // Priority 1: iOS webkitCompassHeading (true compass)
+    if ('webkitCompassHeading' in orientation) {
+      const webkitHeading = (orientation as any).webkitCompassHeading;
+      if (typeof webkitHeading === 'number') {
+        debugLog('Using iOS webkitCompassHeading', webkitHeading);
+        return webkitHeading; // Already normalized 0-360 and compass-corrected
+      }
+    }
 
-        // Priority 2: Absolute alpha (Android absolute orientation)
-        if (orientation.absolute && orientation.alpha !== null) {
-            let heading = orientation.alpha;
-            debugLog('Using absolute alpha', heading);
-            
-            // Normalize to 0-360 range
-            while (heading < 0) heading += 360;
-            while (heading >= 360) heading -= 360;
-            
-            return heading;
-        }
+    // Priority 2: Absolute alpha (Android absolute orientation)
+    if (orientation.absolute && orientation.alpha !== null) {
+      let heading = orientation.alpha;
+      debugLog('Using absolute alpha', heading);
+      
+      // Normalize to 0-360 range
+      while (heading < 0) heading += 360;
+      while (heading >= 360) heading -= 360;
+      
+      return heading;
+    }
 
-        // Priority 3: Relative alpha (may not be true compass)
-        if (orientation.alpha !== null) {
-            let heading = orientation.alpha;
-            debugLog('Using relative alpha (may be inaccurate)', heading);
-            
-            // Normalize to 0-360 range
-            while (heading < 0) heading += 360;
-            while (heading >= 360) heading -= 360;
-            
-            // Apply smoothing if enabled
-            if (enableSmoothing && lastHeadingRef.current !== null) {
-            // Handle wrapping around 0/360 boundary
-            let diff = heading - lastHeadingRef.current;
-            if (diff > 180) diff -= 360;
-            if (diff < -180) diff += 360;
-            
-            heading = lastHeadingRef.current + (diff * smoothingFactorRef.current);
-            
-            // Normalize again after smoothing
-            while (heading < 0) heading += 360;
-            while (heading >= 360) heading -= 360;
-            }
+    // Priority 3: Relative alpha (may not be true compass)
+    if (orientation.alpha !== null) {
+      let heading = orientation.alpha;
+      debugLog('Using relative alpha (may be inaccurate)', heading);
+      
+      // Normalize to 0-360 range
+      while (heading < 0) heading += 360;
+      while (heading >= 360) heading -= 360;
+      
+      // Apply smoothing if enabled
+      if (enableSmoothing && lastHeadingRef.current !== null) {
+        // Handle wrapping around 0/360 boundary
+        let diff = heading - lastHeadingRef.current;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        
+        heading = lastHeadingRef.current + (diff * smoothingFactorRef.current);
+        
+        // Normalize again after smoothing
+        while (heading < 0) heading += 360;
+        while (heading >= 360) heading -= 360;
+      }
 
-            lastHeadingRef.current = heading;
-            return heading;
-        }
+      lastHeadingRef.current = heading;
+      return heading;
+    }
 
-        return null;
-        }, [enableSmoothing, debugLog]);
+    return null;
+  }, [enableSmoothing, debugLog]);
+
+  /**
+   * NEW: Get camera quaternion for AR use
+   * Separate from compass heading calculation
+   */
+  const getCameraQuaternion = useCallback((): THREE.Quaternion | null => {
+    if (!deviceOrientation || 
+        deviceOrientation.alpha === null || 
+        deviceOrientation.beta === null || 
+        deviceOrientation.gamma === null) {
+      return null;
+    }
+
+    try {
+      return createQuaternionFromDeviceOrientation(
+        deviceOrientation.alpha,
+        deviceOrientation.beta,
+        deviceOrientation.gamma
+      );
+    } catch (error) {
+      debugLog('Error creating camera quaternion:', error);
+      return null;
+    }
+  }, [deviceOrientation, debugLog]);
 
   /**
    * Handle device orientation events
@@ -375,7 +343,7 @@ export function useDeviceOrientation(
     return cleanup;
   }, []); // Empty deps - only run once
 
-  // Calculate current heading
+  // Calculate current heading (UNCHANGED - for GPS/world positioning)
   const heading = deviceOrientation ? calculateHeading(deviceOrientation) : null;
 
   // Use fallback heading if no orientation data is available but device supports it
@@ -402,7 +370,8 @@ export function useDeviceOrientation(
     isPermissionGranted: isPermissionGranted(PermissionType.ORIENTATION),
     error,
     accuracy,
-    requestPermission: requestOrientationPermission
+    requestPermission: requestOrientationPermission,
+    getCameraQuaternion  // NEW: Camera quaternion function
   };
 }
 
