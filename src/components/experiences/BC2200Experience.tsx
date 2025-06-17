@@ -129,21 +129,23 @@ const knownCenter = new THREE.Vector3(21.945226669312, -23.668239593506, 60.1616
     }
 
     // Register scale handler
-    if (onModelScale) {
-      onModelScale((scaleFactor: number) => {
-        if (modelRef.current) {
-          const currentScale = modelRef.current.scale.x;
-          const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
-         console.log('🔍 Scale handler called AFTER RESET:', {
-            scaleFactor,
-            currentScale: currentScale.toFixed(3),
-            newScale: newScale.toFixed(3),
-            timestamp: new Date().getTime()
-          });
-          modelRef.current.scale.setScalar(newScale);
-        }
+if (onModelScale) {
+  onModelScale((newAbsoluteScale: number) => {
+    if (modelRef.current) {
+      const clampedScale = Math.max(0.1, Math.min(10, newAbsoluteScale));
+      
+      console.log('🔍 BC2200 Scale handler called:', {
+        newAbsoluteScale,
+        clampedScale: clampedScale.toFixed(3),
+        timestamp: new Date().getTime()
       });
+      
+      // Apply the scale directly to the initial scale
+      const finalScale = initialScale * clampedScale;
+      modelRef.current.scale.setScalar(finalScale);
     }
+  });
+}
 
     // Register reset handler
     if (onModelReset) {

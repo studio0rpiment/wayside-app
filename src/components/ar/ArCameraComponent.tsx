@@ -75,6 +75,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 
   const lastCameraQuaternionRef = useRef<THREE.Quaternion | null>(null);
   const enableSmoothing = true; // Add this as a configurable option
+  const [manualScaleOffset, setManualScaleOffset] = useState(1.0); // Start at 1.0 (normal scale)
+
 
 
 //******** STATE STATE STATE */
@@ -182,16 +184,15 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   }, [manualElevationOffset]);
 
 
-    const updateAnchorPosition = useCallback((deltaLon: number, deltaLat: number) => {
+  const updateAnchorPosition = useCallback((deltaLon: number, deltaLat: number) => {
   // Update the GPS offset state for display
-  const newOffset = {
-    lon: gpsOffset.lon + deltaLon,
-    lat: gpsOffset.lat + deltaLat
-  };
-  setGpsOffset(newOffset);
+    const newOffset = {
+      lon: gpsOffset.lon + deltaLon,
+      lat: gpsOffset.lat + deltaLat
+    };
+  
+    setGpsOffset(newOffset);
 
-
-    
   // Calculate new anchor position (use current anchor + total offset)
   const newAnchorPosition: [number, number] = [
     anchorPosition[0] + newOffset.lon,
@@ -204,6 +205,25 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   console.log('📍 Anchor moved to:', newAnchorPosition);
   console.log('📍 Total offset:', newOffset);
 }, [anchorPosition, gpsOffset]);
+
+const updateScaleOffset = useCallback((deltaScale: number) => {
+    const newScale = Math.max(0.1, Math.min(8.0, manualScaleOffset + deltaScale)); // Minimum 0.1, maximum 5.0
+
+  setManualScaleOffset(newScale);
+  
+  // Update accumulated transforms to show in debug
+  setAccumulatedTransforms(prev => ({
+    ...prev,
+    scale: newScale
+  }));
+  
+  // Call the model scale callback if available
+  if (onModelScale) {
+    onModelScale(newScale);
+  }
+  
+  console.log('📏 Manual scale:', newScale);
+}, [manualScaleOffset, onModelScale]);
 
   // Initialize camera stream
   const initializeCamera = async () => {
@@ -1162,7 +1182,51 @@ useEffect(() => {
               </div>
             );
           })()}
+          
         </div>
+        {/* SCALE */}
+<div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', paddingRight: '5px' }}>
+  <div style={{ color: 'yellow', fontSize: '10px' }}>SCALE: {manualScaleOffset.toFixed(1)}x</div>
+  
+  {(() => {
+    const scaleButtonStyle = {
+      fontSize: '12px',
+      padding: '4px 12px',
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      border: 'none',
+      borderRadius: '0.5rem',
+      color: 'white',
+      cursor: 'pointer'
+    };
+    
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+<button onClick={() => updateScaleOffset(-0.2)} style={scaleButtonStyle}>-0.2</button>
+<button onClick={() => updateScaleOffset(-0.05)} style={scaleButtonStyle}>-0.05</button>
+<button onClick={() => {
+  setManualScaleOffset(1.0);
+  setAccumulatedTransforms(prev => ({
+    ...prev,
+    scale: 1.0
+  }));
+  
+  if (onModelScale) {
+    onModelScale(1.0);
+  }
+  
+  if (onModelReset) {
+    onModelReset();
+  }
+  
+  console.log('🔄 Scale reset to 1.0');
+}} style={scaleButtonStyle}>1.0</button>
+<button onClick={() => updateScaleOffset(0.05)} style={scaleButtonStyle}>+0.05</button>
+<button onClick={() => updateScaleOffset(0.2)} style={scaleButtonStyle}>+0.2</button>
+
+      </div>
+    );
+  })()}
+</div>
 
        
       </div>

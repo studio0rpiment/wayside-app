@@ -127,21 +127,21 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     }
 
     // // Register scale handler
-    // if (onModelScale) {
-    //   onModelScale((scaleFactor: number) => {
-    //     if (modelRef.current) {
-    //       const currentScale = modelRef.current.scale.x;
-    //       const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
-    //      console.log('🔍 Scale handler called AFTER RESET:', {
-    //         scaleFactor,
-    //         currentScale: currentScale.toFixed(3),
-    //         newScale: newScale.toFixed(3),
-    //         timestamp: new Date().getTime()
-    //       });
-    //       modelRef.current.scale.setScalar(newScale);
-    //     }
-    //   });
-    // }
+    if (onModelScale) {
+      onModelScale((scaleFactor: number) => {
+        if (modelRef.current) {
+          const currentScale = modelRef.current.scale.x;
+          const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
+         console.log('🔍 Scale handler called AFTER RESET:', {
+            scaleFactor,
+            currentScale: currentScale.toFixed(3),
+            newScale: newScale.toFixed(3),
+            timestamp: new Date().getTime()
+          });
+          modelRef.current.scale.setScalar(newScale);
+        }
+      });
+    }
 
     // Register reset handler
     if (onModelReset) {

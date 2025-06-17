@@ -48,7 +48,8 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({
   const clockRef = useRef(new THREE.Clock());
 
   const initialCameraPos = useRef(new THREE.Vector3(0, 30, 100));
-  const initialScaleRef = useRef<number>(1);
+  const initialScaleRef = useRef<number>(0.1);
+  const manualScaleRef = useRef<number>(1.0);
 
   // ✅ UPDATED: Refs for debouncing
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -102,7 +103,7 @@ const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFac
   // Define isArMode at the component level
   const isArMode = !!(arScene && arCamera && arPosition);
 
-  const scale = 0.1;
+  const scale = 0.6;
   initialScaleRef.current = scale; 
   const initialScale = initialScaleRef.current;
 
@@ -235,7 +236,7 @@ const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFac
             currentScale: currentScale.toFixed(3),
             newScale: newScale.toFixed(3)
           });
-          waterSystemRef.current.scale.setScalar(newScale);
+          manualScaleRef.current = newScale;
         }
       });
     }
@@ -246,8 +247,9 @@ const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFac
         console.log('🔄 Water RESET HANDLER CALLED');
         if (waterSystemRef.current) {
           // Reset rotation and scale
+          manualScaleRef.current = 1.0;
           waterSystemRef.current.rotation.set(degreesToRadians(25), 0, 0);
-          waterSystemRef.current.scale.set(initialScale, initialScale, initialScale);
+          waterSystemRef.current.scale.set(initialScaleRef.current, initialScaleRef.current, initialScaleRef.current);
           
           // Reset position based on current mode
           if (isArMode && arPosition) {
@@ -309,7 +311,10 @@ const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFac
     const progress = waterStateRef.current.currentWaterLevel / waterParamsRef.current.maxWaterRise;
     const curvedProgress = Math.pow(progress, 1.5); // Matches research acceleration
     const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFactor;
-    waterSystemRef.current.scale.setScalar(initialScaleRef.current * floodScale);
+    const combinedScale = initialScaleRef.current * floodScale * manualScaleRef.current;
+    
+    waterSystemRef.current.scale.setScalar(combinedScale);
+
 
     if (waterParticlesRef.current?.material instanceof THREE.PointsMaterial) {
     const newSize = waterParamsRef.current.particleBaseSize * 
@@ -432,7 +437,8 @@ const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFac
       waterGroup.position.set(0, 0, -30); // Standalone mode
     }
     
-    waterGroup.scale.setScalar(initialScaleRef.current);
+    const initialCombinedScale = initialScaleRef.current * 1.0 * manualScaleRef.current; // floodScale=1.0 initially, manualScale=1.0 initially
+    waterGroup.scale.setScalar(initialCombinedScale);
     
     // Add to scene
     scene.add(waterGroup);
