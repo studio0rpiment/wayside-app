@@ -1030,9 +1030,12 @@ useEffect(() => {
         {deviceOrientation ? (
           <>
             <div style={{ display: 'flex',  justifyContent: 'center', gap: '10px' }}>
-              <span>α: {deviceOrientation.alpha?.toFixed(1)}°</span>
-              <span>β: {deviceOrientation.beta?.toFixed(1)}°</span>
-              <span>γ: {deviceOrientation.gamma?.toFixed(1)}°</span>
+              <div>Raw Alpha: {deviceOrientation.alpha?.toFixed(1)}</div>
+                  <div>Absolute: {deviceOrientation.absolute ? 'Yes' : 'No'}</div>
+                  <div>WebKit: {(deviceOrientation as any).webkitCompassHeading?.toFixed(1) ?? 'N/A'}</div>
+                  <div>Hook Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}</div>
+                  <div>Platform: {/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'iOS' : 'Android/Other'}</div>
+
             </div>
           </>
         ) : (

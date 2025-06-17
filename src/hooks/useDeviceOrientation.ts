@@ -81,33 +81,56 @@ export function useDeviceOrientation(
    * Calculate compass heading from device orientation alpha value
    */
   const calculateHeading = useCallback((orientation: DeviceOrientationData): number | null => {
-    if (orientation.alpha === null) {
-      return null;
-    }
+  // Priority 1: iOS webkitCompassHeading (true compass)
+        if ('webkitCompassHeading' in orientation) {
+            const webkitHeading = (orientation as any).webkitCompassHeading;
+            if (typeof webkitHeading === 'number') {
+            debugLog('Using iOS webkitCompassHeading', webkitHeading);
+            return webkitHeading; // Already normalized 0-360 and compass-corrected
+            }
+        }
 
-    let heading = orientation.alpha;
+        // Priority 2: Absolute alpha (Android absolute orientation)
+        if (orientation.absolute && orientation.alpha !== null) {
+            let heading = orientation.alpha;
+            debugLog('Using absolute alpha', heading);
+            
+            // Normalize to 0-360 range
+            while (heading < 0) heading += 360;
+            while (heading >= 360) heading -= 360;
+            
+            return heading;
+        }
 
-    // Normalize to 0-360 range
-    while (heading < 0) heading += 360;
-    while (heading >= 360) heading -= 360;
+        // Priority 3: Relative alpha (may not be true compass)
+        if (orientation.alpha !== null) {
+            let heading = orientation.alpha;
+            debugLog('Using relative alpha (may be inaccurate)', heading);
+            
+            // Normalize to 0-360 range
+            while (heading < 0) heading += 360;
+            while (heading >= 360) heading -= 360;
+            
+            // Apply smoothing if enabled
+            if (enableSmoothing && lastHeadingRef.current !== null) {
+            // Handle wrapping around 0/360 boundary
+            let diff = heading - lastHeadingRef.current;
+            if (diff > 180) diff -= 360;
+            if (diff < -180) diff += 360;
+            
+            heading = lastHeadingRef.current + (diff * smoothingFactorRef.current);
+            
+            // Normalize again after smoothing
+            while (heading < 0) heading += 360;
+            while (heading >= 360) heading -= 360;
+            }
 
-    // Apply smoothing if enabled
-    if (enableSmoothing && lastHeadingRef.current !== null) {
-      // Handle wrapping around 0/360 boundary
-      let diff = heading - lastHeadingRef.current;
-      if (diff > 180) diff -= 360;
-      if (diff < -180) diff += 360;
-      
-      heading = lastHeadingRef.current + (diff * smoothingFactorRef.current);
-      
-      // Normalize again after smoothing
-      while (heading < 0) heading += 360;
-      while (heading >= 360) heading -= 360;
-    }
+            lastHeadingRef.current = heading;
+            return heading;
+        }
 
-    lastHeadingRef.current = heading;
-    return heading;
-  }, [enableSmoothing]);
+        return null;
+        }, [enableSmoothing, debugLog]);
 
   /**
    * Handle device orientation events
@@ -115,34 +138,50 @@ export function useDeviceOrientation(
   const handleDeviceOrientation = useCallback((event: DeviceOrientationEvent) => {
     const { alpha, beta, gamma } = event;
     
-    debugLog('Raw orientation event', { alpha, beta, gamma, absolute: event.absolute });
+    debugLog('Raw orientation event', { 
+        alpha, 
+        beta, 
+        gamma, 
+        absolute: event.absolute,
+        webkitCompassHeading: (event as any).webkitCompassHeading
+    });
 
     // Validate orientation data
     if (alpha === null && beta === null && gamma === null) {
-      debugLog('Received null orientation data - sensor may not be available');
-      return;
+        debugLog('Received null orientation data - sensor may not be available');
+        return;
     }
 
-    // Create orientation data object
+    // Create orientation data object with iOS compass heading
     const orientationData: DeviceOrientationData = {
-      alpha,
-      beta, 
-      gamma,
-      absolute: event.absolute || false
+        alpha,
+        beta, 
+        gamma,
+        absolute: event.absolute || false
     };
+
+    // IMPORTANT: Capture iOS webkitCompassHeading for true compass
+    if ('webkitCompassHeading' in event) {
+        const webkitHeading = (event as any).webkitCompassHeading;
+        if (typeof webkitHeading === 'number') {
+        // Store the true compass heading in a custom property
+        (orientationData as any).webkitCompassHeading = webkitHeading;
+        debugLog('iOS webkitCompassHeading captured', webkitHeading);
+        }
+    }
 
     // Handle iOS-specific compass accuracy (non-standard property)
     if ('webkitCompassAccuracy' in event) {
-      const compassAccuracy = (event as any).webkitCompassAccuracy;
-      if (typeof compassAccuracy === 'number') {
+        const compassAccuracy = (event as any).webkitCompassAccuracy;
+        if (typeof compassAccuracy === 'number') {
         setAccuracy(compassAccuracy);
         debugLog('iOS compass accuracy', compassAccuracy);
-      }
+        }
     }
 
     setDeviceOrientation(orientationData);
     setError(null); // Clear any previous errors
-  }, [debugLog]);
+    }, [debugLog]);
 
   /**
    * Request device orientation permission (especially important for iOS 13+)
