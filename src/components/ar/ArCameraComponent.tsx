@@ -336,7 +336,6 @@ const placeArObject = useCallback(() => {
   console.log('🎯 placeArObject() called');
   console.log('🎯 onArObjectPlaced exists:', !!onArObjectPlaced);
   
-
   if (!userPosition || !anchorPosition) {
       console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
       return;
@@ -344,19 +343,18 @@ const placeArObject = useCallback(() => {
 
     const finalElevationOffset = elevationOffset + manualElevationOffset;
 
-const position = gpsToThreeJsPosition(
-  userPosition,
-  activeAnchorPosition,
-  finalElevationOffset,
-  coordinateScale
-);
+    const position = gpsToThreeJsPosition(
+      userPosition,
+      activeAnchorPosition,
+      finalElevationOffset,
+      coordinateScale
+    );
 
-  
   if (onArObjectPlaced) {
     onArObjectPlaced(position);
   }
 
-}, [userPosition,anchorPosition, adjustedAnchorPosition, coordinateScale, experienceType, manualElevationOffset]); // Remove onArObjectPlaced from deps
+}, [userPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
   
 
 // Effect 1: Update camera rotation using quaternions (with debug logging)
@@ -460,7 +458,7 @@ useEffect(() => {
       clearInterval(cameraUpdateIntervalRef.current);
     }
   };
-}, [isInitialized]); // ← Minimal dependencies, only recreate when component initializes
+}, [isInitialized, activeAnchorPosition, manualElevationOffset, coordinateScale, experienceType]);
   
   // Your onOrientationUpdate callback still works:
   useEffect(() => {
@@ -767,11 +765,11 @@ useEffect(() => {
 
 
   // Update AR object position when GPS coordinates change
-  useEffect(() => {
-    if (isInitialized) {
-      placeArObject();
-    }
-  }, [userPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized]);
+useEffect(() => {
+  if (isInitialized) {
+    placeArObject();
+  }
+}, [userPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized, manualElevationOffset]);
 
 
   
