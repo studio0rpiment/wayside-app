@@ -346,30 +346,42 @@ useEffect(() => {
     return;
   }
   
-  console.log('🎯 Camera quaternion update attempt');
-  console.log('🎯 getCameraQuaternion function exists:', typeof getCameraQuaternion);
+  // console.log('🎯 Camera quaternion update attempt');
+  // console.log('🎯 getCameraQuaternion function exists:', typeof getCameraQuaternion);
   
-  const cameraQuaternion = getCameraQuaternion();
-  console.log('🎯 Got camera quaternion:', cameraQuaternion);
-  console.log('🎯 deviceOrientation state:', deviceOrientation);
+  // const cameraQuaternion = getCameraQuaternion();
+  // console.log('🎯 Got camera quaternion:', cameraQuaternion);
+  // console.log('🎯 deviceOrientation state:', deviceOrientation);
   
-  if (!cameraQuaternion) {
-    console.log('🎯 No quaternion available, using fallback lookAt');
-    cameraRef.current.lookAt(0, 0, -1);
-    return;
+  // if (!cameraQuaternion) {
+  //   console.log('🎯 No quaternion available, using fallback lookAt');
+  //   cameraRef.current.lookAt(0, 0, -1);
+  //   return;
+  // }
+  
+  // try {
+  //   // Apply quaternion directly to camera
+  //   cameraRef.current.quaternion.copy(cameraQuaternion);
+  //   console.log('✅ Applied quaternion to camera successfully');
+  //   console.log('🎯 Camera quaternion now:', cameraRef.current.quaternion);
+  // } catch (error) {
+  //   console.warn('❌ Error updating camera orientation:', error);
+  //   cameraRef.current.lookAt(0, 0, -1);
+  // }
+//getCameraQuaternion, // pulled from dependencies
+
+    if (deviceOrientation?.alpha !== null && deviceOrientation?.beta !== null && deviceOrientation) {
+    const alphaRad = deviceOrientation.alpha * Math.PI / 180;
+    const betaRad = (deviceOrientation.beta - 90) * Math.PI / 180;
+    
+    let x = Math.sin(alphaRad);
+    let z = -Math.cos(alphaRad);
+    let y = -Math.sin(betaRad);
+    
+    cameraRef.current.lookAt(x, y, z); // Old method - should show models
   }
   
-  try {
-    // Apply quaternion directly to camera
-    cameraRef.current.quaternion.copy(cameraQuaternion);
-    console.log('✅ Applied quaternion to camera successfully');
-    console.log('🎯 Camera quaternion now:', cameraRef.current.quaternion);
-  } catch (error) {
-    console.warn('❌ Error updating camera orientation:', error);
-    cameraRef.current.lookAt(0, 0, -1);
-  }
-  
-}, [isInitialized, getCameraQuaternion, deviceOrientation]); // Added deviceOrientation for debugging
+}, [isInitialized,  deviceOrientation]); // Added deviceOrientation for debugging
 
 // Effect 2: Update calculations on interval  
 useEffect(() => {
@@ -1012,6 +1024,19 @@ useEffect(() => {
                     Reset Calibration
                   </button>
                 </div>
+
+                <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
+                <div style={{ color: 'yellow', fontSize: '10px' }}>🎯 AR OBJECT DEBUG</div>
+                <div style={{ fontSize: '9px' }}>
+                  onArObjectPlaced called: {!!onArObjectPlaced ? 'YES' : 'NO'}
+                </div>
+                <div style={{ fontSize: '9px' }}>
+                  User position: {userPosition ? `[${userPosition[0].toFixed(6)}, ${userPosition[1].toFixed(6)}]` : 'NULL'}
+                </div>
+                <div style={{ fontSize: '9px' }}>
+                  Anchor position: {anchorPosition ? `[${anchorPosition[0].toFixed(6)}, ${anchorPosition[1].toFixed(6)}]` : 'NULL'}
+                </div>
+              </div>
               </div>)}
             </div>
             

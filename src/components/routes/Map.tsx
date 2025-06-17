@@ -285,7 +285,6 @@ const modalGeofenceInfo = React.useMemo(() => {
   padding: '6px',
   borderRadius: '4px',
   fontSize: '8px',
-  zIndex: 1030,
   pointerEvents: 'auto'
 }}>
   <div style={{ color: 'yellow', fontSize: '10px' }}>
