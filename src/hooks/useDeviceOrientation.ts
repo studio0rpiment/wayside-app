@@ -42,35 +42,52 @@ export interface UseDeviceOrientationReturn {
  * Handles iOS/Android differences and coordinate system conversion
  */
 export function createQuaternionFromDeviceOrientation(
-  alpha: number, 
-  beta: number, 
-  gamma: number
-): THREE.Quaternion {
-  // Convert degrees to radians
-  const alphaRad = alpha * Math.PI / 180;
-  const betaRad = beta * Math.PI / 180;
-  const gammaRad = gamma * Math.PI / 180;
+    alpha: number, 
+    beta: number, 
+    gamma: number
+    ): THREE.Quaternion {
+    // Convert degrees to radians
+    const alphaRad = alpha * Math.PI / 180;
+    const betaRad = beta * Math.PI / 180;
+    const gammaRad = gamma * Math.PI / 180;
 
-  // Detect platform for coordinate system corrections
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  
-  // Create Euler rotation with platform-specific corrections for CAMERA
-  const euler = new THREE.Euler();
-  
-  if (isIOS) {
-    // iOS DeviceOrientation to Three.js camera conversion
-    euler.set(betaRad - Math.PI/2, alphaRad, -gammaRad, 'YXZ');
-  } else {
-    // Android DeviceOrientation to Three.js camera conversion  
-    euler.set(betaRad - Math.PI/2, -alphaRad, gammaRad, 'YXZ');
-  }
-  
-  // Convert to quaternion (no additional correction needed for this approach)
-  const quaternion = new THREE.Quaternion().setFromEuler(euler);
-  
-  return quaternion;
-}
-
+    // Detect platform for coordinate system corrections
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    // Create Euler rotation with CORRECTED platform-specific handling
+    const euler = new THREE.Euler();
+    
+    if (isIOS) {
+        // iOS: Different coordinate system correction
+        euler.set(
+        betaRad,           // Keep beta as-is for tilt
+        alphaRad,          // Alpha for compass rotation  
+        -gammaRad,         // Gamma for device roll
+        'YXZ'              // Order matters!
+        );
+    } else {
+        // Android: Inverted alpha, different beta handling
+        euler.set(
+        betaRad,           // Beta for tilt
+        -alphaRad,         // Inverted alpha for Android
+        gammaRad,          // Gamma for device roll
+        'YXZ'
+        );
+    }
+    
+    // Convert to quaternion with proper coordinate system transform
+    const quaternion = new THREE.Quaternion().setFromEuler(euler);
+    
+    // Apply coordinate system correction (device space to Three.js camera space)
+    const correction = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(1, 0, 0), 
+        Math.PI / 2  // CHANGED: Positive correction instead of negative
+    );
+    
+    quaternion.multiplyQuaternions(correction, quaternion);
+    
+    return quaternion;
+    }
 /**
  * Custom hook for device orientation with cross-platform compatibility
  * 
