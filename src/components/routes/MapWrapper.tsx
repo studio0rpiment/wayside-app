@@ -78,18 +78,18 @@ const MapWrapper: React.FC<MapWrapperProps> = memo(({
     mapRef.current = map;
     
     // Add minimal attribution
-    map.addControl(new mapboxgl.AttributionControl({
-      compact: true,
-      customAttribution: ''
-    }), 'bottom-right');
+    // map.addControl(new mapboxgl.AttributionControl({
+    //   compact: true,
+    //   customAttribution: ''
+    // }), 'bottom-right');
     
-    // Minimal logo styling
-    const logoStyleElement = document.createElement('style');
-    logoStyleElement.innerHTML = '.mapboxgl-ctrl-logo{opacity:0.3}.mapboxgl-ctrl-attrib-inner{opacity:0.3;font-size:9px}';
-    document.head.appendChild(logoStyleElement);
+    // // Minimal logo styling
+    // const logoStyleElement = document.createElement('style');
+    // logoStyleElement.innerHTML = '.mapboxgl-ctrl-logo{opacity:0.3}.mapboxgl-ctrl-attrib-inner{opacity:0.3;font-size:9px}';
+    // document.head.appendChild(logoStyleElement);
     
-    // Store the style element reference for cleanup
-    eventHandlersRef.current.styleElement = logoStyleElement;
+    // // Store the style element reference for cleanup
+    // eventHandlersRef.current.styleElement = logoStyleElement;
     
     // Set up map load handler
     map.once('load', () => {

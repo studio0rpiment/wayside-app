@@ -268,7 +268,7 @@ const modalGeofenceInfo = React.useMemo(() => {
 
         
         {/* Permission status indicators */}
-        <div style={{ position: 'absolute', bottom: '10px', left: '20px', zIndex: 10 }}>
+        <div style={{ position: 'absolute', zIndex: 100 }}>
           <PermissionsStatus compact={true} />
         </div>
         
@@ -279,11 +279,12 @@ const modalGeofenceInfo = React.useMemo(() => {
 <div style={{
   position: 'absolute',
   bottom: '10px',
-  right: '10px',
-  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  right: '0px',
+  backgroundColor: 'rgba(0, 0, 0, 0)',
   color: 'white',
   padding: '6px',
   borderRadius: '4px',
+  backdropFilter: 'blur(10px)',
   fontSize: '8px',
   pointerEvents: 'auto'
 }}>

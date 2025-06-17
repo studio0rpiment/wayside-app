@@ -76,6 +76,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const lastCameraQuaternionRef = useRef<THREE.Quaternion | null>(null);
   const enableSmoothing = true; // Add this as a configurable option
   const [manualScaleOffset, setManualScaleOffset] = useState(1.0); // Start at 1.0 (normal scale)
+  const swipeStartY = useRef(0);
+  const swipeStartTime = useRef(0);
 
 
 
@@ -121,6 +123,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   });
   // Debug/testing override state
   const [debugCollapsed, setDebugCollapsed] = useState(false);
+  const [isBottomDebugCollapsed, setIsBottomDebugCollapsed] = useState(false);
+
 
   const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
     // Initialize from global if available, otherwise false
@@ -160,12 +164,43 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
     };
 
+//******************* SWIPES FOR DEBUG PANEL */
+    const handleSwipeStart = (event: React.TouchEvent<HTMLDivElement>) => {
+      swipeStartY.current = event.touches[0].clientY;
+      swipeStartTime.current = Date.now();
+    };
+
+    const handleSwipeMove = (event: React.TouchEvent<HTMLDivElement>) => {
+      // Prevent scrolling while swiping on debug panel
+      event.preventDefault();
+    };
+
+    const handleSwipeEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+      const swipeEndY = event.changedTouches[0].clientY;
+      const swipeDistance = swipeEndY - swipeStartY.current;
+      const swipeTime = Date.now() - swipeStartTime.current;
+      
+      const MIN_SWIPE_DISTANCE = 50; // Minimum pixels for swipe
+      const MAX_SWIPE_TIME = 500; // Maximum time for swipe (ms)
+      
+      // Check for valid swipe gesture
+      if (swipeTime < MAX_SWIPE_TIME) {
+        if (swipeDistance > MIN_SWIPE_DISTANCE) {
+          // Swipe down - collapse panel
+          setIsBottomDebugCollapsed(true);
+          console.log('🔽 Debug panel collapsed');
+        } else if (swipeDistance < -MIN_SWIPE_DISTANCE) {
+          // Swipe up - expand panel
+          setIsBottomDebugCollapsed(false);
+          console.log('🔼 Debug panel expanded');
+        }
+      }
+    };
+
     const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
-     
       if (!userPosition || !activeAnchorPosition) return null;
       
       const finalElevationOffset = elevationOffset + manualElevationOffset;
-      
       // Use the SAME function your experiences use
       const position = gpsToThreeJsPosition(
         userPosition,
@@ -183,47 +218,46 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     console.log('📏 Manual elevation offset:', newOffset);
   }, [manualElevationOffset]);
 
-
   const updateAnchorPosition = useCallback((deltaLon: number, deltaLat: number) => {
-  // Update the GPS offset state for display
-    const newOffset = {
-      lon: gpsOffset.lon + deltaLon,
-      lat: gpsOffset.lat + deltaLat
-    };
-  
-    setGpsOffset(newOffset);
+    // Update the GPS offset state for display
+      const newOffset = {
+        lon: gpsOffset.lon + deltaLon,
+        lat: gpsOffset.lat + deltaLat
+      };
+    
+      setGpsOffset(newOffset);
 
-  // Calculate new anchor position (use current anchor + total offset)
-  const newAnchorPosition: [number, number] = [
-    anchorPosition[0] + newOffset.lon,
-    anchorPosition[1] + newOffset.lat
-  ];
-  
-  // Store adjusted position locally
-  setAdjustedAnchorPosition(newAnchorPosition);
-  
-  console.log('📍 Anchor moved to:', newAnchorPosition);
-  console.log('📍 Total offset:', newOffset);
-}, [anchorPosition, gpsOffset]);
+    // Calculate new anchor position (use current anchor + total offset)
+    const newAnchorPosition: [number, number] = [
+      anchorPosition[0] + newOffset.lon,
+      anchorPosition[1] + newOffset.lat
+    ];
+    
+    // Store adjusted position locally
+    setAdjustedAnchorPosition(newAnchorPosition);
+    
+    console.log('📍 Anchor moved to:', newAnchorPosition);
+    console.log('📍 Total offset:', newOffset);
+  }, [anchorPosition, gpsOffset]);
 
-const updateScaleOffset = useCallback((deltaScale: number) => {
+  const updateScaleOffset = useCallback((deltaScale: number) => {
     const newScale = Math.max(0.1, Math.min(8.0, manualScaleOffset + deltaScale)); // Minimum 0.1, maximum 5.0
 
-  setManualScaleOffset(newScale);
-  
-  // Update accumulated transforms to show in debug
-  setAccumulatedTransforms(prev => ({
-    ...prev,
-    scale: newScale
-  }));
-  
-  // Call the model scale callback if available
-  if (onModelScale) {
-    onModelScale(newScale);
-  }
-  
-  console.log('📏 Manual scale:', newScale);
-}, [manualScaleOffset, onModelScale]);
+    setManualScaleOffset(newScale);
+    
+    // Update accumulated transforms to show in debug
+    setAccumulatedTransforms(prev => ({
+      ...prev,
+      scale: newScale
+    }));
+    
+    // Call the model scale callback if available
+    if (onModelScale) {
+      onModelScale(newScale);
+    }
+    
+    console.log('📏 Manual scale:', newScale);
+  }, [manualScaleOffset, onModelScale]);
 
   // Initialize camera stream
   const initializeCamera = async () => {
@@ -568,8 +602,7 @@ useEffect(() => {
     
     initialize();
 
-    // Add these touch handlers in ArCameraComponent
-// Updated touch handlers:
+//************************************** */ Updated touch handlers:
   const handleTouchStart = (event: TouchEvent) => {
     const now = new Date().getTime();
     const timeSince = now - lastTapTime.current;
@@ -670,59 +703,59 @@ useEffect(() => {
             y: prev.rotation.y + rotDeltaX,
             z: prev.rotation.z
           }
-        }));
+          }));
 
-        if (onModelRotate) {
-          onModelRotate(rotDeltaX, rotDeltaY, 0);
+          if (onModelRotate) {
+            onModelRotate(rotDeltaX, rotDeltaY, 0);
+          }
         }
-      }
       
       lastTouchX.current = currentX;
       lastTouchY.current = currentY;
       
-    } else if (event.touches.length === 2) {
-      // Two finger Z-rotation (stays the same)...
-      const touch1 = event.touches[0];
-      const touch2 = event.touches[1];
-      
-      const currentAngle = Math.atan2(
-        touch2.clientY - touch1.clientY, 
-        touch2.clientX - touch1.clientX
-      );
-      
-      const rotationDelta = currentAngle - previousTwoFingerAngle.current;
-      
-      if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
-        const zRotDelta = rotationDelta * 0.5;
+      } else if (event.touches.length === 2) {
+        // Two finger Z-rotation (stays the same)...
+        const touch1 = event.touches[0];
+        const touch2 = event.touches[1];
         
-        setAccumulatedTransforms(prev => {
-          const newZRotation = prev.rotation.z + zRotDelta;
-          const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
+        const currentAngle = Math.atan2(
+          touch2.clientY - touch1.clientY, 
+          touch2.clientX - touch1.clientX
+        );
+        
+        const rotationDelta = currentAngle - previousTwoFingerAngle.current;
+        
+        if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
+          const zRotDelta = rotationDelta * 0.5;
           
-          if (limitedZRotation !== prev.rotation.z) {
-            const actualDelta = limitedZRotation - prev.rotation.z;
-            onModelRotate(0, 0, actualDelta);
+          setAccumulatedTransforms(prev => {
+            const newZRotation = prev.rotation.z + zRotDelta;
+            const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
             
-            return {
-              ...prev,
-              rotation: {
-                ...prev.rotation,
-                z: limitedZRotation
-              }
-            };
-          }
-          
-          return prev;
-        });
+            if (limitedZRotation !== prev.rotation.z) {
+              const actualDelta = limitedZRotation - prev.rotation.z;
+              onModelRotate(0, 0, actualDelta);
+              
+              return {
+                ...prev,
+                rotation: {
+                  ...prev.rotation,
+                  z: limitedZRotation
+                }
+              };
+            }
+            
+            return prev;
+          });
+        }
+        
+        previousTwoFingerAngle.current = currentAngle;
       }
       
-      previousTwoFingerAngle.current = currentAngle;
-    }
-    
-    event.preventDefault();
+      event.preventDefault();
   };
 
-    const handleTouchEnd = (event: TouchEvent) => {
+  const handleTouchEnd = (event: TouchEvent) => {
       // Track when multi-touch gestures end
       if (event.touches.length === 0) {
         // All fingers lifted
@@ -733,12 +766,14 @@ useEffect(() => {
         lastMultiTouchTime.current = new Date().getTime();
         console.log('👆 Multi-touch ended, one finger remains');
       }
-    };
+  };
 
     // Add resize listener
     window.addEventListener('resize', handleResize);
+
+
     
-    // Cleanup function
+//********************* */ Cleanup function
     return () => {
       // Stop camera stream
       if (streamRef.current) {
@@ -773,6 +808,10 @@ useEffect(() => {
 
 
   
+  // function handleSwipeStart(event: React.TouchEvent<HTMLDivElement>): void {
+  //   throw new Error('Function not implemented.');
+  // }
+
   return (
     <div 
       ref={containerRef}
@@ -1036,9 +1075,10 @@ useEffect(() => {
             )}
                   
 
-      
-      {SHOW_DEBUG_PANEL && isInitialized && (
-        <div style={{
+//* *******LOWER DEBUG PANEL ******************** */ 
+     {SHOW_DEBUG_PANEL && isInitialized && (
+      <div 
+        style={{
           position: 'absolute',
           bottom: experienceType === '2030-2105' ? '11svh' : '2svh',
           left: '50%',
@@ -1051,128 +1091,144 @@ useEffect(() => {
           borderRadius: '1rem',
           fontSize: '0.8rem',
           fontFamily: 'monospace',
-          
           zIndex: 1025,
           textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
-     
-          <div>Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)</div>
-          {/* <div>Scale: {formatWithSign(accumulatedTransforms.scale, 2)}</div> */}
-          <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
+        }}
+        onTouchStart={handleSwipeStart}
+        onTouchMove={handleSwipeMove}
+        onTouchEnd={handleSwipeEnd}
+      >
+        {/* Always visible: Title */}
+        <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
+        
+        {/* Always visible: Rotation values */}
+        <div>
+          Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)
+        </div>
+    
+    {/* Collapsible content */}
+    {!isBottomDebugCollapsed ? (
+      <>
+        <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
+        
+        {/* Device orientation section */}
         {deviceOrientation ? (
           <>
-            <div style={{ display: 'flex',  justifyContent: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
               <div>Raw Alpha: {deviceOrientation.alpha?.toFixed(1)}</div>
               <div>Raw Beta: {deviceOrientation.beta?.toFixed(1)}</div>
-                  <div>Absolute: {deviceOrientation.absolute ? 'Yes' : 'No'}</div>
-                  <div>WebKit: {(deviceOrientation as any).webkitCompassHeading?.toFixed(1) ?? 'N/A'}</div>
-                  <div>Hook Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}</div>
-                  <div>Platform: {/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'iOS' : 'Android/Other'}</div>
-
+              <div>Absolute: {deviceOrientation.absolute ? 'Yes' : 'No'}</div>
+              <div>WebKit: {(deviceOrientation as any).webkitCompassHeading?.toFixed(1) ?? 'N/A'}</div>
+              <div>Hook Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}</div>
+              <div>Platform: {/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'iOS' : 'Android/Other'}</div>
             </div>
           </>
         ) : (
           <div>Orientation: Desktop</div>
         )}
 
-          <div style = {{fontSize: '0.5rem'}}>
-            <span style={{ color: 'yellow'  }}>Camera Lookat: {cameraLookDirection.bearing?.toFixed(1) ?? 'N/A'}°</span>
-              <span> Aim Error: </span>
-                <span style={{ 
-                  color: 'yellow'
-                }}>
-                  {cameraLookDirection.aimError !== null ? `${cameraLookDirection.aimError.toFixed(1)}°` : 'N/A'}
-                </span>
-          </div>
-           {cameraLookDirection.expectedModelPosition ? (
-            <>
-              <div style={{ fontSize: '0.5rem' }}>
-                Model Position: [{cameraLookDirection.expectedModelPosition.x.toFixed(1)}, {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] | Distance: {cameraLookDirection.modelDistance?.toFixed(1)}m
+        {/* Camera direction section */}
+        <div style={{ fontSize: '0.5rem' }}>
+          <span style={{ color: 'yellow' }}>Camera Lookat: {cameraLookDirection.bearing?.toFixed(1) ?? 'N/A'}°</span>
+          <span> Aim Error: </span>
+          <span style={{ color: 'yellow' }}>
+            {cameraLookDirection.aimError !== null ? `${cameraLookDirection.aimError.toFixed(1)}°` : 'N/A'}
+          </span>
+        </div>
+
+        {/* Model position section */}
+        {cameraLookDirection.expectedModelPosition ? (
+          <>
+            <div style={{ fontSize: '0.5rem' }}>
+              Model Position: [{cameraLookDirection.expectedModelPosition.x.toFixed(1)}, {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] | Distance: {cameraLookDirection.modelDistance?.toFixed(1)}m
+            </div>
+
+            {cameraLookDirection.aimError !== null && (
+              <div style={{ fontSize: '0.8rem', opacity: 1, color: 'yellow' }}>
+                {(() => {
+                  if (cameraLookDirection.aimError < 2) {
+                    return '⮕⮕ RIGHT THERE ⬅⬅';
+                  } else {
+                    // Calculate which direction to turn
+                    const gpsToAnchor = calculateBearing(userPosition, activeAnchorPosition);
+                    const currentLooking = cameraLookDirection.bearing || 0;
+                    
+                    let turnDirection = gpsToAnchor - currentLooking;
+                    
+                    // Handle wraparound (e.g., 350° to 10°)
+                    if (turnDirection > 180) turnDirection -= 360;
+                    if (turnDirection < -180) turnDirection += 360;
+                    
+                    const turnAmount = Math.abs(turnDirection).toFixed(0);
+                    if (cameraLookDirection.aimError < 10) {
+                      return turnDirection > 0 
+                        ? `→  Close - turn RIGHT ${turnAmount}° →` 
+                        : `← Close - turn LEFT ${turnAmount}° ←`
+                    } else if (cameraLookDirection.aimError < 30) {
+                      return turnDirection > 0 
+                        ? `⮕ TURN RIGHT ${turnAmount}° ⮕` 
+                        : `⬅ TURN LEFT ${turnAmount}° ⬅`;
+                    } else {
+                      return turnDirection > 0 
+                        ? `⮕⮕ TURN RIGHT ${turnAmount}° ⮕⮕` 
+                        : `⬅⬅ TURN LEFT ${turnAmount}° ⬅⬅`;
+                    }
+                  }
+                })()}
               </div>
+            )}
+          </>
+        ) : (
+          <div style={{ fontSize: '9px', opacity: 0.6 }}>No position calculated</div>
+        )}
 
-         {cameraLookDirection.aimError !== null && (
-            <div style={{ fontSize: '0.8rem', opacity: 1, color: 'yellow' }}>
-              {(() => {
-                if (cameraLookDirection.aimError < 2) {
-                  return '⮕⮕ RIGHT THERE ⬅⬅';
-                 } else {
-                  // Calculate which direction to turn
-                  const gpsToAnchor = calculateBearing(userPosition, activeAnchorPosition);
-                  const currentLooking = cameraLookDirection.bearing || 0;
-                  
-                  let turnDirection = gpsToAnchor - currentLooking;
-                  
-                  // Handle wraparound (e.g., 350° to 10°)
-                  if (turnDirection > 180) turnDirection -= 360;
-                  if (turnDirection < -180) turnDirection += 360;
-                  
-                  const turnAmount = Math.abs(turnDirection).toFixed(0);
-                       if (cameraLookDirection.aimError < 10) {
-                        return turnDirection > 0 
-                          ? `→  Close - turn RIGHT ${turnAmount}° →` 
-                          : `← Close - turn LEFT ${turnAmount}° ←`
-                        } else if (cameraLookDirection.aimError < 30) {
-                          return turnDirection > 0 
-                            ? `⮕ TURN RIGHT ${turnAmount}° ⮕` 
-                            : `⬅ TURN LEFT ${turnAmount}° ⬅`;
-                        } else {
-                          return turnDirection > 0 
-                            ? `⮕⮕ TURN RIGHT ${turnAmount}° ⮕⮕` 
-                            : `⬅⬅ TURN LEFT ${turnAmount}° ⬅⬅`;
-                        }
-                }
-              })
-              ()}
-            </div>
-          )}
-            
-            </>
-          ) : (
-            <div style={{ fontSize: '9px', opacity: 0.6 }}>No position calculated</div>
-          )}
-
-
+        {/* GPS calibration section */}
         <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
-        <div style={{ color: 'yellow', fontSize: '0.7rem' }}>USE BUTTONS TO MOVE ANCHOR: [{(adjustedAnchorPosition || anchorPosition)[0].toFixed(6)}, {(adjustedAnchorPosition || anchorPosition)[1].toFixed(6)}]</div>
+          <div style={{ color: 'yellow', fontSize: '0.7rem' }}>
+            USE BUTTONS TO MOVE ANCHOR: [{(adjustedAnchorPosition || anchorPosition)[0].toFixed(6)}, {(adjustedAnchorPosition || anchorPosition)[1].toFixed(6)}]
+          </div>
 
-        {(() => {
-          const buttonStyle = {
-            fontSize: '20px',
-            padding: '4px 12px',
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            border: 'none',
-            borderRadius: '0.5rem',
-            color: 'white',
-            cursor: 'pointer'
-          };
-          
-          return (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-              <button onClick={() => updateAnchorPosition(-0.00001, 0)} style={buttonStyle}>WEST</button>
-              <button onClick={() => updateAnchorPosition(0.00001, 0)} style={buttonStyle}>EAST</button>
-              <button onClick={() => updateAnchorPosition(0, 0.00001)} style={buttonStyle}>NORTH</button>
-              <button onClick={() => updateAnchorPosition(0, -0.00001)} style={buttonStyle}>SOUTH</button>
-            </div>
-          );
-        })()}
-        {/* ELEVATION */}
-        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
-          <div style={{ color: 'yellow', fontSize: '10px' }}>ELEVATION:  {((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: {manualElevationOffset.toFixed(3)}m</div>
-          
           {(() => {
-            const elevButtonStyle = {
-            fontSize: '20px',
-            padding: '4px 12px',
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            border: 'none',
-            borderRadius: '0.5rem',
-            color: 'white',
-            cursor: 'pointer'
+            const buttonStyle = {
+              fontSize: '20px',
+              padding: '4px 12px',
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer'
             };
             
             return (
-              <div style={{  display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem'  }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                <button onClick={() => updateAnchorPosition(-0.00001, 0)} style={buttonStyle}>WEST</button>
+                <button onClick={() => updateAnchorPosition(0.00001, 0)} style={buttonStyle}>EAST</button>
+                <button onClick={() => updateAnchorPosition(0, 0.00001)} style={buttonStyle}>NORTH</button>
+                <button onClick={() => updateAnchorPosition(0, -0.00001)} style={buttonStyle}>SOUTH</button>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Elevation section */}
+        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
+          <div style={{ color: 'yellow', fontSize: '10px' }}>
+            ELEVATION: {((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: {manualElevationOffset.toFixed(3)}m
+          </div>
+          
+          {(() => {
+            const elevButtonStyle = {
+              fontSize: '20px',
+              padding: '4px 12px',
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer'
+            };
+            
+            return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
                 <button onClick={() => updateElevationOffset(-0.1)} style={elevButtonStyle}>-0.1m</button>
                 <button onClick={() => updateElevationOffset(-0.01)} style={elevButtonStyle}>-1cm</button>
                 <button onClick={() => updateElevationOffset(0.01)} style={elevButtonStyle}>+1cm</button>
@@ -1180,57 +1236,64 @@ useEffect(() => {
               </div>
             );
           })()}
-          
         </div>
-        {/* SCALE */}
-<div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', paddingRight: '5px' }}>
-  <div style={{ color: 'yellow', fontSize: '10px' }}>SCALE: {manualScaleOffset.toFixed(1)}x</div>
-  
-  {(() => {
-    const scaleButtonStyle = {
-      fontSize: '12px',
-      padding: '4px 12px',
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      border: 'none',
-      borderRadius: '0.5rem',
-      color: 'white',
-      cursor: 'pointer'
-    };
-    
-    return (
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-<button onClick={() => updateScaleOffset(-0.2)} style={scaleButtonStyle}>-0.2</button>
-<button onClick={() => updateScaleOffset(-0.05)} style={scaleButtonStyle}>-0.05</button>
-<button onClick={() => {
-  setManualScaleOffset(1.0);
-  setAccumulatedTransforms(prev => ({
-    ...prev,
-    scale: 1.0
-  }));
-  
-  if (onModelScale) {
-    onModelScale(1.0);
-  }
-  
-  if (onModelReset) {
-    onModelReset();
-  }
-  
-  console.log('🔄 Scale reset to 1.0');
-}} style={scaleButtonStyle}>1.0</button>
-<button onClick={() => updateScaleOffset(0.05)} style={scaleButtonStyle}>+0.05</button>
-<button onClick={() => updateScaleOffset(0.2)} style={scaleButtonStyle}>+0.2</button>
 
+        {/* Scale section */}
+        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', paddingRight: '5px' }}>
+          <div style={{ color: 'yellow', fontSize: '10px' }}>SCALE: {manualScaleOffset.toFixed(1)}x</div>
+          
+          {(() => {
+            const scaleButtonStyle = {
+              fontSize: '12px',
+              padding: '4px 12px',
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer'
+            };
+            
+            return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                <button onClick={() => updateScaleOffset(-0.2)} style={scaleButtonStyle}>-0.2</button>
+                <button onClick={() => updateScaleOffset(-0.05)} style={scaleButtonStyle}>-0.05</button>
+                <button onClick={() => {
+                  setManualScaleOffset(1.0);
+                  setAccumulatedTransforms(prev => ({
+                    ...prev,
+                    scale: 1.0
+                  }));
+                  
+                  if (onModelScale) {
+                    onModelScale(1.0);
+                  }
+                  
+                  if (onModelReset) {
+                    onModelReset();
+                  }
+                  
+                  console.log('🔄 Scale reset to 1.0');
+                }} style={scaleButtonStyle}>1.0</button>
+                <button onClick={() => updateScaleOffset(0.05)} style={scaleButtonStyle}>+0.05</button>
+                <button onClick={() => updateScaleOffset(0.2)} style={scaleButtonStyle}>+0.2</button>
+              </div>
+            );
+          })()}
+        </div>
+      </>
+    ) : (
+      /* Collapsed state indicator */
+      <div style={{ 
+        fontSize: '8px', 
+        opacity: 0.7, 
+        marginTop: '2px',
+        color: 'cyan'
+      }}>
+        ⬆ swipe up to expand
       </div>
-    );
-  })()}
-</div>
-
-       
-      </div>
-    </div>
-        
-   )}
+    )}
+  </div>
+)}
 
       
       

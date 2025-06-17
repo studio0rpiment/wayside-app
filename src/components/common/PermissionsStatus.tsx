@@ -319,12 +319,14 @@ const PermissionsStatus: React.FC<PermissionsStatusProps> = ({
         spacing={1} 
         sx={{ 
           position: 'fixed',
-          bottom: '30px',
-          left: '20px',
-          zIndex: 10,
+          bottom: '0svh',
+          left: '0svw',
+          zIndex: 100,
+          background: 'transparent',
+          padding: '0rem 0rem 2rem 1rem'
         }}
       >
-        <div style={{color: 'var(--color-dark)', fontWeight:'bold'}} >PERMISSIONS</div>
+        <div style={{ color: 'var(--color-dark)', fontWeight:'bold'}} >PERMISSIONS</div>
         <Stack direction="row" spacing={1.5}>
           {showCamera && renderPermissionStatus(PermissionType.CAMERA, 'Camera')}
           {showLocation && renderPermissionStatus(PermissionType.LOCATION, 'Location')}
