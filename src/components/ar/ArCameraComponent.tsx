@@ -341,47 +341,33 @@ const placeArObject = useCallback(() => {
 
 // Effect 1: Update camera rotation using quaternions (with debug logging)
 useEffect(() => {
-  if (!isInitialized || !cameraRef.current) {
-    console.log('🎯 Camera update skipped - not initialized or no camera ref');
+  if (!isInitialized || !cameraRef.current) return;
+  
+  const cameraQuaternion = getCameraQuaternion();
+  if (!cameraQuaternion) {
+    cameraRef.current.lookAt(0, 0, -1);
     return;
   }
   
-  // console.log('🎯 Camera quaternion update attempt');
-  // console.log('🎯 getCameraQuaternion function exists:', typeof getCameraQuaternion);
-  
-  // const cameraQuaternion = getCameraQuaternion();
-  // console.log('🎯 Got camera quaternion:', cameraQuaternion);
-  // console.log('🎯 deviceOrientation state:', deviceOrientation);
-  
-  // if (!cameraQuaternion) {
-  //   console.log('🎯 No quaternion available, using fallback lookAt');
-  //   cameraRef.current.lookAt(0, 0, -1);
-  //   return;
-  // }
-  
-  // try {
-  //   // Apply quaternion directly to camera
-  //   cameraRef.current.quaternion.copy(cameraQuaternion);
-  //   console.log('✅ Applied quaternion to camera successfully');
-  //   console.log('🎯 Camera quaternion now:', cameraRef.current.quaternion);
-  // } catch (error) {
-  //   console.warn('❌ Error updating camera orientation:', error);
-  //   cameraRef.current.lookAt(0, 0, -1);
-  // }
-//getCameraQuaternion, // pulled from dependencies
-
-    if (deviceOrientation?.alpha !== null && deviceOrientation?.beta !== null && deviceOrientation) {
-    const alphaRad = deviceOrientation.alpha * Math.PI / 180;
-    const betaRad = (deviceOrientation.beta - 90) * Math.PI / 180;
+  try {
+    // Apply quaternion to camera
+    cameraRef.current.quaternion.copy(cameraQuaternion);
     
-    let x = Math.sin(alphaRad);
-    let z = -Math.cos(alphaRad);
-    let y = -Math.sin(betaRad);
+    // COMPENSATE: Apply inverse transformation to maintain model visibility
+    // This rotates the camera coordinate system back to match the old system
+    const compensation = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(1, 0, 0), 
+      Math.PI / 2  // Opposite of the correction in createQuaternionFromDeviceOrientation
+    );
     
-    cameraRef.current.lookAt(x, y, z); // Old method - should show models
+    cameraRef.current.quaternion.multiplyQuaternions(cameraRef.current.quaternion, compensation);
+    
+  } catch (error) {
+    console.warn('Error updating camera orientation:', error);
+    cameraRef.current.lookAt(0, 0, -1);
   }
   
-}, [isInitialized,  deviceOrientation]); // Added deviceOrientation for debugging
+}, [isInitialized, getCameraQuaternion]);
 
 // Effect 2: Update calculations on interval  
 useEffect(() => {
