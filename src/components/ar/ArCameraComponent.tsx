@@ -266,7 +266,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       
       // Convert degrees to radians
       const alphaRad = deviceOrientation.alpha * Math.PI / 180;
-      const betaRad = deviceOrientation.beta * Math.PI / 180;
+      const betaRad = (deviceOrientation.beta -90 ) * Math.PI / 180;
       
       // Calculate 3D look direction
       let x = Math.sin(alphaRad);   // East-West (compass)
@@ -359,7 +359,7 @@ useEffect(() => {
       
       // Convert degrees to radians
       const alphaRad = deviceOrientation.alpha * Math.PI / 180;
-      const betaRad = deviceOrientation.beta * Math.PI / 180;
+      const betaRad = (deviceOrientation.beta -90 )* Math.PI / 180;
       
       // Calculate 3D look direction
       let x = Math.sin(alphaRad);   // East-West (compass)
