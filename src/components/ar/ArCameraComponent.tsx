@@ -270,8 +270,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       
       // Calculate 3D look direction
       let x = Math.sin(alphaRad);   // East-West (compass)
-      let z = Math.cos(alphaRad);  // North-South (compass)
-      let y = Math.sin(betaRad);   // Up-Down (device tilt)
+      let z = -Math.cos(alphaRad);  // North-South (compass)
+      let y = -Math.sin(betaRad);   // Up-Down (device tilt)
       
       camera.lookAt(x, y, z);
     } else {
@@ -363,8 +363,8 @@ useEffect(() => {
       
       // Calculate 3D look direction
       let x = Math.sin(alphaRad);   // East-West (compass)
-      let z = Math.cos(alphaRad);  // North-South (compass)
-      let y = Math.sin(betaRad);   // Up-Down (device tilt)
+      let z = -Math.cos(alphaRad);  // North-South (compass)
+      let y = -Math.sin(betaRad);   // Up-Down (device tilt)
       
       cameraRef.current.lookAt(x, y, z);
         
