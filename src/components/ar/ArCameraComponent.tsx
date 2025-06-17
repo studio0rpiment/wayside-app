@@ -9,6 +9,10 @@ import EdgeChevrons from './EdgeChevrons';
 import { loadHeightmap, testTerrainLookup, gpsToThreeJsPositionWithTerrain } from '../../utils/terrainUtils';
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
+import { 
+  getCorrectedOrientation, 
+  createQuaternionFromDeviceOrientation 
+} from '../../hooks/useDeviceOrientation';
 
 
 const SHOW_DEBUG_PANEL = true;
@@ -72,6 +76,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const cameraDirectionVector = useRef(new THREE.Vector3());
   const lastCameraUpdateRef = useRef(0);
   const cameraUpdateIntervalRef = useRef<number | null>(null);
+
+  const lastCameraQuaternionRef = useRef<THREE.Quaternion | null>(null);
+  const enableSmoothing = true; // Add this as a configurable option
 
 
 //******** STATE STATE STATE */
@@ -259,24 +266,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       0.1,
       1000
     );
+    camera.lookAt(0, 0, -1);
     camera.position.set(0, 0, 0); // Camera at origin
-
-    if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined && 
-        deviceOrientation?.beta !== null && deviceOrientation?.beta !== undefined) {
-      
-      // Convert degrees to radians
-      const alphaRad = deviceOrientation.alpha * Math.PI / 180;
-      const betaRad = (deviceOrientation.beta -90 ) * Math.PI / 180;
-      
-      // Calculate 3D look direction
-      let x = Math.sin(alphaRad);   // East-West (compass)
-      let z = -Math.cos(alphaRad);  // North-South (compass)
-      let y = -Math.sin(betaRad);   // Up-Down (device tilt)
-      
-      camera.lookAt(x, y, z);
-    } else {
-      camera.lookAt(0, 0, -1); // Default: looking north horizontally
-    }
 
   cameraRef.current = camera;
   
@@ -352,25 +343,40 @@ const placeArObject = useCallback(() => {
   
 // Effect 1: Update camera rotation when device orientation changes
 useEffect(() => {
-  if (!isInitialized || !cameraRef.current) return;
+  if (!isInitialized || !cameraRef.current || !deviceOrientation) return;
   
-    if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined && 
-        deviceOrientation?.beta !== null && deviceOrientation?.beta !== undefined) {
+  const { alpha, beta, gamma } = deviceOrientation;
+  if (alpha === null || beta === null || gamma === null) return;
+  
+  try {
+    // Get corrected orientation with quaternion
+    const corrected = getCorrectedOrientation(deviceOrientation);
+    if (!corrected) return;
+    
+    // Apply quaternion directly to camera (no lookAt!)
+    cameraRef.current.quaternion.copy(corrected.quaternion);
+    
+    // Optional: Apply smoothing to reduce jitter
+    if (enableSmoothing) {
+      const currentQuat = cameraRef.current.quaternion.clone();
+      const previousQuat = lastCameraQuaternionRef.current || currentQuat;
       
-      // Convert degrees to radians
-      const alphaRad = deviceOrientation.alpha * Math.PI / 180;
-      const betaRad = (deviceOrientation.beta -90 )* Math.PI / 180;
+      // Smooth interpolation between quaternions
+      cameraRef.current.quaternion.slerpQuaternions(
+        previousQuat, 
+        corrected.quaternion, 
+        0.1 // Smoothing factor (0 = no change, 1 = immediate)
+      );
       
-      // Calculate 3D look direction
-      let x = Math.sin(alphaRad);   // East-West (compass)
-      let z = -Math.cos(alphaRad);  // North-South (compass)
-      let y = -Math.sin(betaRad);   // Up-Down (device tilt)
-      
-      cameraRef.current.lookAt(x, y, z);
-        
+      lastCameraQuaternionRef.current = cameraRef.current.quaternion.clone();
     }
-
-}, [isInitialized, deviceOrientation]); // ← This updates camera rotation immediately
+    
+  } catch (error) {
+    console.warn('Error updating camera orientation:', error);
+    // Fallback to previous working method if needed
+  }
+  
+}, [isInitialized, deviceOrientation]);
 
 // Effect 2: Update calculations on interval  
 useEffect(() => {

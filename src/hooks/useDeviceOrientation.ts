@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePermissions } from '../context/PermissionsContext';
 import { PermissionType } from '../utils/permissions';
+import * as THREE from 'three';
 
 /**
  * Device orientation data interface
@@ -35,6 +36,96 @@ export interface UseDeviceOrientationReturn {
   requestPermission: () => Promise<boolean>; // Function to request permission
 }
 
+export interface CorrectedOrientationData {
+  alpha: number;
+  beta: number; 
+  gamma: number;
+  quaternion: THREE.Quaternion;
+}
+
+
+
+/**
+ * Create Three.js quaternion from device orientation
+ * Handles iOS/Android differences and coordinate system conversion
+ */
+export function createQuaternionFromDeviceOrientation(
+  alpha: number, 
+  beta: number, 
+  gamma: number
+): THREE.Quaternion {
+  // Convert degrees to radians
+  const alphaRad = alpha * Math.PI / 180;
+  const betaRad = beta * Math.PI / 180;
+  const gammaRad = gamma * Math.PI / 180;
+
+  // Detect platform for coordinate system corrections
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  // Create Euler rotation with platform-specific corrections
+  const euler = new THREE.Euler();
+  
+  if (isIOS) {
+    // iOS DeviceOrientation to Three.js conversion
+    euler.set(betaRad, alphaRad, -gammaRad, 'YXZ');
+  } else {
+    // Android DeviceOrientation to Three.js conversion
+    euler.set(betaRad, alphaRad, gammaRad, 'YXZ');
+  }
+  
+  // Convert to quaternion
+  const quaternion = new THREE.Quaternion().setFromEuler(euler);
+  
+  // Apply coordinate system correction (device space to camera space)
+  const correction = new THREE.Quaternion().setFromAxisAngle(
+    new THREE.Vector3(1, 0, 0), 
+    -Math.PI / 2
+  );
+  
+  quaternion.multiplyQuaternions(correction, quaternion);
+  
+  return quaternion;
+}
+
+/**
+ * Get corrected orientation data for Three.js
+ */
+
+export function getCorrectedOrientation(
+  orientation: DeviceOrientationData
+): CorrectedOrientationData | null {
+  if (!orientation.alpha || !orientation.beta || !orientation.gamma) {
+    return null;
+  }
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  let correctedAlpha = orientation.alpha;
+  let correctedBeta = orientation.beta;
+  let correctedGamma = orientation.gamma;
+  
+  if (isIOS) {
+    // iOS specific corrections
+    correctedBeta = orientation.beta - 90;
+  } else {
+    // Android specific corrections  
+    correctedAlpha = 360 - orientation.alpha;
+  }
+  
+  // Create quaternion
+  const quaternion = createQuaternionFromDeviceOrientation(
+    correctedAlpha, 
+    correctedBeta, 
+    correctedGamma
+  );
+  
+  return {
+    alpha: correctedAlpha,
+    beta: correctedBeta,
+    gamma: correctedGamma,
+    quaternion
+  };
+}
 /**
  * Custom hook for device orientation with cross-platform compatibility
  * 
@@ -76,6 +167,7 @@ export function useDeviceOrientation(
       console.log(`🧭 useDeviceOrientation: ${message}`, data || '');
     }
   }, [debugMode]);
+
 
   /**
    * Calculate compass heading from device orientation alpha value
