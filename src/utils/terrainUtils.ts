@@ -323,7 +323,7 @@ function getPixelElevation(pixelX: number, pixelY: number, sampleRadius: number 
 export function gpsToThreeJsPositionWithTerrain(
   userGps: [number, number],
   anchorGps: [number, number],
-  elevationOffset: number = 2.0, // Height above terrain (not absolute elevation)
+  elevationOffset: number = 0, // Height above terrain (not absolute elevation)
   coordinateScale: number = 1.0
 ): { position: THREE.Vector3; terrainElevation: number | null; userElevation: number | null; usedTerrain: boolean } {
   
@@ -360,7 +360,7 @@ export function gpsToThreeJsPositionWithTerrain(
 export function gpsToThreeJsPositionTerrain(
   userGps: [number, number],
   anchorGps: [number, number],
-  elevationOffset: number = 2.0,
+  elevationOffset: number = 0,
   coordinateScale: number = 1.0,
   fallbackElevation: number = 2.0
 ): {

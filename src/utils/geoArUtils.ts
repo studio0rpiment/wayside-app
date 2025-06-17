@@ -140,9 +140,9 @@ export function gpsToThreeJsPosition(
 export function gpsToThreeJsPositionTerrain(
   userGps: [number, number],
   anchorGps: [number, number],
-  elevationOffset: number = 2.0,  // Height ABOVE ground level
+  elevationOffset: number = 0,  // Height ABOVE ground level
   coordinateScale: number = 1.0,
-  fallbackElevation: number = 2.0  // Used if no terrain data available
+  fallbackElevation: number = 0  // Used if no terrain data available
 ): {
   position: THREE.Vector3;
   terrainElevation: number | null;
@@ -247,22 +247,22 @@ export function getEnhancedAnchorPosition(
   // Experience-specific elevation offsets (height above terrain)
   const experienceOffsets: Record<string, number> = {
     // Water-based experiences should be at or near water surface
-    'lotus': 0.5,      // Slightly above water surface
-    'lily': 0.5,       // Slightly above water surface
-    'cattail': 1.0,    // Taller, emergent plant
+    'lotus': 0,      // Slightly above water surface
+    'lily': 0,       // Slightly above water surface
+    'cattail': 0,    // Taller, emergent plant
     
     // Historical moments on paths/boardwalks
-    'mac': 1.8,        // Human height on boardwalk
-    'helen_s': 1.8,    // Human height on path
-    'volunteers': 1.8, // Human height on ground
+    'mac': 0,        // Human height on boardwalk
+    'helen_s': 0,    // Human height on path
+    'volunteers': 0, // Human height on ground
     
     // Environmental effects
     '2030-2105': 0.0,  // Water rise starts at current water level
-    '1968': 10.0,      // Smoke rises high above horizon
-    '2200_bc': 0.2,    // Canoe at water surface
+    '1968': 0.0,      // Smoke rises high above horizon
+    '2200_bc': 0,    // Canoe at water surface
     
     // Default for unknown experiences
-    'default': 2.0
+    'default': 0.0
   };
   
   const elevationOffset = experienceOffsets[experienceType] || experienceOffsets['default'];

@@ -6,7 +6,7 @@ import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 import { validateTerrainCoverage, getEnhancedAnchorPosition } from '../../utils/geoArUtils'
 import EdgeChevrons from './EdgeChevrons';
-import { loadHeightmap, testTerrainLookup, gpsToThreeJsPositionWithTerrain } from '../../utils/terrainUtils';
+
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 
@@ -139,13 +139,13 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 
     const currentExperienceType = experienceType || 'default';
     const experienceOffsets: Record<string, number> = {
-      'lotus': 0.5,
-      'lily': 0.5,       
-      'cattail': 1.0,    
-      'mac': 1.8,
-      'helen_s': 1.8,    
-      'volunteers': 1.8, 
-      'default': 2.0
+      'lotus': 0,
+      'lily': 0,       
+      'cattail': 0,    
+      'mac': 0,
+      'helen_s': 0,    
+      'volunteers': 0, 
+      'default': 0
     };
 
     const typeKey = experienceType ?? 'default';
@@ -165,14 +165,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       const finalElevationOffset = elevationOffset + manualElevationOffset;
       
       // Use the SAME function your experiences use
-      const result = gpsToThreeJsPositionWithTerrain(
+      const position = gpsToThreeJsPosition(
         userPosition,
         activeAnchorPosition,
         finalElevationOffset,
         coordinateScale
       );
       
-      return result.position;
+      return position;
     }, [userPosition, activeAnchorPosition, elevationOffset, manualElevationOffset, coordinateScale]);
 
   const updateElevationOffset = useCallback((deltaElevation: number) => {
@@ -324,16 +324,16 @@ const placeArObject = useCallback(() => {
 
     const finalElevationOffset = elevationOffset + manualElevationOffset;
 
-    const result = gpsToThreeJsPositionWithTerrain(
-      userPosition,
-      activeAnchorPosition,
-      finalElevationOffset,
-      coordinateScale
-    );
+const position = gpsToThreeJsPosition(
+  userPosition,
+  activeAnchorPosition,
+  finalElevationOffset,
+  coordinateScale
+);
 
   
   if (onArObjectPlaced) {
-    onArObjectPlaced(result.position);
+    onArObjectPlaced(position);
   }
 
 }, [userPosition,anchorPosition, adjustedAnchorPosition, coordinateScale, experienceType, manualElevationOffset]); // Remove onArObjectPlaced from deps
@@ -525,22 +525,6 @@ useEffect(() => {
       } else {
         console.warn('⚠️ Device orientation not available or permission denied');
       }
-
-          // Load terrain data
-    // console.log('🗺️ Loading terrain data...');
-    const terrainLoaded = await loadHeightmap();
-    
-    if (terrainLoaded) {
-      // console.log('✅ Terrain system ready');
-      
-      // Test terrain coverage for your anchors (development only)
-      if (process.env.NODE_ENV === 'development') {
-        testTerrainLookup();
-      }
-    } else {
-      console.warn('⚠️ Terrain system failed to load, using fallback positioning');
-    }
-      
        
         
       // Place AR object
@@ -1027,19 +1011,6 @@ useEffect(() => {
                     Reset Calibration
                   </button>
                 </div>
-
-                <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
-                <div style={{ color: 'yellow', fontSize: '10px' }}>🎯 AR OBJECT DEBUG</div>
-                <div style={{ fontSize: '9px' }}>
-                  onArObjectPlaced called: {!!onArObjectPlaced ? 'YES' : 'NO'}
-                </div>
-                <div style={{ fontSize: '9px' }}>
-                  User position: {userPosition ? `[${userPosition[0].toFixed(6)}, ${userPosition[1].toFixed(6)}]` : 'NULL'}
-                </div>
-                <div style={{ fontSize: '9px' }}>
-                  Anchor position: {anchorPosition ? `[${anchorPosition[0].toFixed(6)}, ${anchorPosition[1].toFixed(6)}]` : 'NULL'}
-                </div>
-              </div>
               </div>)}
             </div>
             
