@@ -350,26 +350,16 @@ useEffect(() => {
   }
   
   try {
+    // Apply quaternion from hook
     cameraRef.current.quaternion.copy(cameraQuaternion);
     
-    // Your current compensation
-    const compensation = new THREE.Quaternion().setFromAxisAngle(
+    // Combined correction: coordinate system + beta offset
+    const combinedCorrection = new THREE.Quaternion().setFromAxisAngle(
       new THREE.Vector3(1, 0, 0), 
-      -Math.PI / 2
+      Math.PI / 2  // +90° total correction
     );
     
-    // ADD: Beta offset to fix the 180° vs 90° issue
-    const betaOffset = new THREE.Quaternion().setFromAxisAngle(
-      new THREE.Vector3(1, 0, 0), 
-      -Math.PI / 2  // The -90° you had before
-    );
-    
-    // Apply both
-    let finalQuaternion = cameraRef.current.quaternion.clone();
-    finalQuaternion.multiply(compensation);
-    finalQuaternion.multiply(betaOffset);
-    
-    cameraRef.current.quaternion.copy(finalQuaternion);
+    cameraRef.current.quaternion.multiply(combinedCorrection);
     
   } catch (error) {
     console.warn('Error updating camera orientation:', error);
