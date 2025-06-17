@@ -338,33 +338,38 @@ const placeArObject = useCallback(() => {
 
 }, [userPosition,anchorPosition, adjustedAnchorPosition, coordinateScale, experienceType, manualElevationOffset]); // Remove onArObjectPlaced from deps
   
-// Effect 1: Update camera rotation when device orientation changes
+
+// Effect 1: Update camera rotation using quaternions (with debug logging)
 useEffect(() => {
-  if (!isInitialized || !cameraRef.current) return;
+  if (!isInitialized || !cameraRef.current) {
+    console.log('🎯 Camera update skipped - not initialized or no camera ref');
+    return;
+  }
   
-  let cameraQuaternion = getCameraQuaternion();
+  console.log('🎯 Camera quaternion update attempt');
+  console.log('🎯 getCameraQuaternion function exists:', typeof getCameraQuaternion);
+  
+  const cameraQuaternion = getCameraQuaternion();
+  console.log('🎯 Got camera quaternion:', cameraQuaternion);
+  console.log('🎯 deviceOrientation state:', deviceOrientation);
+  
   if (!cameraQuaternion) {
+    console.log('🎯 No quaternion available, using fallback lookAt');
     cameraRef.current.lookAt(0, 0, -1);
     return;
   }
   
   try {
-    // Apply manual compass calibration if needed
-    if (compassCalibration !== 0) {
-      const calibrationQuat = new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(0, 1, 0), 
-        compassCalibration * Math.PI / 180
-      );
-      cameraQuaternion = cameraQuaternion.clone().multiply(calibrationQuat);
-    }
-    
+    // Apply quaternion directly to camera
     cameraRef.current.quaternion.copy(cameraQuaternion);
+    console.log('✅ Applied quaternion to camera successfully');
+    console.log('🎯 Camera quaternion now:', cameraRef.current.quaternion);
   } catch (error) {
-    console.warn('Error updating camera orientation:', error);
+    console.warn('❌ Error updating camera orientation:', error);
     cameraRef.current.lookAt(0, 0, -1);
   }
   
-}, [isInitialized, getCameraQuaternion, compassCalibration]);
+}, [isInitialized, getCameraQuaternion, deviceOrientation]); // Added deviceOrientation for debugging
 
 // Effect 2: Update calculations on interval  
 useEffect(() => {
@@ -1160,35 +1165,7 @@ useEffect(() => {
           })()}
         </div>
 
-        {/* Compass calibration */}
-
-        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
-          <div style={{ color: 'yellow', fontSize: '10px' }}>
-            COMPASS CALIBRATION: {compassCalibration}° offset
-          </div>
-          
-          {(() => {
-            const compassButtonStyle = {
-              fontSize: '16px',
-              padding: '4px 8px',
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              border: 'none',
-              borderRadius: '0.5rem',
-              color: 'white',
-              cursor: 'pointer'
-            };
-            
-            return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                <button onClick={() => setCompassCalibration(prev => prev - 45)} style={compassButtonStyle}>-45°</button>
-                <button onClick={() => setCompassCalibration(prev => prev - 5)} style={compassButtonStyle}>-5°</button>
-                <button onClick={() => setCompassCalibration(0)} style={compassButtonStyle}>Reset</button>
-                <button onClick={() => setCompassCalibration(prev => prev + 5)} style={compassButtonStyle}>+5°</button>
-                <button onClick={() => setCompassCalibration(prev => prev + 45)} style={compassButtonStyle}>+45°</button>
-              </div>
-            );
-          })()}
-        </div>
+       
       </div>
     </div>
         
