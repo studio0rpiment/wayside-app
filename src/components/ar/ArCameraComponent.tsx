@@ -353,13 +353,31 @@ useEffect(() => {
     // Apply quaternion from hook
     cameraRef.current.quaternion.copy(cameraQuaternion);
     
-    // Combined correction: coordinate system + beta offset
-    const combinedCorrection = new THREE.Quaternion().setFromAxisAngle(
+    // Fix Y-axis (beta) - keep this since it's working
+    const betaCorrection = new THREE.Quaternion().setFromAxisAngle(
       new THREE.Vector3(1, 0, 0), 
-      Math.PI / 2  // +90° total correction
+      Math.PI / 2  // +90° for correct Y-axis
     );
     
-    cameraRef.current.quaternion.multiply(combinedCorrection);
+    // Fix upside down (rotate around Z-axis)
+    const flipUpDown = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 0, 1), 
+      Math.PI  // 180° flip around Z
+    );
+    
+    // Fix 180° rotation in X-Z plane (rotate around Y-axis)
+    const flipXZ = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 1, 0), 
+      Math.PI  // 180° flip around Y
+    );
+    
+    // Apply all corrections in order
+    let finalQuaternion = cameraRef.current.quaternion.clone();
+    finalQuaternion.multiply(betaCorrection);  // Fix Y-axis first
+    finalQuaternion.multiply(flipUpDown);      // Fix upside down
+    finalQuaternion.multiply(flipXZ);          // Fix X-Z rotation
+    
+    cameraRef.current.quaternion.copy(finalQuaternion);
     
   } catch (error) {
     console.warn('Error updating camera orientation:', error);
