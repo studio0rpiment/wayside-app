@@ -252,16 +252,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const scene = new THREE.Scene();
   sceneRef.current = scene;
 
-  
-  
   // Create camera with realistic FOV for mobile AR
-  const camera = new THREE.PerspectiveCamera(
-    70, // Field of view (typical for mobile cameras)
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
-  camera.position.set(0, 0, 0); // Camera at origin
+    const camera = new THREE.PerspectiveCamera(
+      70, // Field of view (typical for mobile cameras)
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(0, 0, 0); // Camera at origin
 
     if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined && 
         deviceOrientation?.beta !== null && deviceOrientation?.beta !== undefined) {
@@ -356,12 +354,22 @@ const placeArObject = useCallback(() => {
 useEffect(() => {
   if (!isInitialized || !cameraRef.current) return;
   
-  if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined) {
-    const x = -Math.sin(THREE.MathUtils.degToRad(deviceOrientation.alpha));
-    const z = -Math.cos(THREE.MathUtils.degToRad(deviceOrientation.alpha));
-    cameraRef.current.lookAt(x, 0, z);
-    console.log('📱 Camera rotated to:', deviceOrientation.alpha);
-  }
+    if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined && 
+        deviceOrientation?.beta !== null && deviceOrientation?.beta !== undefined) {
+      
+      // Convert degrees to radians
+      const alphaRad = deviceOrientation.alpha * Math.PI / 180;
+      const betaRad = deviceOrientation.beta * Math.PI / 180;
+      
+      // Calculate 3D look direction
+      let x = Math.sin(alphaRad);   // East-West (compass)
+      let z = -Math.cos(alphaRad);  // North-South (compass)
+      let y = -Math.sin(betaRad);   // Up-Down (device tilt)
+      
+      cameraRef.current.lookAt(x, y, z);
+        
+    }
+
 }, [isInitialized, deviceOrientation]); // ← This updates camera rotation immediately
 
 // Effect 2: Update calculations on interval  
