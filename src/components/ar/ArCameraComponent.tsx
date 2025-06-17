@@ -263,14 +263,23 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   );
   camera.position.set(0, 0, 0); // Camera at origin
 
-  if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined) {
-    let x = Math.sin(deviceOrientation.alpha);  // East-West component
-    let z = -Math.cos(deviceOrientation.alpha); // North-South component (negative because of your coordinate system)
-    camera.lookAt(x, 0, z);
-  } else {
-    // Default camera look direction when no orientation data
-    camera.lookAt(0, 0, -1);
-  }
+    if (deviceOrientation?.alpha !== null && deviceOrientation?.alpha !== undefined && 
+        deviceOrientation?.beta !== null && deviceOrientation?.beta !== undefined) {
+      
+      // Convert degrees to radians
+      const alphaRad = deviceOrientation.alpha * Math.PI / 180;
+      const betaRad = deviceOrientation.beta * Math.PI / 180;
+      
+      // Calculate 3D look direction
+      let x = Math.sin(alphaRad);   // East-West (compass)
+      let z = -Math.cos(alphaRad);  // North-South (compass)
+      let y = -Math.sin(betaRad);   // Up-Down (device tilt)
+      
+      camera.lookAt(x, y, z);
+    } else {
+      camera.lookAt(0, 0, -1); // Default: looking north horizontally
+    }
+
   cameraRef.current = camera;
   
   // Create optimized renderer (CHANGED)
