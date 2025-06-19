@@ -1,4 +1,4 @@
-// ExperienceManager.tsx - Enhanced with precision positioning
+// ExperienceManager.tsx - Simplified: GPS quality gate only at entry, not during experience
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import ArCameraComponent from '../components/ar/ArCameraComponent';
@@ -39,8 +39,8 @@ interface ExperienceManagerProps {
 }
 
 /**
- * Enhanced position hook that leverages your useEnhancedGeofenceManager
- * Provides intelligent fallback and the same logic as ArCameraComponent
+ * ✅ SIMPLIFIED: Enhanced position hook with no quality restrictions during experience
+ * Once we're in the experience, we trust any available position
  */
 function useEnhancedUserPosition(propUserPosition?: [number, number]) {
   const {
@@ -57,29 +57,24 @@ function useEnhancedUserPosition(propUserPosition?: [number, number]) {
       return propUserPosition;
     }
     
-    // Priority 2: Use averaged position if stable and accurate (≤10m)
-    if (preciseUserPosition && isPositionStable && 
-        currentAccuracy && currentAccuracy <= 10) {
+    // ✅ SIMPLIFIED: During experience, use best available position regardless of quality
+    // Priority 2: Use averaged position if available (preferred)
+    if (preciseUserPosition) {
       return preciseUserPosition;
     }
     
-    // Priority 3: Use averaged position if accuracy is acceptable (≤15m)
-    if (preciseUserPosition && currentAccuracy && currentAccuracy <= 15) {
-      return preciseUserPosition;
-    }
-    
-    // Priority 4: Fall back to raw GPS (which is already filtered by enhanced manager)
+    // Priority 3: Fall back to raw GPS
     if (rawUserPosition) {
       return rawUserPosition;
     }
     
     return null;
-  }, [propUserPosition, preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable]);
+  }, [propUserPosition, preciseUserPosition, rawUserPosition]);
 
   return {
     getBestUserPosition,
     currentUserPosition: getBestUserPosition(),
-    // Expose precision data for debugging
+    // Expose precision data for debugging only
     rawUserPosition,
     preciseUserPosition,
     currentAccuracy,
@@ -101,7 +96,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
   const { startArExperience, endArExperience } = useSystemOptimization();
   
-  // ✅ NEW: Use enhanced positioning with your geofence context
+  // ✅ SIMPLIFIED: Use enhanced positioning with no quality restrictions
   const {
     getBestUserPosition,
     currentUserPosition,
@@ -132,7 +127,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     swipeDown?: () => void;
   }>({});
 
-  // ✅ Enhanced effect: Log when position source changes
+  // ✅ SIMPLIFIED: Log position source changes (development only)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       const source = propUserPosition ? 'PROP_OVERRIDE' : 
@@ -290,7 +285,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     }, 50);
   }, [experienceStartTime, hasMetMinimumTime, geofenceId, onClose]);
 
-  // ✅ Enhanced experience props with position quality info
+  // ✅ SIMPLIFIED: Experience props with no GPS quality restrictions
   const experienceProps = useMemo(() => ({
     onClose: handleExperienceComplete,
     onNext: handleExperienceComplete,
@@ -359,7 +354,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     return null;
   }
 
-  // ✅ Enhanced: Don't start AR until we have a reasonable position
+  // ✅ SIMPLIFIED: Only check if we have ANY position - no quality restrictions
   const canStartAr = currentUserPosition !== null;
   
   return (
@@ -373,7 +368,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       backgroundColor: 'transparent'
     }}>
 
-      {/* Enhanced loading state - show position quality */}
+      {/* ✅ SIMPLIFIED: Basic loading state - just check for position existence */}
       {!canStartAr && (
         <div style={{
           position: 'absolute',
@@ -388,37 +383,22 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           zIndex: 2010,
           maxWidth: '80%'
         }}>
-          <div style={{ fontSize: '18px', marginBottom: '15px' }}>🎯 Improving GPS Precision...</div>
-          
-          {currentAccuracy && (
-            <div style={{ fontSize: '14px', marginBottom: '10px' }}>
-              Current Accuracy: {currentAccuracy.toFixed(1)}m
-            </div>
-          )}
-          
-          <div style={{ fontSize: '14px', marginBottom: '10px' }}>
-            Quality: <span style={{ 
-              color: positionQuality === PositionQuality.EXCELLENT || positionQuality === PositionQuality.GOOD ? '#10B981' : 
-                    positionQuality === PositionQuality.FAIR ? '#F59E0B' : '#EF4444' 
-            }}>
-              {positionQuality?.toUpperCase() || 'UNKNOWN'}
-            </span>
-          </div>
+          <div style={{ fontSize: '18px', marginBottom: '15px' }}>🎯 Getting GPS position...</div>
           
           <div style={{ fontSize: '14px', marginBottom: '15px' }}>
-            Stable: {isPositionStable ? '✅' : '⏳ Waiting...'}
+            Please wait while we locate your device
           </div>
           
           <div style={{ fontSize: '12px', opacity: 0.8 }}>
-            For best AR experience, we're waiting for GPS accuracy ≤ 15m
+            Make sure you're outdoors with a clear view of the sky
           </div>
         </div>
       )}
 
-      {/* AR Camera Component - only render when we have position */}
+      {/* ✅ AR Camera Component - no quality restrictions once started */}
       {canStartAr && (
         <ArCameraComponent
-          userPosition={currentUserPosition} // ✅ Now uses enhanced position
+          userPosition={currentUserPosition} // ✅ Always use available position
           anchorPosition={anchorPosition}
           anchorElevation={anchorElevation}
           coordinateScale={coordinateScale}
@@ -467,7 +447,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         />
       </button>
       
-      {/* Enhanced Loading/Status Overlay */}
+      {/* ✅ SIMPLIFIED: Basic Loading/Status Overlay - no GPS quality checks */}
       {canStartAr && !experienceReady && (
         <div style={{
           position: 'absolute',
@@ -488,11 +468,6 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
               <div style={{ fontSize: '12px', marginTop: '5px', opacity: 0.8 }}>
                 Point your camera at your surroundings
               </div>
-              {currentAccuracy && (
-                <div style={{ fontSize: '11px', marginTop: '3px', opacity: 0.6 }}>
-                  GPS: {currentAccuracy.toFixed(1)}m accuracy
-                </div>
-              )}
             </>
           ) : (
             <>
@@ -502,7 +477,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         </div>
       )}
 
-      {/* Enhanced Debug Info (Development Only) */}
+      {/* ✅ SIMPLIFIED: Debug Info (Development Only) - no GPS quality warnings */}
       {process.env.NODE_ENV === 'development' && canStartAr && (
         <div style={{
           position: 'absolute',
@@ -517,7 +492,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           fontFamily: 'monospace',
           maxWidth: '250px'
         }}>
-          <div><strong>🎯 Enhanced Position Debug:</strong></div>
+          <div><strong>🎯 Experience Debug (Simplified):</strong></div>
           <div>Type: {experienceType}</div>
           <div>Geofence: {geofenceId || 'N/A'}</div>
           
@@ -532,7 +507,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
               rawUserPosition ? 'RAW' : 'NONE'
             }</div>
             
-            {/* Precision info */}
+            {/* Precision info for reference only */}
             <div>Accuracy: {currentAccuracy?.toFixed(1)}m</div>
             <div>Quality: <span style={{ 
               color: positionQuality === PositionQuality.EXCELLENT || positionQuality === PositionQuality.GOOD ? '#10B981' : 
@@ -541,6 +516,9 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
               {positionQuality}
             </span></div>
             <div>Stable: {isPositionStable ? '✅' : '❌'}</div>
+            <div style={{ marginTop: '3px', fontSize: '9px', opacity: 0.7 }}>
+              ℹ️ GPS quality shown for reference only - not blocking experience
+            </div>
           </div>
           
           {/* AR info */}

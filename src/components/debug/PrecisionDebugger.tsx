@@ -123,7 +123,7 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
     GEOFENCE RADIUS: {displayRadius}m
   </div>
   <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
-    {[10, 15, 20, 40, 10000, 30000].map(radius => (
+    {[10, 15, 20, 40, 10000].map(radius => (
       <button
         key={radius}
         onClick={() => changeRadius(radius)}
@@ -304,7 +304,7 @@ function getQualityFromAccuracy(accuracy: number): PositionQuality {
   if (accuracy <= 3) return PositionQuality.EXCELLENT;
   if (accuracy <= 8) return PositionQuality.GOOD;
   if (accuracy <= 15) return PositionQuality.FAIR;
-  if (accuracy <= 30) return PositionQuality.POOR;
+  if (accuracy <= 50) return PositionQuality.POOR;
   return PositionQuality.UNACCEPTABLE;
 }
 

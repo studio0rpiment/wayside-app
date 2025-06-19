@@ -416,7 +416,7 @@ const {
   // ✅ ENHANCED: Check if position quality is good enough for AR
   const isPositionGoodEnoughForAr = arReadyPosition !== null && 
                                    currentAccuracy !== null && 
-                                   currentAccuracy <= 15 &&
+                                   currentAccuracy <= 20 &&
                                    positionQuality !== PositionQuality.UNACCEPTABLE;
 
   // Show regular modal
