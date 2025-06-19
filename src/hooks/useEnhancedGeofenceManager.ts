@@ -60,7 +60,7 @@ export function useEnhancedGeofenceManager(
     
     // Precision defaults
     maxAcceptableAccuracy = 10,      // Only use readings better than 10m
-    minAcceptableAccuracy = 30,      // Stop functioning if worse than 30m
+    minAcceptableAccuracy = 50,      // Stop functioning if worse than 30m
     positionAveragingWindow = 5,     // Average last 5 positions
     qualityUpdateInterval = 2000,    // Update quality every 2 seconds
     requireStablePosition = true,    // Wait for stable positioning
@@ -101,7 +101,7 @@ export function useEnhancedGeofenceManager(
     if (accuracy <= 3) return PositionQuality.EXCELLENT;
     if (accuracy <= 8) return PositionQuality.GOOD;
     if (accuracy <= 15) return PositionQuality.FAIR;
-    if (accuracy <= 30) return PositionQuality.POOR;
+    if (accuracy <= 50) return PositionQuality.POOR;
     return PositionQuality.UNACCEPTABLE;
   }, []);
   

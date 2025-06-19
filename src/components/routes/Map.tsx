@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import VerticalSection from '../sections/vertical/VerticalSection';
 import PermissionsStatus from '../common/PermissionsStatus';
-import { routePointsData, getIconPath } from '../../data/mapRouteData';
+import { routePointsData, getIconPath, GEOFENCE_CONFIG } from '../../data/mapRouteData';
 import { usePermissions } from '../../context/PermissionsContext';
 import UserLocationTracker from '../common/UserLocationTracker';
 import GeofenceDebugger from '../debug/GeofenceDebugger';
@@ -281,7 +281,7 @@ const Map: React.FC = () => {
         </div>
         
         {/* EXISTING: Geofence debugger */}
-        <GeofenceDebugger />
+        {/* <GeofenceDebugger /> */}
 
         {/* NEW: GPS Precision debugger - positioned to not overlap */}
         <PrecisionDebugger
@@ -295,6 +295,7 @@ const Map: React.FC = () => {
           startTracking={startTracking}
           stopTracking={stopTracking}
           getPositionStats={getPositionStats}
+           currentRadius={GEOFENCE_CONFIG.DEFAULT_RADIUS}
         />
 
         {/* Compass calibration Debugger

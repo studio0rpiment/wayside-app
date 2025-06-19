@@ -1,6 +1,8 @@
 // src/components/debug/PrecisionDebugger.tsx
 import React, { useState } from 'react';
 import { PositionQuality } from '../../hooks/useEnhancedGeofenceManager';
+import { setGlobalRadius } from '../../data/mapRouteData';
+
 
 interface PrecisionDebuggerProps {
   // Enhanced precision data
@@ -11,6 +13,7 @@ interface PrecisionDebuggerProps {
   positionHistory: any[];
   userPosition: [number, number] | null;
   isTracking: boolean;
+  currentRadius?: number;
   
   // Control functions
   startTracking: () => Promise<boolean>;
@@ -28,11 +31,23 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   isTracking,
   startTracking,
   stopTracking,
-  getPositionStats
+  getPositionStats,
+  currentRadius = 10,
 }) => {
+
+//***** ********* STATE******* */
   const [isExpanded, setIsExpanded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [displayRadius, setDisplayRadius] = useState(currentRadius);
+
   
+  // Function to change radius
+  const changeRadius = (newRadius: number) => {
+    setGlobalRadius(newRadius);
+    setDisplayRadius(newRadius);
+    console.log(`🎯 Geofence radius changed to ${newRadius}m`);
+  };
+
   // Quality color mapping
   const getQualityColor = (quality: PositionQuality): string => {
     switch (quality) {
@@ -60,7 +75,7 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   return (
     <div style={{
       position: 'fixed',
-      bottom: '10px',
+      top: '10px',
       right: '10px',
       backgroundColor: 'rgba(0, 0, 0, 0.9)',
       color: 'white',
@@ -90,6 +105,31 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
         </span>
         <span>{isExpanded ? '▼' : '▶'}</span>
       </div>
+      {/* Radius Controls */}
+<div style={{ marginBottom: '8px' }}>
+  <div style={{ color: '#9CA3AF', marginBottom: '4px' }}>
+    GEOFENCE RADIUS: {displayRadius}m
+  </div>
+  <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
+    {[10, 15, 20, 40, 10000, 30000].map(radius => (
+      <button
+        key={radius}
+        onClick={() => changeRadius(radius)}
+        style={{
+          padding: '2px 6px',
+          fontSize: '10px',
+          backgroundColor: displayRadius === radius ? '#10B981' : '#6B7280',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer'
+        }}
+      >
+        {radius}m
+      </button>
+    ))}
+  </div>
+</div>
       
       {/* Core Status (always visible) */}
       <div style={{ marginBottom: '8px' }}>

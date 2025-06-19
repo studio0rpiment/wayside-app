@@ -5,19 +5,20 @@ import { calculateBearing, gpsToThreeJsPosition } from '../../utils/geoArUtils';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 import { validateTerrainCoverage, getEnhancedAnchorPosition } from '../../utils/geoArUtils'
-import EdgeChevrons from './EdgeChevrons';
 
 import GroundPlaneDetector, { GroundPlaneDetectorRef, GroundPlaneResult } from './GroundPlaneDetector';
 import GroundPlaneTestUI from './GroundPlaneTestUI';
 
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
+import { useGeofenceContext } from '../../context/GeofenceContext';
+
 
 
 const SHOW_DEBUG_PANEL = true;
 
 interface ArCameraProps {
-  userPosition: [number, number];
+  userPosition?: [number, number];
   anchorPosition: [number, number];
   anchorElevation?: number;
   coordinateScale?: number;
@@ -35,7 +36,7 @@ interface ArCameraProps {
 
 
 const ArCameraComponent: React.FC<ArCameraProps> = ({
-  userPosition,
+  userPosition: propUserPosition,
   anchorPosition,
   anchorElevation = 2.0,
   coordinateScale = 1.0,
@@ -49,7 +50,17 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onSwipeUp,
   onSwipeDown,
   children
+  
+  
 }) => {
+  
+  const {
+  userPosition: rawUserPosition,
+  averagedPosition: preciseUserPosition,
+  currentAccuracy,
+  positionQuality,
+  isPositionStable
+} = useGeofenceContext();
 
 //********** REFS REFS REFS  */
  
@@ -100,6 +111,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     enableSmoothing: true,
     debugMode: SHOW_DEBUG_PANEL 
   });
+  
 
   const [showChevrons, setShowChevrons] = useState(true); //for chevrons may delete
   const [debugHeading, setDebugHeading] = useState<number | null>(null);
@@ -166,6 +178,7 @@ const groundPlaneDetectorRef = useRef<GroundPlaneDetectorRef>(null);
       'default': 0
     };
 
+
     const typeKey = experienceType ?? 'default';
     const elevationOffset = experienceOffsets[typeKey] || experienceOffsets['default'];
     
@@ -175,6 +188,32 @@ const groundPlaneDetectorRef = useRef<GroundPlaneDetectorRef>(null);
       const sign = num >= 0 ? '+' : '';
       return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
     };
+
+//******** FOR UPDATING USER LOCATION PRECISION */
+    const getBestUserPosition = useCallback((): [number, number] | null => {
+    // Priority 1: Use prop if provided (manual override)
+    if (propUserPosition) {
+      return propUserPosition;
+    }
+    
+    // Priority 2: Use averaged position if stable and accurate
+    if (preciseUserPosition && isPositionStable && 
+        currentAccuracy && currentAccuracy <= 10) {
+      return preciseUserPosition;
+    }
+    
+    // Priority 3: Use averaged position if accuracy is acceptable
+    if (preciseUserPosition && currentAccuracy && currentAccuracy <= 15) {
+      return preciseUserPosition;
+    }
+    
+    // Priority 4: Fall back to raw GPS
+    if (rawUserPosition) {
+      return rawUserPosition;
+    }
+    
+    return null;
+  }, [propUserPosition, preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable]);
 //*****ADDING FOR SCREEN ROTATION TO LANDSCAPE */
     const getScreenOrientationCompensation = (): number => {
       // Get current screen orientation
@@ -270,20 +309,23 @@ const handleCameraCheck = useCallback(() => {
       }
     };
 
-    const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
-      if (!userPosition || !activeAnchorPosition) return null;
-      
-      const finalElevationOffset = elevationOffset + manualElevationOffset;
-      // Use the SAME function your experiences use
-      const position = gpsToThreeJsPosition(
-        userPosition,
-        activeAnchorPosition,
-        finalElevationOffset,
-        coordinateScale
-      );
-      
-      return position;
-    }, [userPosition, activeAnchorPosition, elevationOffset, manualElevationOffset, coordinateScale]);
+   const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
+  const userPosition = getBestUserPosition(); // Get position first
+  
+  if (!userPosition || !activeAnchorPosition) return null;
+  
+  const finalElevationOffset = elevationOffset + manualElevationOffset;
+  
+  const position = gpsToThreeJsPosition(
+    userPosition, // Use the variable, not the old userPosition
+    activeAnchorPosition,
+    finalElevationOffset,
+    coordinateScale
+  );
+  
+  return position;
+}, [getBestUserPosition, activeAnchorPosition, elevationOffset, manualElevationOffset, coordinateScale]);
+
 
   const updateElevationOffset = useCallback((deltaElevation: number) => {
   const newOffset = manualElevationOffset + deltaElevation;
@@ -443,6 +485,9 @@ const placeArObject = useCallback(() => {
   console.log('🎯 placeArObject() called');
   console.log('🎯 onArObjectPlaced exists:', !!onArObjectPlaced);
   
+  // Get the position once at the start
+  const userPosition = getBestUserPosition();
+  
   if (!userPosition || !anchorPosition) {
       console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
       return;
@@ -451,7 +496,7 @@ const placeArObject = useCallback(() => {
     const finalElevationOffset = elevationOffset + manualElevationOffset;
 
     const position = gpsToThreeJsPosition(
-      userPosition,
+      userPosition,  // Use the variable, not the function call
       activeAnchorPosition,
       finalElevationOffset,
       coordinateScale
@@ -461,7 +506,8 @@ const placeArObject = useCallback(() => {
     onArObjectPlaced(position);
   }
 
-}, [userPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
+}, [getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
+//   ^^^ Remove the () - include the function reference, not the call
   
 //***********Effect 1: Update camera rotation using quaternions (with debug logging)
     useEffect(() => {
@@ -884,9 +930,9 @@ useEffect(() => {
   if (isInitialized) {
     placeArObject();
   }
-}, [userPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized, manualElevationOffset]);
+}, [getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized, manualElevationOffset]);
 
-
+const currentUserPosition = getBestUserPosition();
   
   // function handleSwipeStart(event: React.TouchEvent<HTMLDivElement>): void {
   //   throw new Error('Function not implemented.');
@@ -958,14 +1004,7 @@ useEffect(() => {
         ref={groundPlaneDetectorRef}
       /> */}
 
-      {/* {showChevrons && userPosition && anchorPosition && (
-        <EdgeChevrons
-          userPosition={userPosition}
-          anchorPosition={anchorPosition}
-          deviceHeading={getDeviceHeading()}
-          isVisible={showChevrons}
-        />
-        )} */}
+  
       
       {/* Error display - only show for actual technical errors, not permission issues */}
       {cameraError && !cameraError.includes('permission') && (
@@ -1092,12 +1131,28 @@ useEffect(() => {
 
                {!debugCollapsed && (
               <div>    
-                <div>User: [{userPosition[0].toFixed(10)}, {userPosition[1].toFixed(10)}]</div>
-                <div>Anchor: [{activeAnchorPosition[0].toFixed(10)}, {activeAnchorPosition[1].toFixed(10)}]</div>  
-                          
-                <div >
-                  GPS Bearing: {calculateBearing(userPosition, anchorPosition).toFixed(1)}°
+                <div>
+                    User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
+                  </div>
+
+                  <div>Anchor: [{activeAnchorPosition[0].toFixed(10)}, {activeAnchorPosition[1].toFixed(10)}]</div>  
+                                        
+                  <div>
+                    GPS Bearing: {currentUserPosition ? `${calculateBearing(currentUserPosition, anchorPosition).toFixed(1)}°` : 'N/A'}
+                  </div>
+                  <div style={{ color: 'cyan' }}>
+                  GPS Source: {preciseUserPosition ? 'AVERAGED' : 'RAW'} | 
+                  Accuracy: {currentAccuracy?.toFixed(1)}m | 
+                  Stable: {isPositionStable ? '✅' : '❌'}
                 </div>
+                <div style={{ 
+                      color: positionQuality === 'excellent' || positionQuality === 'good' ? '#10B981' : 
+                            positionQuality === 'fair' ? '#F59E0B' : '#EF4444' 
+                    }}>
+                      Quality: {positionQuality?.toUpperCase() || 'UNKNOWN'}
+                    </div>
+
+
          
                 <div>
                   <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
@@ -1266,7 +1321,9 @@ useEffect(() => {
                     return '⮕⮕ RIGHT THERE ⬅⬅';
                   } else {
                     // Calculate which direction to turn
-                    const gpsToAnchor = calculateBearing(userPosition, activeAnchorPosition);
+                    const userPos = getBestUserPosition();
+                    if (!userPos) return 'No GPS position';
+                    const gpsToAnchor = calculateBearing(userPos, activeAnchorPosition);
                     const currentLooking = cameraLookDirection.bearing || 0;
                     
                     let turnDirection = gpsToAnchor - currentLooking;
