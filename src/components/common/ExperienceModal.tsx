@@ -1,4 +1,4 @@
-// src/components/common/ExperienceModal.tsx - Enhanced with precision positioning
+// src/components/common/ExperienceModal.tsx - Fixed: No GPS quality interrupts during running experiences
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import CompassArrow from './CompassArrow';
 import ExperienceManager from '../ExperienceManager'
@@ -70,7 +70,6 @@ function useEnhancedUserPosition() {
     positionQuality,
     isPositionStable,
     positionHistory,
-    // ADD THESE:
     getCurrentRadius,
     currentRadius,
     updateGlobalRadius,
@@ -108,10 +107,9 @@ function useEnhancedUserPosition() {
     return null;
   }, [preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable, positionHistory]);
 
-
-  // Separate function for AR-ready position (stricter requirements)
+  // ✅ STRICT function for starting AR (high quality requirements)
   const getArReadyPosition = useCallback((): [number, number] | null => {
-    // Only return position if good enough for AR
+    // Only return position if good enough for AR startup
     if (preciseUserPosition && isPositionStable && 
         currentAccuracy && currentAccuracy <= 10) {
       return preciseUserPosition;
@@ -124,8 +122,7 @@ function useEnhancedUserPosition() {
     return null;
   }, [preciseUserPosition, currentAccuracy, isPositionStable]);
 
-
-    return {
+  return {
     getBestUserPosition,
     getArReadyPosition,
     currentUserPosition: getBestUserPosition(),
@@ -138,7 +135,7 @@ function useEnhancedUserPosition() {
     rawUserPosition,
     preciseUserPosition,
     
-    // ADD THESE - Radius functions from context:
+    // Radius functions from context:
     getCurrentRadius,
     currentRadius,
     updateGlobalRadius,
@@ -165,7 +162,7 @@ const {
   positionQuality,
   isPositionStable,
   getCurrentRadius,
-  currentRadius,  // Direct access to current radius value
+  currentRadius,
   updateGlobalRadius,
   resetGlobalRadius
 } = useEnhancedUserPosition();
@@ -397,14 +394,14 @@ const {
 
   const anchorData = getAnchorData();
 
-  // Show AR Experience Manager if active
-  if (showArExperience && arReadyPosition && anchorData) {
+  // ✅ FIXED: Show AR Experience Manager if active - use ANY available position once started
+  if (showArExperience && currentUserPosition && anchorData) {
     return (
       <ExperienceManager
         isOpen={showArExperience}
         onClose={handleArExperienceClose}
         experienceType={getExperienceType(pointData.modalContent.experienceRoute) as any}
-        userPosition={arReadyPosition} // ✅ Use AR-ready position
+        userPosition={currentUserPosition} // ✅ FIXED: Use currentUserPosition (any available), not arReadyPosition
         anchorPosition={anchorData.position}
         anchorElevation={anchorData.elevation}
         geofenceId={pointData.iconName}
@@ -413,11 +410,11 @@ const {
     );
   }
 
-  // ✅ ENHANCED: Check if position quality is good enough for AR
-  const isPositionGoodEnoughForAr = arReadyPosition !== null && 
-                                   currentAccuracy !== null && 
-                                   currentAccuracy <= 20 &&
-                                   positionQuality !== PositionQuality.UNACCEPTABLE;
+  // ✅ Check if position quality is good enough for AR STARTUP (not maintenance)
+  const isPositionGoodEnoughForArStartup = arReadyPosition !== null && 
+                                          currentAccuracy !== null && 
+                                          currentAccuracy <= 15 &&
+                                          positionQuality !== PositionQuality.UNACCEPTABLE;
 
   // Show regular modal
   return (
@@ -480,8 +477,8 @@ const {
           </p>
         </div>
         
-        {/* ✅ ENHANCED: Position Quality Warning - only show if we have some position */}
-        {currentUserPosition && !isPositionGoodEnoughForAr && (
+        {/* ✅ ENHANCED: Position Quality Warning - only show if we have some position but it's not good enough for STARTUP */}
+        {currentUserPosition && !isPositionGoodEnoughForArStartup && (
           <div style={{
             backgroundColor: 'rgba(255, 165, 0, 0.1)',
             border: '1px solid rgba(255, 165, 0, 0.3)',
@@ -581,32 +578,32 @@ const {
               </div>
             </div>
             
-            {/* Start button - enhanced with position quality check */}
+            {/* ✅ FIXED: Start button - only checks GPS quality for STARTUP, not maintenance */}
             <button
               onClick={handleExperienceStart}
-              disabled={!isPositionGoodEnoughForAr}
+              disabled={!isPositionGoodEnoughForArStartup}
               style={{
                 width: '100%',
                 padding: '12px',
-                backgroundColor: isPositionGoodEnoughForAr ? 'var(--color-blue)' : 'rgba(128, 128, 128, 0.5)',
+                backgroundColor: isPositionGoodEnoughForArStartup ? 'var(--color-blue)' : 'rgba(128, 128, 128, 0.5)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 fontFamily: 'var(--font-rigby)',
                 fontWeight: '400',
-                cursor: isPositionGoodEnoughForAr ? 'pointer' : 'not-allowed',
+                cursor: isPositionGoodEnoughForArStartup ? 'pointer' : 'not-allowed',
                 fontSize: '16px',
-                opacity: isPositionGoodEnoughForAr ? 1 : 0.6
+                opacity: isPositionGoodEnoughForArStartup ? 1 : 0.6
               }}
             >
-              {isPositionGoodEnoughForAr 
+              {isPositionGoodEnoughForArStartup 
                 ? (pointData.modalContent.buttonText || `Launch ${pointData.title}`)
-                : '⚠️ Waiting for better GPS accuracy'
+                : '⚠️ Waiting for better GPS accuracy for startup'
               }
             </button>
             
-            {/* GPS improvement tip */}
-            {!isPositionGoodEnoughForAr && (
+            {/* GPS improvement tip - only for startup */}
+            {!isPositionGoodEnoughForArStartup && (
               <div style={{ 
                 fontSize: '12px', 
                 textAlign: 'center', 
@@ -614,7 +611,7 @@ const {
                 opacity: 0.8,
                 color: '#FFA500'
               }}>
-                Tip: Move to an area with clearer sky view for better GPS accuracy
+                Tip: Move to an area with clearer sky view for better GPS accuracy to start
               </div>
             )}
           </div>
@@ -712,17 +709,19 @@ const {
             <div>Direction: {enhancedGeofenceInfo.direction?.toFixed(1) || 'undefined'}°</div>
             <div>Entry Dir: {enhancedGeofenceInfo.entryDirection || 'None'}</div>
             <div>Inside: {enhancedGeofenceInfo.isInside ? 'Yes' : 'No'}</div>
+            <div>Show AR: {showArExperience ? 'Yes' : 'No'}</div>
             
             {/* Enhanced position debug */}
             <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
               <div><strong>Position Debug:</strong></div>
               <div>Current: {currentUserPosition ? `${currentUserPosition[0].toFixed(6)}, ${currentUserPosition[1].toFixed(6)}` : 'undefined'}</div>
+              <div>AR Ready: {arReadyPosition ? `${arReadyPosition[0].toFixed(6)}, ${arReadyPosition[1].toFixed(6)}` : 'undefined'}</div>
               <div>Accuracy: {enhancedGeofenceInfo.positionAccuracy?.toFixed(1) || 'unknown'}m</div>
               <div>Quality: {enhancedGeofenceInfo.positionQuality || 'unknown'}</div>
               <div>Stable: {enhancedGeofenceInfo.isPositionStable ? 'Yes' : 'No'}</div>
               <div>Point ID: {pointData?.iconName || 'undefined'}</div>
               <div>Is Tracking: {isTracking ? 'Yes' : 'No'}</div>
-              <div>AR Ready: {isPositionGoodEnoughForAr ? 'Yes' : 'No'}</div>
+              <div>Startup Ready: {isPositionGoodEnoughForArStartup ? 'Yes' : 'No'}</div>
             </div>
           </div>
         )}
