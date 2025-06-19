@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { calculateDistance, checkGeofences } from '../utils/geoUtils';
 import { usePermissions } from '../context/PermissionsContext';
 import { PermissionType } from '../utils/permissions';
+import { GEOFENCE_CONFIG } from '../data/mapRouteData';
 
 // Enhanced position data with accuracy tracking
 export interface EnhancedPositionData {
@@ -79,6 +80,9 @@ export function useEnhancedGeofenceManager(
   const [isPositionStable, setIsPositionStable] = useState(false);
   const [positionHistory, setPositionHistory] = useState<EnhancedPositionData[]>([]);
   const [averagedPosition, setAveragedPosition] = useState<[number, number] | null>(null);
+
+    const [globalRadius, setGlobalRadius] = useState(GEOFENCE_CONFIG.DEFAULT_RADIUS);
+
   
   // Refs
   const watchIdRef = useRef<number | null>(null);
@@ -139,8 +143,35 @@ export function useEnhancedGeofenceManager(
     
     return [weightedLon / totalWeight, weightedLat / totalWeight];
   }, []);
+
+//**************** */ Function to update global radius and trigger re-renders
+  const updateGlobalRadius = useCallback((newRadius: number) => {
+    GEOFENCE_CONFIG.DEFAULT_RADIUS = newRadius;
+    setGlobalRadius(newRadius);
+    
+    // Also update window variable for backward compatibility
+    if (typeof window !== 'undefined') {
+      window.geofenceDebuggerRadius = newRadius;
+    }
+  }, []);
   
-  // Check if position is stable
+  // Function to reset radius
+  const resetGlobalRadius = useCallback(() => {
+    const defaultRadius = 15; // Your original default
+    GEOFENCE_CONFIG.DEFAULT_RADIUS = defaultRadius;
+    setGlobalRadius(defaultRadius);
+    
+    if (typeof window !== 'undefined') {
+      delete window.geofenceDebuggerRadius;
+    }
+  }, []);
+  
+  // Updated getCurrentRadius to use the reactive state
+  const getCurrentRadius = useCallback(() => {
+    return globalRadius;
+  }, [globalRadius]);
+  
+//********************** */ Check if position is stable
   const checkPositionStability = useCallback((history: EnhancedPositionData[]): boolean => {
     if (history.length < 2) return false;
     
@@ -414,6 +445,11 @@ export function useEnhancedGeofenceManager(
     isPositionStable,
     averagedPosition,
     positionHistory: positionHistory.slice(-3), // Last 3 positions for debugging
+
+    getCurrentRadius,
+    updateGlobalRadius,
+    resetGlobalRadius,
+    currentRadius: globalRadius,
     
     // Enhanced utilities
     simulatePosition: (position: [number, number]) => {
@@ -456,11 +492,6 @@ export function useEnhancedGeofenceManager(
       }
     },
     
-    // Enhanced debug helpers
-    getCurrentRadius: () => {
-      return typeof window !== 'undefined' ? 
-        window.geofenceDebuggerRadius ?? proximityThreshold : proximityThreshold;
-    },
     
     getPositionStats: () => ({
       accuracy: currentAccuracy,
