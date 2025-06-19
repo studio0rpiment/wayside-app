@@ -115,7 +115,7 @@ function useEnhancedUserPosition() {
       return preciseUserPosition;
     }
     
-    if (preciseUserPosition && currentAccuracy && currentAccuracy <= 15) {
+    if (preciseUserPosition && currentAccuracy && currentAccuracy <= 40) {
       return preciseUserPosition;
     }
     
