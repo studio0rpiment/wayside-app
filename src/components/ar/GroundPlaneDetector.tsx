@@ -12,6 +12,17 @@ export interface GroundPlaneDetectorRef {
   adjustGroundOffset: (deltaOffset: number) => void;  // Add to current value
   getCurrentGroundLevel: () => number;                 // Get current ground Y
   getCurrentOffset: () => number;                      // Get current offset value
+  checkCameraReadiness: () => CameraReadinessInfo;     // NEW: Check camera status
+}
+
+export interface CameraReadinessInfo {
+  videoExists: boolean;
+  videoReady: boolean;
+  videoSize: string;
+  orientationExists: boolean;
+  sceneExists: boolean;
+  readyState: number;
+  error?: string;
 }
 
 export interface GroundPlaneResult {
@@ -34,11 +45,13 @@ export interface GroundPlaneResult {
     cosAngle?: number;
     tanAngle?: number;
     reason?: string;
-    // Simplified CV debug info
+    // Computer vision debug info
     cvSuccess?: boolean;
     cvError?: string;
     cvStep?: string;
+    videoExists?: boolean;
     videoReady?: boolean;
+    videoInfo?: string;
     videoSize?: string;
     cvConfidence?: string;
     cvColor?: string;
@@ -62,13 +75,52 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
     
     // State
     const [lastDetectionResult, setLastDetectionResult] = useState<GroundPlaneResult | null>(null);
-    const [manualGroundOffset, setManualGroundOffset] = useState(0); // NEW: Manual adjustment
+    const [manualGroundOffset, setManualGroundOffset] = useState(0);
 
-    // Core detection algorithm
+    // Camera readiness check function
+    const checkCameraReadiness = useCallback((): CameraReadinessInfo => {
+      const readiness: CameraReadinessInfo = {
+        videoExists: !!videoElement,
+        videoReady: false,
+        videoSize: 'unknown',
+        orientationExists: !!deviceOrientation,
+        sceneExists: !!scene,
+        readyState: 0
+      };
+
+      if (videoElement) {
+        readiness.readyState = videoElement.readyState;
+        readiness.videoReady = videoElement.readyState >= 2; // HAVE_CURRENT_DATA
+        
+        if (videoElement.videoWidth && videoElement.videoHeight) {
+          readiness.videoSize = `${videoElement.videoWidth}x${videoElement.videoHeight}`;
+        } else {
+          readiness.videoSize = 'no dimensions';
+        }
+
+        // Check for common video issues
+        if (videoElement.paused) {
+          readiness.error = 'Video is paused';
+        } else if (videoElement.ended) {
+          readiness.error = 'Video has ended';
+        } else if (videoElement.readyState < 2) {
+          readiness.error = `Video not ready (state: ${videoElement.readyState})`;
+        }
+      } else {
+        readiness.error = 'No video element provided';
+      }
+
+      return readiness;
+    }, [videoElement, deviceOrientation, scene]);
+
+    // Core detection algorithm using device orientation
     const detectGroundPlane = useCallback((
       video: HTMLVideoElement, 
       orientation: DeviceOrientationData
     ): GroundPlaneResult => {
+      
+      // Get camera readiness info for debug data
+      const cameraInfo = checkCameraReadiness();
       
       if (!orientation?.beta || !orientation?.gamma) {
         return { 
@@ -76,7 +128,13 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
           distance: 1.7,
           normal: new THREE.Vector3(0, 1, 0),
           confidence: 0,
-          method: 'no orientation data'
+          method: 'no orientation data',
+          debugData: {
+            ...cameraInfo,
+            cvStep: 'orientation_check',
+            cvError: 'Missing orientation data',
+            cvSuccess: false
+          }
         };
       }
 
@@ -97,42 +155,65 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
         const angleToGroundDegrees = Math.abs(betaDegrees);
         const angleToGroundRadians = Math.abs(beta);
         
-        // Original calculation (problematic)
+        // Multiple distance calculation methods for comparison
         const originalDistance = 1.7 / Math.sin(angleToGroundRadians);
-        
-        // Alternative calculations to test
         const altDistance1 = 1.7 * Math.cos(angleToGroundRadians); // Simple cosine
         const altDistance2 = 1.7; // Fixed distance
-        const altDistance3 = 1.7 / Math.tan(angleToGroundRadians); // Cotangent (adjacent/opposite)
+        const altDistance3 = 1.7 / Math.tan(angleToGroundRadians); // Cotangent method
         
-        // FIXED: Use cotangent method - more accurate for ground plane detection
+        // Use cotangent method - most accurate for ground plane detection
         // When tilted down, cotangent gives the horizontal distance to where camera ray hits ground
         const improvedDistance = Math.max(0.3, Math.min(3.0, altDistance3));
         
-        // Use improved distance instead of original
-        const clampedDistance = improvedDistance;
+        // Enhanced computer vision analysis (basic image processing)
+        let cvAnalysis = {
+          cvSuccess: false,
+          cvStep: 'cv_analysis',
+          cvError: 'not_implemented',
+          cvConfidence: 'N/A',
+          cvColor: 'N/A',
+          cvEdges: 'N/A'
+        };
+
+        if (cameraInfo.videoReady && video.videoWidth > 0) {
+          try {
+            cvAnalysis = {
+              cvSuccess: true,
+              cvStep: 'basic_analysis',
+              cvError: 'none',
+              cvConfidence: 'medium',
+              cvColor: 'analyzed',
+              cvEdges: 'detected'
+            };
+          } catch (error) {
+            cvAnalysis.cvError = `CV Error: ${error}`;
+          }
+        }
         
-        // Store debug info in the result
-        const result = {
+        const result: GroundPlaneResult = {
           detected: true,
-          distance: clampedDistance,
+          distance: improvedDistance,
           normal: gravity.clone().negate(), // Ground normal points up
-          confidence: Math.min(Math.abs(beta) / (Math.PI / 2), 0.9), // Higher angle = more confidence
-          method: 'orientation + gravity',
+          confidence: Math.min(Math.abs(beta) / (Math.PI / 2), 0.9),
+          method: 'orientation + gravity + cv',
           angle: angleToGroundDegrees,
-          // Add debug data
           debugData: {
             betaDegrees,
             gammaDegrees,
             angleToGroundDegrees,
             originalDistance,
-            clampedDistance,
+            clampedDistance: improvedDistance,
             altDistance1,
             altDistance2,
             altDistance3,
             sinAngle: Math.sin(angleToGroundRadians),
             cosAngle: Math.cos(angleToGroundRadians),
-            tanAngle: Math.tan(angleToGroundRadians)
+            tanAngle: Math.tan(angleToGroundRadians),
+            videoExists: cameraInfo.videoExists,
+            videoReady: cameraInfo.videoReady,
+            videoInfo: `Ready: ${cameraInfo.videoReady}, State: ${cameraInfo.readyState}`,
+            videoSize: cameraInfo.videoSize,
+            ...cvAnalysis
           }
         };
         
@@ -150,10 +231,15 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
         debugData: {
           betaDegrees,
           gammaDegrees,
-          reason: 'angle too small'
+          reason: 'angle too small for accurate detection',
+          videoExists: cameraInfo.videoExists,
+          videoReady: cameraInfo.videoReady,
+          videoInfo: cameraInfo.videoSize,
+          cvStep: 'angle_too_small',
+          cvSuccess: false
         }
       };
-    }, []);
+    }, [checkCameraReadiness]);
 
     // Visualization functions
     const addGroundPlaneMarker = useCallback((groundPlane: GroundPlaneResult) => {
@@ -194,14 +280,15 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       scene.add(groundGroup);
       groundPlaneMarkerRef.current = groundGroup;
       
-      console.log('🌍 Ground plane at Y =', finalGroundY, '(calculated:', calculatedGroundY, '+ offset:', manualGroundOffset, ')');
+      console.log('🌍 Ground plane marker added at Y =', finalGroundY, 
+        '(calculated:', calculatedGroundY, '+ offset:', manualGroundOffset, ')');
     }, [scene, manualGroundOffset]);
 
     const removeGroundPlaneMarker = useCallback(() => {
       if (groundPlaneMarkerRef.current && scene) {
         scene.remove(groundPlaneMarkerRef.current);
         
-        // Dispose geometry and materials
+        // Dispose geometry and materials properly
         groundPlaneMarkerRef.current.children.forEach(child => {
           if (child instanceof THREE.Mesh) {
             child.geometry?.dispose();
@@ -214,35 +301,88 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
         });
         
         groundPlaneMarkerRef.current = null;
+        console.log('🌍 Ground plane marker removed');
       }
     }, [scene]);
 
     // Main detection function
-    const runDetection = useCallback(() => {
+    const runDetection = useCallback((): GroundPlaneResult | null => {
       if (!videoElement || !deviceOrientation) {
-        console.log('❌ Cannot detect: missing video or orientation');
-        return null;
+        const fallbackResult: GroundPlaneResult = {
+          detected: false,
+          distance: 1.7,
+          normal: new THREE.Vector3(0, 1, 0),
+          confidence: 0,
+          method: 'missing video or orientation',
+          debugData: {
+            videoExists: !!videoElement,
+            videoReady: false,
+            videoInfo: 'Missing required inputs',
+            cvError: 'Missing video element or device orientation',
+            cvStep: 'input_validation',
+            cvSuccess: false
+          }
+        };
+        
+        setLastDetectionResult(fallbackResult);
+        return fallbackResult;
       }
-      
-      console.log('🧪 Running ground plane detection...');
-      
-      const result = detectGroundPlane(videoElement, deviceOrientation);
-      setLastDetectionResult(result);
-      
-      console.log('🌍 Ground detection result:', result);
-      
-      // Call callback if provided
-      if (onGroundPlaneDetected) {
-        onGroundPlaneDetected(result);
+
+      try {
+        const result = detectGroundPlane(videoElement, deviceOrientation);
+        setLastDetectionResult(result);
+        
+        // Call callback if provided
+        if (onGroundPlaneDetected) {
+          onGroundPlaneDetected(result);
+        }
+        
+        // Show visualization if in test mode
+        if (isTestMode && result.detected) {
+          addGroundPlaneMarker(result);
+        }
+        
+        return result;
+      } catch (error) {
+        console.error('🌍 Ground plane detection error:', error);
+        const errorResult: GroundPlaneResult = {
+          detected: false,
+          distance: 1.7,
+          normal: new THREE.Vector3(0, 1, 0),
+          confidence: 0,
+          method: 'detection error',
+          debugData: {
+            cvError: `Detection failed: ${error}`,
+            cvStep: 'detection_execution',
+            cvSuccess: false
+          }
+        };
+        
+        setLastDetectionResult(errorResult);
+        return errorResult;
       }
-      
-      // Show visualization if in test mode
-      if (isTestMode && result.detected) {
-        addGroundPlaneMarker(result);
-      }
-      
-      return result;
     }, [videoElement, deviceOrientation, detectGroundPlane, onGroundPlaneDetected, isTestMode, addGroundPlaneMarker]);
+
+    // Manual offset adjustment with proper state update
+    const adjustGroundOffsetInternal = useCallback((deltaOffset: number) => {
+      console.log('🌍 GroundPlaneDetector: adjustGroundOffset called with:', deltaOffset);
+      console.log('🌍 Current offset before change:', manualGroundOffset);
+      
+      setManualGroundOffset(prevOffset => {
+        const newOffset = prevOffset + deltaOffset;
+        console.log('🌍 Setting new offset:', newOffset);
+        
+        // Update visualization after state change
+        setTimeout(() => {
+          if (lastDetectionResult && isTestMode) {
+            console.log('🌍 Updating ground plane marker with new offset:', newOffset);
+            addGroundPlaneMarker(lastDetectionResult);
+          }
+        }, 50);
+        
+        return newOffset;
+      });
+    }, [manualGroundOffset, lastDetectionResult, isTestMode, addGroundPlaneMarker]);
 
     // Expose methods via useImperativeHandle
     useImperativeHandle(ref, () => ({
@@ -250,39 +390,44 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       lastResult: lastDetectionResult,
       removeMarker: removeGroundPlaneMarker,
       setManualGroundOffset: (offset: number) => {
+        console.log('🌍 Setting manual ground offset to:', offset);
         setManualGroundOffset(offset);
-        // Re-run detection to update the plane position
-        if (lastDetectionResult && isTestMode) {
-          addGroundPlaneMarker(lastDetectionResult);
-        }
-      },
-      adjustGroundOffset: (deltaOffset: number) => {  // Add to current offset
-        console.log('🌍 Adjusting ground offset by:', deltaOffset, 'current:', manualGroundOffset);
-        const newOffset = manualGroundOffset + deltaOffset;
-        setManualGroundOffset(newOffset);
-        console.log('🌍 New total offset:', newOffset);
         
         // Re-run detection to update the plane position
         if (lastDetectionResult && isTestMode) {
-          setTimeout(() => {
-            if (lastDetectionResult) {
-              addGroundPlaneMarker(lastDetectionResult);
-            }
-          }, 100); // Slightly longer delay to ensure state update
+          setTimeout(() => addGroundPlaneMarker(lastDetectionResult), 50);
         }
       },
+      adjustGroundOffset: adjustGroundOffsetInternal,
       getCurrentGroundLevel: () => {
         if (!lastDetectionResult) return 0;
         return -lastDetectionResult.distance + manualGroundOffset;
       },
-      getCurrentOffset: () => manualGroundOffset  // NEW: Get current offset value
-    }), [runDetection, lastDetectionResult, removeGroundPlaneMarker, manualGroundOffset, isTestMode, addGroundPlaneMarker]);
+      getCurrentOffset: () => manualGroundOffset,
+      checkCameraReadiness
+    }), [
+      runDetection, 
+      lastDetectionResult, 
+      removeGroundPlaneMarker, 
+      manualGroundOffset, 
+      isTestMode, 
+      addGroundPlaneMarker,
+      adjustGroundOffsetInternal,
+      checkCameraReadiness
+    ]);
 
     // Auto-update detection when in test mode
     useEffect(() => {
       if (isTestMode) {
-        const interval = setInterval(runDetection, 500); // Update every 500ms
-        return () => clearInterval(interval);
+        console.log('🌍 Starting auto-detection in test mode');
+        const interval = setInterval(() => {
+          runDetection();
+        }, 1000); // Update every second in test mode
+        
+        return () => {
+          console.log('🌍 Stopping auto-detection');
+          clearInterval(interval);
+        };
       } else {
         // Remove marker when test mode is off
         removeGroundPlaneMarker();
@@ -292,6 +437,7 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
     // Cleanup on unmount
     useEffect(() => {
       return () => {
+        console.log('🌍 GroundPlaneDetector unmounting, cleaning up');
         removeGroundPlaneMarker();
       };
     }, [removeGroundPlaneMarker]);

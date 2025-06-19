@@ -225,6 +225,15 @@ const handleGroundReset = useCallback(() => {
     console.warn('❌ setManualGroundOffset method not available');
   }
 }, []);
+const handleCameraCheck = useCallback(() => {
+  const detector = groundPlaneDetectorRef.current;
+  if (detector && 'checkCameraReadiness' in detector) {
+    const readiness = (detector as any).checkCameraReadiness();
+    console.log('📹 Camera Readiness:', readiness);
+  } else {
+    console.log('❌ checkCameraReadiness method not found');
+  }
+}, []);
 
 
 
@@ -1097,16 +1106,38 @@ useEffect(() => {
 
                   {orientationError && 
                     <div style={{color: 'red'}}> Orient Error: {orientationError} </div>}
+                    // Add this button in your debug panel, maybe near the ground plane test UI:
+
+<button
+  onClick={() => {
+    if (groundPlaneDetectorRef.current?.checkCameraReadiness) {
+      const readiness = groundPlaneDetectorRef.current.checkCameraReadiness();
+      console.log('📹 Camera Readiness Check:', readiness);
+      // You could show this in a debug section too
+    }
+  }}
+  style={{
+    fontSize: '10px',
+    padding: '4px 8px',
+    backgroundColor: 'rgba(100,100,255,0.3)',
+    border: 'none',
+    color: 'white',
+    cursor: 'pointer'
+  }}
+>
+  📹 Check Camera
+</button>
                   <div>
-                    <GroundPlaneTestUI
-                      isTestMode={showGroundPlaneTest}
-                      onToggleTestMode={toggleGroundPlaneTest}
-                      onDetectNow={detectGroundNow}
-                      onAdjustGround={handleGroundAdjustment}  // This should accumulate
-                      onResetGround={handleGroundReset}        // This should reset to 0
-                      currentOffset={groundPlaneDetectorRef.current?.getCurrentOffset?.() || 0}
-                      lastResult={groundPlaneDetectorRef.current?.lastResult || null}
-                    />
+                  <GroundPlaneTestUI
+                        isTestMode={showGroundPlaneTest}
+                        onToggleTestMode={toggleGroundPlaneTest}
+                        onDetectNow={detectGroundNow}
+                        onAdjustGround={handleGroundAdjustment}
+                        onResetGround={handleGroundReset}
+                        onCheckCamera={handleCameraCheck}  // NEW
+                        currentOffset={groundPlaneDetectorRef.current?.getCurrentOffset?.() || 0}
+                        lastResult={groundPlaneDetectorRef.current?.lastResult || null}
+                      />
                     </div>
 
                 <div style={{ 
