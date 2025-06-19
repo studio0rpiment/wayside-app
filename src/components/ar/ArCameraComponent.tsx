@@ -1,7 +1,7 @@
 // src/components/ar/ArCameraComponent.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { calculateBearing, gpsToThreeJsPosition } from '../../utils/geoArUtils';
+import { calculateBearing, gpsToThreeJsPosition, gpsToThreeJsPositionWithEntryOffset } from '../../utils/geoArUtils';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 import { validateTerrainCoverage, getEnhancedAnchorPosition } from '../../utils/geoArUtils'
@@ -188,6 +188,30 @@ const groundPlaneDetectorRef = useRef<GroundPlaneDetectorRef>(null);
       const sign = num >= 0 ? '+' : '';
       return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
     };
+
+
+//********* FOR ENTRY SIDE DETECTION */
+    // Add this function to ArCameraComponent.tsx
+    const detectEntrySide = useCallback((
+      userPos: [number, number], 
+      anchorPos: [number, number]
+    ): string | null => {
+      
+      // Calculate angle from anchor to user position
+      const angleToUser = Math.atan2(
+        userPos[1] - anchorPos[1],  // lat difference
+        userPos[0] - anchorPos[0]   // lon difference
+      ) * (180 / Math.PI);
+      
+      // Normalize to 0-360
+      const normalizedAngle = (angleToUser + 360) % 360;
+      
+      // Map to 8 cardinal directions (45° per direction)
+      const directionIndex = Math.round(normalizedAngle / 45) % 8;
+      const directions = ['east', 'northeast', 'north', 'northwest', 'west', 'southwest', 'south', 'southeast'];
+      
+      return directions[directionIndex];
+    }, []);
 
 //******** FOR UPDATING USER LOCATION PRECISION */
     const getBestUserPosition = useCallback((): [number, number] | null => {
@@ -492,15 +516,17 @@ const placeArObject = useCallback(() => {
       console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
       return;
     }
-
+    
+    const entrySide = detectEntrySide(userPosition, anchorPosition);
     const finalElevationOffset = elevationOffset + manualElevationOffset;
 
-    const position = gpsToThreeJsPosition(
-      userPosition,  // Use the variable, not the function call
-      activeAnchorPosition,
-      finalElevationOffset,
-      coordinateScale
-    );
+   const position = gpsToThreeJsPositionWithEntryOffset(
+  userPosition,
+  activeAnchorPosition,
+  entrySide,
+  finalElevationOffset,
+  coordinateScale
+);
 
   if (onArObjectPlaced) {
     onArObjectPlaced(position);

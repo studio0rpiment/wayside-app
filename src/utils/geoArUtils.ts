@@ -359,6 +359,47 @@ export function testTerrainPositioning(): void {
   });
 }
 
+//********** */ Enhanced version of gpsToThreeJsPosition For Hexagon Offset
+export function gpsToThreeJsPositionWithEntryOffset(
+  userGps: [number, number],
+  anchorGps: [number, number],
+  entrySide: string | null,
+  anchorElevation: number = 2.0,
+  coordinateScale: number = 1.0
+): THREE.Vector3 {
+  
+  // Calculate base position (unchanged)
+  const basePosition = gpsToThreeJsPosition(
+    userGps, 
+    anchorGps, 
+    anchorElevation, 
+    coordinateScale
+  );
+  
+  // Apply entry-side offset in local space
+  if (entrySide) {
+    const localOffsets = {
+      'north': { x: 0, z: -8 },      // 8m toward north (negative Z)
+      'south': { x: 0, z: 8 },       // 8m toward south (positive Z)
+      'east': { x: 8, z: 0 },        // 8m toward east (positive X)
+      'west': { x: -8, z: 0 },       // 8m toward west (negative X)
+      'northeast': { x: 6, z: -6 },  // Diagonal
+      'southeast': { x: 6, z: 6 },
+      'southwest': { x: -6, z: 6 },
+      'northwest': { x: -6, z: -6 }
+    };
+    
+    const offset = localOffsets[entrySide as keyof typeof localOffsets];
+    if (offset) {
+      basePosition.x += offset.x;
+      basePosition.z += offset.z;
+      console.log('🎯 Applied local offset for', entrySide, offset);
+    }
+  }
+  
+  return basePosition;
+}
+
 /**
  * Helper function to get cardinal direction from bearing
  */

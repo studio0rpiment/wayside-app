@@ -1,5 +1,6 @@
 // mapRouteData.ts - Enhanced with Hexagonal Geofencing
 
+import * as THREE from 'three';
 import { getAssetPath } from '../utils/assetPaths';
 import { getEnhancedAnchorPosition } from '../utils/geoArUtils';
 
@@ -656,6 +657,8 @@ export const getArAnchorForPoint = (
   directionSensitive: anchor.directionSensitive || false
   };
 };
+
+
 
 // NEW: Enhanced geofence checking function
 export const checkGeofenceWithDirection = (
