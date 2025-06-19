@@ -237,7 +237,8 @@ const {
     const geofenceResult = checkGeofenceWithDirection(
       currentUserPosition,
       pointId,
-      previousPosition || undefined // For directional entry detection
+      previousPosition || undefined, // For directional entry detection
+      
     );
     
     console.log('🔍 Enhanced Geofence Result:', geofenceResult);

@@ -686,12 +686,12 @@ export const checkGeofenceWithDirection = (
   
   switch (shape) {
     case 'circle':
-      const radius = anchor.radius || GEOFENCE_CONFIG.DEFAULT_RADIUS;
+      const radius = GEOFENCE_CONFIG.DEFAULT_RADIUS;
       result.isInside = distance <= radius;
       break;
       
     case 'hexagon':
-      const hexRadius = anchor.radius || GEOFENCE_CONFIG.DEFAULT_RADIUS;
+      const hexRadius = GEOFENCE_CONFIG.DEFAULT_RADIUS;
       const hexVertices = generateHexagonVertices(center, hexRadius / 111320); // Convert to degrees
       result.isInside = isPointInHexagon(userPosition, hexVertices);
       
