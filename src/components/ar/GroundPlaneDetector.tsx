@@ -39,6 +39,16 @@ export interface GroundPlaneResult {
       groundColor: { r: number; g: number; b: number };
       uniformity: number;
       estimatedDistance: number;
+      edgeInfo?: {
+        totalEdges: number;
+        strongHorizontalEdges: number;
+        confidence: number;
+      };
+    };
+    cvDebugInfo?: {
+      step: string;
+      error: string;
+      details: any;
     };
   };
 }
