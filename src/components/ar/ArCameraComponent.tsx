@@ -208,10 +208,21 @@ const detectGroundNow = useCallback(() => {
   }
 }, []);
 
-const handleGroundAdjustment = useCallback((offset: number) => {
+const handleGroundAdjustment = useCallback((deltaOffset: number) => {
+  console.log('🌍 ArCamera: handleGroundAdjustment called with:', deltaOffset);
+  if (groundPlaneDetectorRef.current?.adjustGroundOffset) {
+    groundPlaneDetectorRef.current.adjustGroundOffset(deltaOffset);
+  } else {
+    console.warn('❌ adjustGroundOffset method not available');
+  }
+}, []);
+
+const handleGroundReset = useCallback(() => {
+  console.log('🌍 ArCamera: handleGroundReset called');
   if (groundPlaneDetectorRef.current?.setManualGroundOffset) {
-    groundPlaneDetectorRef.current.setManualGroundOffset(offset);
-    console.log('🌍 Ground level adjusted by:', offset);
+    groundPlaneDetectorRef.current.setManualGroundOffset(0);
+  } else {
+    console.warn('❌ setManualGroundOffset method not available');
   }
 }, []);
 
@@ -1091,7 +1102,9 @@ useEffect(() => {
                       isTestMode={showGroundPlaneTest}
                       onToggleTestMode={toggleGroundPlaneTest}
                       onDetectNow={detectGroundNow}
-                      onAdjustGround={handleGroundAdjustment}  // NEW
+                      onAdjustGround={handleGroundAdjustment}  // This should accumulate
+                      onResetGround={handleGroundReset}        // This should reset to 0
+                      currentOffset={groundPlaneDetectorRef.current?.getCurrentOffset?.() || 0}
                       lastResult={groundPlaneDetectorRef.current?.lastResult || null}
                     />
                     </div>

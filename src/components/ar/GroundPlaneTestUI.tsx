@@ -66,7 +66,10 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
         marginBottom: '5px' 
       }}>
         <button
-          onClick={() => onAdjustGround && onAdjustGround(1.0)}
+          onClick={() => {
+            console.log('🔴 +1m button pressed, current offset:', currentOffset);
+            onAdjustGround && onAdjustGround(1.0);
+          }}
           style={{
             fontSize: '8px',
             padding: '2px 4px',
@@ -79,7 +82,10 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
           +1m
         </button>
         <button
-          onClick={() => onAdjustGround && onAdjustGround(0.1)}
+          onClick={() => {
+            console.log('🟠 +0.1m button pressed, current offset:', currentOffset);
+            onAdjustGround && onAdjustGround(0.1);
+          }}
           style={{
             fontSize: '8px',
             padding: '2px 4px',
@@ -92,7 +98,10 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
           +0.1m
         </button>
         <button
-          onClick={() => onResetGround && onResetGround()}
+          onClick={() => {
+            console.log('⚪ Reset button pressed');
+            onResetGround && onResetGround();
+          }}
           style={{
             fontSize: '8px',
             padding: '2px 4px',
@@ -105,7 +114,10 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
           Reset
         </button>
         <button
-          onClick={() => onAdjustGround && onAdjustGround(-0.1)}
+          onClick={() => {
+            console.log('🟢 -0.1m button pressed, current offset:', currentOffset);
+            onAdjustGround && onAdjustGround(-0.1);
+          }}
           style={{
             fontSize: '8px',
             padding: '2px 4px',
@@ -118,7 +130,10 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
           -0.1m
         </button>
         <button
-          onClick={() => onAdjustGround && onAdjustGround(-1.0)}
+          onClick={() => {
+            console.log('🔵 -1m button pressed, current offset:', currentOffset);
+            onAdjustGround && onAdjustGround(-1.0);
+          }}
           style={{
             fontSize: '8px',
             padding: '2px 4px',
@@ -208,19 +223,23 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
                   </div>
                   
                   {/* Computer Vision Analysis */}
-                  {lastResult.debugData.cvAnalysis && (
-                    <div style={{ 
-                      fontSize: '7px',
-                      marginTop: '3px',
-                      color: 'lightgreen'
-                    }}>
-                      <div>CV ANALYSIS:</div>
-                      <div>Confidence: {(lastResult.debugData.cvAnalysis.confidence * 100).toFixed(0)}%</div>
-                      <div>Uniformity: {(lastResult.debugData.cvAnalysis.uniformity * 100).toFixed(0)}%</div>
-                      <div>Ground Color: rgb({Math.round(lastResult.debugData.cvAnalysis.groundColor.r)}, {Math.round(lastResult.debugData.cvAnalysis.groundColor.g)}, {Math.round(lastResult.debugData.cvAnalysis.groundColor.b)})</div>
-                      <div>CV Distance: {lastResult.debugData.cvAnalysis.estimatedDistance.toFixed(2)}m</div>
-                    </div>
-                  )}
+                  <div style={{ 
+                    fontSize: '7px',
+                    marginTop: '3px',
+                    color: 'lightgreen'
+                  }}>
+                    <div>CV ANALYSIS:</div>
+                    {lastResult.debugData.cvAnalysis ? (
+                      <>
+                        <div>Confidence: {(lastResult.debugData.cvAnalysis.confidence * 100).toFixed(0)}%</div>
+                        <div>Uniformity: {(lastResult.debugData.cvAnalysis.uniformity * 100).toFixed(0)}%</div>
+                        <div>Ground Color: rgb({Math.round(lastResult.debugData.cvAnalysis.groundColor.r)}, {Math.round(lastResult.debugData.cvAnalysis.groundColor.g)}, {Math.round(lastResult.debugData.cvAnalysis.groundColor.b)})</div>
+                        <div>CV Distance: {lastResult.debugData.cvAnalysis.estimatedDistance.toFixed(2)}m</div>
+                      </>
+                    ) : (
+                      <div style={{ color: 'orange' }}>CV Failed or Not Available</div>
+                    )}
+                  </div>
                   
                   {/* Position Info */}
                   <div style={{ 

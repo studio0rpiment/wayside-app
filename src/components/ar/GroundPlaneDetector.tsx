@@ -253,15 +253,19 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
           addGroundPlaneMarker(lastDetectionResult);
         }
       },
-      adjustGroundOffset: (deltaOffset: number) => {  // NEW: Add to current offset
-        setManualGroundOffset(prev => prev + deltaOffset);
+      adjustGroundOffset: (deltaOffset: number) => {  // Add to current offset
+        console.log('🌍 Adjusting ground offset by:', deltaOffset, 'current:', manualGroundOffset);
+        const newOffset = manualGroundOffset + deltaOffset;
+        setManualGroundOffset(newOffset);
+        console.log('🌍 New total offset:', newOffset);
+        
         // Re-run detection to update the plane position
         if (lastDetectionResult && isTestMode) {
           setTimeout(() => {
             if (lastDetectionResult) {
               addGroundPlaneMarker(lastDetectionResult);
             }
-          }, 50); // Small delay to ensure state update
+          }, 100); // Slightly longer delay to ensure state update
         }
       },
       getCurrentGroundLevel: () => {
