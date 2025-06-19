@@ -123,7 +123,7 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
     GEOFENCE RADIUS: {displayRadius}m
   </div>
   <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
-    {[10, 15, 20, 40, 10000].map(radius => (
+    {[5, 10, 15, 20, 40, 10000].map(radius => (
       <button
         key={radius}
         onClick={() => changeRadius(radius)}
