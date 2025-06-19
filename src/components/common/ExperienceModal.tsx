@@ -69,10 +69,15 @@ function useEnhancedUserPosition() {
     currentAccuracy,
     positionQuality,
     isPositionStable,
-    positionHistory
+    positionHistory,
+    // ADD THESE:
+    getCurrentRadius,
+    currentRadius,
+    updateGlobalRadius,
+    resetGlobalRadius
   } = useGeofenceContext();
 
-  const getBestUserPosition = useCallback((): [number, number] | null => {
+ const getBestUserPosition = useCallback((): [number, number] | null => {
     // Priority 1: Use averaged position if stable and accurate (≤10m)
     if (preciseUserPosition && isPositionStable && 
         currentAccuracy && currentAccuracy <= 10) {
@@ -103,6 +108,7 @@ function useEnhancedUserPosition() {
     return null;
   }, [preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable, positionHistory]);
 
+
   // Separate function for AR-ready position (stricter requirements)
   const getArReadyPosition = useCallback((): [number, number] | null => {
     // Only return position if good enough for AR
@@ -118,17 +124,25 @@ function useEnhancedUserPosition() {
     return null;
   }, [preciseUserPosition, currentAccuracy, isPositionStable]);
 
-  return {
+
+    return {
     getBestUserPosition,
     getArReadyPosition,
-    currentUserPosition: getBestUserPosition(), // For navigation/distance calc
-    arReadyPosition: getArReadyPosition(),      // For AR launch
+    currentUserPosition: getBestUserPosition(),
+    arReadyPosition: getArReadyPosition(),
+    
     // Expose precision data
     currentAccuracy,
     positionQuality,
     isPositionStable,
     rawUserPosition,
-    preciseUserPosition
+    preciseUserPosition,
+    
+    // ADD THESE - Radius functions from context:
+    getCurrentRadius,
+    currentRadius,
+    updateGlobalRadius,
+    resetGlobalRadius
   };
 }
 
@@ -149,7 +163,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     arReadyPosition,
     currentAccuracy,
     positionQuality,
-    isPositionStable
+    isPositionStable,
+    
   } = useEnhancedUserPosition();
   
   const { 
@@ -325,7 +340,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       positionAccuracy: currentAccuracy,
       isPositionStable: isPositionStable || false
     };
-  }, [pointData?.iconName, currentUserPosition, previousPosition, positionQuality, currentAccuracy, isPositionStable, isInsideGeofence, getDistanceToPoint]);
+  }, [pointData?.iconName, currentUserPosition, previousPosition, positionQuality, currentAccuracy, isPositionStable, isInsideGeofence, getDistanceToPoint, getCurrentRadius]);
 
   // Handle experience start
   const handleExperienceStart = useCallback(() => {
