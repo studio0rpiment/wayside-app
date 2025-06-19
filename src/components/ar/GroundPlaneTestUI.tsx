@@ -1,16 +1,19 @@
-// src/components/ar/GroundPlaneTestUI.tsx
+// src/components/ar/GroundPlaneTestUI.tsx - Enhanced with Edge Detection Controls
 import React from 'react';
-import { GroundPlaneResult } from './GroundPlaneDetector';
+import { GroundPlaneResult, EdgeDetectionStatus } from './GroundPlaneDetector';
 
 interface GroundPlaneTestUIProps {
   isTestMode: boolean;
   onToggleTestMode: () => void;
   onDetectNow: () => void;
-  onAdjustGround?: (deltaOffset: number) => void;  // Accumulates delta changes
-  onResetGround?: () => void;                      // Reset to zero
-  onCheckCamera?: () => void;                      // NEW: Check camera status
-  currentOffset?: number;                          // Current manual offset
+  onAdjustGround?: (deltaOffset: number) => void;
+  onResetGround?: () => void;
+  onCheckCamera?: () => void;
+  currentOffset?: number;
   lastResult: GroundPlaneResult | null;
+  // NEW: Edge detection controls
+  onToggleEdgeDetection?: (enabled: boolean) => void;
+  edgeDetectionStatus?: EdgeDetectionStatus;
 }
 
 const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
@@ -21,7 +24,9 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
   onResetGround,
   onCheckCamera,
   currentOffset = 0,
-  lastResult
+  lastResult,
+  onToggleEdgeDetection,
+  edgeDetectionStatus
 }) => {
   
   // Helper function to get status color based on confidence
@@ -40,13 +45,22 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
     return { text: '⚠️ OK', color: '#ffaa00' };
   };
 
+  // Helper function to get edge detection status color
+  const getEdgeDetectionColor = (): string => {
+    if (!edgeDetectionStatus?.enabled) return '#666666';
+    if (edgeDetectionStatus.processing) return '#ffaa00';
+    if (edgeDetectionStatus.error) return '#ff6666';
+    if (edgeDetectionStatus.groundConfidence > 0.7) return '#66ff66';
+    return '#aaaaaa';
+  };
+
   return (
     <div style={{ 
       borderTop: '1px solid rgba(255,255,255,0.3)', 
       paddingTop: '5px', 
       marginTop: '5px' 
     }}>
-      {/* Header */}
+      {/* Header with Edge Detection Status */}
       <div style={{ 
         color: 'yellow', 
         fontSize: '10px', 
@@ -55,48 +69,60 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
         alignItems: 'center',
         marginBottom: '5px'
       }}>
-        <span>🌍 GROUND PLANE TEST</span>
-        {lastResult && (
-          <span style={{ 
-            color: getStatusColor(lastResult),
-            fontSize: '8px'
-          }}>
-            ● {lastResult.detected ? 'ACTIVE' : 'INACTIVE'}
-          </span>
-        )}
+        <span>🌍 ENHANCED GROUND DETECTION</span>
+        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+          {lastResult && (
+            <span style={{ 
+              color: getStatusColor(lastResult),
+              fontSize: '8px'
+            }}>
+              ● {lastResult.detected ? lastResult.method.toUpperCase() : 'INACTIVE'}
+            </span>
+          )}
+          {edgeDetectionStatus && (
+            <span style={{ 
+              color: getEdgeDetectionColor(),
+              fontSize: '8px'
+            }}>
+              🔍 {edgeDetectionStatus.enabled ? 
+                   (edgeDetectionStatus.processing ? 'PROCESSING' : 'ACTIVE') : 
+                   'DISABLED'}
+            </span>
+          )}
+        </div>
       </div>
       
-      {/* Control Buttons */}
+      {/* Control Buttons Row 1 */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: '1fr 1fr 1fr', 
-        gap: '4px', 
-        marginBottom: '8px' 
+        gridTemplateColumns: '1fr 1fr 1fr 1fr', 
+        gap: '3px', 
+        marginBottom: '5px' 
       }}>
         <button
           onClick={onToggleTestMode}
           style={{
-            fontSize: '9px',
-            padding: '6px 8px',
+            fontSize: '8px',
+            padding: '5px 6px',
             backgroundColor: isTestMode ? 'rgba(0,255,0,0.4)' : 'rgba(255,255,255,0.3)',
             border: 'none',
-            borderRadius: '4px',
+            borderRadius: '3px',
             color: 'white',
             cursor: 'pointer',
             fontWeight: isTestMode ? 'bold' : 'normal'
           }}
         >
-          {isTestMode ? '✅ Testing' : '🧪 Start Test'}
+          {isTestMode ? '✅ Testing' : '🧪 Test'}
         </button>
         
         <button
           onClick={onDetectNow}
           style={{
-            fontSize: '9px',
-            padding: '6px 8px',
+            fontSize: '8px',
+            padding: '5px 6px',
             backgroundColor: 'rgba(0,150,255,0.4)',
             border: 'none',
-            borderRadius: '4px',
+            borderRadius: '3px',
             color: 'white',
             cursor: 'pointer'
           }}
@@ -107,18 +133,85 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
         <button
           onClick={onCheckCamera}
           style={{
-            fontSize: '9px',
-            padding: '6px 8px',
+            fontSize: '8px',
+            padding: '5px 6px',
             backgroundColor: 'rgba(150,100,255,0.4)',
             border: 'none',
-            borderRadius: '4px',
+            borderRadius: '3px',
             color: 'white',
             cursor: 'pointer'
           }}
         >
           📹 Camera
         </button>
+
+        {/* NEW: Edge Detection Toggle */}
+        <button
+          onClick={() => onToggleEdgeDetection && onToggleEdgeDetection(!edgeDetectionStatus?.enabled)}
+          style={{
+            fontSize: '8px',
+            padding: '5px 6px',
+            backgroundColor: edgeDetectionStatus?.enabled ? 'rgba(0,255,100,0.4)' : 'rgba(100,100,100,0.4)',
+            border: 'none',
+            borderRadius: '3px',
+            color: 'white',
+            cursor: 'pointer',
+            fontWeight: edgeDetectionStatus?.enabled ? 'bold' : 'normal'
+          }}
+        >
+          {edgeDetectionStatus?.enabled ? '🔍 ON' : '🔍 OFF'}
+        </button>
       </div>
+
+      {/* Edge Detection Performance Info */}
+      {edgeDetectionStatus?.enabled && (
+        <div style={{
+          backgroundColor: 'rgba(0,100,200,0.2)',
+          padding: '3px 5px',
+          borderRadius: '3px',
+          marginBottom: '5px',
+          fontSize: '7px'
+        }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr 1fr 1fr', 
+            gap: '3px'
+          }}>
+            <div>
+              Edges: <span style={{ color: '#66ff66' }}>
+                {lastResult?.debugData?.edgeCount || 0}
+              </span>
+            </div>
+            <div>
+              Time: <span style={{ color: '#ffaa00' }}>
+                {lastResult?.debugData?.processingTime?.toFixed(1) || 0}ms
+              </span>
+            </div>
+            <div>
+              Ground: <span style={{ 
+                color: lastResult?.debugData?.groundLineDetected ? '#66ff66' : '#ff6666' 
+              }}>
+                {lastResult?.debugData?.groundLineDetected ? '✅' : '❌'}
+              </span>
+            </div>
+            <div>
+              H-Edge: <span style={{ color: '#aaffaa' }}>
+                {((lastResult?.debugData?.horizontalEdgeRatio || 0) * 100).toFixed(0)}%
+              </span>
+            </div>
+          </div>
+          
+          {edgeDetectionStatus.error && (
+            <div style={{ 
+              color: '#ff6666', 
+              fontSize: '6px', 
+              marginTop: '2px' 
+            }}>
+              Error: {edgeDetectionStatus.error}
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Ground Level Adjustment */}
       <div style={{ 
@@ -287,6 +380,51 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
             </div>
           </div>
           
+          {/* Enhanced: Edge Detection Results */}
+          {lastResult.debugData?.edgeDetectionEnabled && (
+            <div style={{
+              backgroundColor: 'rgba(0,150,200,0.2)',
+              padding: '3px',
+              borderRadius: '3px',
+              marginBottom: '5px'
+            }}>
+              <div style={{ color: 'cyan', fontSize: '7px', marginBottom: '2px' }}>
+                🔍 EDGE DETECTION RESULTS:
+              </div>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr', 
+                gap: '3px',
+                fontSize: '7px'
+              }}>
+                <div>
+                  Edges Found: <span style={{ 
+                    color: (lastResult.debugData.edgeCount || 0) > 20 ? '#66ff66' : '#ffaa00' 
+                  }}>
+                    {lastResult.debugData.edgeCount || 0}
+                  </span>
+                </div>
+                <div>
+                  Process Time: <span style={{ color: '#aaffaa' }}>
+                    {lastResult.debugData.processingTime?.toFixed(1) || 0}ms
+                  </span>
+                </div>
+                <div>
+                  Ground Line: <span style={{ 
+                    color: lastResult.debugData.groundLineDetected ? '#66ff66' : '#ff6666' 
+                  }}>
+                    {lastResult.debugData.groundLineDetected ? '✅ YES' : '❌ NO'}
+                  </span>
+                </div>
+                <div>
+                  Edge Strength: <span style={{ color: '#aaffaa' }}>
+                    {((lastResult.debugData.edgeStrength || 0) * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Distance Assessment */}
           {(() => {
             const status = getDistanceStatus(lastResult.distance);
@@ -314,7 +452,7 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
                 fontSize: '8px',
                 userSelect: 'none'
               }}>
-                📊 Debug Data
+                📊 Advanced Debug Data
               </summary>
               
               <div style={{ 
@@ -338,36 +476,47 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
                   </div>
                 </div>
                 
-                {/* Trigonometry */}
-                <div style={{ marginBottom: '3px' }}>
-                  <div style={{ color: 'yellow', fontSize: '7px' }}>TRIGONOMETRY:</div>
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '1fr 1fr 1fr', 
-                    gap: '2px',
-                    fontSize: '7px'
-                  }}>
-                    <div>sin: {lastResult.debugData.sinAngle?.toFixed(3)}</div>
-                    <div>cos: {lastResult.debugData.cosAngle?.toFixed(3)}</div>
-                    <div>tan: {lastResult.debugData.tanAngle?.toFixed(3)}</div>
-                  </div>
-                </div>
-                
                 {/* Distance Calculations */}
                 <div style={{ marginBottom: '3px' }}>
                   <div style={{ color: 'yellow', fontSize: '7px' }}>DISTANCE METHODS:</div>
                   <div style={{ fontSize: '6px', lineHeight: '1.2' }}>
                     <div>🔵 Original (1.7/sin): {lastResult.debugData.originalDistance?.toFixed(2)}m</div>
                     <div>🟢 Used (1.7/tan): {lastResult.debugData.altDistance3?.toFixed(2)}m</div>
-                    <div>🟡 Cosine (1.7*cos): {lastResult.debugData.altDistance1?.toFixed(2)}m</div>
-                    <div>🟠 Fixed (1.7): {lastResult.debugData.altDistance2?.toFixed(2)}m</div>
                     <div style={{ color: '#66ff66' }}>
                       ✅ Final: {lastResult.debugData.clampedDistance?.toFixed(2)}m
                     </div>
                   </div>
                 </div>
+
+                {/* Enhanced: Detailed Edge Detection Analysis */}
+                {lastResult.debugData.edgeDetectionEnabled && (
+                  <div style={{ marginBottom: '3px' }}>
+                    <div style={{ color: 'yellow', fontSize: '7px' }}>EDGE DETECTION ANALYSIS:</div>
+                    <div style={{ fontSize: '6px', lineHeight: '1.3' }}>
+                      <div>Processing Status: <span style={{ 
+                        color: lastResult.debugData.cvSuccess ? '#66ff66' : '#ff6666' 
+                      }}>
+                        {lastResult.debugData.cvSuccess ? '✅ SUCCESS' : '❌ FAILED'}
+                      </span></div>
+                      <div>Edge Count: {lastResult.debugData.edgeCount || 0}</div>
+                      <div>Horizontal Edge Ratio: {((lastResult.debugData.horizontalEdgeRatio || 0) * 100).toFixed(1)}%</div>
+                      <div>Edge Strength Average: {((lastResult.debugData.edgeStrength || 0) * 100).toFixed(1)}%</div>
+                      <div>Ground Line Detected: <span style={{ 
+                        color: lastResult.debugData.groundLineDetected ? '#66ff66' : '#ff6666' 
+                      }}>
+                        {lastResult.debugData.groundLineDetected ? '✅ YES' : '❌ NO'}
+                      </span></div>
+                      <div>Processing Time: {lastResult.debugData.processingTime?.toFixed(2) || 0}ms</div>
+                      {lastResult.debugData.cvError && (
+                        <div style={{ color: '#ff6666' }}>
+                          Error: {lastResult.debugData.cvError}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 
-                {/* Camera/Video Status */}
+                {/* Camera Status */}
                 <div style={{ marginBottom: '3px' }}>
                   <div style={{ color: 'yellow', fontSize: '7px' }}>CAMERA STATUS:</div>
                   <div style={{ fontSize: '7px' }}>
@@ -376,30 +525,6 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
                       Ready: {lastResult.debugData.videoReady ? '✅' : '❌'} | 
                       Size: {lastResult.debugData.videoSize || 'unknown'}
                     </div>
-                    <div>Info: {lastResult.debugData.videoInfo || 'no info'}</div>
-                  </div>
-                </div>
-                
-                {/* Computer Vision Analysis */}
-                <div style={{ marginBottom: '3px' }}>
-                  <div style={{ color: 'yellow', fontSize: '7px' }}>CV ANALYSIS:</div>
-                  <div style={{ fontSize: '7px' }}>
-                    <div>
-                      Success: {lastResult.debugData.cvSuccess ? '✅' : '❌'} | 
-                      Step: {lastResult.debugData.cvStep || 'unknown'}
-                    </div>
-                    {lastResult.debugData.cvError && (
-                      <div style={{ color: '#ff6666' }}>
-                        Error: {lastResult.debugData.cvError}
-                      </div>
-                    )}
-                    {lastResult.debugData.cvSuccess && (
-                      <div>
-                        Confidence: {lastResult.debugData.cvConfidence} | 
-                        Color: {lastResult.debugData.cvColor} | 
-                        Edges: {lastResult.debugData.cvEdges}
-                      </div>
-                    )}
                   </div>
                 </div>
                 
@@ -452,7 +577,7 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
         </div>
       )}
       
-      {/* Instructions */}
+      {/* Enhanced Instructions */}
       <div style={{
         marginTop: '5px',
         fontSize: '6px',
@@ -461,6 +586,7 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
         lineHeight: '1.3'
       }}>
         💡 Tilt phone down 15°+ for better detection.<br/>
+        🔍 Edge detection analyzes video for ground lines.<br/>
         Use offset buttons to fine-tune ground level.
       </div>
     </div>
