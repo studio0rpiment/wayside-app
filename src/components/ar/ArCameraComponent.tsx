@@ -208,6 +208,13 @@ const detectGroundNow = useCallback(() => {
   }
 }, []);
 
+const handleGroundAdjustment = useCallback((offset: number) => {
+  if (groundPlaneDetectorRef.current?.setManualGroundOffset) {
+    groundPlaneDetectorRef.current.setManualGroundOffset(offset);
+    console.log('🌍 Ground level adjusted by:', offset);
+  }
+}, []);
+
 
 
 //******************* SWIPES FOR DEBUG PANEL */
@@ -1080,12 +1087,13 @@ useEffect(() => {
                   {orientationError && 
                     <div style={{color: 'red'}}> Orient Error: {orientationError} </div>}
                   <div>
-                      <GroundPlaneTestUI
-                        isTestMode={showGroundPlaneTest}
-                        onToggleTestMode={toggleGroundPlaneTest}
-                        onDetectNow={detectGroundNow}
-                        lastResult={groundPlaneDetectorRef.current?.lastResult || null}
-                      />
+                    <GroundPlaneTestUI
+                      isTestMode={showGroundPlaneTest}
+                      onToggleTestMode={toggleGroundPlaneTest}
+                      onDetectNow={detectGroundNow}
+                      onAdjustGround={handleGroundAdjustment}  // NEW
+                      lastResult={groundPlaneDetectorRef.current?.lastResult || null}
+                    />
                     </div>
 
                 <div style={{ 

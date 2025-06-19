@@ -8,6 +8,8 @@ export interface GroundPlaneDetectorRef {
   detectNow: () => GroundPlaneResult | null;
   lastResult: GroundPlaneResult | null;
   removeMarker: () => void;
+  setManualGroundOffset: (offset: number) => void;  // NEW: Manual adjustment
+  getCurrentGroundLevel: () => number;              // NEW: Get current ground Y
 }
 
 export interface GroundPlaneResult {
@@ -49,6 +51,7 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
     
     // State
     const [lastDetectionResult, setLastDetectionResult] = useState<GroundPlaneResult | null>(null);
+    const [manualGroundOffset, setManualGroundOffset] = useState(0); // NEW: Manual adjustment
 
     // Core detection algorithm
     const detectGroundPlane = useCallback((
@@ -83,7 +86,7 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
         const angleToGroundDegrees = Math.abs(betaDegrees);
         const angleToGroundRadians = Math.abs(beta);
         
-        // Original calculation
+        // Original calculation (problematic)
         const originalDistance = 1.7 / Math.sin(angleToGroundRadians);
         
         // Alternative calculations to test
@@ -91,8 +94,12 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
         const altDistance2 = 1.7; // Fixed distance
         const altDistance3 = 1.7 / Math.tan(angleToGroundRadians); // Cotangent (adjacent/opposite)
         
-        // Clamp original to reasonable values (0.5m to 5m)
-        const clampedDistance = Math.max(0.5, Math.min(5.0, originalDistance));
+        // FIXED: Use cotangent method - more accurate for ground plane detection
+        // When tilted down, cotangent gives the horizontal distance to where camera ray hits ground
+        const improvedDistance = Math.max(0.3, Math.min(3.0, altDistance3));
+        
+        // Use improved distance instead of original
+        const clampedDistance = improvedDistance;
         
         // Store debug info in the result
         const result = {
@@ -155,13 +162,16 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       
       const groundMesh = new THREE.Mesh(geometry, material);
       
-      // Position the ground plane
-      groundMesh.position.set(0, -groundPlane.distance, 0);
+      // Position the ground plane WITH MANUAL OFFSET
+      const calculatedGroundY = -groundPlane.distance;
+      const finalGroundY = calculatedGroundY + manualGroundOffset;
+      
+      groundMesh.position.set(0, finalGroundY, 0);
       groundMesh.rotation.x = -Math.PI / 2; // Lay flat (horizontal)
       
       // Add grid lines for better visualization
       const gridHelper = new THREE.GridHelper(10, 20, 0xffffff, 0xffffff);
-      gridHelper.position.set(0, -groundPlane.distance + 0.01, 0); // Slightly above plane
+      gridHelper.position.set(0, finalGroundY + 0.01, 0); // Slightly above plane
       gridHelper.material.transparent = true;
       gridHelper.material.opacity = 0.5;
       
@@ -173,8 +183,8 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       scene.add(groundGroup);
       groundPlaneMarkerRef.current = groundGroup;
       
-      console.log('🌍 Ground plane marker added at Y =', -groundPlane.distance);
-    }, [scene]);
+      console.log('🌍 Ground plane at Y =', finalGroundY, '(calculated:', calculatedGroundY, '+ offset:', manualGroundOffset, ')');
+    }, [scene, manualGroundOffset]);
 
     const removeGroundPlaneMarker = useCallback(() => {
       if (groundPlaneMarkerRef.current && scene) {
@@ -227,8 +237,19 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
     useImperativeHandle(ref, () => ({
       detectNow: runDetection,
       lastResult: lastDetectionResult,
-      removeMarker: removeGroundPlaneMarker
-    }), [runDetection, lastDetectionResult, removeGroundPlaneMarker]);
+      removeMarker: removeGroundPlaneMarker,
+      setManualGroundOffset: (offset: number) => {
+        setManualGroundOffset(offset);
+        // Re-run detection to update the plane position
+        if (lastDetectionResult && isTestMode) {
+          addGroundPlaneMarker(lastDetectionResult);
+        }
+      },
+      getCurrentGroundLevel: () => {
+        if (!lastDetectionResult) return 0;
+        return -lastDetectionResult.distance + manualGroundOffset;
+      }
+    }), [runDetection, lastDetectionResult, removeGroundPlaneMarker, manualGroundOffset, isTestMode, addGroundPlaneMarker]);
 
     // Auto-update detection when in test mode
     useEffect(() => {

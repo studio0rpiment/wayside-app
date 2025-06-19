@@ -6,6 +6,7 @@ interface GroundPlaneTestUIProps {
   isTestMode: boolean;
   onToggleTestMode: () => void;
   onDetectNow: () => void;
+  onAdjustGround?: (offset: number) => void;  // NEW: Ground adjustment callback
   lastResult: GroundPlaneResult | null;
 }
 
@@ -13,6 +14,7 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
   isTestMode,
   onToggleTestMode,
   onDetectNow,
+  onAdjustGround,
   lastResult
 }) => {
   return (
@@ -46,6 +48,83 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
           }}
         >
           🔍 Detect Now
+        </button>
+      </div>
+      
+      {/* Ground Level Test Buttons */}
+      <div style={{ fontSize: '8px', color: 'yellow', marginBottom: '2px' }}>
+        ADJUST GROUND LEVEL:
+      </div>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', 
+        gap: '2px', 
+        marginBottom: '5px' 
+      }}>
+        <button
+          onClick={() => onAdjustGround && onAdjustGround(1.0)}
+          style={{
+            fontSize: '8px',
+            padding: '2px 4px',
+            backgroundColor: 'rgba(255,0,0,0.3)',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer'
+          }}
+        >
+          +1m
+        </button>
+        <button
+          onClick={() => onAdjustGround && onAdjustGround(0.5)}
+          style={{
+            fontSize: '8px',
+            padding: '2px 4px',
+            backgroundColor: 'rgba(255,100,0,0.3)',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer'
+          }}
+        >
+          +0.5m
+        </button>
+        <button
+          onClick={() => onAdjustGround && onAdjustGround(0)}
+          style={{
+            fontSize: '8px',
+            padding: '2px 4px',
+            backgroundColor: 'rgba(100,100,100,0.3)',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer'
+          }}
+        >
+          Reset
+        </button>
+        <button
+          onClick={() => onAdjustGround && onAdjustGround(-0.5)}
+          style={{
+            fontSize: '8px',
+            padding: '2px 4px',
+            backgroundColor: 'rgba(0,255,100,0.3)',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer'
+          }}
+        >
+          -0.5m
+        </button>
+        <button
+          onClick={() => onAdjustGround && onAdjustGround(-1.0)}
+          style={{
+            fontSize: '8px',
+            padding: '2px 4px',
+            backgroundColor: 'rgba(0,0,255,0.3)',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer'
+          }}
+        >
+          -1m
         </button>
       </div>
       
