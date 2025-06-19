@@ -229,31 +229,18 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
                     color: 'lightgreen'
                   }}>
                     <div>CV ANALYSIS:</div>
-                    {lastResult.debugData.cvAnalysis ? (
+                    <div>Success: {lastResult.debugData.cvSuccess ? '✅ YES' : '❌ NO'}</div>
+                    {!lastResult.debugData.cvSuccess && (
                       <>
-                        <div>✅ CV Success - Confidence: {(lastResult.debugData.cvAnalysis.confidence * 100).toFixed(0)}%</div>
-                        <div>Uniformity: {(lastResult.debugData.cvAnalysis.uniformity * 100).toFixed(0)}%</div>
-                        <div>Color: rgb({Math.round(lastResult.debugData.cvAnalysis.groundColor.r)}, {Math.round(lastResult.debugData.cvAnalysis.groundColor.g)}, {Math.round(lastResult.debugData.cvAnalysis.groundColor.b)})</div>
-                        <div>CV Distance: {lastResult.debugData.cvAnalysis.estimatedDistance.toFixed(2)}m</div>
-                        {lastResult.debugData.cvAnalysis.edgeInfo && (
-                          <>
-                            <div>Edges: {lastResult.debugData.cvAnalysis.edgeInfo.totalEdges} total, {lastResult.debugData.cvAnalysis.edgeInfo.strongHorizontalEdges} horizontal</div>
-                            <div>Edge Confidence: {(lastResult.debugData.cvAnalysis.edgeInfo.confidence * 100).toFixed(0)}%</div>
-                          </>
-                        )}
+                        <div>Step: {lastResult.debugData.cvStep}</div>
+                        <div>Error: {lastResult.debugData.cvError}</div>
                       </>
-                    ) : (
+                    )}
+                    {lastResult.debugData.cvSuccess && (
                       <>
-                        <div style={{ color: 'orange' }}>❌ CV Failed</div>
-                        {lastResult.debugData.cvDebugInfo && (
-                          <>
-                            <div>Step: {lastResult.debugData.cvDebugInfo.step}</div>
-                            <div>Error: {lastResult.debugData.cvDebugInfo.error}</div>
-                            {lastResult.debugData.cvDebugInfo.details && Object.keys(lastResult.debugData.cvDebugInfo.details).length > 0 && (
-                              <div>Details: {JSON.stringify(lastResult.debugData.cvDebugInfo.details).slice(0, 100)}...</div>
-                            )}
-                          </>
-                        )}
+                        <div>Confidence: {lastResult.debugData.cvConfidence}</div>
+                        <div>Color: {lastResult.debugData.cvColor}</div>
+                        <div>Edges: {lastResult.debugData.cvEdges}</div>
                       </>
                     )}
                   </div>

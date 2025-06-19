@@ -34,22 +34,13 @@ export interface GroundPlaneResult {
     cosAngle?: number;
     tanAngle?: number;
     reason?: string;
-    cvAnalysis?: {
-      confidence: number;
-      groundColor: { r: number; g: number; b: number };
-      uniformity: number;
-      estimatedDistance: number;
-      edgeInfo?: {
-        totalEdges: number;
-        strongHorizontalEdges: number;
-        confidence: number;
-      };
-    };
-    cvDebugInfo?: {
-      step: string;
-      error: string;
-      details: any;
-    };
+    // Simplified CV debug info
+    cvSuccess?: boolean;
+    cvError?: string;
+    cvStep?: string;
+    cvConfidence?: string;
+    cvColor?: string;
+    cvEdges?: string;
   };
 }
 
