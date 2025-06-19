@@ -626,7 +626,10 @@ export const getArAnchorForPoint = (
   if (!point || !point.properties.arAnchor || !userPosition) return null;
   
   const anchor = point.properties.arAnchor;
+  const currentRadius = GEOFENCE_CONFIG.DEFAULT_RADIUS; 
+
   const destination = point.properties.arAnchor.destination;
+
   
   // Use terrain-aware positioning
   const result = getEnhancedAnchorPosition(
@@ -649,7 +652,7 @@ export const getArAnchorForPoint = (
     // NEW: Geofence configuration
     
   geofenceShape: anchor.geofenceShape || 'circle',
-  radius: anchor.radius || GEOFENCE_CONFIG.DEFAULT_RADIUS,
+  radius: currentRadius,
   directionSensitive: anchor.directionSensitive || false
   };
 };
