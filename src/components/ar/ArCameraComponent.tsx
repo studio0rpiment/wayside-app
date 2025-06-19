@@ -949,14 +949,14 @@ useEffect(() => {
         }}
       />
 
-      <GroundPlaneDetector
+      {/* <GroundPlaneDetector
         videoElement={videoRef.current}
         deviceOrientation={deviceOrientation}
         scene={sceneRef.current}
         isTestMode={showGroundPlaneTest}
         onGroundPlaneDetected={handleGroundPlaneDetected}
         ref={groundPlaneDetectorRef}
-      />
+      /> */}
 
       {/* {showChevrons && userPosition && anchorPosition && (
         <EdgeChevrons
@@ -1065,7 +1065,7 @@ useEffect(() => {
                 position: 'absolute',
                 top: '1vh',
                 left: '1vw',
-                right: '40vw',
+                right: '35vw',
                 backgroundColor: 'rgba(0, 0, 0, 0.7)',
                 color: 'white',
                 padding: '10px',
@@ -1092,8 +1092,8 @@ useEffect(() => {
 
                {!debugCollapsed && (
               <div>    
-                <div>User: [{userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}]</div>
-                <div>Anchor: [{activeAnchorPosition[0].toFixed(6)}, {activeAnchorPosition[1].toFixed(6)}]</div>  
+                <div>User: [{userPosition[0].toFixed(10)}, {userPosition[1].toFixed(10)}]</div>
+                <div>Anchor: [{activeAnchorPosition[0].toFixed(10)}, {activeAnchorPosition[1].toFixed(10)}]</div>  
                           
                 <div >
                   GPS Bearing: {calculateBearing(userPosition, anchorPosition).toFixed(1)}°
@@ -1108,7 +1108,7 @@ useEffect(() => {
                     <div style={{color: 'red'}}> Orient Error: {orientationError} </div>}
                     // Add this button in your debug panel, maybe near the ground plane test UI:
 
-<button
+{/* <button
   onClick={() => {
     if (groundPlaneDetectorRef.current?.checkCameraReadiness) {
       const readiness = groundPlaneDetectorRef.current.checkCameraReadiness();
@@ -1126,8 +1126,8 @@ useEffect(() => {
   }}
 >
   📹 Check Camera
-</button>
-                  <div>
+</button> */}
+                  {/* <div>
                   <GroundPlaneTestUI
                         isTestMode={showGroundPlaneTest}
                         onToggleTestMode={toggleGroundPlaneTest}
@@ -1138,7 +1138,7 @@ useEffect(() => {
                         currentOffset={groundPlaneDetectorRef.current?.getCurrentOffset?.() || 0}
                         lastResult={groundPlaneDetectorRef.current?.lastResult || null}
                       />
-                    </div>
+                    </div> */}
 
                 <div style={{ 
                     display: 'flex', 
