@@ -262,6 +262,21 @@ if (onModelScale) {
   useEffect(() => {
     let isMounted = true;
     
+useEffect(() => {
+  if (modelRef.current && isArMode && arPosition) {
+    const currentOverride = (window as any).arTestingOverride ?? true;
+    
+    if (currentOverride) {
+      modelRef.current.position.set(0, 0, -5);
+    } else {
+      modelRef.current.position.copy(arPosition);
+    }
+    
+    console.log('🎯 BC2200 position updated due to AR change:', modelRef.current.position);
+  }
+}, [isArMode, arPosition]);
+
+
     console.log('🎯 BC2200Experience mode:', isArMode ? 'AR' : 'Standalone');
     
     // Create container for standalone mode

@@ -7,6 +7,9 @@ import { PermissionType } from '../../utils/permissions';
 import { validateTerrainCoverage, getEnhancedAnchorPosition } from '../../utils/geoArUtils'
 import EdgeChevrons from './EdgeChevrons';
 
+import GroundPlaneDetector, { GroundPlaneDetectorRef, GroundPlaneResult } from './GroundPlaneDetector';
+import GroundPlaneTestUI from './GroundPlaneTestUI';
+
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 
@@ -79,6 +82,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const swipeStartY = useRef(0);
   const swipeStartTime = useRef(0);
 
+  
+
 
 
 //******** STATE STATE STATE */
@@ -133,6 +138,10 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       : false;
   });
 
+  const [showGroundPlaneTest, setShowGroundPlaneTest] = useState(false);
+const groundPlaneDetectorRef = useRef<GroundPlaneDetectorRef>(null);
+
+
 //******** DECLARATIONS AND HELPERS */
     // Touch constants
     const minSwipeDistance = 50;
@@ -145,12 +154,15 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 
     const currentExperienceType = experienceType || 'default';
     const experienceOffsets: Record<string, number> = {
-      'lotus': 0,
-      'lily': 0,       
-      'cattail': 0,    
-      'mac': 0,
-      'helen_s': 0,    
-      'volunteers': 0, 
+      'lotus': -1.8,
+      'lily': -1.8,       
+      'cattail': -1.80,    
+      'mac': -1.8,
+      'helen_s': -1.8,    
+      'volunteers': -1.8, 
+      '2030-2105': -2,  // Water rise starts at water surface
+      '1968': 0,        // Smoke high above (was 10.0, now 8.2 relative to ground)
+      '2200_bc': -1.6, 
       'default': 0
     };
 
@@ -177,6 +189,25 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       // Convert to radians and return negative to compensate
       return -screenOrientation * (Math.PI / 180);
     }
+//********FOR GROUND PLANE DETECTION  ******* */
+const handleGroundPlaneDetected = useCallback((result: GroundPlaneResult) => {
+  console.log('🌍 Ground plane detected in ArCamera:', result);
+  
+  // Here you could update your experience offsets based on detected ground
+  // setDetectedGroundLevel(-result.distance);
+}, []);
+
+// Add these functions for the UI
+const toggleGroundPlaneTest = useCallback(() => {
+  setShowGroundPlaneTest(!showGroundPlaneTest);
+}, [showGroundPlaneTest]);
+
+const detectGroundNow = useCallback(() => {
+  if (groundPlaneDetectorRef.current?.detectNow) {
+    groundPlaneDetectorRef.current.detectNow();
+  }
+}, []);
+
 
 
 //******************* SWIPES FOR DEBUG PANEL */
@@ -891,6 +922,15 @@ useEffect(() => {
         }}
       />
 
+      <GroundPlaneDetector
+        videoElement={videoRef.current}
+        deviceOrientation={deviceOrientation}
+        scene={sceneRef.current}
+        isTestMode={showGroundPlaneTest}
+        onGroundPlaneDetected={handleGroundPlaneDetected}
+        ref={groundPlaneDetectorRef}
+      />
+
       {/* {showChevrons && userPosition && anchorPosition && (
         <EdgeChevrons
           userPosition={userPosition}
@@ -991,7 +1031,7 @@ useEffect(() => {
         </div>
       )}
       
-          {/* Minimal Debug Panel */}
+{/* *************  TOP Debug Panel */}
      
          {SHOW_DEBUG_PANEL && (
               <div style={{
@@ -1037,14 +1077,16 @@ useEffect(() => {
                   <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
                 </div>
 
-                
-
-                {/* NEW: Model targeting validation */}
-              
-    
                   {orientationError && 
                     <div style={{color: 'red'}}> Orient Error: {orientationError} </div>}
-
+                  <div>
+                      <GroundPlaneTestUI
+                        isTestMode={showGroundPlaneTest}
+                        onToggleTestMode={toggleGroundPlaneTest}
+                        onDetectNow={detectGroundNow}
+                        lastResult={groundPlaneDetectorRef.current?.lastResult || null}
+                      />
+                    </div>
 
                 <div style={{ 
                     display: 'flex', 

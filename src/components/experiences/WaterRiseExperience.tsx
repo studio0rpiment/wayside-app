@@ -51,6 +51,10 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({
   const initialScaleRef = useRef<number>(0.1);
   const manualScaleRef = useRef<number>(1.0);
 
+  const userScaleRef = useRef<number>(1.0);
+const userRotationRef = useRef({ x: 0, y: 0, z: 0 });
+
+
   // ✅ UPDATED: Refs for debouncing
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -68,8 +72,8 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({
     startYear: 2030,
     endYear: 2100,
     gridResolution: 80,
-    waterSize: 80,
-    particleCount: 5000,
+    waterSize: 100,
+    particleCount: 10000,
     particleColor: new THREE.Color().setHSL(210/360, 0.8, 0.7),
     waveSpeed: 0.001,
     waveAmplitude: 1.0,
@@ -229,14 +233,20 @@ const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFac
     if (onModelScale) {
       onModelScale((scaleFactor: number) => {
         if (waterSystemRef.current) {
-          const currentScale = waterSystemRef.current.scale.x;
-          const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
+          const currentUserScale = userScaleRef.current;
+          const newUserScale = Math.max(0.1, Math.min(10, currentUserScale * scaleFactor));
+          
           console.log('🌊 Water scale handler called:', {
             scaleFactor,
-            currentScale: currentScale.toFixed(3),
-            newScale: newScale.toFixed(3)
+            currentUserScale: currentUserScale.toFixed(3),
+            newUserScale: newUserScale.toFixed(3)
           });
-          manualScaleRef.current = newScale;
+          
+          // Store user scale separately from automatic scaling
+          userScaleRef.current = newUserScale;
+          
+          // The scale will be applied in the next frame by updateWaterParticles
+          // which combines: initialScale * floodScale * userScale
         }
       });
     }
@@ -248,6 +258,7 @@ const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFac
         if (waterSystemRef.current) {
           // Reset rotation and scale
           manualScaleRef.current = 1.0;
+          userScaleRef.current = 1.0;
           waterSystemRef.current.rotation.set(degreesToRadians(25), 0, 0);
           waterSystemRef.current.scale.set(initialScaleRef.current, initialScaleRef.current, initialScaleRef.current);
           
@@ -317,9 +328,8 @@ const floodScale = 1 + curvedProgress * waterParamsRef.current.floodExpansionFac
 
 
     if (waterParticlesRef.current?.material instanceof THREE.PointsMaterial) {
-    const newSize = waterParamsRef.current.particleBaseSize * 
-    (1 + curvedProgress * waterParamsRef.current.particleSizeMultiplier);
-    waterParticlesRef.current.material.size = newSize;
+        const combinedScale = initialScaleRef.current * floodScale * userScaleRef.current;
+          waterSystemRef.current.scale.setScalar(combinedScale);
   }
 
   }

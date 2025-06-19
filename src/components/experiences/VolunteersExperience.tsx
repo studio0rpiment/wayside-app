@@ -566,6 +566,33 @@ loader.load(
     };
   }, [isArMode]); // Only isArMode dependency
 
+const centeringOffset = new THREE.Vector3(-knownCenter.x, -knownCenter.y, -knownCenter.z);
+
+// In the useEffect:
+  useEffect(() => {
+    if (modelRef.current && arPosition && isArMode) {
+      const currentOverride = (window as any).arTestingOverride ?? false;
+      
+      if (!currentOverride) {
+        // Apply AR position + centering offset
+        const finalPosition = arPosition.clone().add(centeringOffset);
+        modelRef.current.position.copy(finalPosition);
+        
+        console.log('🎯 Position updated with elevation:', arPosition.y); // Add this log
+
+
+
+        console.log('🎯 MAC positioned with centering:', {
+          arPosition,
+          centeringOffset,
+          finalPosition
+          
+        });
+      }
+    }
+  }, [arPosition, isArMode]);
+
+
   return (
     <>
       {/* Debug Panel for Volunteers Experience */}
