@@ -244,7 +244,7 @@ const {
     
     // ✅ Get the actual radius and anchor data for this experience
     const anchorData = getArAnchorForPoint(pointId, currentUserPosition);
-    const radiusMeters = anchorData?.radius || 15;
+    const radiusMeters = currentRadius || 15;
     const radiusFeet = Math.round(radiusMeters * 3.28084);
     
     console.log('🔍 Anchor Data:', anchorData);
