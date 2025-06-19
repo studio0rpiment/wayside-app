@@ -1,4 +1,4 @@
-// src/components/ar/GroundPlaneDetector.tsx - Enhanced with Real Edge Detection
+// src/components/ar/GroundPlaneDetector.tsx - Simplified with Debug Edge Detection
 import React, { forwardRef, useImperativeHandle, useRef, useCallback, useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { DeviceOrientationData } from '../../hooks/useDeviceOrientation';
@@ -13,7 +13,7 @@ export interface GroundPlaneDetectorRef {
   getCurrentGroundLevel: () => number;
   getCurrentOffset: () => number;
   checkCameraReadiness: () => CameraReadinessInfo;
-  // NEW: Edge detection controls
+  // Edge detection controls
   toggleEdgeDetection: (enabled: boolean) => void;
   getEdgeDetectionStatus: () => EdgeDetectionStatus;
 }
@@ -35,6 +35,7 @@ export interface EdgeDetectionStatus {
   edgeCount: number;
   groundConfidence: number;
   error?: string;
+  debugInfo?: string;
 }
 
 export interface GroundPlaneResult {
@@ -57,7 +58,7 @@ export interface GroundPlaneResult {
     cosAngle?: number;
     tanAngle?: number;
     reason?: string;
-    // Enhanced computer vision debug info
+    // Computer vision debug info
     cvSuccess?: boolean;
     cvError?: string;
     cvStep?: string;
@@ -68,7 +69,7 @@ export interface GroundPlaneResult {
     cvConfidence?: string;
     cvColor?: string;
     cvEdges?: string;
-    // NEW: Real edge detection data
+    // Edge detection data
     edgeDetectionEnabled?: boolean;
     edgeCount?: number;
     processingTime?: number;
@@ -89,163 +90,73 @@ interface GroundPlaneDetectorProps {
 const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetectorProps>(
   ({ videoElement, deviceOrientation, scene, isTestMode, onGroundPlaneDetected }, ref) => {
     
-    // Refs for visualization and edge detection
-    const groundPlaneMarkerRef = useRef<THREE.Group | null>(null);
-    const edgeDetectionCanvasRef = useRef<HTMLCanvasElement | null>(null);
-    const edgeDetectionContextRef = useRef<CanvasRenderingContext2D | null>(null);
-    const webglRendererRef = useRef<THREE.WebGLRenderer | null>(null);
-    const edgeDetectionSceneRef = useRef<THREE.Scene | null>(null);
-    const edgeDetectionCameraRef = useRef<THREE.OrthographicCamera | null>(null);
-    const videoTextureRef = useRef<THREE.VideoTexture | null>(null);
+    // Refs for visualization
+    const groundPlaneMarkerRef = useRef<THREE.Object3D | null>(null);
+    
+    // Simplified edge detection refs
+    const edgeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const edgeContextRef = useRef<CanvasRenderingContext2D | null>(null);
     
     // State
     const [lastDetectionResult, setLastDetectionResult] = useState<GroundPlaneResult | null>(null);
     const [manualGroundOffset, setManualGroundOffset] = useState(0);
-    const [edgeDetectionEnabled, setEdgeDetectionEnabled] = useState(true); // Enable by default
+    const [edgeDetectionEnabled, setEdgeDetectionEnabled] = useState(true);
     const [edgeDetectionStatus, setEdgeDetectionStatus] = useState<EdgeDetectionStatus>({
       enabled: true,
       processing: false,
       lastProcessTime: 0,
       edgeCount: 0,
-      groundConfidence: 0
+      groundConfidence: 0,
+      debugInfo: 'Not initialized'
     });
 
-    // Create Sobel edge detection shader
-    const createEdgeDetectionShader = useCallback(() => {
-      const vertexShader = `
-        attribute vec4 position;
-        attribute vec2 uv;
-        varying vec2 vUv;
-        
-        void main() {
-          vUv = uv;
-          gl_Position = position;
-        }
-      `;
-
-      const fragmentShader = `
-        precision mediump float;
-        
-        uniform sampler2D uVideoTexture;
-        uniform vec2 uResolution;
-        varying vec2 vUv;
-        
-        // Sobel kernels for edge detection
-        mat3 sobelX = mat3(
-          -1.0, 0.0, 1.0,
-          -2.0, 0.0, 2.0,
-          -1.0, 0.0, 1.0
-        );
-        
-        mat3 sobelY = mat3(
-          -1.0, -2.0, -1.0,
-           0.0,  0.0,  0.0,
-           1.0,  2.0,  1.0
-        );
-        
-        void main() {
-          vec2 texelSize = 1.0 / uResolution;
-          
-          // Sample the 3x3 neighborhood
-          float tl = length(texture2D(uVideoTexture, vUv + vec2(-texelSize.x, -texelSize.y)).rgb);
-          float tm = length(texture2D(uVideoTexture, vUv + vec2(0.0, -texelSize.y)).rgb);
-          float tr = length(texture2D(uVideoTexture, vUv + vec2(texelSize.x, -texelSize.y)).rgb);
-          
-          float ml = length(texture2D(uVideoTexture, vUv + vec2(-texelSize.x, 0.0)).rgb);
-          float mm = length(texture2D(uVideoTexture, vUv).rgb);
-          float mr = length(texture2D(uVideoTexture, vUv + vec2(texelSize.x, 0.0)).rgb);
-          
-          float bl = length(texture2D(uVideoTexture, vUv + vec2(-texelSize.x, texelSize.y)).rgb);
-          float bm = length(texture2D(uVideoTexture, vUv + vec2(0.0, texelSize.y)).rgb);
-          float br = length(texture2D(uVideoTexture, vUv + vec2(texelSize.x, texelSize.y)).rgb);
-          
-          // Apply Sobel operator
-          float gx = (tl * sobelX[0][0]) + (tm * sobelX[0][1]) + (tr * sobelX[0][2]) +
-                     (ml * sobelX[1][0]) + (mm * sobelX[1][1]) + (mr * sobelX[1][2]) +
-                     (bl * sobelX[2][0]) + (bm * sobelX[2][1]) + (br * sobelX[2][2]);
-          
-          float gy = (tl * sobelY[0][0]) + (tm * sobelY[0][1]) + (tr * sobelY[0][2]) +
-                     (ml * sobelY[1][0]) + (mm * sobelY[1][1]) + (mr * sobelY[1][2]) +
-                     (bl * sobelY[2][0]) + (bm * sobelY[2][1]) + (br * sobelY[2][2]);
-          
-          // Calculate edge magnitude
-          float edgeMagnitude = sqrt(gx * gx + gy * gy);
-          
-          // Output edge strength as grayscale
-          // Also encode horizontal vs vertical edge info in different channels
-          gl_FragColor = vec4(
-            edgeMagnitude,           // Red: overall edge strength
-            abs(gx),                 // Green: horizontal edges (vertical lines)
-            abs(gy),                 // Blue: vertical edges (horizontal lines)
-            1.0
-          );
-        }
-      `;
-
-      return { vertexShader, fragmentShader };
-    }, []);
-
-    // Initialize edge detection WebGL components
-    const initializeEdgeDetection = useCallback(() => {
-      if (!videoElement || edgeDetectionSceneRef.current) return false;
-
-      try {
-        // Create offscreen canvas for edge detection
-        const canvas = document.createElement('canvas');
-        canvas.width = 320; // Reduced resolution for performance
-        canvas.height = 240;
-        edgeDetectionCanvasRef.current = canvas;
-
-        // Create WebGL renderer
-        const renderer = new THREE.WebGLRenderer({
-          canvas: canvas,
-          alpha: false,
-          antialias: false,
-          powerPreference: 'high-performance'
-        });
-        renderer.setSize(320, 240);
-        webglRendererRef.current = renderer;
-
-        // Create scene and camera
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-        edgeDetectionSceneRef.current = scene;
-        edgeDetectionCameraRef.current = camera;
-
-        // Create video texture
-        const videoTexture = new THREE.VideoTexture(videoElement);
-        videoTexture.minFilter = THREE.LinearFilter;
-        videoTexture.magFilter = THREE.LinearFilter;
-        videoTexture.format = THREE.RGBFormat;
-        videoTextureRef.current = videoTexture;
-
-        // Create shader material
-        const { vertexShader, fragmentShader } = createEdgeDetectionShader();
-        const material = new THREE.ShaderMaterial({
-          vertexShader,
-          fragmentShader,
-          uniforms: {
-            uVideoTexture: { value: videoTexture },
-            uResolution: { value: new THREE.Vector2(videoElement.videoWidth, videoElement.videoHeight) }
-          }
-        });
-
-        // Create full-screen quad
-        const geometry = new THREE.PlaneGeometry(2, 2);
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-
-        console.log('✅ Edge detection WebGL initialized');
-        return true;
-      } catch (error) {
-        console.error('❌ Failed to initialize edge detection:', error);
-        setEdgeDetectionStatus(prev => ({ ...prev, error: `Init failed: ${error}` }));
+    // Simplified edge detection using Canvas 2D instead of WebGL
+    const initializeSimpleEdgeDetection = useCallback(() => {
+      if (!videoElement) {
+        setEdgeDetectionStatus(prev => ({ 
+          ...prev, 
+          error: 'No video element',
+          debugInfo: 'Video element missing'
+        }));
         return false;
       }
-    }, [videoElement, createEdgeDetectionShader]);
 
-    // Process edge detection
-    const processEdgeDetection = useCallback((): {
+      try {
+        // Create a small canvas for edge detection
+        const canvas = document.createElement('canvas');
+        canvas.width = 160;  // Even smaller for better performance
+        canvas.height = 120;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          throw new Error('Could not get 2D context');
+        }
+
+        edgeCanvasRef.current = canvas;
+        edgeContextRef.current = ctx;
+
+        setEdgeDetectionStatus(prev => ({ 
+          ...prev, 
+          debugInfo: 'Simple edge detection initialized',
+          error: undefined
+        }));
+
+        console.log('✅ Simple edge detection initialized with canvas:', canvas.width, 'x', canvas.height);
+        return true;
+
+      } catch (error) {
+        console.error('❌ Failed to initialize simple edge detection:', error);
+        setEdgeDetectionStatus(prev => ({ 
+          ...prev, 
+          error: `Init failed: ${error}`,
+          debugInfo: `Initialization error: ${error}`
+        }));
+        return false;
+      }
+    }, [videoElement]);
+
+    // Simple Sobel edge detection using Canvas 2D
+    const processSimpleEdgeDetection = useCallback((): {
       edgeCount: number;
       horizontalEdgeRatio: number;
       groundLineDetected: boolean;
@@ -254,11 +165,8 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
     } => {
       const startTime = performance.now();
 
-      if (!webglRendererRef.current || 
-          !edgeDetectionSceneRef.current || 
-          !edgeDetectionCameraRef.current ||
-          !videoTextureRef.current ||
-          !edgeDetectionCanvasRef.current) {
+      if (!videoElement || !edgeCanvasRef.current || !edgeContextRef.current) {
+        console.log('❌ Edge detection: Missing required elements');
         return {
           edgeCount: 0,
           horizontalEdgeRatio: 0,
@@ -269,61 +177,96 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       }
 
       try {
-        // Update video texture
-        videoTextureRef.current.needsUpdate = true;
+        const canvas = edgeCanvasRef.current;
+        const ctx = edgeContextRef.current;
 
-        // Render edge detection
-        webglRendererRef.current.render(edgeDetectionSceneRef.current, edgeDetectionCameraRef.current);
+        // Check if video has valid dimensions
+        if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+          console.log('❌ Video has no dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+          return {
+            edgeCount: 0,
+            horizontalEdgeRatio: 0,
+            groundLineDetected: false,
+            edgeStrength: 0,
+            processingTime: performance.now() - startTime
+          };
+        }
 
-        // Read pixels from rendered result
-        const canvas = edgeDetectionCanvasRef.current;
-        const context = canvas.getContext('2d');
-        if (!context) throw new Error('Could not get 2D context');
+        // Draw video frame to canvas
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-        // Get image data from WebGL canvas
-        const gl = webglRendererRef.current.getContext();
-        const pixels = new Uint8Array(canvas.width * canvas.height * 4);
-        gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        // Get image data
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
 
-        // Analyze the edge data
+        // Convert to grayscale and apply simple edge detection
         let totalEdgeStrength = 0;
+        let strongEdgeCount = 0;
         let horizontalEdges = 0;
         let verticalEdges = 0;
-        let strongEdgeCount = 0;
 
         // Focus on bottom 30% of image (likely ground area)
         const groundRegionStart = Math.floor(canvas.height * 0.7);
-        
-        for (let y = groundRegionStart; y < canvas.height; y++) {
-          for (let x = 0; x < canvas.width; x++) {
-            const idx = (y * canvas.width + x) * 4;
-            const edgeMagnitude = pixels[idx] / 255.0;     // Red channel
-            const horizontalEdge = pixels[idx + 1] / 255.0; // Green channel  
-            const verticalEdge = pixels[idx + 2] / 255.0;   // Blue channel
 
+        for (let y = groundRegionStart + 1; y < canvas.height - 1; y++) {
+          for (let x = 1; x < canvas.width - 1; x++) {
+            // Get surrounding pixels (simplified 3x3 Sobel)
+            const getPixelBrightness = (px: number, py: number) => {
+              const idx = (py * canvas.width + px) * 4;
+              return (data[idx] + data[idx + 1] + data[idx + 2]) / 3; // Average RGB
+            };
+
+            // Sample 3x3 neighborhood
+            const tl = getPixelBrightness(x - 1, y - 1);
+            const tm = getPixelBrightness(x, y - 1);
+            const tr = getPixelBrightness(x + 1, y - 1);
+            const ml = getPixelBrightness(x - 1, y);
+            const mr = getPixelBrightness(x + 1, y);
+            const bl = getPixelBrightness(x - 1, y + 1);
+            const bm = getPixelBrightness(x, y + 1);
+            const br = getPixelBrightness(x + 1, y + 1);
+
+            // Sobel operators
+            const gx = (-1 * tl) + (0 * tm) + (1 * tr) +
+                       (-2 * ml) + (0 * 0)  + (2 * mr) +
+                       (-1 * bl) + (0 * bm) + (1 * br);
+
+            const gy = (-1 * tl) + (-2 * tm) + (-1 * tr) +
+                       (0 * ml)  + (0 * 0)   + (0 * mr) +
+                       (1 * bl)  + (2 * bm)  + (1 * br);
+
+            const edgeMagnitude = Math.sqrt(gx * gx + gy * gy) / 255.0; // Normalize
             totalEdgeStrength += edgeMagnitude;
 
             if (edgeMagnitude > 0.3) { // Strong edge threshold
               strongEdgeCount++;
               
-              if (horizontalEdge > verticalEdge) {
-                horizontalEdges++;
+              // Determine edge orientation
+              if (Math.abs(gy) > Math.abs(gx)) {
+                horizontalEdges++; // Horizontal edge (good for ground detection)
               } else {
-                verticalEdges++;
+                verticalEdges++; // Vertical edge
               }
             }
           }
         }
 
-        const totalPixelsInGroundRegion = canvas.width * (canvas.height - groundRegionStart);
+        const totalPixelsInGroundRegion = (canvas.width - 2) * (canvas.height - groundRegionStart - 2);
         const averageEdgeStrength = totalEdgeStrength / totalPixelsInGroundRegion;
         const horizontalEdgeRatio = horizontalEdges / Math.max(1, horizontalEdges + verticalEdges);
 
-        // Ground line detection heuristic:
-        // Look for strong horizontal edges in the lower portion of the image
-        const groundLineDetected = horizontalEdgeRatio > 0.6 && strongEdgeCount > 20;
+        // Simple ground line detection heuristic
+        const groundLineDetected = horizontalEdgeRatio > 0.4 && strongEdgeCount > 10;
 
         const processingTime = performance.now() - startTime;
+
+        console.log('🔍 Edge detection results:', {
+          strongEdgeCount,
+          horizontalEdgeRatio: horizontalEdgeRatio.toFixed(2),
+          averageEdgeStrength: averageEdgeStrength.toFixed(3),
+          groundLineDetected,
+          processingTime: processingTime.toFixed(1) + 'ms'
+        });
 
         return {
           edgeCount: strongEdgeCount,
@@ -358,7 +301,7 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
 
       if (videoElement) {
         readiness.readyState = videoElement.readyState;
-        readiness.videoReady = videoElement.readyState >= 2; // HAVE_CURRENT_DATA
+        readiness.videoReady = videoElement.readyState >= 2;
         
         if (videoElement.videoWidth && videoElement.videoHeight) {
           readiness.videoSize = `${videoElement.videoWidth}x${videoElement.videoHeight}`;
@@ -366,7 +309,6 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
           readiness.videoSize = 'no dimensions';
         }
 
-        // Check for common video issues
         if (videoElement.paused) {
           readiness.error = 'Video is paused';
         } else if (videoElement.ended) {
@@ -381,13 +323,12 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       return readiness;
     }, [videoElement, deviceOrientation, scene]);
 
-    // Enhanced detection algorithm combining orientation + edge detection
+    // Enhanced detection algorithm
     const detectGroundPlane = useCallback((
       video: HTMLVideoElement, 
       orientation: DeviceOrientationData
     ): GroundPlaneResult => {
       
-      // Get camera readiness info for debug data
       const cameraInfo = checkCameraReadiness();
       
       if (!orientation?.beta || !orientation?.gamma) {
@@ -410,78 +351,57 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       const betaDegrees = orientation.beta;
       const gammaDegrees = orientation.gamma;
       const beta = betaDegrees * Math.PI / 180;
-      const gamma = gammaDegrees * Math.PI / 180;
-      
-      // Calculate gravity vector (which way is down)
-      const gravity = new THREE.Vector3(
-        Math.sin(gamma),
-        -Math.cos(beta) * Math.cos(gamma),
-        Math.sin(beta) * Math.cos(gamma)
-      );
-      
+
       // Basic orientation-based distance calculation
-      let orientationDistance = 1.7; // Default fallback
+      let orientationDistance = 1.7;
       let orientationConfidence = 0.3;
       
-      if (Math.abs(betaDegrees) > 15) { // 15° threshold
-        const angleToGroundDegrees = Math.abs(betaDegrees);
+      if (Math.abs(betaDegrees) > 15) {
         const angleToGroundRadians = Math.abs(beta);
-        
-        // Use cotangent method for distance calculation
         const altDistance3 = 1.7 / Math.tan(angleToGroundRadians);
         orientationDistance = Math.max(0.3, Math.min(3.0, altDistance3));
         orientationConfidence = Math.min(Math.abs(beta) / (Math.PI / 2), 0.9);
       }
 
-    // Enhanced computer vision analysis with REAL edge detection
-    let cvAnalysis: {
-      cvSuccess: boolean;
-      cvStep: string;
-      cvError?: string;
-      cvConfidence: string;
-      cvColor: string;
-      cvEdges: string;
-      edgeDetectionEnabled: boolean;
-      edgeCount: number;
-      processingTime: number;
-      groundLineDetected: boolean;
-      edgeStrength: number;
-      horizontalEdgeRatio: number;
-    } = {
-      cvSuccess: false,
-      cvStep: 'cv_analysis',
-      cvError: 'edge_detection_disabled',
-      cvConfidence: 'N/A',
-      cvColor: 'N/A',
-      cvEdges: 'N/A',
-      edgeDetectionEnabled,
-      edgeCount: 0,
-      processingTime: 0,
-      groundLineDetected: false,
-      edgeStrength: 0,
-      horizontalEdgeRatio: 0
-    };
+      // Initialize CV analysis
+      let cvAnalysis: any = {
+        cvSuccess: false,
+        cvStep: 'cv_analysis',
+        cvError: edgeDetectionEnabled ? undefined : 'edge_detection_disabled',
+        cvConfidence: 'N/A',
+        cvColor: 'N/A',
+        cvEdges: 'N/A',
+        edgeDetectionEnabled,
+        edgeCount: 0,
+        processingTime: 0,
+        groundLineDetected: false,
+        edgeStrength: 0,
+        horizontalEdgeRatio: 0
+      };
 
       let finalDistance = orientationDistance;
       let finalConfidence = orientationConfidence;
       let detectionMethod = 'orientation only';
 
+      // Try edge detection if enabled
       if (edgeDetectionEnabled && cameraInfo.videoReady && video.videoWidth > 0) {
         try {
           setEdgeDetectionStatus(prev => ({ ...prev, processing: true }));
 
-          // Initialize edge detection if needed
-          if (!edgeDetectionSceneRef.current) {
-            initializeEdgeDetection();
+          // Initialize if needed
+          if (!edgeCanvasRef.current) {
+            const initSuccess = initializeSimpleEdgeDetection();
+            if (!initSuccess) {
+              throw new Error('Failed to initialize edge detection');
+            }
           }
 
           // Process edge detection
-          const edgeResults = processEdgeDetection();
+          const edgeResults = processSimpleEdgeDetection();
           
           cvAnalysis = {
             cvSuccess: edgeResults.edgeCount > 0,
-            cvStep: 'real_edge_detection',
-            cvError: undefined,
+            cvStep: 'simple_edge_detection',
             cvConfidence: edgeResults.groundLineDetected ? 'high' : 'medium',
             cvColor: 'analyzed',
             cvEdges: `${edgeResults.edgeCount} edges detected`,
@@ -493,23 +413,19 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
             horizontalEdgeRatio: edgeResults.horizontalEdgeRatio
           };
 
-          // Combine orientation and edge detection for better accuracy
+          // Combine results
           if (edgeResults.groundLineDetected) {
-            // Edge detection found a likely ground line - increase confidence
-            finalConfidence = Math.min(orientationConfidence + 0.3, 0.95);
+            finalConfidence = Math.min(orientationConfidence + 0.2, 0.95);
             detectionMethod = 'orientation + edge detection';
-            
-            // Optionally adjust distance based on edge detection
-            // For now, trust orientation but boost confidence
           }
 
-          // Update edge detection status
           setEdgeDetectionStatus(prev => ({
             ...prev,
             processing: false,
             lastProcessTime: edgeResults.processingTime,
             edgeCount: edgeResults.edgeCount,
-            groundConfidence: edgeResults.groundLineDetected ? 0.8 : 0.4
+            groundConfidence: edgeResults.groundLineDetected ? 0.8 : 0.4,
+            debugInfo: `Processed ${edgeResults.edgeCount} edges in ${edgeResults.processingTime.toFixed(1)}ms`
           }));
 
         } catch (error) {
@@ -518,7 +434,8 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
           setEdgeDetectionStatus(prev => ({ 
             ...prev, 
             processing: false, 
-            error: `Processing failed: ${error}` 
+            error: `Processing failed: ${error}`,
+            debugInfo: `Error: ${error}`
           }));
         }
       }
@@ -526,7 +443,7 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       const result: GroundPlaneResult = {
         detected: true,
         distance: finalDistance,
-        normal: gravity.clone().negate(), // Ground normal points up
+        normal: new THREE.Vector3(0, 1, 0),
         confidence: finalConfidence,
         method: detectionMethod,
         angle: Math.abs(betaDegrees),
@@ -551,14 +468,17 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       };
       
       return result;
-    }, [checkCameraReadiness, edgeDetectionEnabled, initializeEdgeDetection, processEdgeDetection]);
+    }, [checkCameraReadiness, edgeDetectionEnabled, initializeSimpleEdgeDetection, processSimpleEdgeDetection]);
 
-    // Visualization functions (unchanged)
+    // Visualization functions (simplified)
     const addGroundPlaneMarker = useCallback((groundPlane: GroundPlaneResult) => {
       if (!scene) return;
       
-      // Remove existing marker
-      removeGroundPlaneMarker();
+      // Remove existing marker first
+      if (groundPlaneMarkerRef.current) {
+        scene.remove(groundPlaneMarkerRef.current);
+        groundPlaneMarkerRef.current = null;
+      }
       
       // Create ground plane visualization
       const geometry = new THREE.PlaneGeometry(10, 10);
@@ -570,49 +490,20 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       });
       
       const groundMesh = new THREE.Mesh(geometry, material);
-      
-      // Position the ground plane WITH MANUAL OFFSET
-      const calculatedGroundY = -groundPlane.distance;
-      const finalGroundY = calculatedGroundY + manualGroundOffset;
-      
+      const finalGroundY = -groundPlane.distance + manualGroundOffset;
       groundMesh.position.set(0, finalGroundY, 0);
       groundMesh.rotation.x = -Math.PI / 2;
       
-      // Add grid lines
-      const gridHelper = new THREE.GridHelper(10, 20, 0xffffff, 0xffffff);
-      gridHelper.position.set(0, finalGroundY + 0.01, 0);
-      gridHelper.material.transparent = true;
-      gridHelper.material.opacity = 0.5;
+      scene.add(groundMesh);
+      groundPlaneMarkerRef.current = groundMesh;
       
-      // Group them together
-      const groundGroup = new THREE.Group();
-      groundGroup.add(groundMesh);
-      groundGroup.add(gridHelper);
-      
-      scene.add(groundGroup);
-      groundPlaneMarkerRef.current = groundGroup;
-      
-      console.log('🌍 Enhanced ground plane marker at Y =', finalGroundY, 
-        '(method:', groundPlane.method, ')');
+      console.log('🌍 Ground plane marker at Y =', finalGroundY, '(method:', groundPlane.method, ')');
     }, [scene, manualGroundOffset]);
 
     const removeGroundPlaneMarker = useCallback(() => {
       if (groundPlaneMarkerRef.current && scene) {
         scene.remove(groundPlaneMarkerRef.current);
-        
-        groundPlaneMarkerRef.current.children.forEach(child => {
-          if (child instanceof THREE.Mesh) {
-            child.geometry?.dispose();
-            if (Array.isArray(child.material)) {
-              child.material.forEach(mat => mat.dispose());
-            } else {
-              child.material?.dispose();
-            }
-          }
-        });
-        
         groundPlaneMarkerRef.current = null;
-        console.log('🌍 Ground plane marker removed');
       }
     }, [scene]);
 
@@ -624,11 +515,10 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
           distance: 1.7,
           normal: new THREE.Vector3(0, 1, 0),
           confidence: 0,
-          method: 'missing video or orientation',
+          method: 'missing inputs',
           debugData: {
             videoExists: !!videoElement,
             videoReady: false,
-            videoInfo: 'Missing required inputs',
             cvError: 'Missing video element or device orientation',
             cvStep: 'input_validation',
             cvSuccess: false,
@@ -644,12 +534,10 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
         const result = detectGroundPlane(videoElement, deviceOrientation);
         setLastDetectionResult(result);
         
-        // Call callback if provided
         if (onGroundPlaneDetected) {
           onGroundPlaneDetected(result);
         }
         
-        // Show visualization if in test mode
         if (isTestMode && result.detected) {
           addGroundPlaneMarker(result);
         }
@@ -676,30 +564,26 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       }
     }, [videoElement, deviceOrientation, detectGroundPlane, onGroundPlaneDetected, isTestMode, addGroundPlaneMarker]);
 
-    // Manual offset adjustment
+    // Offset adjustment
     const adjustGroundOffsetInternal = useCallback((deltaOffset: number) => {
-      console.log('🌍 GroundPlaneDetector: adjustGroundOffset called with:', deltaOffset);
-      
       setManualGroundOffset(prevOffset => {
         const newOffset = prevOffset + deltaOffset;
-        console.log('🌍 Setting new offset:', newOffset);
-        
         setTimeout(() => {
           if (lastDetectionResult && isTestMode) {
             addGroundPlaneMarker(lastDetectionResult);
           }
         }, 50);
-        
         return newOffset;
       });
     }, [lastDetectionResult, isTestMode, addGroundPlaneMarker]);
 
-    // NEW: Edge detection control functions
+    // Edge detection controls
     const toggleEdgeDetection = useCallback((enabled: boolean) => {
       setEdgeDetectionEnabled(enabled);
       setEdgeDetectionStatus(prev => ({
         ...prev,
         enabled,
+        debugInfo: enabled ? 'Edge detection enabled' : 'Edge detection disabled',
         ...(enabled ? {} : { error: 'Disabled by user' })
       }));
       console.log('🔍 Edge detection', enabled ? 'enabled' : 'disabled');
@@ -715,9 +599,7 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       lastResult: lastDetectionResult,
       removeMarker: removeGroundPlaneMarker,
       setManualGroundOffset: (offset: number) => {
-        console.log('🌍 Setting manual ground offset to:', offset);
         setManualGroundOffset(offset);
-        
         if (lastDetectionResult && isTestMode) {
           setTimeout(() => addGroundPlaneMarker(lastDetectionResult), 50);
         }
@@ -729,7 +611,6 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       },
       getCurrentOffset: () => manualGroundOffset,
       checkCameraReadiness,
-      // NEW: Edge detection methods
       toggleEdgeDetection,
       getEdgeDetectionStatus
     }), [
@@ -746,13 +627,12 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
     // Auto-update detection when in test mode
     useEffect(() => {
       if (isTestMode) {
-        console.log('🌍 Starting enhanced auto-detection with edge detection:', edgeDetectionEnabled);
+        console.log('🌍 Starting simplified auto-detection with edge detection:', edgeDetectionEnabled);
         const interval = setInterval(() => {
           runDetection();
-        }, 1000); // Update every second
+        }, 1000);
         
         return () => {
-          console.log('🌍 Stopping auto-detection');
           clearInterval(interval);
         };
       } else {
@@ -760,39 +640,18 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
       }
     }, [isTestMode, runDetection, removeGroundPlaneMarker, edgeDetectionEnabled]);
 
-    // Initialize edge detection when video becomes ready
-    useEffect(() => {
-      if (edgeDetectionEnabled && videoElement && videoElement.readyState >= 2) {
-        initializeEdgeDetection();
-      }
-    }, [edgeDetectionEnabled, videoElement?.readyState, initializeEdgeDetection]);
-
     // Cleanup on unmount
     useEffect(() => {
       return () => {
-        console.log('🌍 Enhanced GroundPlaneDetector unmounting, cleaning up');
+        console.log('🌍 Simplified GroundPlaneDetector unmounting');
         removeGroundPlaneMarker();
-        
-        // Cleanup edge detection resources
-        if (webglRendererRef.current) {
-          webglRendererRef.current.dispose();
-        }
-        if (videoTextureRef.current) {
-          videoTextureRef.current.dispose();
-        }
-        if (edgeDetectionSceneRef.current) {
-          edgeDetectionSceneRef.current.clear();
-        }
       };
     }, [removeGroundPlaneMarker]);
 
-    // Return null since this component doesn't render anything visible
-    // It only manages Three.js scene objects and exposes methods via ref
     return null;
   }
 );
 
-// Set display name for better debugging
-GroundPlaneDetector.displayName = 'EnhancedGroundPlaneDetector';
+GroundPlaneDetector.displayName = 'SimplifiedGroundPlaneDetector';
 
 export default GroundPlaneDetector;
