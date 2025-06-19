@@ -8,8 +8,10 @@ export interface GroundPlaneDetectorRef {
   detectNow: () => GroundPlaneResult | null;
   lastResult: GroundPlaneResult | null;
   removeMarker: () => void;
-  setManualGroundOffset: (offset: number) => void;  // NEW: Manual adjustment
-  getCurrentGroundLevel: () => number;              // NEW: Get current ground Y
+  setManualGroundOffset: (offset: number) => void;    // Set to specific value
+  adjustGroundOffset: (deltaOffset: number) => void;  // Add to current value
+  getCurrentGroundLevel: () => number;                 // Get current ground Y
+  getCurrentOffset: () => number;                      // Get current offset value
 }
 
 export interface GroundPlaneResult {
@@ -32,6 +34,12 @@ export interface GroundPlaneResult {
     cosAngle?: number;
     tanAngle?: number;
     reason?: string;
+    cvAnalysis?: {
+      confidence: number;
+      groundColor: { r: number; g: number; b: number };
+      uniformity: number;
+      estimatedDistance: number;
+    };
   };
 }
 
@@ -245,10 +253,22 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
           addGroundPlaneMarker(lastDetectionResult);
         }
       },
+      adjustGroundOffset: (deltaOffset: number) => {  // NEW: Add to current offset
+        setManualGroundOffset(prev => prev + deltaOffset);
+        // Re-run detection to update the plane position
+        if (lastDetectionResult && isTestMode) {
+          setTimeout(() => {
+            if (lastDetectionResult) {
+              addGroundPlaneMarker(lastDetectionResult);
+            }
+          }, 50); // Small delay to ensure state update
+        }
+      },
       getCurrentGroundLevel: () => {
         if (!lastDetectionResult) return 0;
         return -lastDetectionResult.distance + manualGroundOffset;
-      }
+      },
+      getCurrentOffset: () => manualGroundOffset  // NEW: Get current offset value
     }), [runDetection, lastDetectionResult, removeGroundPlaneMarker, manualGroundOffset, isTestMode, addGroundPlaneMarker]);
 
     // Auto-update detection when in test mode

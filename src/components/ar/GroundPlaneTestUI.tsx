@@ -6,7 +6,9 @@ interface GroundPlaneTestUIProps {
   isTestMode: boolean;
   onToggleTestMode: () => void;
   onDetectNow: () => void;
-  onAdjustGround?: (offset: number) => void;  // NEW: Ground adjustment callback
+  onAdjustGround?: (deltaOffset: number) => void;  // Changed: Now accumulates delta
+  onResetGround?: () => void;                      // NEW: Reset to zero
+  currentOffset?: number;                          // NEW: Show current offset
   lastResult: GroundPlaneResult | null;
 }
 
@@ -15,6 +17,8 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
   onToggleTestMode,
   onDetectNow,
   onAdjustGround,
+  onResetGround,
+  currentOffset = 0,
   lastResult
 }) => {
   return (
@@ -53,7 +57,7 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
       
       {/* Ground Level Test Buttons */}
       <div style={{ fontSize: '8px', color: 'yellow', marginBottom: '2px' }}>
-        ADJUST GROUND LEVEL:
+        ADJUST GROUND: {currentOffset.toFixed(2)}m offset
       </div>
       <div style={{ 
         display: 'grid', 
@@ -75,7 +79,7 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
           +1m
         </button>
         <button
-          onClick={() => onAdjustGround && onAdjustGround(0.5)}
+          onClick={() => onAdjustGround && onAdjustGround(0.1)}
           style={{
             fontSize: '8px',
             padding: '2px 4px',
@@ -85,10 +89,10 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
             cursor: 'pointer'
           }}
         >
-          +0.5m
+          +0.1m
         </button>
         <button
-          onClick={() => onAdjustGround && onAdjustGround(0)}
+          onClick={() => onResetGround && onResetGround()}
           style={{
             fontSize: '8px',
             padding: '2px 4px',
@@ -101,7 +105,7 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
           Reset
         </button>
         <button
-          onClick={() => onAdjustGround && onAdjustGround(-0.5)}
+          onClick={() => onAdjustGround && onAdjustGround(-0.1)}
           style={{
             fontSize: '8px',
             padding: '2px 4px',
@@ -111,7 +115,7 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
             cursor: 'pointer'
           }}
         >
-          -0.5m
+          -0.1m
         </button>
         <button
           onClick={() => onAdjustGround && onAdjustGround(-1.0)}
@@ -202,6 +206,21 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
                     <div>Alt2 fixed: {lastResult.debugData.altDistance2?.toFixed(2)}m (fixed)</div>
                     <div>Alt3 cotan: {lastResult.debugData.altDistance3?.toFixed(2)}m (1.7/tan)</div>
                   </div>
+                  
+                  {/* Computer Vision Analysis */}
+                  {lastResult.debugData.cvAnalysis && (
+                    <div style={{ 
+                      fontSize: '7px',
+                      marginTop: '3px',
+                      color: 'lightgreen'
+                    }}>
+                      <div>CV ANALYSIS:</div>
+                      <div>Confidence: {(lastResult.debugData.cvAnalysis.confidence * 100).toFixed(0)}%</div>
+                      <div>Uniformity: {(lastResult.debugData.cvAnalysis.uniformity * 100).toFixed(0)}%</div>
+                      <div>Ground Color: rgb({Math.round(lastResult.debugData.cvAnalysis.groundColor.r)}, {Math.round(lastResult.debugData.cvAnalysis.groundColor.g)}, {Math.round(lastResult.debugData.cvAnalysis.groundColor.b)})</div>
+                      <div>CV Distance: {lastResult.debugData.cvAnalysis.estimatedDistance.toFixed(2)}m</div>
+                    </div>
+                  )}
                   
                   {/* Position Info */}
                   <div style={{ 
