@@ -17,6 +17,20 @@ export interface GroundPlaneResult {
   confidence: number;
   method: string;
   angle?: number;
+  debugData?: {
+    betaDegrees?: number;
+    gammaDegrees?: number;
+    angleToGroundDegrees?: number;
+    originalDistance?: number;
+    clampedDistance?: number;
+    altDistance1?: number;
+    altDistance2?: number;
+    altDistance3?: number;
+    sinAngle?: number;
+    cosAngle?: number;
+    tanAngle?: number;
+    reason?: string;
+  };
 }
 
 interface GroundPlaneDetectorProps {
@@ -52,8 +66,10 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
         };
       }
 
-      const beta = orientation.beta * Math.PI / 180;
-      const gamma = orientation.gamma * Math.PI / 180;
+      const betaDegrees = orientation.beta;
+      const gammaDegrees = orientation.gamma;
+      const beta = betaDegrees * Math.PI / 180;
+      const gamma = gammaDegrees * Math.PI / 180;
       
       // Calculate gravity vector (which way is down)
       const gravity = new THREE.Vector3(
@@ -62,28 +78,47 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
         Math.sin(beta) * Math.cos(gamma)
       );
       
-      console.log('🌍 Ground detection input:', {
-        beta: orientation.beta,
-        gamma: orientation.gamma,
-        gravity: gravity
-      });
-      
       // Check if camera is pointing down enough to detect ground
-      if (Math.abs(beta) > 15) { // 15° threshold
-        const angleToGround = Math.abs(beta);
-        const estimatedDistance = 1.7 / Math.sin(angleToGround); // User height / sin(angle)
+      if (Math.abs(betaDegrees) > 15) { // 15° threshold
+        const angleToGroundDegrees = Math.abs(betaDegrees);
+        const angleToGroundRadians = Math.abs(beta);
         
-        // Clamp to reasonable values (0.5m to 5m)
-        const clampedDistance = Math.max(0.5, Math.min(5.0, estimatedDistance));
+        // Original calculation
+        const originalDistance = 1.7 / Math.sin(angleToGroundRadians);
         
-        return {
+        // Alternative calculations to test
+        const altDistance1 = 1.7 * Math.cos(angleToGroundRadians); // Simple cosine
+        const altDistance2 = 1.7; // Fixed distance
+        const altDistance3 = 1.7 / Math.tan(angleToGroundRadians); // Cotangent (adjacent/opposite)
+        
+        // Clamp original to reasonable values (0.5m to 5m)
+        const clampedDistance = Math.max(0.5, Math.min(5.0, originalDistance));
+        
+        // Store debug info in the result
+        const result = {
           detected: true,
           distance: clampedDistance,
           normal: gravity.clone().negate(), // Ground normal points up
           confidence: Math.min(Math.abs(beta) / (Math.PI / 2), 0.9), // Higher angle = more confidence
           method: 'orientation + gravity',
-          angle: Math.abs(beta) * 180 / Math.PI
+          angle: angleToGroundDegrees,
+          // Add debug data
+          debugData: {
+            betaDegrees,
+            gammaDegrees,
+            angleToGroundDegrees,
+            originalDistance,
+            clampedDistance,
+            altDistance1,
+            altDistance2,
+            altDistance3,
+            sinAngle: Math.sin(angleToGroundRadians),
+            cosAngle: Math.cos(angleToGroundRadians),
+            tanAngle: Math.tan(angleToGroundRadians)
+          }
         };
+        
+        return result;
       }
       
       // Fallback when phone isn't tilted enough
@@ -93,7 +128,12 @@ const GroundPlaneDetector = forwardRef<GroundPlaneDetectorRef, GroundPlaneDetect
         normal: new THREE.Vector3(0, 1, 0),
         confidence: 0.3,
         method: 'fallback assumption',
-        angle: Math.abs(beta) * 180 / Math.PI
+        angle: Math.abs(betaDegrees),
+        debugData: {
+          betaDegrees,
+          gammaDegrees,
+          reason: 'angle too small'
+        }
       };
     }, []);
 
