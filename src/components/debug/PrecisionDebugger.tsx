@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { PositionQuality } from '../../hooks/useEnhancedGeofenceManager';
 import { setGlobalRadius } from '../../data/mapRouteData';
+import { useGeofenceContext } from '../../context/GeofenceContext';
+
 
 
 interface PrecisionDebuggerProps {
@@ -14,6 +16,7 @@ interface PrecisionDebuggerProps {
   userPosition: [number, number] | null;
   isTracking: boolean;
   currentRadius?: number;
+
   
   // Control functions
   startTracking: () => Promise<boolean>;
@@ -40,13 +43,19 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   const [showHistory, setShowHistory] = useState(false);
   const [displayRadius, setDisplayRadius] = useState(currentRadius);
 
-  
+    const { updateGlobalRadius, currentRadius: contextRadius } = useGeofenceContext();
+
   // Function to change radius
   const changeRadius = (newRadius: number) => {
-    setGlobalRadius(newRadius);
+    updateGlobalRadius(newRadius); // ✅ This triggers React re-renders
     setDisplayRadius(newRadius);
     console.log(`🎯 Geofence radius changed to ${newRadius}m`);
   };
+
+    React.useEffect(() => {
+    setDisplayRadius(contextRadius || currentRadius);
+  }, [contextRadius, currentRadius]);
+  
 
   // Quality color mapping
   const getQualityColor = (quality: PositionQuality): string => {
