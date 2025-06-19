@@ -156,21 +156,23 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   const [showArExperience, setShowArExperience] = useState(false);
   
   // ✅ ENHANCED: Use enhanced positioning and geofence context
-  const {
-    getBestUserPosition,
-    getArReadyPosition,
-    currentUserPosition,
-    arReadyPosition,
-    currentAccuracy,
-    positionQuality,
-    isPositionStable,
-    
-  } = useEnhancedUserPosition();
+const {
+  getBestUserPosition,
+  getArReadyPosition,
+  currentUserPosition,
+  arReadyPosition,
+  currentAccuracy,
+  positionQuality,
+  isPositionStable,
+  getCurrentRadius,
+  currentRadius,  // Direct access to current radius value
+  updateGlobalRadius,
+  resetGlobalRadius
+} = useEnhancedUserPosition();
   
   const { 
     isInsideGeofence,
     getDistanceToPoint,
-    getCurrentRadius,
     isTracking
   } = useGeofenceContext();
   
@@ -340,7 +342,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       positionAccuracy: currentAccuracy,
       isPositionStable: isPositionStable || false
     };
-  }, [pointData?.iconName, currentUserPosition, previousPosition, positionQuality, currentAccuracy, isPositionStable, isInsideGeofence, getDistanceToPoint, getCurrentRadius]);
+  }, [pointData?.iconName, currentUserPosition, previousPosition, positionQuality, currentAccuracy, isPositionStable, isInsideGeofence, getDistanceToPoint, currentRadius]);
 
   // Handle experience start
   const handleExperienceStart = useCallback(() => {
