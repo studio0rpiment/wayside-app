@@ -49,6 +49,8 @@ const Map: React.FC = () => {
     getDistanceTo,
     getDistanceToPoint,
     getCurrentRadius,
+    updateGlobalRadius,    // ADD THIS
+  
     // NEW: Enhanced precision properties
     currentAccuracy,
     positionQuality, 
@@ -295,7 +297,9 @@ const Map: React.FC = () => {
           startTracking={startTracking}
           stopTracking={stopTracking}
           getPositionStats={getPositionStats}
-           currentRadius={GEOFENCE_CONFIG.DEFAULT_RADIUS}
+          currentRadius={GEOFENCE_CONFIG.DEFAULT_RADIUS}
+          updateGlobalRadius={updateGlobalRadius}   // ✅ ADD: Pass the update function
+
         />
 
         {/* Compass calibration Debugger
@@ -346,6 +350,7 @@ const Map: React.FC = () => {
           distanceToGeofence={modalGeofenceInfo.distance}
           directionToGeofence={modalGeofenceInfo.direction}
           currentRadius={currentRadius}
+          
         />
        
       </VerticalSection>

@@ -16,6 +16,7 @@ interface PrecisionDebuggerProps {
   userPosition: [number, number] | null;
   isTracking: boolean;
   currentRadius?: number;
+  updateGlobalRadius?: (radius: number) => void;
 
   
   // Control functions
@@ -43,11 +44,13 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   const [showHistory, setShowHistory] = useState(false);
   const [displayRadius, setDisplayRadius] = useState(currentRadius);
 
-    const { updateGlobalRadius, currentRadius: contextRadius } = useGeofenceContext();
+  const { updateGlobalRadius, currentRadius: contextRadius } = useGeofenceContext();
 
   // Function to change radius
   const changeRadius = (newRadius: number) => {
-    updateGlobalRadius(newRadius); // ✅ This triggers React re-renders
+    if (updateGlobalRadius) {
+      updateGlobalRadius(newRadius);  // ✅ Triggers React re-renders
+    }
     setDisplayRadius(newRadius);
     console.log(`🎯 Geofence radius changed to ${newRadius}m`);
   };
