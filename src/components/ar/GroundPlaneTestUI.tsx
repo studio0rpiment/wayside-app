@@ -230,8 +230,9 @@ const GroundPlaneTestUI: React.FC<GroundPlaneTestUIProps> = ({
                   }}>
                     <div>CV ANALYSIS:</div>
                     <div>Success: {lastResult.debugData.cvSuccess ? '✅ YES' : '❌ NO'}</div>
-                    <div>Step: {lastResult.debugData.cvStep || 'undefined'}</div>
-                    <div>Error: {lastResult.debugData.cvError || 'undefined'}</div>
+                    <div>Video: {lastResult.debugData.videoReady ? '✅' : '❌'} {lastResult.debugData.videoSize || 'unknown'}</div>
+                    <div>Step: {lastResult.debugData.cvStep || 'no step info'}</div>
+                    <div>Error: {lastResult.debugData.cvError || 'no error info'}</div>
                     {lastResult.debugData.cvSuccess && (
                       <>
                         <div>Confidence: {lastResult.debugData.cvConfidence || 'N/A'}</div>

@@ -38,6 +38,8 @@ export interface GroundPlaneResult {
     cvSuccess?: boolean;
     cvError?: string;
     cvStep?: string;
+    videoReady?: boolean;
+    videoSize?: string;
     cvConfidence?: string;
     cvColor?: string;
     cvEdges?: string;
