@@ -32,6 +32,11 @@ interface ArCameraProps {
   onModelReset?: () => void;
   onSwipeUp?: () => void;
   onSwipeDown?: () => void;
+
+  onModelRefReady?: (modelRef: React.RefObject<THREE.Points | null>) => void;
+  onCallNewPositioning?: () => void; 
+
+
   children?: React.ReactNode;
 }
 
@@ -50,6 +55,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onModelReset,
   onSwipeUp,
   onSwipeDown,
+  onCallNewPositioning,
+  onModelRefReady,
   children
   
   
@@ -1255,6 +1262,9 @@ const userLocalPosition = getUserLocalPosition();
                       setArTestingOverride(newValue);
                       console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
                       
+                        if (onCallNewPositioning) {
+                          onCallNewPositioning();
+                        }
                       // NEW: Also call new positioning system if available
                       if (hookReady && experienceType) {
                         try {

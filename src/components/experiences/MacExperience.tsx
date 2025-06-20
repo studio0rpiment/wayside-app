@@ -27,6 +27,8 @@ interface MacExperienceProps {
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
   onExperienceReady?: () => void;
+    onModelRefReady?: (modelRef: React.RefObject<THREE.Points | null>) => void;
+  onCallNewPositioning?: () => void;
 }
 
 const MacExperience: React.FC<MacExperienceProps> = ({ 
@@ -41,7 +43,10 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   onModelReset,
   onSwipeUp,
   onSwipeDown,
-  onExperienceReady
+  onExperienceReady,
+  onModelRefReady,
+  onCallNewPositioning
+
 }) => {
 
   // NEW: Use the positioning hook
@@ -91,6 +96,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   // Point cloud configuration (fixed as requested)
   const POINT_SIZE = 2;
   const POINT_DENSITY = 0.7;
+
+  //********* When ArCameraWantsPositioning */
+  useEffect(() => {
+  
+    }, [onCallNewPositioning]);
 
   // NEW: Test positioning with hook when model loads
   useEffect(() => {
@@ -341,6 +351,10 @@ useEffect(() => {
     if (!isArMode) {
       document.body.appendChild(container);
     }
+
+    if (onModelRefReady) {
+          onModelRefReady(modelRef);
+        }
 
     // Initialize Three.js components
     let scene: THREE.Scene;
