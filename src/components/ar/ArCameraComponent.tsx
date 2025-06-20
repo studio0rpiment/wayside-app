@@ -33,8 +33,6 @@ interface ArCameraProps {
   onSwipeUp?: () => void;
   onSwipeDown?: () => void;
 
-  onModelRefReady?: (modelRef: React.RefObject<THREE.Points | null>) => void;
-  onCallNewPositioning?: () => void; 
 
 
   children?: React.ReactNode;
@@ -55,8 +53,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onModelReset,
   onSwipeUp,
   onSwipeDown,
-  onCallNewPositioning,
-  onModelRefReady,
+
   children
   
   
