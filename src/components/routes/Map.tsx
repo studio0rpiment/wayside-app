@@ -298,8 +298,6 @@ const Map: React.FC = () => {
           stopTracking={stopTracking}
           getPositionStats={getPositionStats}
           currentRadius={GEOFENCE_CONFIG.DEFAULT_RADIUS}
-          updateGlobalRadius={updateGlobalRadius}   // ✅ ADD: Pass the update function
-
         />
 
         {/* Compass calibration Debugger
