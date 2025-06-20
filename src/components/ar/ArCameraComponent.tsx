@@ -139,8 +139,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     scale: 1.0
   });
   // Debug/testing override state
-  const [debugCollapsed, setDebugCollapsed] = useState(false);
-  const [isBottomDebugCollapsed, setIsBottomDebugCollapsed] = useState(false);
+  const [debugCollapsed, setDebugCollapsed] = useState(true);
+  const [isBottomDebugCollapsed, setIsBottomDebugCollapsed] = useState(true);
 
 
   const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
@@ -1154,74 +1154,7 @@ const currentUserPosition = getBestUserPosition();
                 </span>
                 <span style={{ color: 'yellow' }}>🎥 AR CAMERA DEBUG</span>
               </div>
-
-               {!debugCollapsed && (
-              <div>    
-                <div>
-                    User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
-                  </div>
-
-                  <div>Anchor: [{activeAnchorPosition[0].toFixed(10)}, {activeAnchorPosition[1].toFixed(10)}]</div>  
-                                        
-                  <div>
-                    GPS Bearing: {currentUserPosition ? `${calculateBearing(currentUserPosition, anchorPosition).toFixed(1)}°` : 'N/A'}
-                  </div>
-                  <div style={{ color: 'cyan' }}>
-                  GPS Source: {preciseUserPosition ? 'AVERAGED' : 'RAW'} | 
-                  Accuracy: {currentAccuracy?.toFixed(1)}m | 
-                  Stable: {isPositionStable ? '✅' : '❌'}
-                </div>
-                <div style={{ 
-                      color: positionQuality === 'excellent' || positionQuality === 'good' ? '#10B981' : 
-                            positionQuality === 'fair' ? '#F59E0B' : '#EF4444' 
-                    }}>
-                      Quality: {positionQuality?.toUpperCase() || 'UNKNOWN'}
-                    </div>
-
-
-         
-                <div>
-                  <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
-                  <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
-                </div>
-
-                  {orientationError && 
-                    <div style={{color: 'red'}}> Orient Error: {orientationError} </div>}
-                    // Add this button in your debug panel, maybe near the ground plane test UI:
-
-{/* <button
-  onClick={() => {
-    if (groundPlaneDetectorRef.current?.checkCameraReadiness) {
-      const readiness = groundPlaneDetectorRef.current.checkCameraReadiness();
-      console.log('📹 Camera Readiness Check:', readiness);
-      // You could show this in a debug section too
-    }
-  }}
-  style={{
-    fontSize: '10px',
-    padding: '4px 8px',
-    backgroundColor: 'rgba(100,100,255,0.3)',
-    border: 'none',
-    color: 'white',
-    cursor: 'pointer'
-  }}
->
-  📹 Check Camera
-</button> */}
-                  {/* <div>
-                  <GroundPlaneTestUI
-                        isTestMode={showGroundPlaneTest}
-                        onToggleTestMode={toggleGroundPlaneTest}
-                        onDetectNow={detectGroundNow}
-                        onAdjustGround={handleGroundAdjustment}
-                        onResetGround={handleGroundReset}
-                        onCheckCamera={handleCameraCheck}  // NEW
-                        currentOffset={groundPlaneDetectorRef.current?.getCurrentOffset?.() || 0}
-                        lastResult={groundPlaneDetectorRef.current?.lastResult || null}
-                      />
-                    </div> */}
-
-                <div style={{ 
+                              <div style={{ 
                     display: 'flex', 
                     flexDirection: 'row' ,
                     gap: '8px'
@@ -1265,6 +1198,74 @@ const currentUserPosition = getBestUserPosition();
                     Reset Calibration
                   </button>
                 </div>
+
+               {!debugCollapsed && (
+              <div>    
+                <div>
+                    User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
+                  </div>
+
+                  <div>Anchor: [{activeAnchorPosition[0].toFixed(10)}, {activeAnchorPosition[1].toFixed(10)}]</div>  
+                                        
+                  <div>
+                    GPS Bearing: {currentUserPosition ? `${calculateBearing(currentUserPosition, anchorPosition).toFixed(1)}°` : 'N/A'}
+                  </div>
+                  <div style={{ color: 'cyan' }}>
+                  GPS Source: {preciseUserPosition ? 'AVERAGED' : 'RAW'} | 
+                  Accuracy: {currentAccuracy?.toFixed(1)}m | 
+                  Stable: {isPositionStable ? '✅' : '❌'}
+                </div>
+                <div style={{ 
+                      color: positionQuality === 'excellent' || positionQuality === 'good' ? '#10B981' : 
+                            positionQuality === 'fair' ? '#F59E0B' : '#EF4444' 
+                    }}>
+                      Quality: {positionQuality?.toUpperCase() || 'UNKNOWN'}
+                    </div>
+
+
+         
+                <div>
+                  <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
+                  <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
+                </div>
+
+                  {orientationError && 
+                    <div style={{color: 'red'}}> Orient Error: {orientationError} </div>}
+                 
+
+{/* <button
+  onClick={() => {
+    if (groundPlaneDetectorRef.current?.checkCameraReadiness) {
+      const readiness = groundPlaneDetectorRef.current.checkCameraReadiness();
+      console.log('📹 Camera Readiness Check:', readiness);
+      // You could show this in a debug section too
+    }
+  }}
+  style={{
+    fontSize: '10px',
+    padding: '4px 8px',
+    backgroundColor: 'rgba(100,100,255,0.3)',
+    border: 'none',
+    color: 'white',
+    cursor: 'pointer'
+  }}
+>
+  📹 Check Camera
+</button> */}
+                  {/* <div>
+                  <GroundPlaneTestUI
+                        isTestMode={showGroundPlaneTest}
+                        onToggleTestMode={toggleGroundPlaneTest}
+                        onDetectNow={detectGroundNow}
+                        onAdjustGround={handleGroundAdjustment}
+                        onResetGround={handleGroundReset}
+                        onCheckCamera={handleCameraCheck}  // NEW
+                        currentOffset={groundPlaneDetectorRef.current?.getCurrentOffset?.() || 0}
+                        lastResult={groundPlaneDetectorRef.current?.lastResult || null}
+                      />
+                    </div> */}
+
+
               </div>)}
             </div>
             
