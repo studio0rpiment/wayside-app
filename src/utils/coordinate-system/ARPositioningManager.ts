@@ -124,10 +124,12 @@ export class ARPositioningManager {
     return {
       worldPosition: anchorWorldPosition,
       relativeToUser,
-      rotation: anchor.rotation.clone(),
+        rotation: new THREE.Euler(anchor.rotation.x, anchor.rotation.y + Math.PI, anchor.rotation.z), // Add 180° Y rotation
+
       scale: finalScale,
       isUsingDebugMode: this.debugMode || !!options.useDebugOverride,
       distanceFromUser,
+      
       anchor,
       userWorldPosition,
       userGpsPosition

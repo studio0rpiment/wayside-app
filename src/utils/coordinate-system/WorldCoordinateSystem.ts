@@ -111,7 +111,7 @@ export class WorldCoordinateSystem {
     
     const cosLat = Math.cos(toRadians(originLat));
     const deltaLon = worldPos.x / (EARTH_RADIUS * cosLat);
-    const deltaLat = worldPos.z / EARTH_RADIUS;
+    const deltaLat = -worldPos.z / EARTH_RADIUS;
     
     const gpsLon = originLon + toDegrees(deltaLon);
     const gpsLat = originLat + toDegrees(deltaLat);
