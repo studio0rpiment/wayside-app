@@ -96,6 +96,9 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   useEffect(() => {
     if (modelRef.current && USE_NEW_POSITIONING && hookReady) {
       console.log('🧪 Testing NEW positioning system with hook...');
+
+       modelRef.current.position.set(0, 0, 0);
+      modelRef.current.rotation.set(0, 0, 0); 
       
       const success = positionObject(modelRef.current, 'mac');
       console.log(`🧪 Hook positioning result: ${success ? 'SUCCESS' : 'FAILED'}`);
@@ -651,8 +654,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
                 adjustGlobalElevation(-0.5);
                 if (modelRef.current && USE_NEW_POSITIONING) {
 
-                    modelRef.current.position.set(0, 0, 0);
-                    modelRef.current.rotation.set(0, 0, 0); 
+                   
 
 
                   positionObject(modelRef.current, 'mac');
