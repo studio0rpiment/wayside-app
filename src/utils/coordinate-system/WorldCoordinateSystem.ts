@@ -91,7 +91,7 @@ export class WorldCoordinateSystem {
     // Convert to radians
     const originLatRad = toRadians(originLat);
     const dLat = toRadians(targetLat - originLat);
-    const dLon = toRadians(targetLon - originLon);
+    const dLon = -(toRadians(targetLon - originLon));
     
     // Convert to meters using local approximation
     const cosLat = Math.cos(originLatRad);
