@@ -80,24 +80,24 @@ export class ARPositioningManager {
     let anchorWorldPosition: THREE.Vector3;
     
    if (this.debugMode || options.useDebugOverride) {
-  if (options.forcePosition) {
-    anchorWorldPosition = options.forcePosition.clone();
-    console.log("force Position")
-  } else {
-    // Make debug position relative to user, not world origin
-    if (userWorldPosition) {
-      anchorWorldPosition = userWorldPosition.clone().add(this.globalDebugPosition);
-      console.log(anchorWorldPosition)
-    
-    } else {
-      // Fallback if no user position available
-      anchorWorldPosition = this.globalDebugPosition.clone();
-      console.log("fallback postition")
-    }
-  }
-} else {
-  anchorWorldPosition = anchor.worldPosition.clone();
-}
+        if (options.forcePosition) {
+            anchorWorldPosition = options.forcePosition.clone();
+            console.log("force Position")
+        } else {
+            // Make debug position relative to user, not world origin
+            if (userWorldPosition) {
+            anchorWorldPosition = userWorldPosition.clone().add(this.globalDebugPosition);
+            console.log(anchorWorldPosition)
+            
+            } else {
+            // Fallback if no user position available
+            anchorWorldPosition = this.globalDebugPosition.clone();
+            console.log("fallback postition")
+            }
+        }
+        } else {
+        anchorWorldPosition = anchor.worldPosition.clone();
+        }
 
     // Apply elevation adjustments to address "too high" issue
     const totalElevationOffset = this.globalElevationOffset + (options.manualElevationOffset || 0);
@@ -108,8 +108,10 @@ export class ARPositioningManager {
     if (userWorldPosition) {
       relativeToUser = anchorWorldPosition.clone().sub(userWorldPosition);
     } else {
+       
       // No user position available - use anchor position directly
       relativeToUser = anchorWorldPosition.clone();
+       relativeToUser.y = -relativeToUser.y; 
     }
 
     // Calculate distance
