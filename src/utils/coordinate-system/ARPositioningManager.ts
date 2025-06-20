@@ -48,7 +48,7 @@ export class ARPositioningManager {
   
   // Debug state
   private debugMode: boolean = false;
-  private globalDebugPosition: THREE.Vector3 = new THREE.Vector3(0, 0, -5);
+  private globalDebugPosition: THREE.Vector3 = new THREE.Vector3(0, 0, -15);
 
   constructor(worldSystem: WorldCoordinateSystem, anchorManager: AnchorManager) {
     this.worldSystem = worldSystem;

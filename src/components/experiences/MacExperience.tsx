@@ -456,9 +456,9 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 
         pointCloud.scale.set(initialScale, initialScale, initialScale);
         
-        // Apply Z-up to Y-up rotation (Blender to Three.js conversion)
-        pointCloud.rotation.x = -Math.PI / 2;
-
+        if (!USE_NEW_POSITIONING) {  // Only apply for OLD system
+          pointCloud.rotation.x = -Math.PI / 2;
+        }
         // Add point cloud to scene FIRST
         scene.add(pointCloud);
         
@@ -650,6 +650,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
                 console.log('🧪 Elevation adjustment test...');
                 adjustGlobalElevation(-0.5);
                 if (modelRef.current && USE_NEW_POSITIONING) {
+
+                    // modelRef.current.position.set(0, 0, 0);
+                    // modelRef.current.rotation.set(0, 0, 0); 
+
+
                   positionObject(modelRef.current, 'mac');
                 }
               }}
