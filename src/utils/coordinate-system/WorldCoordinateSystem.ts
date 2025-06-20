@@ -96,7 +96,7 @@ export class WorldCoordinateSystem {
     // Convert to meters using local approximation
     const cosLat = Math.cos(originLatRad);
     
-    const x = dLon * EARTH_RADIUS * cosLat;
+    const x = -dLon * EARTH_RADIUS * cosLat;
     const z = dLat * EARTH_RADIUS; // Negative for Three.js coordinates
     const y = elevation - this.originElevation;
     
