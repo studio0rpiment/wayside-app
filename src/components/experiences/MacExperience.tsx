@@ -66,6 +66,9 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const initialScaleRef = useRef<number>(1);
+
+  const [lastTrigger, setLastTrigger] = useState(0);
+
   
   // Store original geometry for density/size adjustments
   const originalGeometryRef = useRef<THREE.BufferGeometry | null>(null);
@@ -134,10 +137,15 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     if (!USE_NEW_POSITIONING) {
       const checkOverride = () => {
         const currentOverride = (window as any).arTestingOverride ?? true;
-        if (currentOverride !== arTestingOverride) {
-          setArTestingOverride(currentOverride);
-          console.log('🎯 OLD SYSTEM: MacExperience override changed:', currentOverride);
-          
+        const newTrigger = (window as any).arPositioningTrigger ?? 0;
+          if (currentOverride !== arTestingOverride || newTrigger !== lastTrigger) {
+      setArTestingOverride(currentOverride);
+      setLastTrigger(newTrigger);
+      
+      if (USE_NEW_POSITIONING && hookReady && modelRef.current) {
+        console.log('🧪 MacExperience calling new positioning');
+        positionObject(modelRef.current, 'mac');
+      }
           if (modelRef.current && isArMode && arPosition) {
             if (currentOverride) {
               console.log('🎯 OLD SYSTEM: Setting override position (0, 0, -5)');

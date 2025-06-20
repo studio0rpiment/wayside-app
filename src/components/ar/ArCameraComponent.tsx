@@ -1272,6 +1272,8 @@ const userLocalPosition = getUserLocalPosition();
                           console.log('🧪 Calling new positioning system for:', experienceType);
                           // Note: We don't have direct model ref here, but the hook will handle positioning
                           // The individual experiences will pick up the change via their polling
+                          (window as any).arNewPositioningTrigger = Date.now();
+
                         } catch (error) {
                           console.warn('Error calling new positioning system:', error);
                         }
