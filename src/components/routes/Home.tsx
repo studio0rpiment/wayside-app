@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ContentConfigHelper from '../../utils/ContentConfigHelper';
 import { ContentContainerProps } from '../../components/common/ContentContainer';
@@ -17,6 +17,23 @@ const Home: React.FC = () => {
   const kenConfig = ContentConfigHelper.getTemplateById('kenilworthLogo') as ContentContainerProps;
   const buttonConfig = ContentConfigHelper.getTemplateById('buttonToOnboarding') as ContentContainerProps;
 
+  // Test coordinate system on mount (development only)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // Small delay to let the page load first
+      const timer = setTimeout(() => {
+        import('../../utils/coordinate-system/test-world-system').then(module => {
+          console.log('🏠 Running coordinate system test from Home page...');
+          module.testWorldCoordinateSystem();
+        }).catch(error => {
+          console.log('⚠️ Coordinate system test not available yet:', error.message);
+        });
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   return (
     <div className="home-route" style = {{height: '100svh'}}>
       <GradientElement 
@@ -24,8 +41,6 @@ const Home: React.FC = () => {
         gradientType="aurora"
         blockSize={150}
         animationDuration="30s"
-    
-        
       >
         <VerticalSection 
           id="vert1" 
@@ -56,6 +71,37 @@ const Home: React.FC = () => {
             <Button {...buttonConfig} />
           </Link>
           </div>
+
+          {/* Development-only coordinate system test button */}
+          {process.env.NODE_ENV === 'development' && (
+            <button 
+              onClick={() => {
+                import('../../utils/coordinate-system/test-world-system').then(module => {
+                  console.clear();
+                  console.log('🧪 Manual coordinate system test triggered...');
+                  module.testWorldCoordinateSystem();
+                }).catch(error => {
+                  console.log('⚠️ Test files not created yet. Create WorldCoordinateSystem.ts and test-world-system.ts first.');
+                });
+              }}
+              style={{
+                position: 'fixed',
+                bottom: '20px',
+                right: '20px',
+                zIndex: 9999,
+                padding: '10px 15px',
+                backgroundColor: 'rgba(0, 100, 200, 0.9)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontFamily: 'monospace'
+              }}
+            >
+              🧪 Test Coords
+            </button>
+          )}
         </VerticalSection>
       </GradientElement>
     </div>

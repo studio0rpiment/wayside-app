@@ -119,7 +119,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94241642951967, 38.912939589606665], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': 2.0,        // Light gray area - low elevation
+          'elevation': 0,        // Light gray area - low elevation
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -167,7 +167,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94200471043588, 38.91247104974667], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': 4.0,        // Medium gray area - elevated
+          'elevation': 0,        // Medium gray area - elevated
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -215,7 +215,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94298371672632, 38.91233852232087], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': 2.5,        // Light-medium gray - water/pond area
+          'elevation': 0,        // Light-medium gray - water/pond area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -263,7 +263,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94411292672157, 38.91257957595829], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': 5.0,        // Medium-dark gray - elevated area
+          'elevation': 0,        // Medium-dark gray - elevated area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -307,7 +307,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94352954626085, 38.91317333662087], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': 3.0,        // Light-medium gray area
+          'elevation': 0,        // Light-medium gray area
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -351,7 +351,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94467082619668, 38.91340082181521], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': 3.5,        // Medium gray - slightly elevated
+          'elevation': 0,        // Medium gray - slightly elevated
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -396,7 +396,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94939017295839, 38.91095479599299], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': 6.0,        // Darker area - higher elevation (outside main pond)
+          'elevation': 0,        // Darker area - higher elevation (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -434,7 +434,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94757029414178, 38.91195033032686], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': 7.0,        // Dark area - elevated terrain (outside main pond)
+          'elevation': 0,        // Dark area - elevated terrain (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -479,7 +479,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94950819015504, 38.91204842205269], // Precise coordinates preserved
           'destination': [-76.94867670536043, 38.91237400212842],
-          'elevation': 8.0,        // Very dark area - highest elevation (outside main pond)
+          'elevation': 0,        // Very dark area - highest elevation (outside main pond)
           'orientation': 180,      // Facing south
           'scale': 1.5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -645,7 +645,7 @@ export const getArAnchorForPoint = (
     destination: destination,
     elevation: result.terrainElevation !== null 
       ? result.terrainElevation + result.experienceOffset 
-      : anchor.elevation || 2.0,
+      : anchor.elevation || 0,
     orientation: anchor.orientation || 0,
     scale: anchor.scale || 1.0,
     usedTerrain: result.usedTerrain,

@@ -6,8 +6,13 @@ import { getAssetPath } from '../../utils/assetPaths';
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-const SHOW_DEBUG_PANEL = false;
+// NEW: Import the positioning hook
+import { useARPositioning } from '../../hooks/useARPositioning';
 
+const SHOW_DEBUG_PANEL = true; // Enable for testing
+
+// NEW: Test flag to switch between systems
+const USE_NEW_POSITIONING = true; // Set to true to test new hook
 
 interface MacExperienceProps {
   onClose: () => void;
@@ -21,7 +26,7 @@ interface MacExperienceProps {
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
-   onExperienceReady?: () => void;
+  onExperienceReady?: () => void;
 }
 
 const MacExperience: React.FC<MacExperienceProps> = ({ 
@@ -39,6 +44,16 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   onExperienceReady
 }) => {
 
+  // NEW: Use the positioning hook
+  const { 
+    positionObject, 
+    getPosition,
+    adjustGlobalElevation,
+    isReady: hookReady,
+    userPosition: hookUserPosition,
+    debugMode: hookDebugMode,
+    getDebugInfo
+  } = useARPositioning();
 
   // Refs for Three.js objects
   const modelRef = useRef<THREE.Points | null>(null);
@@ -53,7 +68,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   // Store initial camera position for reset
   const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
   
-  // State to track override status
+  // OLD SYSTEM: State to track override status (keep for comparison)
   const [arTestingOverride, setArTestingOverride] = useState(() => {  
     return (window as any).arTestingOverride ?? true;
   });
@@ -73,44 +88,70 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   initialScaleRef.current = scale; 
   const initialScale = initialScaleRef.current;
   
-
   // Point cloud configuration (fixed as requested)
-  const POINT_SIZE = 2; // Reduced from 1.0 - pixels can be very large
+  const POINT_SIZE = 2;
   const POINT_DENSITY = 0.7;
 
-  // Listen for override changes
+  // NEW: Test positioning with hook when model loads
   useEffect(() => {
-    const checkOverride = () => {
-      const currentOverride = (window as any).arTestingOverride ?? true;
-      if (currentOverride !== arTestingOverride) {
-        setArTestingOverride(currentOverride);
-        console.log('🎯 MacExperience override changed:', currentOverride);
+    if (modelRef.current && USE_NEW_POSITIONING && hookReady) {
+      console.log('🧪 Testing NEW positioning system with hook...');
+      
+      const success = positionObject(modelRef.current, 'mac');
+      console.log(`🧪 Hook positioning result: ${success ? 'SUCCESS' : 'FAILED'}`);
+      
+      if (success) {
+        console.log('🧪 Model positioned by hook at:', modelRef.current.position);
         
-        if (modelRef.current && isArMode && arPosition) {
-          if (currentOverride) {
-            console.log('🎯 Setting override position (0, 0, -5)');
-            modelRef.current.position.set(0, 0, -5);
-          } else {
-            console.log('🎯 Setting anchor position:', arPosition);
-            modelRef.current.position.copy(arPosition);
-          }
-          
-          // Force visual update
-          modelRef.current.visible = false;
-          setTimeout(() => {
-            if (modelRef.current) {
-              modelRef.current.visible = true;
-            }
-          }, 50);
-          
-          console.log('🎯 Model position after change:', modelRef.current.position);
+        // Get position data for debugging
+        const positionData = getPosition('mac');
+        if (positionData) {
+          console.log('🧪 Hook position data:', {
+            worldPosition: positionData.worldPosition.toArray(),
+            relativeToUser: positionData.relativeToUser.toArray(),
+            isUsingDebugMode: positionData.isUsingDebugMode,
+            distanceFromUser: positionData.distanceFromUser
+          });
         }
       }
-    };
-    
-    const interval = setInterval(checkOverride, 100);
-    return () => clearInterval(interval);
-  }, [arTestingOverride, isArMode, arPosition]);
+    }
+  }, [modelRef.current, hookReady, USE_NEW_POSITIONING, positionObject, getPosition]);
+
+  // OLD SYSTEM: Listen for override changes (keep for comparison)
+  useEffect(() => {
+    if (!USE_NEW_POSITIONING) {
+      const checkOverride = () => {
+        const currentOverride = (window as any).arTestingOverride ?? true;
+        if (currentOverride !== arTestingOverride) {
+          setArTestingOverride(currentOverride);
+          console.log('🎯 OLD SYSTEM: MacExperience override changed:', currentOverride);
+          
+          if (modelRef.current && isArMode && arPosition) {
+            if (currentOverride) {
+              console.log('🎯 OLD SYSTEM: Setting override position (0, 0, -5)');
+              modelRef.current.position.set(0, 0, -5);
+            } else {
+              console.log('🎯 OLD SYSTEM: Setting anchor position:', arPosition);
+              modelRef.current.position.copy(arPosition);
+            }
+            
+            // Force visual update
+            modelRef.current.visible = false;
+            setTimeout(() => {
+              if (modelRef.current) {
+                modelRef.current.visible = true;
+              }
+            }, 50);
+            
+            console.log('🎯 OLD SYSTEM: Model position after change:', modelRef.current.position);
+          }
+        }
+      };
+      
+      const interval = setInterval(checkOverride, 100);
+      return () => clearInterval(interval);
+    }
+  }, [arTestingOverride, isArMode, arPosition, USE_NEW_POSITIONING]);
 
   // Register gesture handlers on mount
   useEffect(() => {
@@ -133,11 +174,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         if (modelRef.current) {
           const currentScale = modelRef.current.scale.x;
           const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
-         console.log('🔍 Scale handler called AFTER RESET:', {
+          console.log('🔍 Scale handler called:', {
             scaleFactor,
             currentScale: currentScale.toFixed(3),
             newScale: newScale.toFixed(3),
-            timestamp: new Date().getTime()
+            system: USE_NEW_POSITIONING ? 'NEW' : 'OLD'
           });
           modelRef.current.scale.setScalar(newScale);
         }
@@ -147,28 +188,32 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     // Register reset handler
     if (onModelReset) {
       onModelReset(() => {
-        console.log('🔄 RESET HANDLER CALLED - Starting reset...');
+        console.log(`🔄 RESET HANDLER CALLED - ${USE_NEW_POSITIONING ? 'NEW' : 'OLD'} system`);
         if (modelRef.current) {
           // Reset rotation and scale
           modelRef.current.rotation.set(-Math.PI / 2, 0, 0); // Keep Z-up to Y-up conversion
-          // Reset to initial calculated scale, not 1
-            
           modelRef.current.scale.set(initialScale, initialScale, initialScale);
           
-          // Reset position based on current mode
-          if (isArMode && arPosition) {
-            const currentOverride = (window as any).arTestingOverride ?? true;
-            
-            if (currentOverride) {
-              modelRef.current.position.set(0, 0, -5);
-              console.log('🔄 Reset: MAC positioned at override location');
-            } else {
-              modelRef.current.position.copy(arPosition);
-              console.log('🔄 Reset: MAC positioned at AR anchor location');
-            }
+          if (USE_NEW_POSITIONING && hookReady) {
+            // NEW SYSTEM: Use hook for positioning
+            console.log('🔄 NEW SYSTEM: Using hook for reset positioning');
+            positionObject(modelRef.current, 'mac');
           } else {
-            modelRef.current.position.set(0, 0, -3);
-            console.log('🔄 Reset: MAC positioned at standalone location');
+            // OLD SYSTEM: Manual positioning logic
+            if (isArMode && arPosition) {
+              const currentOverride = (window as any).arTestingOverride ?? true;
+              
+              if (currentOverride) {
+                modelRef.current.position.set(0, 0, -5);
+                console.log('🔄 OLD SYSTEM: MAC positioned at override location');
+              } else {
+                modelRef.current.position.copy(arPosition);
+                console.log('🔄 OLD SYSTEM: MAC positioned at AR anchor location');
+              }
+            } else {
+              modelRef.current.position.set(0, 0, -3);
+              console.log('🔄 OLD SYSTEM: MAC positioned at standalone location');
+            }
           }
           
           console.log('🔄 Model reset completed - Scale is now:', modelRef.current.scale.x);
@@ -188,28 +233,28 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         console.log('👇 Swipe down detected on MAC');
       });
     }
-  }, []); // Empty dependency array - register once on mount
+  }, [USE_NEW_POSITIONING, hookReady, positionObject]); // Added dependencies
 
-const centeringOffset = new THREE.Vector3(-knownCenter.x, -knownCenter.y, -knownCenter.z);
+  const centeringOffset = new THREE.Vector3(-knownCenter.x, -knownCenter.y, -knownCenter.z);
 
-
-useEffect(() => {
-  if (modelRef.current && arPosition && isArMode) {
-    const currentOverride = (window as any).arTestingOverride ?? false;
-    
-    if (!currentOverride) {
-      // Apply AR position + centering offset
-      const finalPosition = arPosition.clone().add(centeringOffset);
-      modelRef.current.position.copy(finalPosition);
+  // OLD SYSTEM: Position updates (only run if using old system)
+  useEffect(() => {
+    if (!USE_NEW_POSITIONING && modelRef.current && arPosition && isArMode) {
+      const currentOverride = (window as any).arTestingOverride ?? false;
       
-      console.log('🎯 MAC positioned with centering:', {
-        arPosition,
-        centeringOffset,
-        finalPosition
-      });
+      if (!currentOverride) {
+        // Apply AR position + centering offset
+        const finalPosition = arPosition.clone().add(centeringOffset);
+        modelRef.current.position.copy(finalPosition);
+        
+        console.log('🎯 OLD SYSTEM: MAC positioned with centering:', {
+          arPosition,
+          centeringOffset,
+          finalPosition
+        });
+      }
     }
-  }
-}, [arPosition, isArMode]);
+  }, [arPosition, isArMode, USE_NEW_POSITIONING]);
 
   // Geometry sampling function (ported from CodePen)
   const sampleGeometry = (geometry: THREE.BufferGeometry, density: number): THREE.BufferGeometry => {
@@ -279,7 +324,7 @@ useEffect(() => {
   useEffect(() => {
     let isMounted = true;
     
-    console.log('🎯 MACExperience mode:', isArMode ? 'AR' : 'Standalone');
+    console.log(`🎯 MACExperience mode: ${isArMode ? 'AR' : 'Standalone'} | System: ${USE_NEW_POSITIONING ? 'NEW HOOK' : 'OLD'}`);
     
     // Create container for standalone mode
     const container = document.createElement('div');
@@ -361,151 +406,117 @@ useEffect(() => {
     loadingDiv.style.padding = '20px';
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = '.... Loading ....';
+    loadingDiv.innerHTML = `Loading MAC (${USE_NEW_POSITIONING ? 'NEW' : 'OLD'} system)...`;
     container.appendChild(loadingDiv);
 
     // Load the PLY model
     const modelPath = getAssetPath('models/mac.ply');
     console.log('🎯 Loading MAC PLY model:', modelPath);
 
-    // Fixed PLY loader.load function
-   // Optimized PLY loader using known Cloud Compare dimensions
-loader.load(
-  modelPath,
-  (geometry) => {
-    if (!isMounted) return;
+    // PLY loader
+    loader.load(
+      modelPath,
+      (geometry) => {
+        if (!isMounted) return;
 
-    console.log('📊 Original PLY loaded:', {
-      vertices: geometry.attributes.position.count,
-      hasColors: !!geometry.attributes.color,
-      hasNormals: !!geometry.attributes.normal
-    });
+        console.log('📊 Original PLY loaded:', {
+          vertices: geometry.attributes.position.count,
+          hasColors: !!geometry.attributes.color,
+          hasNormals: !!geometry.attributes.normal
+        });
 
-    // Store original geometry
-    originalGeometryRef.current = geometry.clone();
-    
-    // Apply density sampling
-    const sampledGeometry = sampleGeometry(geometry, POINT_DENSITY);
-    const finalPointCount = sampledGeometry.attributes.position.count;
-    
-    console.log('📊 Sampled geometry:', {
-      originalPoints: geometry.attributes.position.count,
-      sampledPoints: finalPointCount,
-      density: POINT_DENSITY,
-      reduction: `${(100 - (finalPointCount / geometry.attributes.position.count) * 100).toFixed(1)}%`
-    });
+        // Store original geometry
+        originalGeometryRef.current = geometry.clone();
+        
+        // Apply density sampling
+        const sampledGeometry = sampleGeometry(geometry, POINT_DENSITY);
+        const finalPointCount = sampledGeometry.attributes.position.count;
+        
+        // Create point material with simple fixed size
+        const material = new THREE.PointsMaterial({
+          size: 1.0,
+          sizeAttenuation: false,
+          vertexColors: !!sampledGeometry.attributes.color
+        });
 
-    // Create point material with simple fixed size
-    const material = new THREE.PointsMaterial({
-      size: 1.0, // Fixed size - scale will handle the visual sizing
-      sizeAttenuation: false, // Keep consistent size
-      vertexColors: !!sampledGeometry.attributes.color
-    });
+        // Set fallback color if no vertex colors
+        if (!sampledGeometry.attributes.color) {
+          material.color.setHex(0xff6b6b);
+        }
 
-    // Set fallback color if no vertex colors
-    if (!sampledGeometry.attributes.color) {
-      material.color.setHex(0xff6b6b); // red fallback 
-      console.log('⚠️ No vertex colors found, using fallback color');
-    } else {
-      console.log('✅ Using embedded vertex colors from PLY');
-    }
+        // Create point cloud
+        const pointCloud = new THREE.Points(sampledGeometry, material);
+        pointCloud.name = 'mac-point-cloud'; // Name for debugging
+        modelRef.current = pointCloud;
+        
+        // Apply centering - move model so its center is at origin
+        pointCloud.position.x = -knownCenter.x;
+        pointCloud.position.y = -knownCenter.y;
+        pointCloud.position.z = -knownCenter.z;
 
-    // Create point cloud
-    const pointCloud = new THREE.Points(sampledGeometry, material);
-    modelRef.current = pointCloud;
-    
-      // Use known dimensions from Cloud Compare - NO expensive bounding box calculation
+        pointCloud.scale.set(initialScale, initialScale, initialScale);
+        
+        // Apply Z-up to Y-up rotation (Blender to Three.js conversion)
+        pointCloud.rotation.x = -Math.PI / 2;
 
-    
-    console.log('📐 Using known model dimensions:', {
-      maxDim: knownMaxDim,
-      center: knownCenter
-    });
-
-    // Apply centering - move model so its center is at origin
-    pointCloud.position.x = -knownCenter.x;
-    pointCloud.position.y = -knownCenter.y;
-    pointCloud.position.z = -knownCenter.z;
-
-
-    pointCloud.scale.set(initialScale, initialScale, initialScale);
-    
-    console.log('🔧 Applied scale:', scale.toFixed(3));
-
-    // Apply Z-up to Y-up rotation (Blender to Three.js conversion)
-    pointCloud.rotation.x = -Math.PI / 2;
-
-    // Apply final positioning - ADD to the centered position, don't replace it
-    if (isArMode && arPosition) {
-      const currentOverride = (window as any).arTestingOverride ?? true;
-      
-      if (currentOverride) {
-            modelRef.current.position.set(0, 0, -5);
-            console.log('🔄 Reset: MAC positioned at override location');
+        // Add point cloud to scene FIRST
+        scene.add(pointCloud);
+        
+        // THEN apply positioning based on system
+        if (USE_NEW_POSITIONING) {
+          console.log('🧪 NEW SYSTEM: Model loaded, will use hook for positioning');
+          // The useEffect above will handle positioning via hook
+        } else {
+          console.log('🎯 OLD SYSTEM: Applying manual positioning');
+          // Apply final positioning - OLD SYSTEM
+          if (isArMode && arPosition) {
+            const currentOverride = (window as any).arTestingOverride ?? true;
+            
+            if (currentOverride) {
+              pointCloud.position.set(0, 0, -5);
+              console.log('🔄 OLD SYSTEM: MAC positioned at override location');
+            } else {
+              pointCloud.position.copy(arPosition);
+              console.log('🔄 OLD SYSTEM: MAC positioned at AR anchor location');
+            }
           } else {
-            modelRef.current.position.copy(arPosition);
-            console.log('🔄 Reset: MAC positioned at AR anchor location');
+            // Add standalone offset to centered position
+            pointCloud.position.add(new THREE.Vector3(0, 0, -3));
+            console.log('🎯 OLD SYSTEM: MAC positioned at standalone location');
           }
-    } else {
-      // Add standalone offset to centered position
-      pointCloud.position.add(new THREE.Vector3(0, 0, -3));
-      console.log('🎯 MAC positioned at standalone location');
-    }
-    
-    // Add point cloud to scene
-    scene.add(pointCloud);
-    
-    // Update state
-    setHasPointCloud(true);
-    setPointCount(finalPointCount);
-    onExperienceReady?.();
-    
-    // Remove loading indicator
-    if (container.contains(loadingDiv)) {
-      container.removeChild(loadingDiv);
-    }
-    
-    console.log('✅ MAC point cloud loaded successfully');
-    console.log('📊 Final model stats:', {
-      position: {
-        x: pointCloud.position.x.toFixed(3),
-        y: pointCloud.position.y.toFixed(3), 
-        z: pointCloud.position.z.toFixed(3)
+        }
+        
+        // Update state
+        setHasPointCloud(true);
+        setPointCount(finalPointCount);
+        onExperienceReady?.();
+        
+        // Remove loading indicator
+        if (container.contains(loadingDiv)) {
+          container.removeChild(loadingDiv);
+        }
+        
+        console.log('✅ MAC point cloud loaded successfully');
       },
-      rotation: {
-        x: pointCloud.rotation.x.toFixed(3),
-        y: pointCloud.rotation.y.toFixed(3),
-        z: pointCloud.rotation.z.toFixed(3)
+      
+      // Progress callback
+      (xhr) => {
+        const percent = (xhr.loaded / xhr.total) * 100;
+        if (loadingDiv && container.contains(loadingDiv)) {
+          loadingDiv.innerHTML = `Loading MAC (${USE_NEW_POSITIONING ? 'NEW' : 'OLD'}) ${percent.toFixed(0)}%`;
+        }
       },
-      scale: {
-        x: pointCloud.scale.x.toFixed(3),
-        y: pointCloud.scale.y.toFixed(3),
-        z: pointCloud.scale.z.toFixed(3)
-      },
-      pointCount: finalPointCount,
-      pointSize: material.size,
-      materialType: material.type
-    });
-  },
-  
-  // Progress callback
-  (xhr) => {
-    const percent = (xhr.loaded / xhr.total) * 100;
-    console.log(`📥 MAC PLY ${percent.toFixed(1)}% loaded`);
-    if (loadingDiv && container.contains(loadingDiv)) {
-      loadingDiv.innerHTML = `Loading MAA Point Cloud... ${percent.toFixed(0)}%`;
-    }
-  },
-  
-  // Error callback
-  (error) => {
-    console.error('❌ Error loading MAC PLY:', error);
-    if (container.contains(loadingDiv)) {
-      loadingDiv.innerHTML = 'Error loading MAC PLY file. File may be missing or invalid.';
-      loadingDiv.style.color = '#ff6666';
-    }
-  }
-);
+      
+      // Error callback
+      (error) => {
+        console.error('❌ Error loading MAC PLY:', error);
+        if (container.contains(loadingDiv)) {
+          loadingDiv.innerHTML = 'Error loading MAC PLY file';
+          loadingDiv.style.color = '#ff6666';
+        }
+      }
+    );
+
     // Handle window resize
     const handleResize = () => {
       if (isMounted && camera && renderer) {
@@ -516,23 +527,6 @@ loader.load(
     };
     
     window.addEventListener('resize', handleResize);
-    
-    // // Animation loop (no model animations needed for point clouds)
-    // const animate = function () {
-    //   if (!isMounted) return;
-      
-    //   requestAnimationFrame(animate);
-      
-    //   if (controls) {
-    //     controls.update();
-    //   }
-      
-    //   if (renderer && scene && camera) {
-    //     renderer.render(scene, camera);
-    //   }
-    // };
-    
-    // animate();
     
     // Cleanup function
     return () => {
@@ -569,73 +563,118 @@ loader.load(
         document.body.removeChild(container);
       }
     };
-  }, [isArMode]); // Only isArMode dependency
+  }, [isArMode, USE_NEW_POSITIONING]); // Added USE_NEW_POSITIONING dependency
 
   return (
     <>
-      {/* Debug Panel for MAC Experience */}
+      {/* Enhanced Debug Panel for Testing */}
       {SHOW_DEBUG_PANEL && (
         <div style={{
           position: 'absolute',
           bottom: '10px',
           right: '10px',
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
           color: 'white',
-          padding: '10px',
-          borderRadius: '4px',
-          fontSize: '12px',
+          padding: '12px',
+          borderRadius: '8px',
+          fontSize: '11px',
           zIndex: 1003,
           pointerEvents: 'auto',
-          fontFamily: 'monospace'
+          fontFamily: 'monospace',
+          maxWidth: '300px'
         }}>
-          <div style={{ color: 'yellow' }}>🖥️ MAC POINT CLOUD DEBUG</div>
-          {/* <div>Mode: {isArMode ? 'AR Portal' : 'Standalone'}</div> */}
-          {/* {arPosition && (
-            <div>AR Anchor: [{arPosition.x.toFixed(3)}, {arPosition.y.toFixed(3)}, {arPosition.z.toFixed(3)}]</div>
-          )} */}
+          <div style={{ color: 'yellow', marginBottom: '8px', fontSize: '12px' }}>
+            🧪 MAC POSITIONING TEST
+          </div>
+          
+          {/* System Status */}
+          <div style={{ marginBottom: '8px', padding: '4px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '4px' }}>
+            <div>System: <span style={{ color: USE_NEW_POSITIONING ? 'lightgreen' : 'orange' }}>
+              {USE_NEW_POSITIONING ? 'NEW HOOK' : 'OLD MANUAL'}
+            </span></div>
+            <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
+            <div>Hook Ready: <span style={{ color: hookReady ? 'lightgreen' : 'red' }}>
+              {hookReady ? '✅' : '❌'}
+            </span></div>
+            <div>Debug Mode: <span style={{ color: hookDebugMode ? 'lightgreen' : 'gray' }}>
+              {hookDebugMode ? '✅ ON' : '❌ OFF'}
+            </span></div>
+          </div>
+
+          {/* Position Info */}
           {modelRef.current && (
-            <div style={{ color: 'cyan' }}>
-              Model Pos: [{modelRef.current.position.x.toFixed(3)}, {modelRef.current.position.y.toFixed(3)}, {modelRef.current.position.z.toFixed(3)}]
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ color: 'cyan', fontSize: '10px' }}>Current Position:</div>
+              <div>X: {modelRef.current.position.x.toFixed(1)}</div>
+              <div>Y: {modelRef.current.position.y.toFixed(1)}</div>
+              <div>Z: {modelRef.current.position.z.toFixed(1)}</div>
             </div>
           )}
-          <div>Scale: {coordinateScale}x</div>
-          {/* <div style={{ color: hasPointCloud ? 'lightgreen' : 'orange' }}>
-            Point Cloud: {hasPointCloud ? `✅ ${pointCount.toLocaleString()} pts` : '❌ None'}
-          </div>
-          <div style={{ color: 'lightblue', fontSize: '10px' }}>
-            Size: {POINT_SIZE}px | Density: {(POINT_DENSITY * 100).toFixed(0)}%
-          </div> */}
-          
-          {/* <div 
-            onClick={() => {
-              const newValue = !arTestingOverride;
-              (window as any).arTestingOverride = newValue;
-              setArTestingOverride(newValue);
-              console.log('🎯 AR Override toggled:', newValue ? 'ON' : 'OFF');
-              
-              // Immediately update model position if we have the model
-              if (modelRef.current && isArMode && arPosition) {
-                if (newValue) {
-                  console.log('🎯 Immediately setting override position (0, 0, -5)');
-                  modelRef.current.position.set(0, 0, -5);
-                } else {
-                  console.log('🎯 Immediately setting anchor position:', arPosition);
-                  modelRef.current.position.copy(arPosition);
+
+          {/* User Position */}
+          {hookUserPosition && (
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ color: 'lightblue', fontSize: '10px' }}>User GPS:</div>
+              <div>{hookUserPosition[0].toFixed(6)}</div>
+              <div>{hookUserPosition[1].toFixed(6)}</div>
+            </div>
+          )}
+
+          {/* Test Controls */}
+          <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '8px' }}>
+            <button
+              onClick={() => {
+                if (USE_NEW_POSITIONING && hookReady && modelRef.current) {
+                  console.log('🧪 Manual hook positioning test...');
+                  const success = positionObject(modelRef.current, 'mac');
+                  console.log(`Manual positioning: ${success ? 'SUCCESS' : 'FAILED'}`);
                 }
-                console.log('🎯 Model position updated to:', modelRef.current.position);
-              }
-            }}
-            style={{ 
-              cursor: 'pointer', 
-              userSelect: 'none', 
-              marginTop: '5px',
-              padding: '2px 4px',
-              backgroundColor: arTestingOverride ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)',
-              borderRadius: '2px'
-            }}
-          >
-            Override: {arTestingOverride ? '✅ (0,0,-5)' : '❌ (AR Anchor)'}
-          </div> */}
+              }}
+              disabled={!USE_NEW_POSITIONING || !hookReady}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: USE_NEW_POSITIONING && hookReady ? 'rgba(0,255,0,0.3)' : 'rgba(128,128,128,0.3)',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                borderRadius: '4px',
+                fontSize: '10px',
+                marginRight: '4px'
+              }}
+            >
+              🧪 Test Hook
+            </button>
+
+            <button
+              onClick={() => {
+                console.log('🧪 Elevation adjustment test...');
+                adjustGlobalElevation(-0.5);
+                if (modelRef.current && USE_NEW_POSITIONING) {
+                  positionObject(modelRef.current, 'mac');
+                }
+              }}
+              disabled={!USE_NEW_POSITIONING || !hookReady}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: USE_NEW_POSITIONING && hookReady ? 'rgba(255,165,0,0.3)' : 'rgba(128,128,128,0.3)',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                borderRadius: '4px',
+                fontSize: '10px'
+              }}
+            >
+              📏 -0.5m
+            </button>
+          </div>
+
+          {/* Debug Info */}
+          {USE_NEW_POSITIONING && hookReady && (
+            <div style={{ marginTop: '8px', fontSize: '9px', opacity: 0.8 }}>
+              <div style={{ color: 'yellow' }}>Hook Debug:</div>
+              <div>Toggle arTestingOverride to test debug positioning</div>
+            </div>
+          )}
         </div>
       )}
     </>

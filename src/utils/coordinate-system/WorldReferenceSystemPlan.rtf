@@ -1,0 +1,491 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Bold;\f1\fnil\fcharset0 HelveticaNeue;\f2\fnil\fcharset0 Menlo-Regular;
+\f3\froman\fcharset0 Times-Roman;\f4\fmodern\fcharset0 Courier;\f5\fnil\fcharset0 Menlo-Italic;
+}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red253\green148\blue71;\red0\green0\blue0;
+\red155\green163\blue178;\red155\green162\blue177;\red184\green93\blue213;\red197\green136\blue83;\red74\green80\blue93;
+\red81\green157\blue235;\red136\green185\blue102;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c100000\c64851\c34501;\cssrgb\c0\c0\c0\c84706;
+\cssrgb\c67166\c69917\c74931;\cssrgb\c67059\c69804\c74902;\cssrgb\c77647\c47059\c86667;\cssrgb\c81961\c60392\c40000;\cssrgb\c36078\c38824\c43922;
+\cssrgb\c38039\c68627\c93725;\cssrgb\c59608\c76471\c47451;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid201\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid3}
+{\list\listtemplateid4\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}}{\leveltext\leveltemplateid301\'01\'00;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listname ;}\listid4}
+{\list\listtemplateid5\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid401\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid5}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}{\listoverride\listid4\listoverridecount0\ls4}{\listoverride\listid5\listoverridecount0\ls5}}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 New Files to Create For World Reference System\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\fs28 \cf3 \strokec2 1. Core Coordinate System\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf3 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf3 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 src/utils/coordinate-system/\
+\uc0\u9500 \u9472 \u9472  WorldCoordinateSystem.ts     # Core GPS-to-world conversion\
+\uc0\u9500 \u9472 \u9472  AnchorManager.ts             # Persistent anchor management  \
+\uc0\u9500 \u9472 \u9472  ARPositioningManager.ts      # Main abstraction layer\
+\uc0\u9492 \u9472 \u9472  index.ts                     # Clean exports\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf3 \strokec2 \shad0 2. Enhanced Geofence System\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf3 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf3 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 src/context/\
+\uc0\u9492 \u9472 \u9472  EnhancedGeofenceContext.tsx  # Updated context with world coordinates\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf3 \strokec2 \shad0 3. New Hook for Experiences\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf3 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf3 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 src/hooks/\
+\uc0\u9492 \u9472 \u9472  useARPositioning.ts          # Replaces positioning logic in experiences\cf6 \strokec6 \
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 \strokec2 \shad0 Files That Become Inactive (Keep for Reference)\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\fs28 \cf0 1. Coordinate Utilities (Mostly Replaced)\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 src/utils/geoArUtils.ts          # Keep some functions, replace others\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 What to keep:
+\f3\b0 \strokec2 \
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0
+\f4\fs26 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 calculateGpsDistance()
+\f3\fs24  - still useful\
+\ls1\ilvl0
+\f4\fs26 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 calculateBearing()
+\f3\fs24  - still useful\
+\ls1\ilvl0
+\f4\fs26 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 isWithinArRange()
+\f3\fs24  - still useful\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0\cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Device orientation utilities\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 What gets replaced:
+\f3\b0 \strokec2 \
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls2\ilvl0
+\f4\fs26 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 gpsToThreeJsPosition()
+\f3\fs24  \uc0\u8594  moved to AnchorManager\
+\ls2\ilvl0
+\f4\fs26 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 getEnhancedAnchorPosition()
+\f3\fs24  \uc0\u8594  moved to AnchorManager\
+\ls2\ilvl0
+\f4\fs26 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 gpsToThreeJsPositionWithEntryOffset()
+\f3\fs24  \uc0\u8594  simplified in new system\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 2. Current Geofence Context (Partially Replaced)\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 src/context/GeofenceContext.tsx  # Keep GPS tracking, replace coordinate calculations\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 \strokec2 \shad0 Files That Need Updates (Not Inactive)\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\fs28 \cf0 1. Experience Components (Minor Changes)\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f3\b0\fs24 \cf0 \strokec2 All your experience files get simpler:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 src/components/experiences/\
+\uc0\u9500 \u9472 \u9472  MacExperience.tsx            # Remove positioning logic\
+\uc0\u9500 \u9472 \u9472  LilyExperience.tsx           # Remove positioning logic  \
+\uc0\u9500 \u9472 \u9472  WaterRiseExperience.tsx      # Remove positioning logic\
+\uc0\u9500 \u9472 \u9472  Experience1968.tsx           # Remove positioning logic\
+\uc0\u9492 \u9472 \u9472  ...\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \shad0 2. Core AR Components (Minor Changes)\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 src/components/ar/\
+\uc0\u9500 \u9472 \u9472  ArCameraComponent.tsx        # Simplified positioning calls\
+\uc0\u9492 \u9472 \u9472  ExperienceManager.tsx        # Use new positioning hook\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \shad0 3. Data Files (Enhanced)\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 src/data/\
+\uc0\u9492 \u9472 \u9472  mapRouteData.ts              # Enhanced with anchor metadata\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 \strokec2 \shad0 Detailed File Breakdown\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\fs28 \cf0 New: WorldCoordinateSystem.ts\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f4\fs26 \cf0 \strokec2 typescript\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 export\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 class\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 WorldCoordinateSystem\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Core GPS-to-world coordinate conversion
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Replaces user-relative calculations in geoArUtils
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\}\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \shad0 New: AnchorManager.ts\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f4\fs26 \cf0 \strokec2 typescript\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 export\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 class\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 AnchorManager\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Persistent anchor storage and management
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Replaces getEnhancedAnchorPosition() and manual offsets
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\}\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \shad0 New: ARPositioningManager.ts\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f4\fs26 \cf0 \strokec2 typescript\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 export\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 class\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ARPositioningManager\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Main API that experiences will use
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Replaces all the positioning logic scattered in experiences
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\}\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \shad0 New: useARPositioning.ts\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f4\fs26 \cf0 \strokec2 typescript\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 export\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 useARPositioning\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (experienceType\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 string\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ) \{\
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Single hook that replaces all positioning logic in experiences
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 return\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+    \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 getObjectPosition:\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  () \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =>\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 THREE\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .Vector3,\
+    \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 resetPosition:\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  () \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =>\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 void\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ,\
+    \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 applyManualOffset:\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  (offset\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 THREE\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .Vector3) \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =>\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 void\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  \};\
+\}\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \shad0 Updated: ArCameraComponent.tsx\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f4\fs26 \cf0 \strokec2 typescript\
+\pard\pardeftab720\partightenfactor0
+
+\f5\i\fs24 \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // REMOVE: All the positioning calculation logic
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // REMOVE: Manual offset state management  
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // REMOVE: Debug positioning controls
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\
+
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // KEEP: Camera setup, Three.js scene, gesture handling
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // ADD: Simple call to ARPositioningManager
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \shad0 Updated: Experience Components\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f4\fs26 \cf0 \strokec2 typescript\
+\pard\pardeftab720\partightenfactor0
+
+\f5\i\fs24 \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // REMOVE: All positioning useEffects
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // REMOVE: Override polling logic
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // REMOVE: Manual position calculations
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\
+
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // KEEP: Model loading, animations, UI
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // ADD: Single useARPositioning() hook call\
+\
+]\
+\
+\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f3\i0 \cf0 \strokec2 \shad0 \
+ABOUT THE HEXAGONAL GEOFENCE SYSTEM\
+Your hexagonal geofence system is actually 
+\f0\b \strokec2 perfect
+\f3\b0 \strokec2  for this new coordinate system! Here's why and what minimal changes are needed:\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 Your Current Hexagon System (Keep This!):\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f4\fs26 \cf0 \strokec2 typescript\
+\pard\pardeftab720\partightenfactor0
+
+\f5\i\fs24 \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // From your mapRouteData.ts - this is excellent!
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 export\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 generateHexagonVertices\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (center\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [\cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ], radius\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 )\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [\cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ][] \{\
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // This works perfectly
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\}\
+\
+\cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 export\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 detectHexagonEntryDirection\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\
+  previousPosition\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [\cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ] \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 |\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 null\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ,\
+  currentPosition\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [\cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ],\
+  center\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [\cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ]\
+)\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{ direction\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 string\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ; face\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \} \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 |\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 null\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // This algorithm is solid - keep it!
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\}\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \shad0 Only Change: How You Get Center Positions\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f3\b0\fs24 \cf0 \strokec2 Instead of changing your hexagon logic, just change how you get the center coordinates:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f4\fs26 \cf0 \strokec2 typescript\
+\pard\pardeftab720\partightenfactor0
+
+\f5\i\fs24 \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // BEFORE: GPS-relative calculations
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  result \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 checkGeofenceWithDirection\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\
+  userPosition,     
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // GPS coordinates
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  pointId,\
+  previousPosition  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // GPS coordinates
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+);\
+\
+
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // AFTER: World-coordinate calculations  
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  result \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 checkGeofenceInWorldSpace\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\
+  userWorldPosition,    
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // World coordinates
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  anchorWorldPosition,  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // World coordinates  
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  previousWorldPosition 
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // World coordinates
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+);\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \shad0 Enhanced Geofence Function:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f1\b0\fs22 \cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+
+\f4\fs26 \cf0 \strokec2 typescript\
+\pard\pardeftab720\partightenfactor0
+
+\f5\i\fs24 \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Add this to your coordinate system
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 export\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  checkGeofenceInWorldSpace \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  (\
+  userWorldPos\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 THREE\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .Vector3,\
+  anchorWorldPos\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 THREE\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .Vector3,\
+  radius\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ,\
+  previousWorldPos\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ?:\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 THREE\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .Vector3\
+)\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  GeofenceResult \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =>\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+  \
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Convert 3D world positions to 2D for your existing hexagon logic
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  userPos2D\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [\cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ] \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [userWorldPos.x, userWorldPos.z];\
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  anchorPos2D\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [\cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ] \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [anchorWorldPos.x, anchorWorldPos.z];\
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  previousPos2D\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [\cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 number\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ] \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 |\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 undefined\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  previousWorldPos \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ?\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \
+    [previousWorldPos.x, previousWorldPos.z] \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 undefined\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ;\
+\
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Use your existing hexagon functions unchanged!
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  hexVertices \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 generateHexagonVertices\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (anchorPos2D, radius);\
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  isInside \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 isPointInHexagon\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (userPos2D, hexVertices);\
+  \
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 let\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  entryDirection \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 null\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ;\
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 let\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  entryFace \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 null\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ;\
+  \
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 if\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  (isInside \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 &&\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  previousPos2D) \{\
+    \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  directionInfo \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 detectHexagonEntryDirection\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\
+      previousPos2D, \
+      userPos2D, \
+      anchorPos2D\
+    );\
+    \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 if\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  (directionInfo) \{\
+      entryDirection \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  directionInfo.direction;\
+      entryFace \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  directionInfo.face;\
+    \}\
+  \}\
+\
+  
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Calculate 3D distance for reference
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  distance \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  userWorldPos.\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 distanceTo\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (anchorWorldPos);\
+\
+  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 return\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+    id\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  anchorId,\
+    distance,\
+    isInside,\
+    shape\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf11 \strokec11 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'hexagon'\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ,\
+    entryDirection,\
+    entryFace,\
+    entryMessage\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 getEntryMessage\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (entryDirection) 
+\f5\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Your existing function
+\f2\i0 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  \};\
+\};\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 \strokec2 \shad0 Recommended Changes Summary\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\fs28 \cf0 \uc0\u9989  Keep Exactly As-Is:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls3\ilvl0
+\f3\b0\fs24 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Your hexagon vertex generation\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Your entry direction detection algorithm\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Your hexagon-to-direction mapping\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Your entry message system\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \uc0\u55357 \u56541  Minimal Updates Needed:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls4\ilvl0
+\fs24 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	1	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 GeofenceContext
+\f3\b0 : Convert GPS positions to world positions before calling hexagon functions\
+\ls4\ilvl0
+\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	2	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 mapRouteData.ts
+\f3\b0 : Use world coordinates instead of GPS for geofence centers\
+\ls4\ilvl0
+\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	3	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Experience positioning
+\f3\b0 : Use world coordinates for anchor positions\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \strokec2 \uc0\u55356 \u57263  Benefits of This Approach:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls5\ilvl0
+\fs24 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Stability
+\f3\b0 : Hexagon positions won't drift when GPS accuracy changes\
+\ls5\ilvl0
+\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Precision
+\f3\b0 : Using actual Kenilworth boundaries for coordinate system origin\
+\ls5\ilvl0
+\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Consistency
+\f3\b0 : Entry direction detection works the same across all experiences\
+\ls5\ilvl0
+\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Performance
+\f3\b0 : Your hexagon math stays exactly the same (no performance impact)\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 \strokec2 The key insight is that your hexagonal geofence system is 
+\f0\b \strokec2 coordinate-system agnostic
+\f3\b0 \strokec2  - it just needs consistent 2D coordinates. By converting GPS to stable world coordinates first, your hexagons become persistent in space rather than GPS-dependent.\
+\pard\pardeftab720\partightenfactor0
+
+\f2 \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+}
