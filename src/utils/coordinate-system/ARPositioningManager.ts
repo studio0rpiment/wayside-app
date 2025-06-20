@@ -79,15 +79,21 @@ export class ARPositioningManager {
     // Get anchor world position (with debug override support)
     let anchorWorldPosition: THREE.Vector3;
     
-    if (this.debugMode || options.useDebugOverride) {
-      if (options.forcePosition) {
-        anchorWorldPosition = options.forcePosition.clone();
-      } else {
-        anchorWorldPosition = this.globalDebugPosition.clone();
-      }
+   if (this.debugMode || options.useDebugOverride) {
+  if (options.forcePosition) {
+    anchorWorldPosition = options.forcePosition.clone();
+  } else {
+    // Make debug position relative to user, not world origin
+    if (userWorldPosition) {
+      anchorWorldPosition = userWorldPosition.clone().add(this.globalDebugPosition);
     } else {
-      anchorWorldPosition = anchor.worldPosition.clone();
+      // Fallback if no user position available
+      anchorWorldPosition = this.globalDebugPosition.clone();
     }
+  }
+} else {
+  anchorWorldPosition = anchor.worldPosition.clone();
+}
 
     // Apply elevation adjustments to address "too high" issue
     const totalElevationOffset = this.globalElevationOffset + (options.manualElevationOffset || 0);
