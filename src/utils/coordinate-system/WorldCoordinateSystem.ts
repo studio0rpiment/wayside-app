@@ -96,8 +96,8 @@ export class WorldCoordinateSystem {
     // Convert to meters using local approximation
     const cosLat = Math.cos(originLatRad);
     
-    const x = -dLon * EARTH_RADIUS * cosLat;
-    const z = dLat * EARTH_RADIUS; // Negative for Three.js coordinates
+    const x = dLon * EARTH_RADIUS * cosLat;
+    const z = -dLat * EARTH_RADIUS; 
     const y = elevation - this.originElevation;
     
     return new THREE.Vector3(x, y, z);
@@ -111,7 +111,7 @@ export class WorldCoordinateSystem {
     
     const cosLat = Math.cos(toRadians(originLat));
     const deltaLon = worldPos.x / (EARTH_RADIUS * cosLat);
-    const deltaLat = -worldPos.z / EARTH_RADIUS;
+    const deltaLat = worldPos.z / EARTH_RADIUS;
     
     const gpsLon = originLon + toDegrees(deltaLon);
     const gpsLat = originLat + toDegrees(deltaLat);
