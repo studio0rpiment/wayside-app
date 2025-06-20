@@ -111,8 +111,7 @@ export class ARPositioningManager {
        
       // No user position available - use anchor position directly
       relativeToUser = anchorWorldPosition.clone();
-       relativeToUser.x = -relativeToUser.x;
-        relativeToUser.z = -relativeToUser.z;
+  
     }
 
     // Calculate distance

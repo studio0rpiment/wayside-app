@@ -104,7 +104,7 @@ export function gpsToLocalCoordinates(
   
   // Z: North-South distance (latitude difference) 
   // Note: Negative because in Three.js, negative Z is "into the screen"
-  const z = dLat * EARTH_RADIUS;
+  const z = -dLat * EARTH_RADIUS;
   
   // Y: Elevation difference
   const y = targetElevation - userElevation;
