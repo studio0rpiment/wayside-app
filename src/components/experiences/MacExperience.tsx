@@ -651,8 +651,8 @@ const MacExperience: React.FC<MacExperienceProps> = ({
                 adjustGlobalElevation(-0.5);
                 if (modelRef.current && USE_NEW_POSITIONING) {
 
-                    // modelRef.current.position.set(0, 0, 0);
-                    // modelRef.current.rotation.set(0, 0, 0); 
+                    modelRef.current.position.set(0, 0, 0);
+                    modelRef.current.rotation.set(0, 0, 0); 
 
 
                   positionObject(modelRef.current, 'mac');
