@@ -125,7 +125,7 @@ export function useDeviceOrientation(
   // Debug logging utility
   const debugLog = useCallback((message: string, data?: any) => {
     if (debugMode) {
-      console.log(`🧭 useDeviceOrientation: ${message}`, data || '');
+      // console.log(`🧭 useDeviceOrientation: ${message}`, data || '');
     }
   }, [debugMode]);
 
@@ -138,7 +138,7 @@ export function useDeviceOrientation(
     if ('webkitCompassHeading' in orientation) {
       const webkitHeading = (orientation as any).webkitCompassHeading;
       if (typeof webkitHeading === 'number') {
-        debugLog('Using iOS webkitCompassHeading', webkitHeading);
+        // debugLog('Using iOS webkitCompassHeading', webkitHeading);
         return webkitHeading; // Already normalized 0-360 and compass-corrected
       }
     }
@@ -146,7 +146,7 @@ export function useDeviceOrientation(
     // Priority 2: Absolute alpha (Android absolute orientation)
     if (orientation.absolute && orientation.alpha !== null) {
       let heading = orientation.alpha;
-      debugLog('Using absolute alpha', heading);
+      // debugLog('Using absolute alpha', heading);
       
       // Normalize to 0-360 range
       while (heading < 0) heading += 360;
@@ -158,7 +158,7 @@ export function useDeviceOrientation(
     // Priority 3: Relative alpha (may not be true compass)
     if (orientation.alpha !== null) {
       let heading = orientation.alpha;
-      debugLog('Using relative alpha (may be inaccurate)', heading);
+      // debugLog('Using relative alpha (may be inaccurate)', heading);
       
       // Normalize to 0-360 range
       while (heading < 0) heading += 360;
@@ -215,13 +215,13 @@ export function useDeviceOrientation(
   const handleDeviceOrientation = useCallback((event: DeviceOrientationEvent) => {
     const { alpha, beta, gamma } = event;
     
-    debugLog('Raw orientation event', { 
-        alpha, 
-        beta, 
-        gamma, 
-        absolute: event.absolute,
-        webkitCompassHeading: (event as any).webkitCompassHeading
-    });
+    // debugLog('Raw orientation event', { 
+    //     alpha, 
+    //     beta, 
+    //     gamma, 
+    //     absolute: event.absolute,
+    //     webkitCompassHeading: (event as any).webkitCompassHeading
+    // });
 
     // Validate orientation data
     if (alpha === null && beta === null && gamma === null) {
@@ -243,7 +243,7 @@ export function useDeviceOrientation(
         if (typeof webkitHeading === 'number') {
         // Store the true compass heading in a custom property
         (orientationData as any).webkitCompassHeading = webkitHeading;
-        debugLog('iOS webkitCompassHeading captured', webkitHeading);
+        // debugLog('iOS webkitCompassHeading captured', webkitHeading);
         }
     }
 
@@ -275,12 +275,12 @@ export function useDeviceOrientation(
 
       // iOS 13+ requires explicit permission request
       if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-        debugLog('iOS detected - requesting DeviceOrientationEvent permission');
+        // debugLog('iOS detected - requesting DeviceOrientationEvent permission');
         
         const permission = await (DeviceOrientationEvent as any).requestPermission();
         const granted = permission === 'granted';
         
-        debugLog('iOS permission result', permission);
+        // debugLog('iOS permission result', permission);
         
         if (!granted) {
           setError('Device orientation permission denied. Please allow motion access in Safari settings.');
@@ -306,7 +306,7 @@ export function useDeviceOrientation(
    */
   const checkDeviceOrientationSupport = useCallback((): boolean => {
     const supported = 'DeviceOrientationEvent' in window;
-    debugLog('Device orientation support check', supported);
+    // debugLog('Device orientation support check', supported);
     return supported;
   }, [debugLog]);
 
@@ -369,14 +369,14 @@ export function useDeviceOrientation(
   // Debug current state
   useEffect(() => {
     if (debugMode) {
-      debugLog('Current state', {
-        heading: finalHeading,
-        isAvailable,
-        isPermissionGranted: isPermissionGranted(PermissionType.ORIENTATION),
-        error,
-        accuracy,
-        hasOrientation: !!deviceOrientation
-      });
+      // debugLog('Current state', {
+      //   heading: finalHeading,
+      //   isAvailable,
+      //   isPermissionGranted: isPermissionGranted(PermissionType.ORIENTATION),
+      //   error,
+      //   accuracy,
+      //   hasOrientation: !!deviceOrientation
+      // });
     }
   }, [finalHeading, isAvailable, error, accuracy, deviceOrientation, debugMode, debugLog, isPermissionGranted]);
 
