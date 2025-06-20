@@ -1,10 +1,7 @@
-// src/components/debug/PrecisionDebugger.tsx
+// src/components/debug/PrecisionDebugger.tsx - Enhanced with Three-Level Progressive Disclosure
 import React, { useState } from 'react';
 import { PositionQuality } from '../../hooks/useEnhancedGeofenceManager';
-import { setGlobalRadius } from '../../data/mapRouteData';
 import { useGeofenceContext } from '../../context/GeofenceContext';
-
-
 
 interface PrecisionDebuggerProps {
   // Enhanced precision data
@@ -16,14 +13,15 @@ interface PrecisionDebuggerProps {
   userPosition: [number, number] | null;
   isTracking: boolean;
   currentRadius?: number;
-  updateGlobalRadius?: (radius: number) => void;
-
   
   // Control functions
   startTracking: () => Promise<boolean>;
   stopTracking: () => void;
   getPositionStats: () => any;
 }
+
+// Three-level disclosure states
+type DisclosureLevel = 'minimal' | 'summary' | 'detailed';
 
 const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   currentAccuracy,
@@ -39,8 +37,8 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   currentRadius = 10,
 }) => {
 
-//***** ********* STATE******* */
-  const [isExpanded, setIsExpanded] = useState(false);
+  // ✅ NEW: Three-level progressive disclosure state
+  const [disclosureLevel, setDisclosureLevel] = useState<DisclosureLevel>('minimal');
   const [showHistory, setShowHistory] = useState(false);
   const [displayRadius, setDisplayRadius] = useState(currentRadius);
 
@@ -49,41 +47,67 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   // Function to change radius
   const changeRadius = (newRadius: number) => {
     if (updateGlobalRadius) {
-      updateGlobalRadius(newRadius);  // ✅ Triggers React re-renders
+      updateGlobalRadius(newRadius);
     }
     setDisplayRadius(newRadius);
     console.log(`🎯 Geofence radius changed to ${newRadius}m`);
   };
 
-    React.useEffect(() => {
+  React.useEffect(() => {
     setDisplayRadius(contextRadius || currentRadius);
   }, [contextRadius, currentRadius]);
-  
+
+  // ✅ NEW: Cycle through disclosure levels
+  const cycleDisclosureLevel = () => {
+    setDisclosureLevel(prev => {
+      switch (prev) {
+        case 'minimal': return 'summary';
+        case 'summary': return 'detailed';
+        case 'detailed': return 'minimal';
+        default: return 'minimal';
+      }
+    });
+  };
+
+  // ✅ NEW: Get appropriate header text and icon for each level
+  const getHeaderInfo = () => {
+    switch (disclosureLevel) {
+      case 'minimal':
+        return { text: '🎯 RADIUS', icon: '▶' };
+      case 'summary':
+        return { text: '📡 GPS STATUS', icon: '▼' };
+      case 'detailed':
+        return { text: '🔧 GPS DEBUG', icon: '◀' };
+      default:
+        return { text: '🎯 RADIUS', icon: '▶' };
+    }
+  };
 
   // Quality color mapping
   const getQualityColor = (quality: PositionQuality): string => {
     switch (quality) {
-      case PositionQuality.EXCELLENT: return '#10B981'; // Green
-      case PositionQuality.GOOD: return '#059669';      // Dark green
-      case PositionQuality.FAIR: return '#F59E0B';      // Yellow
-      case PositionQuality.POOR: return '#EF4444';      // Red
-      case PositionQuality.UNACCEPTABLE: return '#7F1D1D'; // Dark red
-      default: return '#6B7280'; // Gray
+      case PositionQuality.EXCELLENT: return '#10B981';
+      case PositionQuality.GOOD: return '#059669';
+      case PositionQuality.FAIR: return '#F59E0B';
+      case PositionQuality.POOR: return '#EF4444';
+      case PositionQuality.UNACCEPTABLE: return '#7F1D1D';
+      default: return '#6B7280';
     }
   };
   
   // Accuracy quality indicator
   const getAccuracyIndicator = () => {
     if (currentAccuracy === null) return '❓';
-    if (currentAccuracy <= 3) return '🎯'; // Excellent
-    if (currentAccuracy <= 8) return '✅'; // Good
-    if (currentAccuracy <= 15) return '⚠️'; // Fair
-    if (currentAccuracy <= 30) return '🔶'; // Poor
-    return '❌'; // Unacceptable
+    if (currentAccuracy <= 3) return '🎯';
+    if (currentAccuracy <= 8) return '✅';
+    if (currentAccuracy <= 15) return '⚠️';
+    if (currentAccuracy <= 30) return '🔶';
+    return '❌';
   };
   
   const stats = getPositionStats();
-  
+  const headerInfo = getHeaderInfo();
+
   return (
     <div style={{
       position: 'fixed',
@@ -98,9 +122,14 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
       zIndex: 1000,
       minWidth: '200px',
       maxWidth: '300px',
-      border: `2px solid ${getQualityColor(positionQuality)}`
+      // ✅ Dynamic border color based on disclosure level and quality
+      border: disclosureLevel === 'minimal' ? '2px solid #6366F1' : 
+              disclosureLevel === 'summary' ? '2px solid #F59E0B' :
+              `2px solid ${getQualityColor(positionQuality)}`,
+      transition: 'border-color 0.2s ease'
     }}>
-      {/* Header */}
+
+      {/* ✅ NEW: Progressive disclosure header - cycles through levels */}
       <div 
         style={{ 
           cursor: 'pointer', 
@@ -108,79 +137,97 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '4px'
+          marginBottom: disclosureLevel === 'minimal' ? '4px' : '8px',
+          padding: '2px 0'
         }}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={cycleDisclosureLevel}
+        title={`Click to ${disclosureLevel === 'minimal' ? 'show status' : 
+                             disclosureLevel === 'summary' ? 'show details' : 
+                             'minimize'}`}
       >
-        <span style={{ fontWeight: 'bold', color: '#FFD700' }}>
-          📡 GPS PRECISION {getAccuracyIndicator()}
+        <span style={{ 
+          fontWeight: 'bold', 
+          color: disclosureLevel === 'minimal' ? '#6366F1' : 
+                 disclosureLevel === 'summary' ? '#F59E0B' : '#FFD700'
+        }}>
+          {headerInfo.text} {disclosureLevel !== 'minimal' && getAccuracyIndicator()}
         </span>
-        <span>{isExpanded ? '▼' : '▶'}</span>
+        <span style={{ fontSize: '12px' }}>{headerInfo.icon}</span>
       </div>
-      {/* Radius Controls */}
-<div style={{ marginBottom: '8px' }}>
-  <div style={{ color: '#9CA3AF', marginBottom: '4px' }}>
-    GEOFENCE RADIUS: {displayRadius}m
-  </div>
-  <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
-    {[5, 10, 15, 20, 40, 10000].map(radius => (
-      <button
-        key={radius}
-        onClick={() => changeRadius(radius)}
-        style={{
-          padding: '2px 6px',
-          fontSize: '10px',
-          backgroundColor: displayRadius === radius ? '#10B981' : '#6B7280',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer'
-        }}
-      >
-        {radius}m
-      </button>
-    ))}
-  </div>
-</div>
-      
-      {/* Core Status (always visible) */}
-      <div style={{ marginBottom: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Tracking:</span>
-          <span style={{ color: isTracking ? '#10B981' : '#EF4444' }}>
-            {isTracking ? '🟢 ON' : '🔴 OFF'}
-          </span>
+
+      {/* ✅ LEVEL 1: MINIMAL - Just radius controls (always visible) */}
+      <div style={{ marginBottom: disclosureLevel === 'minimal' ? '0' : '8px' }}>
+        <div style={{ 
+          color: '#9CA3AF', 
+          marginBottom: '4px',
+          fontSize: disclosureLevel === 'minimal' ? '11px' : '10px'
+        }}>
+          GEOFENCE: {displayRadius}m
         </div>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Accuracy:</span>
-          <span style={{ color: getQualityColor(positionQuality) }}>
-            {currentAccuracy ? `${currentAccuracy.toFixed(1)}m` : 'N/A'}
-          </span>
-        </div>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Quality:</span>
-          <span style={{ 
-            color: getQualityColor(positionQuality),
-            textTransform: 'uppercase',
-            fontSize: '10px',
-            fontWeight: 'bold'
-          }}>
-            {positionQuality}
-          </span>
-        </div>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Stable:</span>
-          <span style={{ color: isPositionStable ? '#10B981' : '#F59E0B' }}>
-            {isPositionStable ? '✅ YES' : '⏳ NO'}
-          </span>
+        <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
+          {[5, 10, 15, 20, 40, 10000].map(radius => (
+            <button
+              key={radius}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent triggering disclosure cycle
+                changeRadius(radius);
+              }}
+              style={{
+                padding: '2px 6px',
+                fontSize: '10px',
+                backgroundColor: displayRadius === radius ? '#10B981' : '#6B7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              {radius === 10000 ? '∞' : `${radius}m`}
+            </button>
+          ))}
         </div>
       </div>
-      
-      {/* Expanded Details */}
-      {isExpanded && (
+
+      {/* ✅ LEVEL 2: SUMMARY - Core status (summary + minimal) */}
+      {disclosureLevel !== 'minimal' && (
+        <div style={{ marginBottom: disclosureLevel === 'summary' ? '0' : '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+            <span>Tracking:</span>
+            <span style={{ color: isTracking ? '#10B981' : '#EF4444' }}>
+              {isTracking ? '🟢 ON' : '🔴 OFF'}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+            <span>Accuracy:</span>
+            <span style={{ color: getQualityColor(positionQuality) }}>
+              {currentAccuracy ? `${currentAccuracy.toFixed(1)}m` : 'N/A'}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+            <span>Quality:</span>
+            <span style={{ 
+              color: getQualityColor(positionQuality),
+              textTransform: 'uppercase',
+              fontSize: '10px',
+              fontWeight: 'bold'
+            }}>
+              {positionQuality}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Stable:</span>
+            <span style={{ color: isPositionStable ? '#10B981' : '#F59E0B' }}>
+              {isPositionStable ? '✅ YES' : '⏳ NO'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ LEVEL 3: DETAILED - Full debug info (detailed + summary + minimal) */}
+      {disclosureLevel === 'detailed' && (
         <>
           {/* Position Information */}
           <div style={{ marginBottom: '8px', fontSize: '10px' }}>
@@ -208,7 +255,10 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
             <div style={{ color: '#9CA3AF', marginBottom: '4px' }}>CONTROLS:</div>
             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
               <button
-                onClick={() => isTracking ? stopTracking() : startTracking()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  isTracking ? stopTracking() : startTracking();
+                }}
                 style={{
                   padding: '2px 6px',
                   fontSize: '10px',
@@ -223,7 +273,10 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
               </button>
               
               <button
-                onClick={() => setShowHistory(!showHistory)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowHistory(!showHistory);
+                }}
                 style={{
                   padding: '2px 6px',
                   fontSize: '10px',
@@ -240,7 +293,7 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
           </div>
           
           {/* Technical Stats */}
-          <div style={{ fontSize: '9px', color: '#9CA3AF' }}>
+          <div style={{ fontSize: '9px', color: '#9CA3AF', marginBottom: '8px' }}>
             <div>TECHNICAL:</div>
             <div style={{ marginLeft: '8px' }}>
               <div>JS Number Precision: ~15-17 digits</div>
@@ -295,6 +348,19 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
           </div>
         </>
       )}
+
+      {/* ✅ NEW: Progressive disclosure hint */}
+      <div style={{
+        fontSize: '8px',
+        color: '#6B7280',
+        textAlign: 'center',
+        marginTop: '4px',
+        opacity: 0.7
+      }}>
+        {disclosureLevel === 'minimal' && 'Click for GPS status →'}
+        {disclosureLevel === 'summary' && 'Click for full debug →'}
+        {disclosureLevel === 'detailed' && '← Click to minimize'}
+      </div>
     </div>
   );
 };
