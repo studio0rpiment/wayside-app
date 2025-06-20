@@ -82,13 +82,17 @@ export class ARPositioningManager {
    if (this.debugMode || options.useDebugOverride) {
   if (options.forcePosition) {
     anchorWorldPosition = options.forcePosition.clone();
+    console.log("force Position")
   } else {
     // Make debug position relative to user, not world origin
     if (userWorldPosition) {
       anchorWorldPosition = userWorldPosition.clone().add(this.globalDebugPosition);
+      console.log(anchorWorldPosition)
+    
     } else {
       // Fallback if no user position available
       anchorWorldPosition = this.globalDebugPosition.clone();
+      console.log("fallback postition")
     }
   }
 } else {
