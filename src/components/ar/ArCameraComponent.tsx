@@ -1256,29 +1256,23 @@ const userLocalPosition = getUserLocalPosition();
                     gap: '8px'
                   }}>
                   <div 
-                    onClick={() => {
-                      const newValue = !arTestingOverride;
-                      (window as any).arTestingOverride = newValue;
-                      setArTestingOverride(newValue);
-                      console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
-                      
-                        if (onCallNewPositioning) {
-                          onCallNewPositioning();
-                        }
-                      // NEW: Also call new positioning system if available
-                      if (hookReady && experienceType) {
-                        try {
-                          // This will position the model using the new system
-                          console.log('🧪 Calling new positioning system for:', experienceType);
-                          // Note: We don't have direct model ref here, but the hook will handle positioning
-                          // The individual experiences will pick up the change via their polling
-                          (window as any).arNewPositioningTrigger = Date.now();
-
-                        } catch (error) {
-                          console.warn('Error calling new positioning system:', error);
-                        }
-                      }
-                    }}
+                        onClick={() => {
+                          const newValue = !arTestingOverride;
+                          (window as any).arTestingOverride = newValue;
+                          setArTestingOverride(newValue);
+                          console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
+                          
+                          // NEW: Also call new positioning system if available
+                          if (hookReady && experienceType) {
+                            try {
+                              console.log('🧪 ArCamera calling new positioning for:', experienceType);
+                              // Set a trigger that experiences can poll for
+                              (window as any).arNewPositioningTrigger = Date.now();
+                            } catch (error) {
+                              console.warn('Error calling new positioning system:', error);
+                            }
+                          }
+                        }}
                     style={{ cursor: 'pointer', 
                       userSelect: 'none', 
                       margin: '0rem', 

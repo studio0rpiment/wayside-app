@@ -133,45 +133,58 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   }, [modelRef.current, hookReady, USE_NEW_POSITIONING]);
 
   // OLD SYSTEM: Listen for override changes (keep for comparison)
-  useEffect(() => {
-    if (!USE_NEW_POSITIONING) {
-      const checkOverride = () => {
-        const currentOverride = (window as any).arTestingOverride ?? true;
-        const newTrigger = (window as any).arPositioningTrigger ?? 0;
-          if (currentOverride !== arTestingOverride || newTrigger !== lastTrigger) {
-      setArTestingOverride(currentOverride);
-      setLastTrigger(newTrigger);
-      
-      if (USE_NEW_POSITIONING && hookReady && modelRef.current) {
-        console.log('🧪 MacExperience calling new positioning');
-        positionObject(modelRef.current, 'mac');
-      }
-          if (modelRef.current && isArMode && arPosition) {
-            if (currentOverride) {
-              console.log('🎯 OLD SYSTEM: Setting override position (0, 0, -5)');
-              modelRef.current.position.set(0, 0, -5);
-            } else {
-              console.log('🎯 OLD SYSTEM: Setting anchor position:', arPosition);
-              modelRef.current.position.copy(arPosition);
-            }
-            
-            // Force visual update
-            modelRef.current.visible = false;
-            setTimeout(() => {
-              if (modelRef.current) {
-                modelRef.current.visible = true;
-              }
-            }, 50);
-            
-            console.log('🎯 OLD SYSTEM: Model position after change:', modelRef.current.position);
+// Replace the existing useEffect that checks arTestingOverride:
+useEffect(() => {
+  if (!USE_NEW_POSITIONING) {
+    // Keep old system polling unchanged
+    const checkOverride = () => {
+      const currentOverride = (window as any).arTestingOverride ?? true;
+      if (currentOverride !== arTestingOverride) {
+        setArTestingOverride(currentOverride);
+        console.log('🎯 OLD SYSTEM: MacExperience override changed:', currentOverride);
+        
+        if (modelRef.current && isArMode && arPosition) {
+          if (currentOverride) {
+            modelRef.current.position.set(0, 0, -5);
+          } else {
+            modelRef.current.position.copy(arPosition);
           }
+          
+          // Force visual update
+          modelRef.current.visible = false;
+          setTimeout(() => {
+            if (modelRef.current) {
+              modelRef.current.visible = true;
+            }
+          }, 50);
         }
-      };
+      }
+    };
+    
+    const interval = setInterval(checkOverride, 100);
+    return () => clearInterval(interval);
+  } else {
+    // NEW SYSTEM: Check for both override changes AND positioning triggers
+    const checkForUpdates = () => {
+      const currentOverride = (window as any).arTestingOverride ?? true;
+      const newTrigger = (window as any).arNewPositioningTrigger ?? 0;
       
-      const interval = setInterval(checkOverride, 100);
-      return () => clearInterval(interval);
-    }
-  }, [arTestingOverride, isArMode, arPosition, USE_NEW_POSITIONING]);
+      // Check for override change OR new positioning trigger
+      if (currentOverride !== arTestingOverride || newTrigger !== lastTrigger) {
+        setArTestingOverride(currentOverride);
+        setLastTrigger(newTrigger);
+        
+        if (hookReady && modelRef.current) {
+          console.log('🧪 MacExperience calling new positioning due to trigger');
+          positionObject(modelRef.current, 'mac');
+        }
+      }
+    };
+    
+    const interval = setInterval(checkForUpdates, 100);
+    return () => clearInterval(interval);
+  }
+}, [arTestingOverride, lastTrigger, isArMode, arPosition, USE_NEW_POSITIONING, hookReady, positionObject]);
 
 // Register gesture handlers on mount
 useEffect(() => {
