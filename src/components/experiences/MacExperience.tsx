@@ -199,7 +199,7 @@ useEffect(() => {
         if (USE_NEW_POSITIONING && hookReady) {
           // NEW SYSTEM: Use hook for positioning
           console.log('🔄 NEW SYSTEM: Using hook for reset positioning');
-          positionObject(modelRef.current, 'mac');
+          // positionObject(modelRef.current, 'mac');
         } else {
           // OLD SYSTEM: Manual positioning logic
           if (isArMode && arPosition) {
@@ -235,7 +235,7 @@ useEffect(() => {
       console.log('👇 Swipe down detected on MAC');
     });
   }
-}, [USE_NEW_POSITIONING, hookReady, positionObject, isArMode, arPosition, initialScale]);
+}, []);
 
   const centeringOffset = new THREE.Vector3(-knownCenter.x, -knownCenter.y, -knownCenter.z);
 
