@@ -155,87 +155,87 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     }
   }, [arTestingOverride, isArMode, arPosition, USE_NEW_POSITIONING]);
 
-  // Register gesture handlers on mount
-  useEffect(() => {
-    // Register rotation handler
-    if (onModelRotate) {
-      onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
-        if (modelRef.current) {
-          modelRef.current.rotation.y += deltaX;
-          modelRef.current.rotation.x += deltaY;
-          if (deltaZ !== 0) {
-            modelRef.current.rotation.z += deltaZ;
-          }
+// Register gesture handlers on mount
+useEffect(() => {
+  // Register rotation handler
+  if (onModelRotate) {
+    onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
+      if (modelRef.current) {
+        modelRef.current.rotation.y += deltaX;
+        modelRef.current.rotation.x += deltaY;
+        if (deltaZ !== 0) {
+          modelRef.current.rotation.z += deltaZ;
         }
-      });
-    }
+      }
+    });
+  }
 
-    // Register scale handler
-    if (onModelScale) {
-      onModelScale((scaleFactor: number) => {
-        if (modelRef.current) {
-          const currentScale = modelRef.current.scale.x;
-          const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
-          console.log('🔍 Scale handler called:', {
-            scaleFactor,
-            currentScale: currentScale.toFixed(3),
-            newScale: newScale.toFixed(3),
-            system: USE_NEW_POSITIONING ? 'NEW' : 'OLD'
-          });
-          modelRef.current.scale.setScalar(newScale);
-        }
-      });
-    }
+  // Register scale handler
+  if (onModelScale) {
+    onModelScale((scaleFactor: number) => {
+      if (modelRef.current) {
+        const currentScale = modelRef.current.scale.x;
+        const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
+        console.log('🔍 Scale handler called:', {
+          scaleFactor,
+          currentScale: currentScale.toFixed(3),
+          newScale: newScale.toFixed(3),
+          system: USE_NEW_POSITIONING ? 'NEW' : 'OLD'
+        });
+        modelRef.current.scale.setScalar(newScale);
+      }
+    });
+  }
 
-    // Register reset handler
-    if (onModelReset) {
-      onModelReset(() => {
-        console.log(`🔄 RESET HANDLER CALLED - ${USE_NEW_POSITIONING ? 'NEW' : 'OLD'} system`);
-        if (modelRef.current) {
-          // Reset rotation and scale
-          modelRef.current.rotation.set(-Math.PI / 2, 0, 0); // Keep Z-up to Y-up conversion
-          modelRef.current.scale.set(initialScale, initialScale, initialScale);
-          
-          if (USE_NEW_POSITIONING && hookReady) {
-            // NEW SYSTEM: Use hook for positioning
-            console.log('🔄 NEW SYSTEM: Using hook for reset positioning');
-            positionObject(modelRef.current, 'mac');
-          } else {
-            // OLD SYSTEM: Manual positioning logic
-            if (isArMode && arPosition) {
-              const currentOverride = (window as any).arTestingOverride ?? true;
-              
-              if (currentOverride) {
-                modelRef.current.position.set(0, 0, -5);
-                console.log('🔄 OLD SYSTEM: MAC positioned at override location');
-              } else {
-                modelRef.current.position.copy(arPosition);
-                console.log('🔄 OLD SYSTEM: MAC positioned at AR anchor location');
-              }
+  // Register reset handler
+  if (onModelReset) {
+    onModelReset(() => {
+      console.log(`🔄 RESET HANDLER CALLED - ${USE_NEW_POSITIONING ? 'NEW' : 'OLD'} system`);
+      if (modelRef.current) {
+        // Reset rotation and scale
+        modelRef.current.rotation.set(-Math.PI / 2, 0, 0);
+        modelRef.current.scale.set(initialScale, initialScale, initialScale);
+        
+        if (USE_NEW_POSITIONING && hookReady) {
+          // NEW SYSTEM: Use hook for positioning
+          console.log('🔄 NEW SYSTEM: Using hook for reset positioning');
+          positionObject(modelRef.current, 'mac');
+        } else {
+          // OLD SYSTEM: Manual positioning logic
+          if (isArMode && arPosition) {
+            const currentOverride = (window as any).arTestingOverride ?? true;
+            
+            if (currentOverride) {
+              modelRef.current.position.set(0, 0, -5);
+              console.log('🔄 OLD SYSTEM: MAC positioned at override location');
             } else {
-              modelRef.current.position.set(0, 0, -3);
-              console.log('🔄 OLD SYSTEM: MAC positioned at standalone location');
+              modelRef.current.position.copy(arPosition);
+              console.log('🔄 OLD SYSTEM: MAC positioned at AR anchor location');
             }
+          } else {
+            modelRef.current.position.set(0, 0, -3);
+            console.log('🔄 OLD SYSTEM: MAC positioned at standalone location');
           }
-          
-          console.log('🔄 Model reset completed - Scale is now:', modelRef.current.scale.x);
         }
-      });
-    }
+        
+        console.log('🔄 Model reset completed - Scale is now:', modelRef.current.scale.x);
+      }
+    });
+  }
 
-    // Register swipe handlers
-    if (onSwipeUp) {
-      onSwipeUp(() => {
-        console.log('👆 Swipe up detected on MAC');
-      });
-    }
+  // Register swipe handlers
+  if (onSwipeUp) {
+    onSwipeUp(() => {
+      console.log('👆 Swipe up detected on MAC');
+    });
+  }
 
-    if (onSwipeDown) {
-      onSwipeDown(() => {
-        console.log('👇 Swipe down detected on MAC');
-      });
-    }
-  }, [USE_NEW_POSITIONING, hookReady, positionObject]); // Added dependencies
+  if (onSwipeDown) {
+    onSwipeDown(() => {
+      console.log('👇 Swipe down detected on MAC');
+    });
+  }
+}, [USE_NEW_POSITIONING, hookReady, positionObject, isArMode, arPosition, initialScale]);
 
   const centeringOffset = new THREE.Vector3(-knownCenter.x, -knownCenter.y, -knownCenter.z);
 
