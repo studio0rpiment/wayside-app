@@ -12,6 +12,7 @@ import GroundPlaneTestUI from './GroundPlaneTestUI';
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 import { useGeofenceContext } from '../../context/GeofenceContext';
+import { useARPositioning } from '../../hooks/useARPositioning'; // NEW: Import positioning hook
 
 
 
@@ -61,6 +62,19 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   positionQuality,
   isPositionStable
 } = useGeofenceContext();
+
+// NEW: Add positioning hook
+const { 
+  positionObject, 
+  getPosition,
+  adjustGlobalElevation,
+  setGlobalElevation,
+  getCurrentElevationOffset,
+  isReady: hookReady,
+  userPosition: hookUserPosition,
+  debugMode: hookDebugMode,
+  getDebugInfo
+} = useARPositioning();
 
 //********** REFS REFS REFS  */
  
@@ -238,6 +252,24 @@ const groundPlaneDetectorRef = useRef<GroundPlaneDetectorRef>(null);
     
     return null;
   }, [propUserPosition, preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable]);
+
+// NEW: Get user position in local coordinates
+const getUserLocalPosition = useCallback((): THREE.Vector3 | null => {
+  const userGps = getBestUserPosition();
+  if (!userGps) return null;
+  
+  // Convert GPS to local coordinates relative to anchor
+  const position = gpsToThreeJsPosition(
+    userGps,
+    activeAnchorPosition,
+    0, // User at ground level
+    coordinateScale
+  );
+  
+  // Return user position (which should be origin 0,0,0 in this coordinate system)
+  return new THREE.Vector3(0, 0, 0); // User is always at origin in local coordinates
+}, [getBestUserPosition, activeAnchorPosition, coordinateScale]);
+
 //*****ADDING FOR SCREEN ROTATION TO LANDSCAPE */
     const getScreenOrientationCompensation = (): number => {
       // Get current screen orientation
@@ -349,6 +381,19 @@ const handleCameraCheck = useCallback(() => {
   
   return position;
 }, [getBestUserPosition, activeAnchorPosition, elevationOffset, manualElevationOffset, coordinateScale]);
+
+// NEW: Get model position using new positioning system
+const getNewSystemModelPosition = useCallback((): THREE.Vector3 | null => {
+  if (!experienceType || !hookReady) return null;
+  
+  try {
+    const positionResult = getPosition(experienceType);
+    return positionResult?.relativeToUser || null;
+  } catch (error) {
+    console.warn('Error getting new system model position:', error);
+    return null;
+  }
+}, [experienceType, hookReady, getPosition]);
 
 
   const updateElevationOffset = useCallback((deltaElevation: number) => {
@@ -608,8 +653,11 @@ const placeArObject = useCallback(() => {
 
         const normalizedBearing = (bearing + 360) % 360;
         
-        // Get expected model position
-        const expectedModelPosition = getCurrentExpectedModelPosition();
+        // Get expected model position (try new system first, fall back to old)
+        let expectedModelPosition = getNewSystemModelPosition();
+        if (!expectedModelPosition) {
+          expectedModelPosition = getCurrentExpectedModelPosition();
+        }
         
         // Calculate aim error and distance
         let aimError = null;
@@ -644,7 +692,7 @@ const placeArObject = useCallback(() => {
           clearInterval(cameraUpdateIntervalRef.current);
         }
       };
-    }, [isInitialized, activeAnchorPosition, manualElevationOffset, coordinateScale, experienceType]);
+    }, [isInitialized, activeAnchorPosition, manualElevationOffset, coordinateScale, experienceType, getNewSystemModelPosition, getCurrentExpectedModelPosition]);
       
   // Your onOrientationUpdate callback still works:
   useEffect(() => {
@@ -959,11 +1007,8 @@ useEffect(() => {
 }, [getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized, manualElevationOffset]);
 
 const currentUserPosition = getBestUserPosition();
+const userLocalPosition = getUserLocalPosition();
   
-  // function handleSwipeStart(event: React.TouchEvent<HTMLDivElement>): void {
-  //   throw new Error('Function not implemented.');
-  // }
-
   return (
     <div 
       ref={containerRef}
@@ -1178,7 +1223,17 @@ const currentUserPosition = getBestUserPosition();
                       Quality: {positionQuality?.toUpperCase() || 'UNKNOWN'}
                     </div>
 
-
+                {/* NEW: Hook Status Section */}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', marginTop: '5px' }}>
+                  <div style={{ color: 'lightgreen', fontSize: '10px' }}>🧪 NEW POSITIONING SYSTEM:</div>
+                  <div>Hook Ready: <span style={{ color: hookReady ? 'lightgreen' : 'red' }}>
+                    {hookReady ? '✅' : '❌'}
+                  </span></div>
+                  <div>Experience: {experienceType || 'None'}</div>
+                  <div>Debug Mode: <span style={{ color: hookDebugMode ? 'lightgreen' : 'gray' }}>
+                    {hookDebugMode ? '✅' : '❌'}
+                  </span></div>
+                </div>
          
                 <div>
                   <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
@@ -1187,39 +1242,6 @@ const currentUserPosition = getBestUserPosition();
 
                   {orientationError && 
                     <div style={{color: 'red'}}> Orient Error: {orientationError} </div>}
-                    // Add this button in your debug panel, maybe near the ground plane test UI:
-
-{/* <button
-  onClick={() => {
-    if (groundPlaneDetectorRef.current?.checkCameraReadiness) {
-      const readiness = groundPlaneDetectorRef.current.checkCameraReadiness();
-      console.log('📹 Camera Readiness Check:', readiness);
-      // You could show this in a debug section too
-    }
-  }}
-  style={{
-    fontSize: '10px',
-    padding: '4px 8px',
-    backgroundColor: 'rgba(100,100,255,0.3)',
-    border: 'none',
-    color: 'white',
-    cursor: 'pointer'
-  }}
->
-  📹 Check Camera
-</button> */}
-                  {/* <div>
-                  <GroundPlaneTestUI
-                        isTestMode={showGroundPlaneTest}
-                        onToggleTestMode={toggleGroundPlaneTest}
-                        onDetectNow={detectGroundNow}
-                        onAdjustGround={handleGroundAdjustment}
-                        onResetGround={handleGroundReset}
-                        onCheckCamera={handleCameraCheck}  // NEW
-                        currentOffset={groundPlaneDetectorRef.current?.getCurrentOffset?.() || 0}
-                        lastResult={groundPlaneDetectorRef.current?.lastResult || null}
-                      />
-                    </div> */}
 
                 <div style={{ 
                     display: 'flex', 
@@ -1231,7 +1253,19 @@ const currentUserPosition = getBestUserPosition();
                       const newValue = !arTestingOverride;
                       (window as any).arTestingOverride = newValue;
                       setArTestingOverride(newValue);
-                      // console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
+                      console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
+                      
+                      // NEW: Also call new positioning system if available
+                      if (hookReady && experienceType) {
+                        try {
+                          // This will position the model using the new system
+                          console.log('🧪 Calling new positioning system for:', experienceType);
+                          // Note: We don't have direct model ref here, but the hook will handle positioning
+                          // The individual experiences will pick up the change via their polling
+                        } catch (error) {
+                          console.warn('Error calling new positioning system:', error);
+                        }
+                      }
                     }}
                     style={{ cursor: 'pointer', 
                       userSelect: 'none', 
@@ -1239,7 +1273,6 @@ const currentUserPosition = getBestUserPosition();
                       padding: '4px 8px',
                       backgroundColor: 'rgba(0,0,255,0.3)',
                        marginTop: '8px',
-                      // border: '1px solid white', 
                       width: '100%' }}
                   >
                     Override: {arTestingOverride ? '✅' : '❌'}
@@ -1308,20 +1341,11 @@ const currentUserPosition = getBestUserPosition();
       <>
         <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
         
-        {/* Device orientation section */}
-        {deviceOrientation ? (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-              <div>Raw Alpha: {deviceOrientation.alpha?.toFixed(1)}</div>
-              <div>Raw Beta: {deviceOrientation.beta?.toFixed(1)}</div>
-              <div>Absolute: {deviceOrientation.absolute ? 'Yes' : 'No'}</div>
-              <div>WebKit: {(deviceOrientation as any).webkitCompassHeading?.toFixed(1) ?? 'N/A'}</div>
-              <div>Hook Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}</div>
-              <div>Platform: {/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'iOS' : 'Android/Other'}</div>
-            </div>
-          </>
-        ) : (
-          <div>Orientation: Desktop</div>
+        {/* NEW: User Position in Local Coordinates */}
+        {userLocalPosition && (
+          <div style={{ fontSize: '0.6rem', color: 'lightblue' }}>
+            User Local: [{userLocalPosition.x.toFixed(1)}, {userLocalPosition.y.toFixed(1)}, {userLocalPosition.z.toFixed(1)}]
+          </div>
         )}
 
         {/* Camera direction section */}
@@ -1333,18 +1357,20 @@ const currentUserPosition = getBestUserPosition();
           </span>
         </div>
 
-        {/* Model position section */}
+        {/* NEW: Model position section with local coordinates and distance in feet */}
         {cameraLookDirection.expectedModelPosition ? (
           <>
             <div style={{ fontSize: '0.5rem' }}>
-              Model Position: [{cameraLookDirection.expectedModelPosition.x.toFixed(1)}, {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] | Distance: {cameraLookDirection.modelDistance?.toFixed(1)}m
+              Model Local: [{cameraLookDirection.expectedModelPosition.x.toFixed(1)}, {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] | 
+              Distance: {cameraLookDirection.modelDistance !== null ? `${(cameraLookDirection.modelDistance * 3.28084).toFixed(1)}ft` : 'N/A'}
             </div>
 
+            {/* NEW: Updated turn indicators with ±20° tolerance */}
             {cameraLookDirection.aimError !== null && (
               <div style={{ fontSize: '0.8rem', opacity: 1, color: 'yellow' }}>
                 {(() => {
-                  if (cameraLookDirection.aimError < 2) {
-                    return '⮕⮕ RIGHT THERE ⬅⬅';
+                  if (cameraLookDirection.aimError <= 20) { // NEW: 40° total range (±20°)
+                    return '⮕⮕ ON TARGET ⬅⬅';
                   } else {
                     // Calculate which direction to turn
                     const userPos = getBestUserPosition();
@@ -1359,11 +1385,11 @@ const currentUserPosition = getBestUserPosition();
                     if (turnDirection < -180) turnDirection += 360;
                     
                     const turnAmount = Math.abs(turnDirection).toFixed(0);
-                    if (cameraLookDirection.aimError < 10) {
+                    if (cameraLookDirection.aimError < 40) {
                       return turnDirection > 0 
                         ? `→  Close - turn RIGHT ${turnAmount}° →` 
                         : `← Close - turn LEFT ${turnAmount}° ←`
-                    } else if (cameraLookDirection.aimError < 30) {
+                    } else if (cameraLookDirection.aimError < 60) {
                       return turnDirection > 0 
                         ? `⮕ TURN RIGHT ${turnAmount}° ⮕` 
                         : `⬅ TURN LEFT ${turnAmount}° ⬅`;
@@ -1400,19 +1426,61 @@ const currentUserPosition = getBestUserPosition();
             
             return (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                <button onClick={() => updateAnchorPosition(-0.00001, 0)} style={buttonStyle}>WEST</button>
-                <button onClick={() => updateAnchorPosition(0.00001, 0)} style={buttonStyle}>EAST</button>
-                <button onClick={() => updateAnchorPosition(0, 0.00001)} style={buttonStyle}>NORTH</button>
-                <button onClick={() => updateAnchorPosition(0, -0.00001)} style={buttonStyle}>SOUTH</button>
+                <button 
+                  onClick={() => {
+                    updateAnchorPosition(-0.00001, 0);
+                    // NEW: Also update new positioning system
+                    if (hookReady && experienceType) {
+                      // The hook will handle coordinate changes automatically
+                    }
+                  }} 
+                  style={buttonStyle}
+                >
+                  WEST
+                </button>
+                <button 
+                  onClick={() => {
+                    updateAnchorPosition(0.00001, 0);
+                    if (hookReady && experienceType) {
+                      // The hook will handle coordinate changes automatically
+                    }
+                  }} 
+                  style={buttonStyle}
+                >
+                  EAST
+                </button>
+                <button 
+                  onClick={() => {
+                    updateAnchorPosition(0, 0.00001);
+                    if (hookReady && experienceType) {
+                      // The hook will handle coordinate changes automatically
+                    }
+                  }} 
+                  style={buttonStyle}
+                >
+                  NORTH
+                </button>
+                <button 
+                  onClick={() => {
+                    updateAnchorPosition(0, -0.00001);
+                    if (hookReady && experienceType) {
+                      // The hook will handle coordinate changes automatically
+                    }
+                  }} 
+                  style={buttonStyle}
+                >
+                  SOUTH
+                </button>
               </div>
             );
           })()}
         </div>
 
-        {/* Elevation section */}
+        {/* NEW: Elevation section with new positioning system integration */}
         <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
           <div style={{ color: 'yellow', fontSize: '10px' }}>
-            ELEVATION: {((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: {manualElevationOffset.toFixed(3)}m
+            ELEVATION: {((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, 
+            Hook Offset: {hookReady ? getCurrentElevationOffset().toFixed(3) : 'N/A'}m
           </div>
           
           {(() => {
@@ -1428,16 +1496,57 @@ const currentUserPosition = getBestUserPosition();
             
             return (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                <button onClick={() => updateElevationOffset(-0.1)} style={elevButtonStyle}>-0.1m</button>
-                <button onClick={() => updateElevationOffset(-0.01)} style={elevButtonStyle}>-1cm</button>
-                <button onClick={() => updateElevationOffset(0.01)} style={elevButtonStyle}>+1cm</button>
-                <button onClick={() => updateElevationOffset(0.1)} style={elevButtonStyle}>+0.1m</button>
+                <button 
+                  onClick={() => {
+                    updateElevationOffset(-0.1);
+                    // NEW: Also adjust new positioning system
+                    if (hookReady) {
+                      adjustGlobalElevation(-0.1);
+                    }
+                  }} 
+                  style={elevButtonStyle}
+                >
+                  -0.1m
+                </button>
+                <button 
+                  onClick={() => {
+                    updateElevationOffset(-0.01);
+                    if (hookReady) {
+                      adjustGlobalElevation(-0.01);
+                    }
+                  }} 
+                  style={elevButtonStyle}
+                >
+                  -1cm
+                </button>
+                <button 
+                  onClick={() => {
+                    updateElevationOffset(0.01);
+                    if (hookReady) {
+                      adjustGlobalElevation(0.01);
+                    }
+                  }} 
+                  style={elevButtonStyle}
+                >
+                  +1cm
+                </button>
+                <button 
+                  onClick={() => {
+                    updateElevationOffset(0.1);
+                    if (hookReady) {
+                      adjustGlobalElevation(0.1);
+                    }
+                  }} 
+                  style={elevButtonStyle}
+                >
+                  +0.1m
+                </button>
               </div>
             );
           })()}
         </div>
 
-        {/* Scale section */}
+        {/* NEW: Scale section with new positioning system integration */}
         <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', paddingRight: '5px' }}>
           <div style={{ color: 'yellow', fontSize: '10px' }}>SCALE: {manualScaleOffset.toFixed(1)}x</div>
           
@@ -1454,27 +1563,61 @@ const currentUserPosition = getBestUserPosition();
             
             return (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                <button onClick={() => updateScaleOffset(-0.2)} style={scaleButtonStyle}>-0.2</button>
-                <button onClick={() => updateScaleOffset(-0.05)} style={scaleButtonStyle}>-0.05</button>
-                <button onClick={() => {
-                  setManualScaleOffset(1.0);
-                  setAccumulatedTransforms(prev => ({
-                    ...prev,
-                    scale: 1.0
-                  }));
-                  
-                  if (onModelScale) {
-                    onModelScale(1.0);
-                  }
-                  
-                  if (onModelReset) {
-                    onModelReset();
-                  }
-                  
-                  console.log('🔄 Scale reset to 1.0');
-                }} style={scaleButtonStyle}>1.0</button>
-                <button onClick={() => updateScaleOffset(0.05)} style={scaleButtonStyle}>+0.05</button>
-                <button onClick={() => updateScaleOffset(0.2)} style={scaleButtonStyle}>+0.2</button>
+                <button 
+                  onClick={() => {
+                    updateScaleOffset(-0.2);
+                    // NEW: Scale handled through onModelScale callback which should work with both systems
+                  }} 
+                  style={scaleButtonStyle}
+                >
+                  -0.2
+                </button>
+                <button 
+                  onClick={() => {
+                    updateScaleOffset(-0.05);
+                  }} 
+                  style={scaleButtonStyle}
+                >
+                  -0.05
+                </button>
+                <button 
+                  onClick={() => {
+                    setManualScaleOffset(1.0);
+                    setAccumulatedTransforms(prev => ({
+                      ...prev,
+                      scale: 1.0
+                    }));
+                    
+                    if (onModelScale) {
+                      onModelScale(1.0);
+                    }
+                    
+                    if (onModelReset) {
+                      onModelReset();
+                    }
+                    
+                    console.log('🔄 Scale reset to 1.0');
+                  }} 
+                  style={scaleButtonStyle}
+                >
+                  1.0
+                </button>
+                <button 
+                  onClick={() => {
+                    updateScaleOffset(0.05);
+                  }} 
+                  style={scaleButtonStyle}
+                >
+                  +0.05
+                </button>
+                <button 
+                  onClick={() => {
+                    updateScaleOffset(0.2);
+                  }} 
+                  style={scaleButtonStyle}
+                >
+                  +0.2
+                </button>
               </div>
             );
           })()}
@@ -1503,5 +1646,3 @@ const currentUserPosition = getBestUserPosition();
 };
 
 export default ArCameraComponent;
-
-
