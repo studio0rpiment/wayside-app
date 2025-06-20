@@ -117,7 +117,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         }
       }
     }
-  }, [modelRef.current, hookReady, USE_NEW_POSITIONING, positionObject, getPosition]);
+  }, [modelRef.current, hookReady, USE_NEW_POSITIONING]);
 
   // OLD SYSTEM: Listen for override changes (keep for comparison)
   useEffect(() => {
