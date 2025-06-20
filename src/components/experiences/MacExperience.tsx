@@ -9,7 +9,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 // NEW: Import the positioning hook
 import { useARPositioning } from '../../hooks/useARPositioning';
 
-const SHOW_DEBUG_PANEL = false; // Enable for testing
+const SHOW_DEBUG_PANEL = true; // Enable for testing
 
 // NEW: Test flag to switch between systems
 const USE_NEW_POSITIONING = true; // Set to true to test new hook
