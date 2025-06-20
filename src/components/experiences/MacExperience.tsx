@@ -235,7 +235,7 @@ useEffect(() => {
       console.log('👇 Swipe down detected on MAC');
     });
   }
-}, []);
+}, [positionObject]);
 
   const centeringOffset = new THREE.Vector3(-knownCenter.x, -knownCenter.y, -knownCenter.z);
 
