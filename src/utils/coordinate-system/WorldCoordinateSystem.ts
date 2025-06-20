@@ -91,13 +91,13 @@ export class WorldCoordinateSystem {
     // Convert to radians
     const originLatRad = toRadians(originLat);
     const dLat = toRadians(targetLat - originLat);
-    const dLon = -(toRadians(targetLon - originLon));
+    const dLon = toRadians(targetLon - originLon);
     
     // Convert to meters using local approximation
     const cosLat = Math.cos(originLatRad);
     
     const x = dLon * EARTH_RADIUS * cosLat;
-    const z = -dLat * EARTH_RADIUS; // Negative for Three.js coordinates
+    const z = dLat * EARTH_RADIUS; // Negative for Three.js coordinates
     const y = elevation - this.originElevation;
     
     return new THREE.Vector3(x, y, z);
