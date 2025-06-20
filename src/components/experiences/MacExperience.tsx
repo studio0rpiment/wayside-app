@@ -142,6 +142,11 @@ useEffect(() => {
       if (currentOverride !== arTestingOverride) {
         setArTestingOverride(currentOverride);
         console.log('🎯 OLD SYSTEM: MacExperience override changed:', currentOverride);
+
+           if (USE_NEW_POSITIONING && hookReady && modelRef.current) {
+        console.log('🧪 Override detected, calling new positioning');
+        positionObject(modelRef.current, 'mac');
+      }
         
         if (modelRef.current && isArMode && arPosition) {
           if (currentOverride) {
