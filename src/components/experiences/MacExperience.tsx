@@ -364,15 +364,10 @@ useEffect(() => {
 
 const handleElevationChanged = () => {
   console.log('🧪 MacExperience: handleElevationChanged called!');
-  if (modelRef.current && newSystemReady) {
+  if (modelRef.current) {
     console.log('🧪 MacExperience: Repositioning model...');
-    
-    // ✅ FIXED: Call positionModel instead of newPositionObject directly
     const success = positionModel(modelRef.current);
-    
     console.log('🧪 MacExperience: Model repositioned:', success);
-  } else {
-    console.warn('🧪 MacExperience: Cannot reposition - modelRef:', !!modelRef.current, 'newSystemReady:', newSystemReady);
   }
 };
 

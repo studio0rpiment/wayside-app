@@ -35,7 +35,11 @@ interface ArCameraProps {
   onSwipeDown?: () => void;
   useNewPositioning?: boolean;
   onElevationChanged?: () => void;  // NEW: Simple callback when elevation changes
-
+  onPositioningReady?: (positioningFunctions: {
+    positionObject: (object: THREE.Object3D, experienceId: string, options?: any) => boolean;
+    adjustGlobalElevation: (delta: number) => void;
+    isReady: boolean;
+  }) => void;
 
   children?: React.ReactNode;
 }
@@ -57,6 +61,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onSwipeDown,
   useNewPositioning,
   onElevationChanged,
+  onPositioningReady,
   children
   
   
@@ -970,6 +975,18 @@ const placeArObject = useCallback(() => {
     };
   }, []); // Remove permission dependency to avoid loops
   
+
+ //******* For Position Ready */ 
+ // In ArCameraComponent, add this useEffect:
+useEffect(() => {
+  if (newSystemReady && onPositioningReady) {
+    onPositioningReady({
+      positionObject: newPositionObject,
+      adjustGlobalElevation: newAdjustElevation,
+      isReady: newSystemReady
+    });
+  }
+}, [newSystemReady, onPositioningReady, newPositionObject, newAdjustElevation]);
 
 
   // Update AR object position when GPS coordinates change
