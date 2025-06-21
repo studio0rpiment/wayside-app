@@ -358,22 +358,18 @@ const handleCameraCheck = useCallback(() => {
       }
     };
 
-   const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
-  const userPosition = getBestUserPosition(); // Get position first
+const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
+  // ✅ NEW: Use shared AR positioning system
+  if (!newPositioningSystem || !newSystemReady) return null;
   
-  if (!userPosition || !activeAnchorPosition) return null;
+  const experienceId = experienceType || 'mac';
+  const result = newPositioningSystem.getPosition(experienceId);
   
-  const finalElevationOffset = elevationOffset + manualElevationOffset;
+  if (!result) return null;
   
-  const position = gpsToThreeJsPosition(
-    userPosition, // Use the variable, not the old userPosition
-    activeAnchorPosition,
-    finalElevationOffset,
-    coordinateScale
-  );
-  
-  return position;
-}, [getBestUserPosition, activeAnchorPosition, elevationOffset, manualElevationOffset, coordinateScale]);
+  // Return the relative position (what the model should be at relative to user)
+  return result.relativeToUser;
+}, [newPositioningSystem, newSystemReady, experienceType]);
 
 
   const updateElevationOffset = useCallback((deltaElevation: number) => {
@@ -1388,7 +1384,12 @@ const currentUserPosition = getBestUserPosition();
         {cameraLookDirection.expectedModelPosition ? (
           <>
             <div style={{ fontSize: '0.5rem' }}>
-              Model Position: [{cameraLookDirection.expectedModelPosition.x.toFixed(1)}, {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] | Distance: {cameraLookDirection.modelDistance !== null && cameraLookDirection.modelDistance !== undefined ? (cameraLookDirection.modelDistance * 3.28084).toFixed(1) : 'N/A'}ft
+              Model Position: [
+                {cameraLookDirection.expectedModelPosition.x.toFixed(1)},
+               {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, 
+               {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] 
+               | Distance: 
+               {cameraLookDirection.modelDistance !== null && cameraLookDirection.modelDistance !== undefined ? (cameraLookDirection.modelDistance * 3.28084).toFixed(1) : 'N/A'}ft
             </div>
 
             {/* UPDATED turn indicators - now ±20° for "on target" */}
