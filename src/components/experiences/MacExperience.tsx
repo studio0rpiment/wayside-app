@@ -133,6 +133,12 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   // Unified positioning interface that delegates to the active system
  const positionModel = (model: THREE.Points) => {
   if (USE_NEW_POSITIONING) {
+     console.log('🧪 NEW SYSTEM: Positioning model with world coordinate system');
+  console.log('🧪 NEW: Hook ready?', newSystemReady);
+  console.log('🧪 NEW: User position?', newUserPosition);
+  console.log('🧪 NEW: Scale before positioning:', model.scale.x);
+  
+
     console.log('🧪 NEW SYSTEM: Positioning model with world coordinate system');
     console.log('🧪 NEW: Scale before positioning:', model.scale.x);
     
