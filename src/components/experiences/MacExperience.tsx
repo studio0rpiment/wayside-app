@@ -385,6 +385,9 @@ useEffect(() => {
           (window as any).arTestingOverride = newDebugMode;
      
       console.log('🔗 Synced window.arTestingOverride with newDebugMode:', newDebugMode);
+          if (modelRef.current) {
+        positionModel(modelRef.current);
+      }
     }
   }
 }, [newDebugMode]);
