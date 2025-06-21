@@ -128,12 +128,12 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
       
       userMarkerRef.current = marker;
       
-      console.log('🧭 User location marker created', {
-        position,
-        heading,
-        orientationAvailable,
-        showWarning
-      });
+      // console.log('🧭 User location marker created', {
+      //   position,
+      //   heading,
+      //   orientationAvailable,
+      //   showWarning
+      // });
     } catch (error) {
       console.error('Error creating user location marker:', error);
     }

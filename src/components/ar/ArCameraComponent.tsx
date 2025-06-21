@@ -324,11 +324,11 @@ const handleCameraCheck = useCallback(() => {
         if (swipeDistance > MIN_SWIPE_DISTANCE) {
           // Swipe down - collapse panel
           setIsBottomDebugCollapsed(true);
-          console.log('🔽 Debug panel collapsed');
+          // console.log('🔽 Debug panel collapsed');
         } else if (swipeDistance < -MIN_SWIPE_DISTANCE) {
           // Swipe up - expand panel
           setIsBottomDebugCollapsed(false);
-          console.log('🔼 Debug panel expanded');
+          // console.log('🔼 Debug panel expanded');
         }
       }
     };
@@ -354,7 +354,7 @@ const handleCameraCheck = useCallback(() => {
   const updateElevationOffset = useCallback((deltaElevation: number) => {
   const newOffset = manualElevationOffset + deltaElevation;
   setManualElevationOffset(newOffset);
-    console.log('📏 Manual elevation offset:', newOffset);
+    // console.log('📏 Manual elevation offset:', newOffset);
   }, [manualElevationOffset]);
 
   const updateAnchorPosition = useCallback((deltaLon: number, deltaLat: number) => {
@@ -375,8 +375,8 @@ const handleCameraCheck = useCallback(() => {
     // Store adjusted position locally
     setAdjustedAnchorPosition(newAnchorPosition);
     
-    console.log('📍 Anchor moved to:', newAnchorPosition);
-    console.log('📍 Total offset:', newOffset);
+    // console.log('📍 Anchor moved to:', newAnchorPosition);
+    // console.log('📍 Total offset:', newOffset);
   }, [anchorPosition, gpsOffset]);
 
   const updateScaleOffset = useCallback((deltaScale: number) => {
@@ -395,7 +395,7 @@ const handleCameraCheck = useCallback(() => {
       onModelScale(newScale);
     }
     
-    console.log('📏 Manual scale:', newScale);
+    // console.log('📏 Manual scale:', newScale);
   }, [manualScaleOffset, onModelScale]);
 
   // Initialize camera stream
@@ -496,24 +496,24 @@ const handleCameraCheck = useCallback(() => {
 
   if (onSceneReady) {
     onSceneReady(scene, camera);
-    console.log('📡 AR scene exposed to parent component');
+    // console.log('📡 AR scene exposed to parent component');
   }
   
-  console.log('✅ Three.js scene initialized with optimizations');
+  // console.log('✅ Three.js scene initialized with optimizations');
   return true;
 };
   
   // Calculate and place AR object
 // In ArCameraComponent.tsx, update the placeArObject function:
 const placeArObject = useCallback(() => {
-  console.log('🎯 placeArObject() called');
-  console.log('🎯 onArObjectPlaced exists:', !!onArObjectPlaced);
+  // console.log('🎯 placeArObject() called');
+  // console.log('🎯 onArObjectPlaced exists:', !!onArObjectPlaced);
   
   // Get the position once at the start
   const userPosition = getBestUserPosition();
   
   if (!userPosition || !anchorPosition) {
-      console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
+      // console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
       return;
     }
     
@@ -770,7 +770,7 @@ const placeArObject = useCallback(() => {
       // Check for double-tap FIRST (before cooldown check)
       if (timeSince < doubleTapDelay && timeSince > 0) {
         // Double-tap detected - this takes priority over cooldown
-        console.log('👆 Double tap detected - reset');
+        // console.log('👆 Double tap detected - reset');
         setAccumulatedTransforms({
           rotation: { x: 0, y: 0, z: 0 },
           scale: 1.0
@@ -786,7 +786,7 @@ const placeArObject = useCallback(() => {
 
       // ONLY apply cooldown for non-double-tap single touches
       if (timeSinceMultiTouch < 200) {
-        console.log('🚫 Ignoring single finger - just ended multi-touch');
+        // console.log('🚫 Ignoring single finger - just ended multi-touch');
         return;
       }
 
@@ -808,7 +808,7 @@ const placeArObject = useCallback(() => {
       const MIN_TWO_FINGER_DISTANCE = 100;
       
       if (fingerDistance > MIN_TWO_FINGER_DISTANCE) {
-        console.log(`🤲 Two fingers detected ${fingerDistance.toFixed(0)}px apart`);
+        // console.log(`🤲 Two fingers detected ${fingerDistance.toFixed(0)}px apart`);
       }
       
       initialPinchDistance.current = fingerDistance;
@@ -831,7 +831,7 @@ const placeArObject = useCallback(() => {
       const timeSinceMultiTouch = now - lastMultiTouchTime.current;
       
       if (timeSinceMultiTouch < 200) {
-        console.log('🚫 Ignoring single finger move - just ended multi-touch');
+        // console.log('🚫 Ignoring single finger move - just ended multi-touch');
         return;
       }
 
@@ -912,11 +912,11 @@ const placeArObject = useCallback(() => {
       if (event.touches.length === 0) {
         // All fingers lifted
         lastMultiTouchTime.current = new Date().getTime();
-        console.log('👆 All touches ended');
+        // console.log('👆 All touches ended');
       } else if (event.touches.length === 1) {
         // Went from multi-touch to single touch
         lastMultiTouchTime.current = new Date().getTime();
-        console.log('👆 Multi-touch ended, one finger remains');
+        // console.log('👆 Multi-touch ended, one finger remains');
       }
   };
 

@@ -57,11 +57,11 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
       id => !previousActiveIds.includes(id)
     );
     
-    console.log('Geofence check:', {
-      currentActive: currentActiveIds,
-      previousActive: previousActiveIds,
-      newlyEntered: newlyEnteredIds
-    });
+    // console.log('Geofence check:', {
+    //   currentActive: currentActiveIds,
+    //   previousActive: previousActiveIds,
+    //   newlyEntered: newlyEnteredIds
+    // });
     
     // Handle newly entered geofences
     if (newlyEnteredIds.length > 0) {
@@ -70,7 +70,7 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
       
       // Only show notification if we haven't already notified for this geofence
       if (!notifiedGeofences.includes(newGeofenceId)) {
-        console.log('Showing notification for new geofence:', newGeofenceId);
+        // console.log('Showing notification for new geofence:', newGeofenceId);
         
         // Find the corresponding point data
         const pointFeature = routePointsData.features.find(

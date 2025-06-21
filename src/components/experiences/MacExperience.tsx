@@ -131,27 +131,35 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   // =================================================================
   
   // Unified positioning interface that delegates to the active system
-  const positionModel = (model: THREE.Points) => {
-    if (USE_NEW_POSITIONING) {
-      console.log('🧪 NEW SYSTEM: Positioning model with world coordinate system');
-      // Pass our locally calculated scale to the world system
-      const success = newPositionObject(model, 'mac', { 
-        manualScale: initialScale 
-      });
-      if (success) {
-        console.log('🧪 NEW: Model positioned with local scale:', initialScale);
-        console.log('🧪 NEW: Final model position:', model.position.toArray());
-        console.log('🧪 NEW: Final model scale:', model.scale.x);
-      } else {
-        console.warn('🧪 NEW: Positioning failed');
-      }
-      return success;
+ const positionModel = (model: THREE.Points) => {
+  if (USE_NEW_POSITIONING) {
+    console.log('🧪 NEW SYSTEM: Positioning model with world coordinate system');
+    console.log('🧪 NEW: Scale before positioning:', model.scale.x);
+    
+    // Pass our locally calculated scale to the world system
+    const success = newPositionObject(model, 'mac', { 
+      manualScale: initialScale 
+    });
+    
+    if (success) {
+      console.log('🧪 NEW: Scale after positioning (before force):', model.scale.x);
+      
+      // FORCE our local scale AFTER positioning to override anchor scale
+      model.scale.set(initialScale, initialScale, initialScale);
+      
+      console.log('🧪 NEW: Forced local scale after positioning:', initialScale);
+      console.log('🧪 NEW: Final model position:', model.position.toArray());
+      console.log('🧪 NEW: Final model scale:', model.scale.x);
     } else {
-      console.log('🎯 LEGACY: Positioning model with GPS-to-AR system');
-      legacyPositionModel(model);
-      return true;
+      console.warn('🧪 NEW: Positioning failed');
     }
-  };
+    return success;
+  } else {
+    console.log('🎯 LEGACY: Positioning model with GPS-to-AR system');
+    legacyPositionModel(model);
+    return true;
+  }
+};
 
   const handleModelReset = (model: THREE.Points) => {
     if (USE_NEW_POSITIONING) {
