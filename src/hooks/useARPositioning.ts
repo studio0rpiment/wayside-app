@@ -20,6 +20,10 @@ export interface ARPositioningHookResult {
   setGlobalElevation: (offset: number) => void;
   getCurrentElevationOffset: () => number;
   
+  // Anchor adjustment (NEW)
+  adjustAnchorPosition: (experienceId: string, deltaLon: number, deltaLat: number) => boolean;
+  resetAnchorPosition: (experienceId: string) => boolean;
+  
   // Reset and debug
   resetPosition: (experienceId: string) => void;
   resetAllAdjustments: () => void;
@@ -218,6 +222,39 @@ export function useARPositioning(): ARPositioningHookResult {
     return arPositioningManagerRef.current?.getGlobalElevationOffset() || 0;
   }, []);
   
+  // NEW: Anchor adjustment methods
+  const adjustAnchorPosition = useCallback((
+    experienceId: string, 
+    deltaLon: number, 
+    deltaLat: number
+  ): boolean => {
+    if (!arPositioningManagerRef.current) {
+      console.warn('🎣 useARPositioning: Positioning manager not ready for anchor adjustment');
+      return false;
+    }
+    
+    try {
+      return arPositioningManagerRef.current.adjustAnchorPosition(experienceId, deltaLon, deltaLat);
+    } catch (error) {
+      console.error('🎣 useARPositioning: Error adjusting anchor position:', error);
+      return false;
+    }
+  }, []);
+  
+  const resetAnchorPosition = useCallback((experienceId: string): boolean => {
+    if (!arPositioningManagerRef.current) {
+      console.warn('🎣 useARPositioning: Positioning manager not ready for anchor reset');
+      return false;
+    }
+    
+    try {
+      return arPositioningManagerRef.current.resetAnchorPosition(experienceId);
+    } catch (error) {
+      console.error('🎣 useARPositioning: Error resetting anchor position:', error);
+      return false;
+    }
+  }, []);
+  
   // Reset methods
   const resetPosition = useCallback((experienceId: string) => {
     console.log(`🎣 useARPositioning: Resetting position for ${experienceId}`);
@@ -271,6 +308,10 @@ export function useARPositioning(): ARPositioningHookResult {
     setGlobalElevation,
     getCurrentElevationOffset,
     
+    // NEW: Anchor adjustment methods
+    adjustAnchorPosition,
+    resetAnchorPosition,
+    
     // Reset methods
     resetPosition,
     resetAllAdjustments,
@@ -290,6 +331,8 @@ export function useARPositioning(): ARPositioningHookResult {
     adjustGlobalElevation,
     setGlobalElevation,
     getCurrentElevationOffset,
+    adjustAnchorPosition,
+    resetAnchorPosition,
     resetPosition,
     resetAllAdjustments,
     isReady,

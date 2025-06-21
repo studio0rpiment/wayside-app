@@ -136,6 +136,58 @@ export class ARPositioningManager {
     };
   }
 
+/**
+   * Adjust anchor position by GPS offset
+   * This moves the anchor's GPS coordinates and recalculates world position
+   */
+  adjustAnchorPosition(
+    experienceId: string,
+    deltaLon: number,
+    deltaLat: number
+  ): boolean {
+    const anchor = this.anchorManager.getAnchor(experienceId);
+    if (!anchor) {
+      console.warn(`🎯 ARPositioningManager: No anchor found for ${experienceId}`);
+      return false;
+    }
+
+    // Calculate new GPS coordinates
+    const newGpsCoordinates: [number, number] = [
+      anchor.gpsCoordinates[0] + deltaLon,
+      anchor.gpsCoordinates[1] + deltaLat
+    ];
+
+    // Update the anchor using the anchor manager
+    const success = this.anchorManager.updateAnchorPosition(
+      experienceId,
+      newGpsCoordinates,
+      anchor.elevationOffset
+    );
+
+    if (success) {
+      console.log(`🎯 ARPositioningManager: Anchor ${experienceId} moved by [${deltaLon.toFixed(8)}, ${deltaLat.toFixed(8)}]`);
+      console.log(`🎯 ARPositioningManager: New GPS coordinates: [${newGpsCoordinates[0].toFixed(8)}, ${newGpsCoordinates[1].toFixed(8)}]`);
+    } else {
+      console.error(`🎯 ARPositioningManager: Failed to update anchor ${experienceId}`);
+    }
+
+    return success;
+  }
+
+  /**
+   * Reset anchor to original position
+   * This restores the anchor to its original GPS coordinates from route data
+   */
+  resetAnchorPosition(experienceId: string): boolean {
+    // For now, log that this feature needs implementation
+    // You could store original positions in AnchorManager to enable this
+    console.log(`🎯 ARPositioningManager: Reset anchor ${experienceId} (feature not fully implemented yet)`);
+    console.log(`🎯 ARPositioningManager: You may need to reload the page to reset anchors to original positions`);
+    
+    // Return false to indicate not fully implemented
+    return false;
+  }
+  
   /**
    * Simplified API for experiences that just want a position
    */

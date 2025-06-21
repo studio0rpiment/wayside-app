@@ -1454,28 +1454,35 @@ const currentUserPosition = getBestUserPosition();
             };
             
             if (newSystemReady) {
-              // NEW SYSTEM: Use anchor manager adjustments
-              return (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                  <button onClick={() => {
-                    console.log('🧪 NEW: Anchor adjustment - WEST');
-                    // TODO: Implement anchor manager position adjustment
-                  }} style={buttonStyle}>WEST</button>
-                  <button onClick={() => {
-                    console.log('🧪 NEW: Anchor adjustment - EAST');
-                    // TODO: Implement anchor manager position adjustment
-                  }} style={buttonStyle}>EAST</button>
-                  <button onClick={() => {
-                    console.log('🧪 NEW: Anchor adjustment - NORTH');
-                    // TODO: Implement anchor manager position adjustment
-                  }} style={buttonStyle}>NORTH</button>
-                  <button onClick={() => {
-                    console.log('🧪 NEW: Anchor adjustment - SOUTH');
-                    // TODO: Implement anchor manager position adjustment
-                  }} style={buttonStyle}>SOUTH</button>
-                </div>
-              );
-            } else {
+  // NEW SYSTEM: Use shared anchor adjustments
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+      <button onClick={() => {
+        console.log('🧪 NEW: Anchor adjustment - WEST');
+        newPositioningSystem.adjustAnchorPosition(experienceType || 'mac', -0.00001, 0);
+        if (onElevationChanged) onElevationChanged(); // Trigger repositioning
+      }} style={buttonStyle}>WEST</button>
+      
+      <button onClick={() => {
+        console.log('🧪 NEW: Anchor adjustment - EAST');
+        newPositioningSystem.adjustAnchorPosition(experienceType || 'mac', 0.00001, 0);
+        if (onElevationChanged) onElevationChanged();
+      }} style={buttonStyle}>EAST</button>
+      
+      <button onClick={() => {
+        console.log('🧪 NEW: Anchor adjustment - NORTH');
+        newPositioningSystem.adjustAnchorPosition(experienceType || 'mac', 0, 0.00001);
+        if (onElevationChanged) onElevationChanged();
+      }} style={buttonStyle}>NORTH</button>
+      
+      <button onClick={() => {
+        console.log('🧪 NEW: Anchor adjustment - SOUTH');
+        newPositioningSystem.adjustAnchorPosition(experienceType || 'mac', 0, -0.00001);
+        if (onElevationChanged) onElevationChanged();
+      }} style={buttonStyle}>SOUTH</button>
+    </div>
+  );
+} else {
               // LEGACY SYSTEM: Use existing GPS offset logic
               return (
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
