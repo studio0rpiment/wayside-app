@@ -1473,7 +1473,8 @@ const currentUserPosition = getBestUserPosition();
         <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
           <div style={{ color: 'yellow', fontSize: '10px' }}>
             {newSystemReady ? 
-              `NEW SYSTEM ELEVATION: Global Offset ${manualElevationOffset.toFixed(3)}m` :
+              `NEW SYSTEM ELEVATION: Global Offset ${newPositioningSystem.getCurrentElevationOffset().toFixed(3)}m`
+                   :
               `ELEVATION: ${((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: ${manualElevationOffset.toFixed(3)}m`
             }
           </div>
@@ -1494,13 +1495,20 @@ const currentUserPosition = getBestUserPosition();
   // NEW SYSTEM: Use ARPositioningManager elevation adjustment
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-      <button onClick={() => {
-        newAdjustElevation(-0.1);
-        console.log('🧪 NEW: Global elevation -0.1m');
-        if (onElevationChanged) {
-          onElevationChanged();
-        }
-      }} style={elevButtonStyle}>-0.1m</button>
+<button onClick={() => {
+  console.log('🧪 STEP 1: Adjusting global elevation -0.1m');
+  newAdjustElevation(-0.1);
+  
+  console.log('🧪 STEP 2: Current global elevation:', newPositioningSystem.getCurrentElevationOffset());
+  
+  console.log('🧪 STEP 3: onElevationChanged available?', !!onElevationChanged);
+  if (onElevationChanged) {
+    console.log('🧪 STEP 4: Calling onElevationChanged callback');
+    onElevationChanged();
+  } else {
+    console.error('🧪 ERROR: onElevationChanged callback not available!');
+  }
+}} style={elevButtonStyle}>-0.1m</button>
       
       <button onClick={() => {
         newAdjustElevation(-0.01);
