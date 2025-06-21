@@ -174,19 +174,22 @@ export class ARPositioningManager {
     return success;
   }
 
-  /**
-   * Reset anchor to original position
-   * This restores the anchor to its original GPS coordinates from route data
-   */
-  resetAnchorPosition(experienceId: string): boolean {
-    // For now, log that this feature needs implementation
-    // You could store original positions in AnchorManager to enable this
-    console.log(`🎯 ARPositioningManager: Reset anchor ${experienceId} (feature not fully implemented yet)`);
-    console.log(`🎯 ARPositioningManager: You may need to reload the page to reset anchors to original positions`);
-    
-    // Return false to indicate not fully implemented
-    return false;
+/**
+ * Reset anchor to original position
+ */
+resetAnchorPosition(experienceId: string): boolean {
+  console.log(`🎯 ARPositioningManager: Resetting anchor ${experienceId} to original position`);
+  
+  const success = this.anchorManager.resetAnchorToOriginal(experienceId);
+  
+  if (success) {
+    console.log(`🎯 ARPositioningManager: Anchor ${experienceId} reset to original position`);
+  } else {
+    console.error(`🎯 ARPositioningManager: Failed to reset anchor ${experienceId}`);
   }
+  
+  return success;
+}
   
   /**
    * Simplified API for experiences that just want a position
@@ -386,14 +389,21 @@ export class ARPositioningManager {
     return debugInfo;
   }
 
-  /**
-   * Reset all positioning adjustments
-   */
-  resetAdjustments(): void {
-    this.globalElevationOffset = -1.5; // Back to default "fix too high" value
-    this.globalDebugPosition = new THREE.Vector3(0, 0, -5);
-    console.log('🎯 ARPositioningManager: Reset all adjustments to defaults');
-  }
+/**
+ * Reset all positioning adjustments
+ */
+resetAdjustments(): void {
+  this.globalElevationOffset = -1.5; // Back to default "fix too high" value
+  this.globalDebugPosition = new THREE.Vector3(0, 0, -5);
+  
+  // ✅ NEW: Reset all anchors to original positions from mapRouteData
+  console.log('🎯 ARPositioningManager: Resetting all anchors to original positions...');
+  
+  // Tell AnchorManager to reload from route data
+  this.anchorManager.resetAllAnchorsToOriginal();
+  
+  console.log('🎯 ARPositioningManager: Reset all adjustments to defaults');
+}
 
   /**
    * Test positioning system with a specific experience

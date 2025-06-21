@@ -317,6 +317,45 @@ export class AnchorManager {
   }
 
   /**
+ * Reset all anchors to their original positions from mapRouteData
+ */
+resetAllAnchorsToOriginal(): void {
+  console.log('🔗 AnchorManager: Resetting all anchors to original positions...');
+  
+  // Clear current anchors
+  this.anchors.clear();
+  
+  // Reload from route data (this calls the existing loadAnchorsFromRouteData logic)
+  this.loadAnchorsFromRouteData();
+  
+  console.log('🔗 AnchorManager: All anchors reset to original positions');
+}
+
+/**
+ * Reset a specific anchor to its original position
+ */
+resetAnchorToOriginal(experienceId: string): boolean {
+  // Find the original anchor data in routePointsData
+  const originalFeature = routePointsData.features.find(
+    feature => feature.properties.iconName === experienceId
+  );
+  
+  if (!originalFeature || !originalFeature.properties.arAnchor) {
+    console.warn(`🔗 AnchorManager: No original anchor data found for ${experienceId}`);
+    return false;
+  }
+  
+  const originalAnchor = originalFeature.properties.arAnchor;
+  
+  // Update the anchor to original position
+  return this.updateAnchorPosition(
+    experienceId,
+    originalAnchor.coordinates,
+    originalAnchor.elevation || 0
+  );
+}
+
+  /**
    * Get anchor metadata for geofencing
    */
   getGeofenceConfig(experienceId: string): {
