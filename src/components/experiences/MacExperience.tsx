@@ -379,8 +379,8 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 
 useEffect(() => {
   if (USE_NEW_POSITIONING && newDebugMode !== undefined) {
-    const currentOverride = (window as any).arTestingOverride ?? true;
-    if (newDebugMode == currentOverride) {
+    const currentOverride = (window as any).arTestingOverride ?? false;
+    if (newDebugMode !== currentOverride) {
  
           (window as any).arTestingOverride = !currentOverride;
      
