@@ -1162,7 +1162,7 @@ const currentUserPosition = getBestUserPosition();
       
 {/* *************  TOP Debug Panel */}
      
-     {SHOW_DEBUG_PANEL && (
+{SHOW_DEBUG_PANEL && (
   <div style={{
     position: 'absolute',
     top: '1vh',
@@ -1266,31 +1266,31 @@ const currentUserPosition = getBestUserPosition();
           User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
         </div>
 
-        {/* ✅ UPDATED: Show anchor position from shared system if available */}
+        {/* ✅ SIMPLE: Add GPS offsets to display for screenshot */}
         <div>
-          Anchor: [{activeAnchorPosition[0].toFixed(10)}, {activeAnchorPosition[1].toFixed(10)}]
-          {newSystemReady && (
+          Anchor GPS: [{(() => {
+            const baseLon = activeAnchorPosition[0];
+            const baseLat = activeAnchorPosition[1];
+            
+            // Add the GPS offsets from state (these get updated by anchor buttons)
+            const displayLon = baseLon + gpsOffset.lon;
+            const displayLat = baseLat + gpsOffset.lat;
+            
+            return `${displayLon.toFixed(10)}, ${displayLat.toFixed(10)}`;
+          })()}]
+          {Math.abs(gpsOffset.lon) > 0 || Math.abs(gpsOffset.lat) > 0 ? (
+            <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px', color: 'yellow' }}>
+              (adjusted)
+            </span>
+          ) : (
             <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px' }}>
-              (from shared system)
+              (original)
             </span>
           )}
         </div>  
                                   
         <div>
           GPS Bearing: {currentUserPosition ? `${calculateBearing(currentUserPosition, anchorPosition).toFixed(1)}°` : 'N/A'}
-        </div>
-        
-        {/* ✅ ENHANCED: GPS quality info from enhanced context */}
-        <div style={{ color: 'cyan' }}>
-          GPS Source: {preciseUserPosition ? 'AVERAGED' : 'RAW'} | 
-          Accuracy: {currentAccuracy?.toFixed(1)}m | 
-          Stable: {isPositionStable ? '✅' : '❌'}
-        </div>
-        <div style={{ 
-          color: positionQuality === 'excellent' || positionQuality === 'good' ? '#10B981' : 
-                positionQuality === 'fair' ? '#F59E0B' : '#EF4444' 
-        }}>
-          Quality: {positionQuality?.toUpperCase() || 'UNKNOWN'}
         </div>
 
         {/* ✅ ENHANCED: Shared positioning system status */}
