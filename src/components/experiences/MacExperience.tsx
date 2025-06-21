@@ -27,6 +27,8 @@ interface MacExperienceProps {
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
   onExperienceReady?: () => void;
+  onRegisterOverrideToggle?: (handler: (override: boolean) => void) => void;  
+
 }
 
 const MacExperience: React.FC<MacExperienceProps> = ({ 
@@ -41,7 +43,8 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   onModelReset,
   onSwipeUp,
   onSwipeDown,
-  onExperienceReady
+  onExperienceReady,
+  onRegisterOverrideToggle
 }) => {
 
   // =================================================================
@@ -138,13 +141,12 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       console.log('🧪 NEW: Hook not ready yet, skipping positioning');
       return false;
     }
-      console.log('🧪 NEW: Scale before positioning:', model.scale.x);
+      // console.log('🧪 NEW: Scale before positioning:', model.scale.x);
 
     
     // Pass our locally calculated scale to the world system
     const success = newPositionObject(model, 'mac');
-    // model.scale.set(initialScale, initialScale, initialScale);
-
+   
     return success;
   } else {
     console.log('🎯 LEGACY: Positioning model with GPS-to-AR system');
@@ -345,6 +347,23 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     
     return sampledGeometry;
   };
+
+//************ PASSING OVERRIDE FROM ARCAMERACOMPONENT THROUGH EXPERIENCE MANAGER */
+  useEffect(() => {
+  if (onRegisterOverrideToggle) {
+    onRegisterOverrideToggle((newValue: boolean) => {
+      console.log('🎯 Override toggled from ArCamera:', newValue);
+      setLegacyArTestingOverride(newValue);
+      if (modelRef.current) {
+        if (USE_NEW_POSITIONING) {
+          positionModel(modelRef.current);
+        } else {
+          legacyPositionModel(modelRef.current);
+        }
+      }
+    });
+  }
+}, [onRegisterOverrideToggle, USE_NEW_POSITIONING]);
 
   //******** WAIT FOR THE HOOK TO BE READY FOR NEW POSITION SYSTEM */
     useEffect(() => {

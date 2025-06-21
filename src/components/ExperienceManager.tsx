@@ -96,6 +96,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
   const { startArExperience, endArExperience } = useSystemOptimization();
   
+  
   // ✅ SIMPLIFIED: Use enhanced positioning with no quality restrictions
   const {
     getBestUserPosition,
@@ -113,6 +114,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   const [experienceReady, setExperienceReady] = useState(true);
   const [arScene, setArScene] = useState<THREE.Scene | null>(null);
   const [arCamera, setArCamera] = useState<THREE.PerspectiveCamera | null>(null);
+  const [overrideToggleHandler, setOverrideToggleHandler] = useState<((override: boolean) => void) | null>(null);
 
   // Track experience engagement time for completion criteria
   const [experienceStartTime, setExperienceStartTime] = useState<number | null>(null);
@@ -297,6 +299,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       onSwipeUp: registerSwipeUpHandler,
       onSwipeDown: registerSwipeDownHandler,
       onExperienceReady: handleExperienceReady,
+      onRegisterOverrideToggle: setOverrideToggleHandler,  // ADD THIS LINE
+
     };
 
     // Only include AR props if they have valid values
@@ -429,6 +433,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           onModelReset={handleModelReset}
           onSwipeUp={handleSwipeUp}
           onSwipeDown={handleSwipeDown}
+          onOverrideToggle={overrideToggleHandler || undefined} 
         />
       )}
       
