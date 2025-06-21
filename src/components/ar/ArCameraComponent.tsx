@@ -12,6 +12,8 @@ import GroundPlaneTestUI from './GroundPlaneTestUI';
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 import { useGeofenceContext } from '../../context/GeofenceContext';
+import { useARPositioning } from '../../hooks/useARPositioning';
+
 
 
 
@@ -31,6 +33,7 @@ interface ArCameraProps {
   onModelReset?: () => void;
   onSwipeUp?: () => void;
   onSwipeDown?: () => void;
+  useNewPositioning?: boolean;
 
   children?: React.ReactNode;
 }
@@ -50,6 +53,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onModelReset,
   onSwipeUp,
   onSwipeDown,
+  useNewPositioning,
   children
   
   
@@ -159,6 +163,15 @@ const groundPlaneDetectorRef = useRef<GroundPlaneDetectorRef>(null);
     // Touch constants
     const minSwipeDistance = 50;
     const doubleTapDelay = 300;
+    // Feature flag for new positioning system
+    // const USE_NEW_POSITIONING = true; // Set to true to enable new positioning system
+    const newPositioningSystem = useARPositioning();
+    const { 
+      adjustGlobalElevation: newAdjustElevation,
+      positionObject: newPositionObject,
+      isReady: newSystemReady 
+    } = newPositioningSystem;
+
     // Permission handling - use existing system
     const { isPermissionGranted, requestPermission } = usePermissions();
     const activeAnchorPosition = adjustedAnchorPosition || anchorPosition;
@@ -1279,56 +1292,61 @@ const currentUserPosition = getBestUserPosition();
                   
 
 //* *******LOWER DEBUG PANEL ******************** */ 
-     {SHOW_DEBUG_PANEL && isInitialized && (
-      <div 
-        style={{
-          position: 'absolute',
-          bottom: experienceType === '2030-2105' ? '11svh' : '2svh',
-          left: '50%',
-          width: '90vw',
-          transform: 'translateX(-50%)',
-          backgroundColor: 'rgba(0, 0, 0, 0)',
-          backdropFilter: 'blur(20px)',
-          color: 'white',
-          padding: '0',
-          borderRadius: '1rem',
-          fontSize: '0.8rem',
-          fontFamily: 'monospace',
-          zIndex: 1025,
-          textAlign: 'center'
-        }}
-        onTouchStart={handleSwipeStart}
-        onTouchMove={handleSwipeMove}
-        onTouchEnd={handleSwipeEnd}
-      >
-        {/* Always visible: Title */}
-        <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
-        
-        {/* Always visible: Rotation values */}
-        <div>
-          Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)
-        </div>
+{SHOW_DEBUG_PANEL && isInitialized && (
+  <div 
+    style={{
+      position: 'absolute',
+      bottom: experienceType === '2030-2105' ? '11svh' : '2svh',
+      left: '50%',
+      width: '90vw',
+      transform: 'translateX(-50%)',
+      backgroundColor: 'rgba(0, 0, 0, 0)',
+      backdropFilter: 'blur(20px)',
+      color: 'white',
+      padding: '0',
+      borderRadius: '1rem',
+      fontSize: '0.8rem',
+      fontFamily: 'monospace',
+      zIndex: 1025,
+      textAlign: 'center'
+    }}
+    onTouchStart={handleSwipeStart}
+    onTouchMove={handleSwipeMove}
+    onTouchEnd={handleSwipeEnd}
+  >
+    {/* Always visible: Title */}
+    <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
     
+    {/* Always visible: Rotation values */}
+    <div>
+      Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)
+    </div>
+
     {/* Collapsible content */}
     {!isBottomDebugCollapsed ? (
       <>
         <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
         
-        {/* Device orientation section */}
-        {deviceOrientation ? (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-              <div>Raw Alpha: {deviceOrientation.alpha?.toFixed(1)}</div>
-              <div>Raw Beta: {deviceOrientation.beta?.toFixed(1)}</div>
-              <div>Absolute: {deviceOrientation.absolute ? 'Yes' : 'No'}</div>
-              <div>WebKit: {(deviceOrientation as any).webkitCompassHeading?.toFixed(1) ?? 'N/A'}</div>
-              <div>Hook Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}</div>
-              <div>Platform: {/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'iOS' : 'Android/Other'}</div>
-            </div>
-          </>
-        ) : (
-          <div>Orientation: Desktop</div>
-        )}
+        {/* User Position in Local Coordinates */}
+        <div style={{ fontSize: '0.5rem', marginBottom: '5px' }}>
+          <span style={{ color: 'cyan' }}>User Local Position: </span>
+          <span>
+            {(() => {
+              const userPos = getBestUserPosition();
+              if (!userPos) return 'No GPS';
+              
+              // Convert user GPS to local Three.js coordinates (relative to anchor)
+              const userLocalPos = gpsToThreeJsPosition(
+                userPos,
+                activeAnchorPosition, 
+                0, // User at ground level
+                coordinateScale
+              );
+              
+              return `[${userLocalPos.x.toFixed(1)}, ${userLocalPos.y.toFixed(1)}, ${userLocalPos.z.toFixed(1)}]`;
+            })()}
+          </span>
+        </div>
 
         {/* Camera direction section */}
         <div style={{ fontSize: '0.5rem' }}>
@@ -1339,18 +1357,19 @@ const currentUserPosition = getBestUserPosition();
           </span>
         </div>
 
-        {/* Model position section */}
+        {/* Model position section - UPDATED with feet conversion */}
         {cameraLookDirection.expectedModelPosition ? (
           <>
             <div style={{ fontSize: '0.5rem' }}>
-              Model Position: [{cameraLookDirection.expectedModelPosition.x.toFixed(1)}, {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] | Distance: {cameraLookDirection.modelDistance?.toFixed(1)}m
+              Model Position: [{cameraLookDirection.expectedModelPosition.x.toFixed(1)}, {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] | Distance: {cameraLookDirection.modelDistance !== null && cameraLookDirection.modelDistance !== undefined ? (cameraLookDirection.modelDistance * 3.28084).toFixed(1) : 'N/A'}ft
             </div>
 
+            {/* UPDATED turn indicators - now ±20° for "on target" */}
             {cameraLookDirection.aimError !== null && (
               <div style={{ fontSize: '0.8rem', opacity: 1, color: 'yellow' }}>
                 {(() => {
-                  if (cameraLookDirection.aimError < 2) {
-                    return '⮕⮕ RIGHT THERE ⬅⬅';
+                  if (cameraLookDirection.aimError < 20) { // CHANGED from 2 to 20
+                    return '⮕⮕ ON TARGET ⬅⬅';
                   } else {
                     // Calculate which direction to turn
                     const userPos = getBestUserPosition();
@@ -1365,11 +1384,11 @@ const currentUserPosition = getBestUserPosition();
                     if (turnDirection < -180) turnDirection += 360;
                     
                     const turnAmount = Math.abs(turnDirection).toFixed(0);
-                    if (cameraLookDirection.aimError < 10) {
+                    if (cameraLookDirection.aimError < 40) { // CHANGED from 10 to 40
                       return turnDirection > 0 
                         ? `→  Close - turn RIGHT ${turnAmount}° →` 
                         : `← Close - turn LEFT ${turnAmount}° ←`
-                    } else if (cameraLookDirection.aimError < 30) {
+                    } else if (cameraLookDirection.aimError < 60) { // CHANGED from 30 to 60
                       return turnDirection > 0 
                         ? `⮕ TURN RIGHT ${turnAmount}° ⮕` 
                         : `⬅ TURN LEFT ${turnAmount}° ⬅`;
@@ -1390,99 +1409,196 @@ const currentUserPosition = getBestUserPosition();
         {/* GPS calibration section */}
         <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
           <div style={{ color: 'yellow', fontSize: '0.7rem' }}>
-            USE BUTTONS TO MOVE ANCHOR: [{(adjustedAnchorPosition || anchorPosition)[0].toFixed(6)}, {(adjustedAnchorPosition || anchorPosition)[1].toFixed(6)}]
+            {newSystemReady ? 
+              'NEW SYSTEM - ANCHOR ADJUSTMENTS:' : 
+              `USE BUTTONS TO MOVE ANCHOR: [${(adjustedAnchorPosition || anchorPosition)[0].toFixed(6)}, ${(adjustedAnchorPosition || anchorPosition)[1].toFixed(6)}]`
+            }
           </div>
 
           {(() => {
             const buttonStyle = {
               fontSize: '20px',
               padding: '4px 12px',
-              backgroundColor: 'rgba(255,255,255,0.2)',
+              backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
               border: 'none',
               borderRadius: '0.5rem',
               color: 'white',
               cursor: 'pointer'
             };
             
-            return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                <button onClick={() => updateAnchorPosition(-0.00001, 0)} style={buttonStyle}>WEST</button>
-                <button onClick={() => updateAnchorPosition(0.00001, 0)} style={buttonStyle}>EAST</button>
-                <button onClick={() => updateAnchorPosition(0, 0.00001)} style={buttonStyle}>NORTH</button>
-                <button onClick={() => updateAnchorPosition(0, -0.00001)} style={buttonStyle}>SOUTH</button>
-              </div>
-            );
+            if (newSystemReady) {
+              // NEW SYSTEM: Use anchor manager adjustments
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                  <button onClick={() => {
+                    console.log('🧪 NEW: Anchor adjustment - WEST');
+                    // TODO: Implement anchor manager position adjustment
+                  }} style={buttonStyle}>WEST</button>
+                  <button onClick={() => {
+                    console.log('🧪 NEW: Anchor adjustment - EAST');
+                    // TODO: Implement anchor manager position adjustment
+                  }} style={buttonStyle}>EAST</button>
+                  <button onClick={() => {
+                    console.log('🧪 NEW: Anchor adjustment - NORTH');
+                    // TODO: Implement anchor manager position adjustment
+                  }} style={buttonStyle}>NORTH</button>
+                  <button onClick={() => {
+                    console.log('🧪 NEW: Anchor adjustment - SOUTH');
+                    // TODO: Implement anchor manager position adjustment
+                  }} style={buttonStyle}>SOUTH</button>
+                </div>
+              );
+            } else {
+              // LEGACY SYSTEM: Use existing GPS offset logic
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                  <button onClick={() => updateAnchorPosition(-0.00001, 0)} style={buttonStyle}>WEST</button>
+                  <button onClick={() => updateAnchorPosition(0.00001, 0)} style={buttonStyle}>EAST</button>
+                  <button onClick={() => updateAnchorPosition(0, 0.00001)} style={buttonStyle}>NORTH</button>
+                  <button onClick={() => updateAnchorPosition(0, -0.00001)} style={buttonStyle}>SOUTH</button>
+                </div>
+              );
+            }
           })()}
         </div>
 
         {/* Elevation section */}
         <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
           <div style={{ color: 'yellow', fontSize: '10px' }}>
-            ELEVATION: {((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: {manualElevationOffset.toFixed(3)}m
+            {newSystemReady ? 
+              `NEW SYSTEM ELEVATION: Global Offset ${manualElevationOffset.toFixed(3)}m` :
+              `ELEVATION: ${((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: ${manualElevationOffset.toFixed(3)}m`
+            }
           </div>
           
           {(() => {
             const elevButtonStyle = {
               fontSize: '20px',
               padding: '4px 12px',
-              backgroundColor: 'rgba(255,255,255,0.2)',
+              backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
               border: 'none',
               borderRadius: '0.5rem',
               color: 'white',
               cursor: 'pointer'
             };
             
-            return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                <button onClick={() => updateElevationOffset(-0.1)} style={elevButtonStyle}>-0.1m</button>
-                <button onClick={() => updateElevationOffset(-0.01)} style={elevButtonStyle}>-1cm</button>
-                <button onClick={() => updateElevationOffset(0.01)} style={elevButtonStyle}>+1cm</button>
-                <button onClick={() => updateElevationOffset(0.1)} style={elevButtonStyle}>+0.1m</button>
-              </div>
-            );
+            if (newSystemReady) {
+              // NEW SYSTEM: Use ARPositioningManager elevation adjustment
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                  <button onClick={() => {
+                    newAdjustElevation(-0.1);
+                    console.log('🧪 NEW: Global elevation -0.1m');
+                  }} style={elevButtonStyle}>-0.1m</button>
+                  <button onClick={() => {
+                    newAdjustElevation(-0.01);
+                    console.log('🧪 NEW: Global elevation -0.01m');
+                  }} style={elevButtonStyle}>-1cm</button>
+                  <button onClick={() => {
+                    newAdjustElevation(0.01);
+                    console.log('🧪 NEW: Global elevation +0.01m');
+                  }} style={elevButtonStyle}>+1cm</button>
+                  <button onClick={() => {
+                    newAdjustElevation(0.1);
+                    console.log('🧪 NEW: Global elevation +0.1m');
+                  }} style={elevButtonStyle}>+0.1m</button>
+                </div>
+              );
+            } else {
+              // LEGACY SYSTEM: Use existing elevation offset logic
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                  <button onClick={() => updateElevationOffset(-0.1)} style={elevButtonStyle}>-0.1m</button>
+                  <button onClick={() => updateElevationOffset(-0.01)} style={elevButtonStyle}>-1cm</button>
+                  <button onClick={() => updateElevationOffset(0.01)} style={elevButtonStyle}>+1cm</button>
+                  <button onClick={() => updateElevationOffset(0.1)} style={elevButtonStyle}>+0.1m</button>
+                </div>
+              );
+            }
           })()}
         </div>
 
         {/* Scale section */}
         <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', paddingRight: '5px' }}>
-          <div style={{ color: 'yellow', fontSize: '10px' }}>SCALE: {manualScaleOffset.toFixed(1)}x</div>
+          <div style={{ color: 'yellow', fontSize: '10px' }}>
+            {newSystemReady ? 'NEW SYSTEM SCALE:' : 'SCALE:'} {manualScaleOffset.toFixed(1)}x
+          </div>
           
           {(() => {
             const scaleButtonStyle = {
               fontSize: '12px',
               padding: '4px 12px',
-              backgroundColor: 'rgba(255,255,255,0.2)',
+              backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
               border: 'none',
               borderRadius: '0.5rem',
               color: 'white',
               cursor: 'pointer'
             };
             
-            return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                <button onClick={() => updateScaleOffset(-0.2)} style={scaleButtonStyle}>-0.2</button>
-                <button onClick={() => updateScaleOffset(-0.05)} style={scaleButtonStyle}>-0.05</button>
-                <button onClick={() => {
-                  setManualScaleOffset(1.0);
-                  setAccumulatedTransforms(prev => ({
-                    ...prev,
-                    scale: 1.0
-                  }));
-                  
-                  if (onModelScale) {
-                    onModelScale(1.0);
-                  }
-                  
-                  if (onModelReset) {
-                    onModelReset();
-                  }
-                  
-                  console.log('🔄 Scale reset to 1.0');
-                }} style={scaleButtonStyle}>1.0</button>
-                <button onClick={() => updateScaleOffset(0.05)} style={scaleButtonStyle}>+0.05</button>
-                <button onClick={() => updateScaleOffset(0.2)} style={scaleButtonStyle}>+0.2</button>
-              </div>
-            );
+            if (newSystemReady) {
+              // NEW SYSTEM: Update local scale and call gesture handler
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                  <button onClick={() => {
+                    const newScale = Math.max(0.1, manualScaleOffset - 0.2);
+                    setManualScaleOffset(newScale);
+                    if (onModelScale) onModelScale(newScale);
+                    console.log('🧪 NEW: Scale adjustment -0.2');
+                  }} style={scaleButtonStyle}>-0.2</button>
+                  <button onClick={() => {
+                    const newScale = Math.max(0.1, manualScaleOffset - 0.05);
+                    setManualScaleOffset(newScale);
+                    if (onModelScale) onModelScale(newScale);
+                    console.log('🧪 NEW: Scale adjustment -0.05');
+                  }} style={scaleButtonStyle}>-0.05</button>
+                  <button onClick={() => {
+                    setManualScaleOffset(1.0);
+                    setAccumulatedTransforms(prev => ({ ...prev, scale: 1.0 }));
+                    if (onModelReset) onModelReset();
+                    console.log('🧪 NEW: Scale reset to 1.0');
+                  }} style={scaleButtonStyle}>1.0</button>
+                  <button onClick={() => {
+                    const newScale = Math.min(10, manualScaleOffset + 0.05);
+                    setManualScaleOffset(newScale);
+                    if (onModelScale) onModelScale(newScale);
+                    console.log('🧪 NEW: Scale adjustment +0.05');
+                  }} style={scaleButtonStyle}>+0.05</button>
+                  <button onClick={() => {
+                    const newScale = Math.min(10, manualScaleOffset + 0.2);
+                    setManualScaleOffset(newScale);
+                    if (onModelScale) onModelScale(newScale);
+                    console.log('🧪 NEW: Scale adjustment +0.2');
+                  }} style={scaleButtonStyle}>+0.2</button>
+                </div>
+              );
+            } else {
+              // LEGACY SYSTEM: Use existing scale logic
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                  <button onClick={() => updateScaleOffset(-0.2)} style={scaleButtonStyle}>-0.2</button>
+                  <button onClick={() => updateScaleOffset(-0.05)} style={scaleButtonStyle}>-0.05</button>
+                  <button onClick={() => {
+                    setManualScaleOffset(1.0);
+                    setAccumulatedTransforms(prev => ({
+                      ...prev,
+                      scale: 1.0
+                    }));
+                    
+                    if (onModelScale) {
+                      onModelScale(1.0);
+                    }
+                    
+                    if (onModelReset) {
+                      onModelReset();
+                    }
+                    
+                    console.log('🔄 Scale reset to 1.0');
+                  }} style={scaleButtonStyle}>1.0</button>
+                  <button onClick={() => updateScaleOffset(0.05)} style={scaleButtonStyle}>+0.05</button>
+                  <button onClick={() => updateScaleOffset(0.2)} style={scaleButtonStyle}>+0.2</button>
+                </div>
+              );
+            }
           })()}
         </div>
       </>

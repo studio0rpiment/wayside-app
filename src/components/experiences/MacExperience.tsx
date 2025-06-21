@@ -8,7 +8,7 @@ import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 // Import positioning systems
 import { useARPositioning } from '../../hooks/useARPositioning';
 
-const SHOW_DEBUG_PANEL = true; // Enable for testing
+const SHOW_DEBUG_PANEL = false; // Enable for testing
 
 // POSITIONING SYSTEM TOGGLE
 const USE_NEW_POSITIONING = true; // Set to true to test new world coordinate system
