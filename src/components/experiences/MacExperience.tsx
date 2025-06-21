@@ -5,13 +5,13 @@ import { getAssetPath } from '../../utils/assetPaths';
 // Import PLYLoader separately to avoid Vite optimization issues
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 
-// NEW: Import the positioning hook
+// Import positioning systems
 import { useARPositioning } from '../../hooks/useARPositioning';
 
-const SHOW_DEBUG_PANEL = true; // Enable for testing
+const SHOW_DEBUG_PANEL = false; // Enable for testing
 
-// NEW: Test flag to switch between systems
-const USE_NEW_POSITIONING = true; // Set to true to test new hook
+// POSITIONING SYSTEM TOGGLE
+const USE_NEW_POSITIONING = false; // Set to true to test new world coordinate system
 
 interface MacExperienceProps {
   onClose: () => void;
@@ -44,105 +44,164 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   onExperienceReady
 }) => {
 
-  // NEW: Use the positioning hook
-  const { 
-    positionObject, 
-    getPosition,
-    adjustGlobalElevation,
-    isReady: hookReady,
-    userPosition: hookUserPosition,
-    debugMode: hookDebugMode,
-    getDebugInfo
-  } = useARPositioning();
+  // =================================================================
+  // NEW WORLD COORDINATE POSITIONING SYSTEM
+  // =================================================================
+  const newPositioningSystem = useARPositioning();
+  const {
+    positionObject: newPositionObject,
+    getPosition: newGetPosition,
+    adjustGlobalElevation: newAdjustElevation,
+    isReady: newSystemReady,
+    userPosition: newUserPosition,
+    debugMode: newDebugMode,
+    getDebugInfo: newGetDebugInfo
+  } = newPositioningSystem;
+
+  // =================================================================
+  // LEGACY GPS-TO-AR POSITIONING SYSTEM
+  // =================================================================
+  const [legacyArTestingOverride, setLegacyArTestingOverride] = useState(() => {
+    return (window as any).arTestingOverride ?? true;
+  });
+
+  // Legacy positioning functions
+  const legacyPositionModel = (model: THREE.Points) => {
+    if (!model || !arPosition) return;
+
+    const currentOverride = (window as any).arTestingOverride ?? true;
+    
+    if (currentOverride) {
+      // Debug position (in front of camera)
+      model.position.set(0, 0, -5);
+      console.log('🎯 LEGACY: MAC positioned at debug location (0, 0, -5)');
+    } else {
+      // Use GPS anchor position + centering offset
+      const centeringOffset = new THREE.Vector3(-knownCenter.x, -knownCenter.y, -knownCenter.z);
+      const finalPosition = arPosition.clone().add(centeringOffset);
+      model.position.copy(finalPosition);
+      console.log('🎯 LEGACY: MAC positioned at GPS anchor:', {
+        arPosition: arPosition.toArray(),
+        centeringOffset: centeringOffset.toArray(),
+        finalPosition: finalPosition.toArray()
+      });
+    }
+  };
+
+  const legacyHandleReset = (model: THREE.Points) => {
+    // Reset rotation and scale first
+    model.rotation.set(-Math.PI / 2, 0, 0);
+    model.scale.set(initialScale, initialScale, initialScale);
+    
+    // Then reposition
+    legacyPositionModel(model);
+    console.log('🔄 LEGACY: Model reset completed');
+  };
+
+  // Legacy override monitoring
+  useEffect(() => {
+    if (USE_NEW_POSITIONING) return; // Skip if using new system
+
+    const checkLegacyOverride = () => {
+      const currentOverride = (window as any).arTestingOverride ?? true;
+      if (currentOverride !== legacyArTestingOverride) {
+        setLegacyArTestingOverride(currentOverride);
+        console.log('🎯 LEGACY: Override changed to:', currentOverride);
+        
+        if (modelRef.current) {
+          legacyPositionModel(modelRef.current);
+          
+          // Force visual update
+          modelRef.current.visible = false;
+          setTimeout(() => {
+            if (modelRef.current) {
+              modelRef.current.visible = true;
+            }
+          }, 50);
+        }
+      }
+    };
+    
+    const interval = setInterval(checkLegacyOverride, 100);
+    return () => clearInterval(interval);
+  }, [legacyArTestingOverride, arPosition]);
+
+  // =================================================================
+  // POSITIONING SYSTEM INTERFACE
+  // =================================================================
+  
+  // Unified positioning interface that delegates to the active system
+  const positionModel = (model: THREE.Points) => {
+    if (USE_NEW_POSITIONING) {
+      console.log('🧪 NEW SYSTEM: Positioning model with world coordinate system');
+      const success = newPositionObject(model, 'mac');
+      if (success) {
+        console.log('🧪 NEW: Model positioned at:', model.position.toArray());
+      } else {
+        console.warn('🧪 NEW: Positioning failed');
+      }
+      return success;
+    } else {
+      console.log('🎯 LEGACY: Positioning model with GPS-to-AR system');
+      legacyPositionModel(model);
+      return true;
+    }
+  };
+
+  const handleModelReset = (model: THREE.Points) => {
+    if (USE_NEW_POSITIONING) {
+      console.log('🔄 NEW SYSTEM: Resetting model');
+      // Reset transforms first
+      model.rotation.set(0, 0, 0); // New system handles its own rotation
+      model.scale.set(initialScale, initialScale, initialScale);
+      // Use new system positioning
+      newPositionObject(model, 'mac');
+    } else {
+      console.log('🔄 LEGACY: Resetting model');
+      legacyHandleReset(model);
+    }
+  };
+
+  const getPositionInfo = () => {
+    if (USE_NEW_POSITIONING) {
+      return newGetPosition('mac');
+    } else {
+      return {
+        system: 'legacy',
+        debugMode: legacyArTestingOverride,
+        position: modelRef.current?.position.toArray() || null,
+        arPosition: arPosition.toArray()
+      };
+    }
+  };
+
+  // =================================================================
+  // SHARED MODEL SETUP AND CONFIGURATION
+  // =================================================================
 
   // Refs for Three.js objects
   const modelRef = useRef<THREE.Points | null>(null);
   const initialScaleRef = useRef<number>(1);
-  
-  // Store original geometry for density/size adjustments
   const originalGeometryRef = useRef<THREE.BufferGeometry | null>(null);
-  
-  // OLD SYSTEM: State to track override status (keep for comparison)
-  const [arTestingOverride, setArTestingOverride] = useState(() => {  
-    return (window as any).arTestingOverride ?? true;
-  });
 
   // Point cloud state
   const [hasPointCloud, setHasPointCloud] = useState(false);
   const [pointCount, setPointCount] = useState(0);
 
+  // Model configuration
   const knownMaxDim = 13.2659; // X dimension is largest for Mac
   const knownCenter = new THREE.Vector3(0.357610, -0.017726, 4.838261);
-
-  // SCALE
   const scale = 2.5 / knownMaxDim;
   initialScaleRef.current = scale; 
   const initialScale = initialScaleRef.current;
   
-  // Point cloud configuration (fixed as requested)
+  // Point cloud configuration
   const POINT_SIZE = 2;
   const POINT_DENSITY = 0.7;
 
-  // NEW: Test positioning with hook when model loads
-  useEffect(() => {
-    if (modelRef.current && USE_NEW_POSITIONING && hookReady) {
-      console.log('🧪 Testing NEW positioning system with hook...');
-      
-      const success = positionObject(modelRef.current, 'mac');
-      console.log(`🧪 Hook positioning result: ${success ? 'SUCCESS' : 'FAILED'}`);
-      
-      if (success) {
-        console.log('🧪 Model positioned by hook at:', modelRef.current.position);
-        
-        // Get position data for debugging
-        const positionData = getPosition('mac');
-        if (positionData) {
-          console.log('🧪 Hook position data:', {
-            worldPosition: positionData.worldPosition.toArray(),
-            relativeToUser: positionData.relativeToUser.toArray(),
-            isUsingDebugMode: positionData.isUsingDebugMode,
-            distanceFromUser: positionData.distanceFromUser
-          });
-        }
-      }
-    }
-  }, [modelRef.current, hookReady, USE_NEW_POSITIONING]);
-
-  // OLD SYSTEM: Listen for override changes (keep for comparison)
-  useEffect(() => {
-    if (!USE_NEW_POSITIONING) {
-      const checkOverride = () => {
-        const currentOverride = (window as any).arTestingOverride ?? true;
-        if (currentOverride !== arTestingOverride) {
-          setArTestingOverride(currentOverride);
-          console.log('🎯 OLD SYSTEM: MacExperience override changed:', currentOverride);
-          
-          if (modelRef.current && arPosition) {
-            if (currentOverride) {
-              console.log('🎯 OLD SYSTEM: Setting override position (0, 0, -5)');
-              modelRef.current.position.set(0, 0, -5);
-            } else {
-              console.log('🎯 OLD SYSTEM: Setting anchor position:', arPosition);
-              modelRef.current.position.copy(arPosition);
-            }
-            
-            // Force visual update
-            modelRef.current.visible = false;
-            setTimeout(() => {
-              if (modelRef.current) {
-                modelRef.current.visible = true;
-              }
-            }, 50);
-            
-            console.log('🎯 OLD SYSTEM: Model position after change:', modelRef.current.position);
-          }
-        }
-      };
-      
-      const interval = setInterval(checkOverride, 100);
-      return () => clearInterval(interval);
-    }
-  }, [arTestingOverride, arPosition, USE_NEW_POSITIONING]);
+  // =================================================================
+  // GESTURE HANDLERS (SYSTEM AGNOSTIC)
+  // =================================================================
 
   // Register gesture handlers on mount
   useEffect(() => {
@@ -155,6 +214,10 @@ const MacExperience: React.FC<MacExperienceProps> = ({
           if (deltaZ !== 0) {
             modelRef.current.rotation.z += deltaZ;
           }
+          console.log(`🎮 Rotation applied (${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'}):`, {
+            deltaX, deltaY, deltaZ,
+            currentRotation: modelRef.current.rotation.toArray()
+          });
         }
       });
     }
@@ -165,13 +228,12 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         if (modelRef.current) {
           const currentScale = modelRef.current.scale.x;
           const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
-          console.log('🔍 Scale handler called:', {
+          modelRef.current.scale.setScalar(newScale);
+          console.log(`🔍 Scale applied (${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'}):`, {
             scaleFactor,
             currentScale: currentScale.toFixed(3),
-            newScale: newScale.toFixed(3),
-            system: USE_NEW_POSITIONING ? 'NEW' : 'OLD'
+            newScale: newScale.toFixed(3)
           });
-          modelRef.current.scale.setScalar(newScale);
         }
       });
     }
@@ -179,35 +241,9 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     // Register reset handler
     if (onModelReset) {
       onModelReset(() => {
-        console.log(`🔄 RESET HANDLER CALLED - ${USE_NEW_POSITIONING ? 'NEW' : 'OLD'} system`);
+        console.log(`🔄 RESET triggered (${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'} system)`);
         if (modelRef.current) {
-          // Reset rotation and scale
-          modelRef.current.rotation.set(-Math.PI / 2, 0, 0);
-          modelRef.current.scale.set(initialScale, initialScale, initialScale);
-          
-          if (USE_NEW_POSITIONING && hookReady) {
-            // NEW SYSTEM: Use hook for positioning
-            console.log('🔄 NEW SYSTEM: Using hook for reset positioning');
-            positionObject(modelRef.current, 'mac');
-          } else {
-            // OLD SYSTEM: Manual positioning logic
-            if (arPosition) {
-              const currentOverride = (window as any).arTestingOverride ?? true;
-              
-              if (currentOverride) {
-                modelRef.current.position.set(0, 0, -5);
-                console.log('🔄 OLD SYSTEM: MAC positioned at override location');
-              } else {
-                modelRef.current.position.copy(arPosition);
-                console.log('🔄 OLD SYSTEM: MAC positioned at AR anchor location');
-              }
-            } else {
-              modelRef.current.position.set(0, 0, -3);
-              console.log('🔄 OLD SYSTEM: MAC positioned at default location');
-            }
-          }
-          
-          console.log('🔄 Model reset completed - Scale is now:', modelRef.current.scale.x);
+          handleModelReset(modelRef.current);
         }
       });
     }
@@ -215,39 +251,22 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     // Register swipe handlers
     if (onSwipeUp) {
       onSwipeUp(() => {
-        console.log('👆 Swipe up detected on MAC');
+        console.log(`👆 Swipe up (${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'})`);
       });
     }
 
     if (onSwipeDown) {
       onSwipeDown(() => {
-        console.log('👇 Swipe down detected on MAC');
+        console.log(`👇 Swipe down (${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'})`);
       });
     }
-  }, [positionObject]);
+  }, []); // No dependencies - register once
 
-  const centeringOffset = new THREE.Vector3(-knownCenter.x, -knownCenter.y, -knownCenter.z);
+  // =================================================================
+  // MODEL LOADING AND SCENE SETUP
+  // =================================================================
 
-  // OLD SYSTEM: Position updates (only run if using old system)
-  useEffect(() => {
-    if (!USE_NEW_POSITIONING && modelRef.current && arPosition) {
-      const currentOverride = (window as any).arTestingOverride ?? false;
-      
-      if (!currentOverride) {
-        // Apply AR position + centering offset
-        const finalPosition = arPosition.clone().add(centeringOffset);
-        modelRef.current.position.copy(finalPosition);
-        
-        console.log('🎯 OLD SYSTEM: MAC positioned with centering:', {
-          arPosition,
-          centeringOffset,
-          finalPosition
-        });
-      }
-    }
-  }, [arPosition, USE_NEW_POSITIONING]);
-
-  // Geometry sampling function (ported from CodePen)
+  // Geometry sampling function
   const sampleGeometry = (geometry: THREE.BufferGeometry, density: number): THREE.BufferGeometry => {
     if (density >= 1.0) return geometry;
     
@@ -311,17 +330,15 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     return sampledGeometry;
   };
 
-  // Main effect for model loading and scene setup
+  // Main model loading effect
   useEffect(() => {
     let isMounted = true;
     
-    console.log(`🎯 MACExperience AR-ONLY mode | System: ${USE_NEW_POSITIONING ? 'NEW HOOK' : 'OLD'}`);
+    console.log(`🎯 MAC Experience starting with ${USE_NEW_POSITIONING ? 'NEW WORLD COORDINATE' : 'LEGACY GPS-TO-AR'} positioning system`);
     
-    // Use provided AR scene and camera (no more standalone setup)
+    // Use provided AR scene and camera
     const scene = arScene;
     const camera = arCamera;
-    
-    console.log('🎯 MACExperience using provided AR scene and camera');
 
     // Create loader
     const loader = new PLYLoader();
@@ -337,23 +354,23 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     loadingDiv.style.padding = '20px';
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = `Loading MAC (${USE_NEW_POSITIONING ? 'NEW' : 'OLD'} system)...`;
+    loadingDiv.innerHTML = `Loading MAC Model...<br><small>Using ${USE_NEW_POSITIONING ? 'World Coordinate' : 'Legacy GPS'} System</small>`;
     document.body.appendChild(loadingDiv);
 
     // Load the PLY model
     const modelPath = getAssetPath('models/mac.ply');
-    console.log('🎯 Loading MAC PLY model:', modelPath);
+    console.log('📦 Loading MAC PLY model:', modelPath);
 
-    // PLY loader
     loader.load(
       modelPath,
       (geometry) => {
         if (!isMounted) return;
 
-        console.log('📊 Original PLY loaded:', {
+        console.log('📊 PLY geometry loaded:', {
           vertices: geometry.attributes.position.count,
           hasColors: !!geometry.attributes.color,
-          hasNormals: !!geometry.attributes.normal
+          hasNormals: !!geometry.attributes.normal,
+          positioningSystem: USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'
         });
 
         // Store original geometry
@@ -363,7 +380,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         const sampledGeometry = sampleGeometry(geometry, POINT_DENSITY);
         const finalPointCount = sampledGeometry.attributes.position.count;
         
-        // Create point material with simple fixed size
+        // Create point material
         const material = new THREE.PointsMaterial({
           size: 1.0,
           sizeAttenuation: false,
@@ -377,45 +394,37 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 
         // Create point cloud
         const pointCloud = new THREE.Points(sampledGeometry, material);
-        pointCloud.name = 'mac-point-cloud'; // Name for debugging
+        pointCloud.name = 'mac-point-cloud';
         modelRef.current = pointCloud;
         
-        // Apply centering - move model so its center is at origin
-        pointCloud.position.x = -knownCenter.x;
-        pointCloud.position.y = -knownCenter.y;
-        pointCloud.position.z = -knownCenter.z;
-
+        // Apply model centering (move model center to origin)
+        pointCloud.position.set(-knownCenter.x, -knownCenter.y, -knownCenter.z);
         pointCloud.scale.set(initialScale, initialScale, initialScale);
         
-        if (!USE_NEW_POSITIONING) {  // Only apply for OLD system
-          pointCloud.rotation.x = -Math.PI / 2;
+        // Apply system-specific initial rotation
+        if (USE_NEW_POSITIONING) {
+          // New system handles its own coordinate transformations
+          pointCloud.rotation.set(0, 0, 0);
+          console.log('🧪 NEW: Model prepared for world coordinate positioning');
+        } else {
+          // Legacy system needs Z-up to Y-up conversion
+          pointCloud.rotation.set(-Math.PI / 2, 0, 0);
+          console.log('🎯 LEGACY: Model prepared for GPS-to-AR positioning');
         }
         
-        // Add point cloud to scene FIRST
+        // Add to scene
         scene.add(pointCloud);
         
-        // THEN apply positioning based on system
-        if (USE_NEW_POSITIONING) {
-          console.log('🧪 NEW SYSTEM: Model loaded, will use hook for positioning');
-          // The useEffect above will handle positioning via hook
+        // Apply initial positioning using the active system
+        const positioned = positionModel(pointCloud);
+        
+        if (positioned) {
+          console.log(`✅ Model positioned successfully with ${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'} system`);
+          console.log('📍 Final model position:', pointCloud.position.toArray());
+          console.log('🔄 Final model rotation:', pointCloud.rotation.toArray());
+          console.log('📏 Final model scale:', pointCloud.scale.toArray());
         } else {
-          console.log('🎯 OLD SYSTEM: Applying manual positioning');
-          // Apply final positioning - OLD SYSTEM
-          if (arPosition) {
-            const currentOverride = (window as any).arTestingOverride ?? true;
-            
-            if (currentOverride) {
-              pointCloud.position.set(0, 0, -5);
-              console.log('🔄 OLD SYSTEM: MAC positioned at override location');
-            } else {
-              pointCloud.position.copy(arPosition);
-              console.log('🔄 OLD SYSTEM: MAC positioned at AR anchor location');
-            }
-          } else {
-            // Add default offset to centered position
-            pointCloud.position.add(new THREE.Vector3(0, 0, -3));
-            console.log('🎯 OLD SYSTEM: MAC positioned at default location');
-          }
+          console.warn(`⚠️ Model positioning failed with ${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'} system`);
         }
         
         // Update state
@@ -428,14 +437,14 @@ const MacExperience: React.FC<MacExperienceProps> = ({
           document.body.removeChild(loadingDiv);
         }
         
-        console.log('✅ MAC point cloud loaded successfully');
+        console.log(`🎉 MAC Experience ready with ${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'} positioning system`);
       },
       
       // Progress callback
       (xhr) => {
         const percent = (xhr.loaded / xhr.total) * 100;
         if (loadingDiv && document.body.contains(loadingDiv)) {
-          loadingDiv.innerHTML = `Loading MAC (${USE_NEW_POSITIONING ? 'NEW' : 'OLD'}) ${percent.toFixed(0)}%`;
+          loadingDiv.innerHTML = `Loading MAC ${percent.toFixed(0)}%<br><small>Using ${USE_NEW_POSITIONING ? 'World Coordinate' : 'Legacy GPS'} System</small>`;
         }
       },
       
@@ -443,13 +452,13 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       (error) => {
         console.error('❌ Error loading MAC PLY:', error);
         if (document.body.contains(loadingDiv)) {
-          loadingDiv.innerHTML = 'Error loading MAC PLY file';
+          loadingDiv.innerHTML = `Error loading MAC PLY file<br><small>System: ${USE_NEW_POSITIONING ? 'World Coordinate' : 'Legacy GPS'}</small>`;
           loadingDiv.style.color = '#ff6666';
         }
       }
     );
     
-    // Cleanup function (much simpler now!)
+    // Cleanup function
     return () => {
       isMounted = false;
       
@@ -474,12 +483,18 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       if (document.body.contains(loadingDiv)) {
         document.body.removeChild(loadingDiv);
       }
+      
+      console.log(`🧹 MAC Experience cleanup completed (${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'} system)`);
     };
-  }, [USE_NEW_POSITIONING]); // Added USE_NEW_POSITIONING dependency
+  }, []); // Only run once on mount
+
+  // =================================================================
+  // DEBUG INTERFACE
+  // =================================================================
 
   return (
     <>
-      {/* Enhanced Debug Panel for Testing */}
+      {/* Debug Panel for System Comparison */}
       {SHOW_DEBUG_PANEL && (
         <div style={{
           position: 'absolute',
@@ -493,42 +508,65 @@ const MacExperience: React.FC<MacExperienceProps> = ({
           zIndex: 1003,
           pointerEvents: 'auto',
           fontFamily: 'monospace',
-          maxWidth: '300px'
+          maxWidth: '320px'
         }}>
-          <div style={{ color: 'yellow', marginBottom: '8px', fontSize: '12px' }}>
-            🧪 MAC POSITIONING TEST - AR ONLY
+          <div style={{ 
+            color: USE_NEW_POSITIONING ? 'lightgreen' : 'orange', 
+            marginBottom: '8px', 
+            fontSize: '12px',
+            fontWeight: 'bold'
+          }}>
+            🎯 MAC - {USE_NEW_POSITIONING ? 'NEW WORLD COORDINATE' : 'LEGACY GPS-TO-AR'} SYSTEM
           </div>
           
           {/* System Status */}
           <div style={{ marginBottom: '8px', padding: '4px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '4px' }}>
-            <div>System: <span style={{ color: USE_NEW_POSITIONING ? 'lightgreen' : 'orange' }}>
-              {USE_NEW_POSITIONING ? 'NEW HOOK' : 'OLD MANUAL'}
+            <div>Active System: <span style={{ color: USE_NEW_POSITIONING ? 'lightgreen' : 'orange' }}>
+              {USE_NEW_POSITIONING ? 'NEW (World Coordinates)' : 'LEGACY (GPS-to-AR)'}
             </span></div>
-            <div>Mode: AR-ONLY</div>
-            <div>Hook Ready: <span style={{ color: hookReady ? 'lightgreen' : 'red' }}>
-              {hookReady ? '✅' : '❌'}
-            </span></div>
-            <div>Debug Mode: <span style={{ color: hookDebugMode ? 'lightgreen' : 'gray' }}>
-              {hookDebugMode ? '✅ ON' : '❌ OFF'}
-            </span></div>
+            {USE_NEW_POSITIONING ? (
+              <>
+                <div>Hook Ready: <span style={{ color: newSystemReady ? 'lightgreen' : 'red' }}>
+                  {newSystemReady ? '✅' : '❌'}
+                </span></div>
+                <div>Debug Mode: <span style={{ color: newDebugMode ? 'lightgreen' : 'gray' }}>
+                  {newDebugMode ? '✅ ON' : '❌ OFF'}
+                </span></div>
+              </>
+            ) : (
+              <div>Override Mode: <span style={{ color: legacyArTestingOverride ? 'yellow' : 'cyan' }}>
+                {legacyArTestingOverride ? '🔧 DEBUG' : '📍 GPS'}
+              </span></div>
+            )}
           </div>
 
           {/* Position Info */}
           {modelRef.current && (
             <div style={{ marginBottom: '8px' }}>
-              <div style={{ color: 'cyan', fontSize: '10px' }}>Current Position:</div>
-              <div>X: {modelRef.current.position.x.toFixed(1)}</div>
-              <div>Y: {modelRef.current.position.y.toFixed(1)}</div>
-              <div>Z: {modelRef.current.position.z.toFixed(1)}</div>
+              <div style={{ color: 'cyan', fontSize: '10px' }}>Model Position:</div>
+              <div>X: {modelRef.current.position.x.toFixed(2)}</div>
+              <div>Y: {modelRef.current.position.y.toFixed(2)}</div>
+              <div>Z: {modelRef.current.position.z.toFixed(2)}</div>
+              <div style={{ fontSize: '9px', opacity: 0.7 }}>
+                Rotation: [{modelRef.current.rotation.x.toFixed(2)}, {modelRef.current.rotation.y.toFixed(2)}, {modelRef.current.rotation.z.toFixed(2)}]
+              </div>
             </div>
           )}
 
           {/* User Position */}
-          {hookUserPosition && (
+          {(USE_NEW_POSITIONING ? newUserPosition : true) && (
             <div style={{ marginBottom: '8px' }}>
-              <div style={{ color: 'lightblue', fontSize: '10px' }}>User GPS:</div>
-              <div>{hookUserPosition[0].toFixed(6)}</div>
-              <div>{hookUserPosition[1].toFixed(6)}</div>
+              <div style={{ color: 'lightblue', fontSize: '10px' }}>
+                {USE_NEW_POSITIONING ? 'User GPS (Hook):' : 'AR Position:'}
+              </div>
+              {USE_NEW_POSITIONING && newUserPosition ? (
+                <>
+                  <div>{newUserPosition[0].toFixed(6)}</div>
+                  <div>{newUserPosition[1].toFixed(6)}</div>
+                </>
+              ) : (
+                <div>[{arPosition.x.toFixed(2)}, {arPosition.y.toFixed(2)}, {arPosition.z.toFixed(2)}]</div>
+              )}
             </div>
           )}
 
@@ -539,61 +577,117 @@ const MacExperience: React.FC<MacExperienceProps> = ({
             <div>Density: {POINT_DENSITY * 100}%</div>
           </div>
 
-          {/* Test Controls */}
+          {/* System-Specific Test Controls */}
           <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '8px' }}>
-            <button
-              onClick={() => {
-                if (USE_NEW_POSITIONING && hookReady && modelRef.current) {
-                  console.log('🧪 Manual hook positioning test...');
-                  const success = positionObject(modelRef.current, 'mac');
-                  console.log(`Manual positioning: ${success ? 'SUCCESS' : 'FAILED'}`);
-                }
-              }}
-              disabled={!USE_NEW_POSITIONING || !hookReady}
-              style={{
-                padding: '4px 8px',
-                backgroundColor: USE_NEW_POSITIONING && hookReady ? 'rgba(0,255,0,0.3)' : 'rgba(128,128,128,0.3)',
-                border: 'none',
-                color: 'white',
-                cursor: 'pointer',
-                borderRadius: '4px',
-                fontSize: '10px',
-                marginRight: '4px'
-              }}
-            >
-              🧪 Test Hook
-            </button>
+            {USE_NEW_POSITIONING ? (
+              // NEW SYSTEM CONTROLS
+              <>
+                <button
+                  onClick={() => {
+                    if (newSystemReady && modelRef.current) {
+                      console.log('🧪 NEW: Manual positioning test...');
+                      const success = newPositionObject(modelRef.current, 'mac');
+                      console.log(`🧪 NEW: Manual positioning ${success ? 'SUCCESS' : 'FAILED'}`);
+                    }
+                  }}
+                  disabled={!newSystemReady}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: newSystemReady ? 'rgba(0,255,0,0.3)' : 'rgba(128,128,128,0.3)',
+                    border: 'none',
+                    color: 'white',
+                    cursor: newSystemReady ? 'pointer' : 'not-allowed',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    marginRight: '4px',
+                    marginBottom: '4px'
+                  }}
+                >
+                  🧪 Test Position
+                </button>
 
-            <button
-              onClick={() => {
-                console.log('🧪 Elevation adjustment test...');
-                adjustGlobalElevation(-0.5);
-                if (modelRef.current && USE_NEW_POSITIONING) {
-                  positionObject(modelRef.current, 'mac');
-                }
-              }}
-              disabled={!USE_NEW_POSITIONING || !hookReady}
-              style={{
-                padding: '4px 8px',
-                backgroundColor: USE_NEW_POSITIONING && hookReady ? 'rgba(255,165,0,0.3)' : 'rgba(128,128,128,0.3)',
-                border: 'none',
-                color: 'white',
-                cursor: 'pointer',
-                borderRadius: '4px',
-                fontSize: '10px'
-              }}
-            >
-              📏 -0.5m
-            </button>
+                <button
+                  onClick={() => {
+                    console.log('🧪 NEW: Elevation adjustment test...');
+                    newAdjustElevation(-0.5);
+                    if (modelRef.current && newSystemReady) {
+                      newPositionObject(modelRef.current, 'mac');
+                    }
+                  }}
+                  disabled={!newSystemReady}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: newSystemReady ? 'rgba(255,165,0,0.3)' : 'rgba(128,128,128,0.3)',
+                    border: 'none',
+                    color: 'white',
+                    cursor: newSystemReady ? 'pointer' : 'not-allowed',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    marginBottom: '4px'
+                  }}
+                >
+                  📏 Elevate -0.5m
+                </button>
+              </>
+            ) : (
+              // LEGACY SYSTEM CONTROLS
+              <>
+                <button
+                  onClick={() => {
+                    if (modelRef.current) {
+                      console.log('🎯 LEGACY: Manual positioning test...');
+                      legacyPositionModel(modelRef.current);
+                      console.log('🎯 LEGACY: Manual positioning completed');
+                    }
+                  }}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: 'rgba(255,165,0,0.3)',
+                    border: 'none',
+                    color: 'white',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    marginRight: '4px',
+                    marginBottom: '4px'
+                  }}
+                >
+                  🎯 Test Position
+                </button>
+
+                <button
+                  onClick={() => {
+                    console.log('🎯 LEGACY: Toggle override test...');
+                    const currentOverride = (window as any).arTestingOverride ?? true;
+                    (window as any).arTestingOverride = !currentOverride;
+                    console.log('🎯 LEGACY: Override now:', !currentOverride);
+                  }}
+                  style={{
+                    padding: '4px 8px',
+                    backgroundColor: 'rgba(0,165,255,0.3)',
+                    border: 'none',
+                    color: 'white',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    marginBottom: '4px'
+                  }}
+                >
+                  🔧 Toggle Override
+                </button>
+              </>
+            )}
           </div>
 
-          {/* Debug Info */}
-          {USE_NEW_POSITIONING && hookReady && (
-            <div style={{ marginTop: '8px', fontSize: '9px', opacity: 0.8 }}>
-              <div style={{ color: 'yellow' }}>Hook Debug:</div>
-              <div>Toggle arTestingOverride to test debug positioning</div>
-            </div>
-          )}
+          {/* System Info */}
+          <div style={{ marginTop: '8px', fontSize: '9px', opacity: 0.8 }}>
+            <div style={{ color: 'yellow' }}>System Info:</div>
+            {USE_NEW_POSITIONING ? (
+              <div>Uses centralized world coordinate system with anchor management</div>
+            ) : (
+              <div>Uses direct GPS-to-Three.js coordinate conversion with manual positioning</div>
+            )}
+          </div>
         </div>
       )}
     </>

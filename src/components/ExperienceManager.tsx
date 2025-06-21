@@ -286,21 +286,31 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   }, [experienceStartTime, hasMetMinimumTime, geofenceId, onClose]);
 
   // ✅ SIMPLIFIED: Experience props with no GPS quality restrictions
-  const experienceProps = useMemo(() => ({
-    onClose: handleExperienceComplete,
-    onNext: handleExperienceComplete,
-    
-    arPosition: arObjectPosition ?? undefined, 
-    arScene: arScene ?? undefined,          
-    arCamera: arCamera ?? undefined, 
-    coordinateScale,
-    onModelRotate: registerRotateHandler,
-    onModelScale: registerScaleHandler,
-    onModelReset: registerResetHandler,
-    onSwipeUp: registerSwipeUpHandler,
-    onSwipeDown: registerSwipeDownHandler,
-    onExperienceReady: handleExperienceReady,
-  }), [
+  const experienceProps = useMemo(() => {
+    const baseProps = {
+      onClose: handleExperienceComplete,
+      onNext: handleExperienceComplete,
+      coordinateScale,
+      onModelRotate: registerRotateHandler,
+      onModelScale: registerScaleHandler,
+      onModelReset: registerResetHandler,
+      onSwipeUp: registerSwipeUpHandler,
+      onSwipeDown: registerSwipeDownHandler,
+      onExperienceReady: handleExperienceReady,
+    };
+
+    // Only include AR props if they have valid values
+    if (arObjectPosition && arScene && arCamera) {
+      return {
+        ...baseProps,
+        arPosition: arObjectPosition,
+        arScene: arScene,
+        arCamera: arCamera,
+      };
+    }
+
+    return baseProps;
+  }, [
     arObjectPosition, 
     arScene, 
     arCamera, 
@@ -317,37 +327,45 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   // Render the appropriate 3D experience
   const renderExperience = useCallback(() => {
     // Only render experience if AR is ready and we have a position
-    if (!experienceReady || !arObjectPosition) {
+    if (!experienceReady || !arObjectPosition || !arScene || !arCamera) {
       return null;
     }
+    
+    // Ensure we have the required AR props before rendering
+    const arProps = {
+      ...experienceProps,
+      arPosition: arObjectPosition,
+      arScene: arScene,
+      arCamera: arCamera,
+    };
     
     // Use stable props - no new object creation on each render
     switch (experienceType) {
       case 'cube':
-        return <CubeExperience key="cube-experience" {...experienceProps} />;
+        return <CubeExperience key="cube-experience" {...arProps} />;
       case '2030-2105':
-        return <WaterRiseExperience key="water-rise-experience" {...experienceProps} />;
+        return <WaterRiseExperience key="water-rise-experience" {...arProps} />;
       case '1968':
-        return <Experience1968 key="1968-experience" {...experienceProps} />
+        return <Experience1968 key="1968-experience" {...arProps} />
       case '2200_bc':
-        return <BC2200Experience key="2200bc-experience" {...experienceProps} />
+        return <BC2200Experience key="2200bc-experience" {...arProps} />
       case 'helen_s':  
-        return <HelenSExperience key="helen-experience" {...experienceProps} />;
+        return <HelenSExperience key="helen-experience" {...arProps} />;
       case 'volunteers':
-        return <VolunteersExperience key="volunteers-experience" {...experienceProps} />;
+        return <VolunteersExperience key="volunteers-experience" {...arProps} />;
       case 'mac':
-        return <MacExperience key="mac-experience" {...experienceProps} />
+        return <MacExperience key="mac-experience" {...arProps} />
       case 'lily':
-         return <LilyExperience key="lily-experience" {...experienceProps} />
+         return <LilyExperience key="lily-experience" {...arProps} />
       case 'cattail':
-        return <CattailExperience key="cattail-experience" {...experienceProps} />
+        return <CattailExperience key="cattail-experience" {...arProps} />
       case 'lotus':
-        return <LotusExperience key="lotus-experience" {...experienceProps} />
+        return <LotusExperience key="lotus-experience" {...arProps} />
       default:
         console.warn(`Unknown experience type: ${experienceType}, defaulting to cube`);
-        return <CubeExperience key="default-cube-experience" {...experienceProps} />;
+        return <CubeExperience key="default-cube-experience" {...arProps} />;
     }
-  }, [experienceType, experienceReady, arObjectPosition, experienceProps]);
+  }, [experienceType, experienceReady, arObjectPosition, arScene, arCamera, experienceProps]);
 
   // Don't render anything if not open
   if (!isOpen) {
