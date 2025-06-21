@@ -64,7 +64,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   useNewPositioning,
   onElevationChanged,
   onPositioningReady,
-  sharedARPositioning
+  sharedARPositioning,
   children
   
   
