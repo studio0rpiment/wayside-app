@@ -362,10 +362,17 @@ useEffect(() => {
 // Example: If you want to expose an elevation change handler, define it inside the component and pass it via props if needed
 // Usage: <MacExperience onElevationChanged={handleElevationChanged} ... />
 
-// Inside the MacExperience component, after modelRef is defined:
 const handleElevationChanged = () => {
+  console.log('🧪 MacExperience: handleElevationChanged called!');
   if (modelRef.current && newSystemReady) {
-    newPositionObject(modelRef.current, 'mac');
+    console.log('🧪 MacExperience: Repositioning model...');
+    
+    // ✅ FIXED: Call positionModel instead of newPositionObject directly
+    const success = positionModel(modelRef.current);
+    
+    console.log('🧪 MacExperience: Model repositioned:', success);
+  } else {
+    console.warn('🧪 MacExperience: Cannot reposition - modelRef:', !!modelRef.current, 'newSystemReady:', newSystemReady);
   }
 };
 
