@@ -129,6 +129,9 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     swipeDown?: () => void;
   }>({});
 
+  // NEW: Add elevation change handler ref
+  const elevationChangeHandlerRef = useRef<(() => void) | null>(null);
+
   // ✅ SIMPLIFIED: Log position source changes (development only)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -156,6 +159,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       setExperienceStartTime(null);
       setHasMetMinimumTime(false);
       gestureHandlersRef.current = {}; // Clear handlers
+      elevationChangeHandlerRef.current = null; // Clear elevation handler
     }
   }, [isOpen]);
 
@@ -244,6 +248,14 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     }
   }, []);
 
+  // NEW: Handle elevation changes from ArCameraComponent debug panel
+  const handleElevationChanged = useCallback(() => {
+    console.log('🧪 ExperienceManager: Elevation changed, triggering experience re-positioning');
+    if (elevationChangeHandlerRef.current) {
+      elevationChangeHandlerRef.current();
+    }
+  }, []);
+
   // *** Registration functions that don't cause re-renders ***
   const registerRotateHandler = useCallback((handler: (deltaX: number, deltaY: number, deltaZ: number) => void) => {
     gestureHandlersRef.current.rotate = handler;
@@ -263,6 +275,12 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
   const registerSwipeDownHandler = useCallback((handler: () => void) => {
     gestureHandlersRef.current.swipeDown = handler;
+  }, []);
+
+  // NEW: Register elevation change handler
+  const registerElevationChangeHandler = useCallback((handler: () => void) => {
+    elevationChangeHandlerRef.current = handler;
+    console.log('🧪 ExperienceManager: Elevation change handler registered');
   }, []);
       
   // Handle experience completion -- checks minimum engagement time
@@ -299,7 +317,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       onSwipeUp: registerSwipeUpHandler,
       onSwipeDown: registerSwipeDownHandler,
       onExperienceReady: handleExperienceReady,
-
+      onElevationChanged: registerElevationChangeHandler, // NEW: Pass elevation handler registration
     };
 
     // Only include AR props if they have valid values
@@ -324,7 +342,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     registerScaleHandler,
     registerResetHandler,
     registerSwipeUpHandler,
-    registerSwipeDownHandler
+    registerSwipeDownHandler,
+    registerElevationChangeHandler // NEW: Include in dependencies
   ]);
 
   // Render the appropriate 3D experience
@@ -340,7 +359,6 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       arPosition: arObjectPosition,
       arScene: arScene,
       arCamera: arCamera,
-      
     };
     
     // Use stable props - no new object creation on each render
@@ -433,7 +451,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           onModelReset={handleModelReset}
           onSwipeUp={handleSwipeUp}
           onSwipeDown={handleSwipeDown}
-         
+          onElevationChanged={handleElevationChanged} // NEW: Pass the elevation change handler
         />
       )}
       

@@ -34,6 +34,8 @@ interface ArCameraProps {
   onSwipeUp?: () => void;
   onSwipeDown?: () => void;
   useNewPositioning?: boolean;
+  onElevationChanged?: () => void;  // NEW: Simple callback when elevation changes
+
 
   children?: React.ReactNode;
 }
@@ -54,6 +56,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onSwipeUp,
   onSwipeDown,
   useNewPositioning,
+  onElevationChanged,
   children
   
   
@@ -1487,45 +1490,44 @@ const currentUserPosition = getBestUserPosition();
             };
                         
             
-            if (newSystemReady) {
-              // NEW SYSTEM: Use ARPositioningManager elevation adjustment
-              return (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                  <button onClick={() => {
-                    newAdjustElevation(-0.1);
-                    console.log('🧪 NEW: Global elevation -0.1m');
-                    // Trigger experience re-positioning - this is the missing piece!
-                    window.dispatchEvent(new CustomEvent('ar-elevation-changed', { 
-                      detail: { delta: -0.1 } 
-                    }));
-                  }} style={elevButtonStyle}>-0.1m</button>
-                  
-                  <button onClick={() => {
-                    newAdjustElevation(-0.01);
-                    console.log('🧪 NEW: Global elevation -0.01m');
-                    window.dispatchEvent(new CustomEvent('ar-elevation-changed', { 
-                      detail: { delta: -0.01 } 
-                    }));
-                  }} style={elevButtonStyle}>-1cm</button>
-                  
-                  <button onClick={() => {
-                    newAdjustElevation(0.01);
-                    console.log('🧪 NEW: Global elevation +0.01m');
-                    window.dispatchEvent(new CustomEvent('ar-elevation-changed', { 
-                      detail: { delta: 0.01 } 
-                    }));
-                  }} style={elevButtonStyle}>+1cm</button>
-                  
-                  <button onClick={() => {
-                    newAdjustElevation(0.1);
-                    console.log('🧪 NEW: Global elevation +0.1m');
-                    window.dispatchEvent(new CustomEvent('ar-elevation-changed', { 
-                      detail: { delta: 0.1 } 
-                    }));
-                  }} style={elevButtonStyle}>+0.1m</button>
-                </div>
-              );
-            } else {
+  if (newSystemReady) {
+  // NEW SYSTEM: Use ARPositioningManager elevation adjustment
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+      <button onClick={() => {
+        newAdjustElevation(-0.1);
+        console.log('🧪 NEW: Global elevation -0.1m');
+        if (onElevationChanged) {
+          onElevationChanged();
+        }
+      }} style={elevButtonStyle}>-0.1m</button>
+      
+      <button onClick={() => {
+        newAdjustElevation(-0.01);
+        console.log('🧪 NEW: Global elevation -0.01m');
+        if (onElevationChanged) {
+          onElevationChanged();
+        }
+      }} style={elevButtonStyle}>-1cm</button>
+      
+      <button onClick={() => {
+        newAdjustElevation(0.01);
+        console.log('🧪 NEW: Global elevation +0.01m');
+        if (onElevationChanged) {
+          onElevationChanged();
+        }
+      }} style={elevButtonStyle}>+1cm</button>
+      
+      <button onClick={() => {
+        newAdjustElevation(0.1);
+        console.log('🧪 NEW: Global elevation +0.1m');
+        if (onElevationChanged) {
+          onElevationChanged();
+        }
+      }} style={elevButtonStyle}>+0.1m</button>
+    </div>
+  );
+} else {
               // LEGACY SYSTEM: Use existing elevation offset logic
               return (
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>

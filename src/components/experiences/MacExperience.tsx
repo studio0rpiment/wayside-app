@@ -27,6 +27,8 @@ interface MacExperienceProps {
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
   onExperienceReady?: () => void;
+  onElevationChanged?: (handler: () => void) => void;
+
 
 }
 
@@ -43,6 +45,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   onSwipeUp,
   onSwipeDown,
   onExperienceReady,
+  onElevationChanged
  
 }) => {
 
@@ -279,6 +282,13 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     }
   }, []); // No dependencies - register once
 
+useEffect(() => {
+  if (onElevationChanged) {
+    onElevationChanged(handleElevationChanged);
+  }
+}, [onElevationChanged]);
+
+
   // =================================================================
   // MODEL LOADING AND SCENE SETUP
   // =================================================================
@@ -349,26 +359,16 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 
 //************ PASSING OVERRIDE FROM ARCAMERACOMPONENT WITH EVENT LISTENER */
 
-// Add this useEffect to MacExperience to listen for elevation changes from debug panel
-useEffect(() => {
-  if (!USE_NEW_POSITIONING) return;
+// Example: If you want to expose an elevation change handler, define it inside the component and pass it via props if needed
+// Usage: <MacExperience onElevationChanged={handleElevationChanged} ... />
 
-  const handleElevationChange = (event: CustomEvent) => {
-    console.log('🧪 NEW: MacExperience received elevation change:', event.detail.delta);
-    
-    if (modelRef.current && newSystemReady) {
-      console.log('🧪 NEW: Re-positioning Mac model after elevation change...');
-      const success = newPositionObject(modelRef.current, 'mac');
-      console.log('🧪 NEW: Re-positioning result:', success);
-    }
-  };
+// Inside the MacExperience component, after modelRef is defined:
+const handleElevationChanged = () => {
+  if (modelRef.current && newSystemReady) {
+    newPositionObject(modelRef.current, 'mac');
+  }
+};
 
-  window.addEventListener('ar-elevation-changed', handleElevationChange as EventListener);
-  
-  return () => {
-    window.removeEventListener('ar-elevation-changed', handleElevationChange as EventListener);
-  };
-}, [USE_NEW_POSITIONING, newSystemReady]);
 
 useEffect(() => {
   if (USE_NEW_POSITIONING && newDebugMode !== undefined) {
