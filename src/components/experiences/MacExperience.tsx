@@ -352,6 +352,14 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     return sampledGeometry;
   };
 
+  //******** WAIT FOR THE HOOK TO BE READY FOR NEW POSITION SYSTEM */
+    useEffect(() => {
+      if (USE_NEW_POSITIONING && newSystemReady && modelRef.current && hasPointCloud) {
+        console.log('🧪 NEW: Hook became ready, positioning model now...');
+        positionModel(modelRef.current);
+      }
+    }, [newSystemReady, hasPointCloud]);
+
   // Main model loading effect
   useEffect(() => {
     let isMounted = true;
@@ -461,13 +469,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       }
     );
 
-//******** WAIT FOR THE HOOK TO BE READY FOR NEW POSITION SYSTEM */
-    useEffect(() => {
-      if (USE_NEW_POSITIONING && newSystemReady && modelRef.current && hasPointCloud) {
-        console.log('🧪 NEW: Hook became ready, positioning model now...');
-        positionModel(modelRef.current);
-      }
-    }, [newSystemReady, hasPointCloud]);
+
     
     // Cleanup function
     return () => {
