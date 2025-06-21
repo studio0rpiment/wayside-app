@@ -133,6 +133,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   // Unified positioning interface that delegates to the active system
  const positionModel = (model: THREE.Points) => {
   if (USE_NEW_POSITIONING) {
+
+        if (!newSystemReady) {
+      console.log('🧪 NEW: Hook not ready yet, skipping positioning');
+      return false;
+    }
     
     // Pass our locally calculated scale to the world system
     const success = newPositionObject(model, 'mac', { 
