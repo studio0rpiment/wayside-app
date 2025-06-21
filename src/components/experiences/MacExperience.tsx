@@ -151,11 +151,12 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   const handleModelReset = (model: THREE.Points) => {
     if (USE_NEW_POSITIONING) {
       console.log('🔄 NEW SYSTEM: Resetting model');
-      // Reset transforms first
-      model.rotation.set(0, 0, 0); // New system handles its own rotation
+      // Reset transforms first - keep same orientation as legacy for consistency
+      model.rotation.set(-Math.PI / 2, 0, 0); // Same Z-up to Y-up conversion as legacy
       model.scale.set(initialScale, initialScale, initialScale);
       // Use new system positioning
       newPositionObject(model, 'mac');
+      console.log('🔄 NEW: Reset rotation to (-π/2, 0, 0) for visual consistency');
     } else {
       console.log('🔄 LEGACY: Resetting model');
       legacyHandleReset(model);
@@ -403,9 +404,9 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         
         // Apply system-specific initial rotation
         if (USE_NEW_POSITIONING) {
-          // New system handles its own coordinate transformations
-          pointCloud.rotation.set(0, 0, 0);
-          console.log('🧪 NEW: Model prepared for world coordinate positioning');
+          // New system uses same rotation as legacy for visual consistency
+          pointCloud.rotation.set(-Math.PI / 2, 0, 0);
+          console.log('🧪 NEW: Model prepared with Z-up to Y-up rotation for consistency');
         } else {
           // Legacy system needs Z-up to Y-up conversion
           pointCloud.rotation.set(-Math.PI / 2, 0, 0);
