@@ -139,10 +139,12 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       return false;
     }
       console.log('🧪 NEW: Scale before positioning:', model.scale.x);
-
+     model.scale.set(initialScale, initialScale, initialScale);
+    
     // Pass our locally calculated scale to the world system
     const success = newPositionObject(model, 'mac');
-    
+    // model.scale.set(initialScale, initialScale, initialScale);
+
     if (success) {
       console.log('🧪 NEW: Scale after positioning (before force):', model.scale.x);
       
