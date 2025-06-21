@@ -8,10 +8,10 @@ import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 // Import positioning systems
 import { useARPositioning } from '../../hooks/useARPositioning';
 
-const SHOW_DEBUG_PANEL = true; // Enable for testing
+const SHOW_DEBUG_PANEL = false; // Enable for testing
 
 // POSITIONING SYSTEM TOGGLE
-const USE_NEW_POSITIONING = true; // Set to true to test new world coordinate system
+const USE_NEW_POSITIONING = false; // Set to true to test new world coordinate system
 
 interface MacExperienceProps {
   onClose: () => void;
@@ -134,9 +134,14 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   const positionModel = (model: THREE.Points) => {
     if (USE_NEW_POSITIONING) {
       console.log('🧪 NEW SYSTEM: Positioning model with world coordinate system');
-      const success = newPositionObject(model, 'mac');
+      // Pass our locally calculated scale to the world system
+      const success = newPositionObject(model, 'mac', { 
+        manualScale: initialScale 
+      });
       if (success) {
-        console.log('🧪 NEW: Model positioned at:', model.position.toArray());
+        console.log('🧪 NEW: Model positioned with local scale:', initialScale);
+        console.log('🧪 NEW: Final model position:', model.position.toArray());
+        console.log('🧪 NEW: Final model scale:', model.scale.x);
       } else {
         console.warn('🧪 NEW: Positioning failed');
       }
@@ -154,11 +159,14 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       // Reset transforms first - keep same orientation as legacy for consistency
       model.rotation.set(-Math.PI / 2, 0, 0); // Same Z-up to Y-up conversion as legacy
       model.scale.set(initialScale, initialScale, initialScale); // Reset to initial calculated scale first
-      // Use new system positioning (which may apply its own scale)
-      newPositionObject(model, 'mac');
+      // Use new system positioning with our local scale
+      newPositionObject(model, 'mac', { 
+        manualScale: initialScale 
+      });
       // Store the final scale after positioning system applies its changes
       activeScaleRef.current = model.scale.x;
-      console.log('🔄 NEW: Reset completed - Final scale:', model.scale.x);
+      console.log('🔄 NEW: Reset completed with local scale:', initialScale);
+      console.log('🔄 NEW: Final scale after reset:', model.scale.x);
     } else {
       console.log('🔄 LEGACY: Resetting model');
       legacyHandleReset(model);
