@@ -8,10 +8,10 @@ import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 // Import positioning systems
 import { useARPositioning } from '../../hooks/useARPositioning';
 
-const SHOW_DEBUG_PANEL = true; // Enable for testing
+const SHOW_DEBUG_PANEL = false; // Enable for testing
 
 // POSITIONING SYSTEM TOGGLE
-const USE_NEW_POSITIONING = true; // Set to true to test new world coordinate system
+const USE_NEW_POSITIONING = false; // Set to true to test new world coordinate system
 
 interface MacExperienceProps {
   onClose: () => void;
@@ -153,13 +153,17 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       console.log('🔄 NEW SYSTEM: Resetting model');
       // Reset transforms first - keep same orientation as legacy for consistency
       model.rotation.set(-Math.PI / 2, 0, 0); // Same Z-up to Y-up conversion as legacy
-      model.scale.set(initialScale, initialScale, initialScale);
-      // Use new system positioning
+      model.scale.set(initialScale, initialScale, initialScale); // Reset to initial calculated scale first
+      // Use new system positioning (which may apply its own scale)
       newPositionObject(model, 'mac');
-      console.log('🔄 NEW: Reset rotation to (-π/2, 0, 0) for visual consistency');
+      // Store the final scale after positioning system applies its changes
+      activeScaleRef.current = model.scale.x;
+      console.log('🔄 NEW: Reset completed - Final scale:', model.scale.x);
     } else {
       console.log('🔄 LEGACY: Resetting model');
       legacyHandleReset(model);
+      // Store the legacy scale for consistency
+      activeScaleRef.current = model.scale.x;
     }
   };
 
@@ -184,6 +188,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   const modelRef = useRef<THREE.Points | null>(null);
   const initialScaleRef = useRef<number>(1);
   const originalGeometryRef = useRef<THREE.BufferGeometry | null>(null);
+  const activeScaleRef = useRef<number>(1); // Store the actual scale after positioning system applies
 
   // Point cloud state
   const [hasPointCloud, setHasPointCloud] = useState(false);
@@ -420,12 +425,18 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         const positioned = positionModel(pointCloud);
         
         if (positioned) {
+          // Store the final scale after positioning system applies its changes
+          activeScaleRef.current = pointCloud.scale.x;
+          
           console.log(`✅ Model positioned successfully with ${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'} system`);
           console.log('📍 Final model position:', pointCloud.position.toArray());
           console.log('🔄 Final model rotation:', pointCloud.rotation.toArray());
           console.log('📏 Final model scale:', pointCloud.scale.toArray());
+          console.log('💾 Stored active scale for reset:', activeScaleRef.current);
         } else {
           console.warn(`⚠️ Model positioning failed with ${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'} system`);
+          // Still store the scale even if positioning failed
+          activeScaleRef.current = pointCloud.scale.x;
         }
         
         // Update state
