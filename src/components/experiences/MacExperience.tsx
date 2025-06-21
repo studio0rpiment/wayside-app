@@ -4,7 +4,6 @@ import { getAssetPath } from '../../utils/assetPaths';
 
 // Import PLYLoader separately to avoid Vite optimization issues
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 // NEW: Import the positioning hook
 import { useARPositioning } from '../../hooks/useARPositioning';
@@ -17,9 +16,10 @@ const USE_NEW_POSITIONING = false; // Set to true to test new hook
 interface MacExperienceProps {
   onClose: () => void;
   onNext?: () => void;
-  arPosition?: THREE.Vector3;
-  arScene?: THREE.Scene;
-  arCamera?: THREE.PerspectiveCamera;
+  // REQUIRED: AR Scene and Camera (no more standalone mode)
+  arScene: THREE.Scene;
+  arCamera: THREE.PerspectiveCamera;
+  arPosition: THREE.Vector3;
   coordinateScale?: number;
   onModelRotate?: (handler: (deltaX: number, deltaY: number, deltaZ: number) => void) => void;
   onModelScale?: (handler: (scaleFactor: number) => void) => void;
@@ -32,9 +32,9 @@ interface MacExperienceProps {
 const MacExperience: React.FC<MacExperienceProps> = ({ 
   onClose, 
   onNext,
-  arPosition,
   arScene,
   arCamera,
+  arPosition,
   coordinateScale = 1.0,
   onModelRotate,
   onModelScale,
@@ -57,16 +57,10 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 
   // Refs for Three.js objects
   const modelRef = useRef<THREE.Points | null>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const controlsRef = useRef<OrbitControls | null>(null);
   const initialScaleRef = useRef<number>(1);
   
   // Store original geometry for density/size adjustments
   const originalGeometryRef = useRef<THREE.BufferGeometry | null>(null);
-  
-  // Store initial camera position for reset
-  const initialCameraPos = useRef(new THREE.Vector3(0, 0, 5));
   
   // OLD SYSTEM: State to track override status (keep for comparison)
   const [arTestingOverride, setArTestingOverride] = useState(() => {  
@@ -80,11 +74,8 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   const knownMaxDim = 13.2659; // X dimension is largest for Mac
   const knownCenter = new THREE.Vector3(0.357610, -0.017726, 4.838261);
 
-  // Define isArMode at the component level
-  const isArMode = !!(arScene && arCamera && arPosition);
-
-  //SCALE
-  const scale = 2.5/ knownMaxDim;
+  // SCALE
+  const scale = 2.5 / knownMaxDim;
   initialScaleRef.current = scale; 
   const initialScale = initialScaleRef.current;
   
@@ -96,8 +87,6 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   useEffect(() => {
     if (modelRef.current && USE_NEW_POSITIONING && hookReady) {
       console.log('🧪 Testing NEW positioning system with hook...');
-
-   
       
       const success = positionObject(modelRef.current, 'mac');
       console.log(`🧪 Hook positioning result: ${success ? 'SUCCESS' : 'FAILED'}`);
@@ -128,7 +117,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
           setArTestingOverride(currentOverride);
           console.log('🎯 OLD SYSTEM: MacExperience override changed:', currentOverride);
           
-          if (modelRef.current && isArMode && arPosition) {
+          if (modelRef.current && arPosition) {
             if (currentOverride) {
               console.log('🎯 OLD SYSTEM: Setting override position (0, 0, -5)');
               modelRef.current.position.set(0, 0, -5);
@@ -153,95 +142,95 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       const interval = setInterval(checkOverride, 100);
       return () => clearInterval(interval);
     }
-  }, [arTestingOverride, isArMode, arPosition, USE_NEW_POSITIONING]);
+  }, [arTestingOverride, arPosition, USE_NEW_POSITIONING]);
 
-// Register gesture handlers on mount
-useEffect(() => {
-  // Register rotation handler
-  if (onModelRotate) {
-    onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
-      if (modelRef.current) {
-        modelRef.current.rotation.y += deltaX;
-        modelRef.current.rotation.x += deltaY;
-        if (deltaZ !== 0) {
-          modelRef.current.rotation.z += deltaZ;
-        }
-      }
-    });
-  }
-
-  // Register scale handler
-  if (onModelScale) {
-    onModelScale((scaleFactor: number) => {
-      if (modelRef.current) {
-        const currentScale = modelRef.current.scale.x;
-        const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
-        console.log('🔍 Scale handler called:', {
-          scaleFactor,
-          currentScale: currentScale.toFixed(3),
-          newScale: newScale.toFixed(3),
-          system: USE_NEW_POSITIONING ? 'NEW' : 'OLD'
-        });
-        modelRef.current.scale.setScalar(newScale);
-      }
-    });
-  }
-
-  // Register reset handler
-  if (onModelReset) {
-    onModelReset(() => {
-      console.log(`🔄 RESET HANDLER CALLED - ${USE_NEW_POSITIONING ? 'NEW' : 'OLD'} system`);
-      if (modelRef.current) {
-        // Reset rotation and scale
-        modelRef.current.rotation.set(-Math.PI / 2, 0, 0);
-        modelRef.current.scale.set(initialScale, initialScale, initialScale);
-        
-        if (USE_NEW_POSITIONING && hookReady) {
-          // NEW SYSTEM: Use hook for positioning
-          console.log('🔄 NEW SYSTEM: Using hook for reset positioning');
-          positionObject(modelRef.current, 'mac');
-        } else {
-          // OLD SYSTEM: Manual positioning logic
-          if (isArMode && arPosition) {
-            const currentOverride = (window as any).arTestingOverride ?? true;
-            
-            if (currentOverride) {
-              modelRef.current.position.set(0, 0, -5);
-              console.log('🔄 OLD SYSTEM: MAC positioned at override location');
-            } else {
-              modelRef.current.position.copy(arPosition);
-              console.log('🔄 OLD SYSTEM: MAC positioned at AR anchor location');
-            }
-          } else {
-            modelRef.current.position.set(0, 0, -3);
-            console.log('🔄 OLD SYSTEM: MAC positioned at standalone location');
+  // Register gesture handlers on mount
+  useEffect(() => {
+    // Register rotation handler
+    if (onModelRotate) {
+      onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
+        if (modelRef.current) {
+          modelRef.current.rotation.y += deltaX;
+          modelRef.current.rotation.x += deltaY;
+          if (deltaZ !== 0) {
+            modelRef.current.rotation.z += deltaZ;
           }
         }
-        
-        console.log('🔄 Model reset completed - Scale is now:', modelRef.current.scale.x);
-      }
-    });
-  }
+      });
+    }
 
-  // Register swipe handlers
-  if (onSwipeUp) {
-    onSwipeUp(() => {
-      console.log('👆 Swipe up detected on MAC');
-    });
-  }
+    // Register scale handler
+    if (onModelScale) {
+      onModelScale((scaleFactor: number) => {
+        if (modelRef.current) {
+          const currentScale = modelRef.current.scale.x;
+          const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
+          console.log('🔍 Scale handler called:', {
+            scaleFactor,
+            currentScale: currentScale.toFixed(3),
+            newScale: newScale.toFixed(3),
+            system: USE_NEW_POSITIONING ? 'NEW' : 'OLD'
+          });
+          modelRef.current.scale.setScalar(newScale);
+        }
+      });
+    }
 
-  if (onSwipeDown) {
-    onSwipeDown(() => {
-      console.log('👇 Swipe down detected on MAC');
-    });
-  }
-}, [positionObject]);
+    // Register reset handler
+    if (onModelReset) {
+      onModelReset(() => {
+        console.log(`🔄 RESET HANDLER CALLED - ${USE_NEW_POSITIONING ? 'NEW' : 'OLD'} system`);
+        if (modelRef.current) {
+          // Reset rotation and scale
+          modelRef.current.rotation.set(-Math.PI / 2, 0, 0);
+          modelRef.current.scale.set(initialScale, initialScale, initialScale);
+          
+          if (USE_NEW_POSITIONING && hookReady) {
+            // NEW SYSTEM: Use hook for positioning
+            console.log('🔄 NEW SYSTEM: Using hook for reset positioning');
+            positionObject(modelRef.current, 'mac');
+          } else {
+            // OLD SYSTEM: Manual positioning logic
+            if (arPosition) {
+              const currentOverride = (window as any).arTestingOverride ?? true;
+              
+              if (currentOverride) {
+                modelRef.current.position.set(0, 0, -5);
+                console.log('🔄 OLD SYSTEM: MAC positioned at override location');
+              } else {
+                modelRef.current.position.copy(arPosition);
+                console.log('🔄 OLD SYSTEM: MAC positioned at AR anchor location');
+              }
+            } else {
+              modelRef.current.position.set(0, 0, -3);
+              console.log('🔄 OLD SYSTEM: MAC positioned at default location');
+            }
+          }
+          
+          console.log('🔄 Model reset completed - Scale is now:', modelRef.current.scale.x);
+        }
+      });
+    }
+
+    // Register swipe handlers
+    if (onSwipeUp) {
+      onSwipeUp(() => {
+        console.log('👆 Swipe up detected on MAC');
+      });
+    }
+
+    if (onSwipeDown) {
+      onSwipeDown(() => {
+        console.log('👇 Swipe down detected on MAC');
+      });
+    }
+  }, [positionObject]);
 
   const centeringOffset = new THREE.Vector3(-knownCenter.x, -knownCenter.y, -knownCenter.z);
 
   // OLD SYSTEM: Position updates (only run if using old system)
   useEffect(() => {
-    if (!USE_NEW_POSITIONING && modelRef.current && arPosition && isArMode) {
+    if (!USE_NEW_POSITIONING && modelRef.current && arPosition) {
       const currentOverride = (window as any).arTestingOverride ?? false;
       
       if (!currentOverride) {
@@ -256,7 +245,7 @@ useEffect(() => {
         });
       }
     }
-  }, [arPosition, isArMode, USE_NEW_POSITIONING]);
+  }, [arPosition, USE_NEW_POSITIONING]);
 
   // Geometry sampling function (ported from CodePen)
   const sampleGeometry = (geometry: THREE.BufferGeometry, density: number): THREE.BufferGeometry => {
@@ -326,73 +315,13 @@ useEffect(() => {
   useEffect(() => {
     let isMounted = true;
     
-    console.log(`🎯 MACExperience mode: ${isArMode ? 'AR' : 'Standalone'} | System: ${USE_NEW_POSITIONING ? 'NEW HOOK' : 'OLD'}`);
+    console.log(`🎯 MACExperience AR-ONLY mode | System: ${USE_NEW_POSITIONING ? 'NEW HOOK' : 'OLD'}`);
     
-    // Create container for standalone mode
-    const container = document.createElement('div');
-    container.id = 'threejs-container';
-    container.style.position = 'fixed';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.width = '100%';
-    container.style.height = '100%';
-    container.style.zIndex = '1001';
+    // Use provided AR scene and camera (no more standalone setup)
+    const scene = arScene;
+    const camera = arCamera;
     
-    if (!isArMode) {
-      document.body.appendChild(container);
-    }
-
-    // Initialize Three.js components
-    let scene: THREE.Scene;
-    let camera: THREE.PerspectiveCamera;
-    let renderer: THREE.WebGLRenderer | null = null;
-    let controls: OrbitControls | null = null;
-
-    if (isArMode) {
-      // AR Mode: Use provided scene and camera
-      scene = arScene!;
-      camera = arCamera!;
-      sceneRef.current = scene;
-      cameraRef.current = camera;
-      console.log('🎯 MACExperience using AR scene and camera');
-    } else {
-      // Standalone Mode: Create own scene/camera/renderer
-      scene = new THREE.Scene();
-      sceneRef.current = scene;
-      
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.copy(initialCameraPos.current);
-      cameraRef.current = camera;
-      
-      renderer = new THREE.WebGLRenderer({ 
-        antialias: true, 
-        alpha: true,
-        premultipliedAlpha: false
-      });
-      
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(0x000000, 0);
-      container.appendChild(renderer.domElement);
-
-      // Add OrbitControls only in standalone mode
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.25;
-      controls.screenSpacePanning = false;
-      controls.minDistance = 0.5;
-      controls.maxDistance = 10;
-      controls.maxPolarAngle = Math.PI / 1.5;
-      controls.target.set(0, 0, 0);
-      controlsRef.current = controls;
-      
-      // Add lighting only in standalone mode
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-      scene.add(ambientLight);
-
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(1, 1, 1).normalize();
-      scene.add(directionalLight);
-    }
+    console.log('🎯 MACExperience using provided AR scene and camera');
 
     // Create loader
     const loader = new PLYLoader();
@@ -409,7 +338,7 @@ useEffect(() => {
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
     loadingDiv.innerHTML = `Loading MAC (${USE_NEW_POSITIONING ? 'NEW' : 'OLD'} system)...`;
-    container.appendChild(loadingDiv);
+    document.body.appendChild(loadingDiv);
 
     // Load the PLY model
     const modelPath = getAssetPath('models/mac.ply');
@@ -461,6 +390,7 @@ useEffect(() => {
         if (!USE_NEW_POSITIONING) {  // Only apply for OLD system
           pointCloud.rotation.x = -Math.PI / 2;
         }
+        
         // Add point cloud to scene FIRST
         scene.add(pointCloud);
         
@@ -471,7 +401,7 @@ useEffect(() => {
         } else {
           console.log('🎯 OLD SYSTEM: Applying manual positioning');
           // Apply final positioning - OLD SYSTEM
-          if (isArMode && arPosition) {
+          if (arPosition) {
             const currentOverride = (window as any).arTestingOverride ?? true;
             
             if (currentOverride) {
@@ -482,9 +412,9 @@ useEffect(() => {
               console.log('🔄 OLD SYSTEM: MAC positioned at AR anchor location');
             }
           } else {
-            // Add standalone offset to centered position
+            // Add default offset to centered position
             pointCloud.position.add(new THREE.Vector3(0, 0, -3));
-            console.log('🎯 OLD SYSTEM: MAC positioned at standalone location');
+            console.log('🎯 OLD SYSTEM: MAC positioned at default location');
           }
         }
         
@@ -494,8 +424,8 @@ useEffect(() => {
         onExperienceReady?.();
         
         // Remove loading indicator
-        if (container.contains(loadingDiv)) {
-          container.removeChild(loadingDiv);
+        if (document.body.contains(loadingDiv)) {
+          document.body.removeChild(loadingDiv);
         }
         
         console.log('✅ MAC point cloud loaded successfully');
@@ -504,7 +434,7 @@ useEffect(() => {
       // Progress callback
       (xhr) => {
         const percent = (xhr.loaded / xhr.total) * 100;
-        if (loadingDiv && container.contains(loadingDiv)) {
+        if (loadingDiv && document.body.contains(loadingDiv)) {
           loadingDiv.innerHTML = `Loading MAC (${USE_NEW_POSITIONING ? 'NEW' : 'OLD'}) ${percent.toFixed(0)}%`;
         }
       },
@@ -512,37 +442,16 @@ useEffect(() => {
       // Error callback
       (error) => {
         console.error('❌ Error loading MAC PLY:', error);
-        if (container.contains(loadingDiv)) {
+        if (document.body.contains(loadingDiv)) {
           loadingDiv.innerHTML = 'Error loading MAC PLY file';
           loadingDiv.style.color = '#ff6666';
         }
       }
     );
-
-    // Handle window resize
-    const handleResize = () => {
-      if (isMounted && camera && renderer) {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      }
-    };
     
-    window.addEventListener('resize', handleResize);
-    
-    // Cleanup function
+    // Cleanup function (much simpler now!)
     return () => {
       isMounted = false;
-      
-      window.removeEventListener('resize', handleResize);
-      
-      if (controls) {
-        controls.dispose();
-      }
-      
-      if (renderer) {
-        renderer.dispose();
-      }
       
       // Clean up geometries
       if (originalGeometryRef.current) {
@@ -561,11 +470,12 @@ useEffect(() => {
         }
       }
       
-      if (document.body.contains(container)) {
-        document.body.removeChild(container);
+      // Remove loading indicator if still present
+      if (document.body.contains(loadingDiv)) {
+        document.body.removeChild(loadingDiv);
       }
     };
-  }, [isArMode, USE_NEW_POSITIONING]); // Added USE_NEW_POSITIONING dependency
+  }, [USE_NEW_POSITIONING]); // Added USE_NEW_POSITIONING dependency
 
   return (
     <>
@@ -586,7 +496,7 @@ useEffect(() => {
           maxWidth: '300px'
         }}>
           <div style={{ color: 'yellow', marginBottom: '8px', fontSize: '12px' }}>
-            🧪 MAC POSITIONING TEST
+            🧪 MAC POSITIONING TEST - AR ONLY
           </div>
           
           {/* System Status */}
@@ -594,7 +504,7 @@ useEffect(() => {
             <div>System: <span style={{ color: USE_NEW_POSITIONING ? 'lightgreen' : 'orange' }}>
               {USE_NEW_POSITIONING ? 'NEW HOOK' : 'OLD MANUAL'}
             </span></div>
-            <div>Mode: {isArMode ? 'AR' : 'Standalone'}</div>
+            <div>Mode: AR-ONLY</div>
             <div>Hook Ready: <span style={{ color: hookReady ? 'lightgreen' : 'red' }}>
               {hookReady ? '✅' : '❌'}
             </span></div>
@@ -621,6 +531,13 @@ useEffect(() => {
               <div>{hookUserPosition[1].toFixed(6)}</div>
             </div>
           )}
+
+          {/* Point Cloud Info */}
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ color: 'pink', fontSize: '10px' }}>Point Cloud:</div>
+            <div>Points: {pointCount.toLocaleString()}</div>
+            <div>Density: {POINT_DENSITY * 100}%</div>
+          </div>
 
           {/* Test Controls */}
           <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '8px' }}>
@@ -652,10 +569,6 @@ useEffect(() => {
                 console.log('🧪 Elevation adjustment test...');
                 adjustGlobalElevation(-0.5);
                 if (modelRef.current && USE_NEW_POSITIONING) {
-
-                   
-
-
                   positionObject(modelRef.current, 'mac');
                 }
               }}
