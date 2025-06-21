@@ -111,7 +111,7 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   return (
     <div style={{
       position: 'fixed',
-      top: '10svh',
+      top: '20svh',
       right: '10px',
       backgroundColor: 'rgba(0, 0, 0, 0.9)',
       color: 'white',

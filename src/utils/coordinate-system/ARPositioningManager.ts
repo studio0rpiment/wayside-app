@@ -173,7 +173,15 @@ export class ARPositioningManager {
 
     return success;
   }
-
+/**
+ * Get current GPS coordinates (after adjustments)
+ */
+getCurrentAnchorGps(experienceId: string): [number, number] | null {
+  const anchor = this.anchorManager.getAnchor(experienceId);
+  if (!anchor) return null;
+  
+  return anchor.gpsCoordinates; // These are already updated by adjustAnchorPosition
+}
 /**
  * Reset anchor to original position
  */

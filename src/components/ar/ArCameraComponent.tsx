@@ -1266,27 +1266,25 @@ const currentUserPosition = getBestUserPosition();
           User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
         </div>
 
-        {/* ✅ SIMPLE: Add GPS offsets to display for screenshot */}
+        {/* ✅ CLEAN: Show current anchor GPS coordinates from shared system */}
         <div>
           Anchor GPS: [{(() => {
-            const baseLon = activeAnchorPosition[0];
-            const baseLat = activeAnchorPosition[1];
+            if (newSystemReady && experienceType) {
+              // Get current GPS coordinates from shared positioning system
+              const currentGps = newPositioningSystem.getCurrentAnchorGps(experienceType);
+              if (currentGps) {
+                return `${currentGps[0].toFixed(10)}, ${currentGps[1].toFixed(10)}`;
+              }
+            }
             
-            // Add the GPS offsets from state (these get updated by anchor buttons)
-            const displayLon = baseLon + gpsOffset.lon;
-            const displayLat = baseLat + gpsOffset.lat;
-            
+            // Legacy fallback: original + offsets
+            const displayLon = activeAnchorPosition[0] + gpsOffset.lon;
+            const displayLat = activeAnchorPosition[1] + gpsOffset.lat;
             return `${displayLon.toFixed(10)}, ${displayLat.toFixed(10)}`;
           })()}]
-          {Math.abs(gpsOffset.lon) > 0 || Math.abs(gpsOffset.lat) > 0 ? (
-            <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px', color: 'yellow' }}>
-              (adjusted)
-            </span>
-          ) : (
-            <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px' }}>
-              (original)
-            </span>
-          )}
+          <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px', color: newSystemReady ? 'lightgreen' : 'yellow' }}>
+            {newSystemReady ? '(live)' : '(legacy)'}
+          </span>
         </div>  
                                   
         <div>

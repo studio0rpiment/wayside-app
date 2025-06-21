@@ -20,9 +20,10 @@ export interface ARPositioningHookResult {
   setGlobalElevation: (offset: number) => void;
   getCurrentElevationOffset: () => number;
   
-  // Anchor adjustment (NEW)
-  adjustAnchorPosition: (experienceId: string, deltaLon: number, deltaLat: number) => boolean;
-  resetAnchorPosition: (experienceId: string) => boolean;
+// Anchor adjustment (NEW)
+adjustAnchorPosition: (experienceId: string, deltaLon: number, deltaLat: number) => boolean;
+resetAnchorPosition: (experienceId: string) => boolean;
+getCurrentAnchorGps: (experienceId: string) => any;
   
   // Reset and debug
   resetPosition: (experienceId: string) => void;
@@ -254,6 +255,21 @@ export function useARPositioning(): ARPositioningHookResult {
       return false;
     }
   }, []);
+
+  // Add this function implementation in the hook (around line 200, with the other useCallback functions):
+const getCurrentAnchorGps = useCallback((experienceId: string): [number, number] | null => {
+  if (!arPositioningManagerRef.current) {
+    return null;
+  }
+  
+  try {
+    return arPositioningManagerRef.current.getCurrentAnchorGps(experienceId);
+  } catch (error) {
+    console.error('🎣 useARPositioning: Error getting current anchor GPS:', error);
+    return null;
+  }
+}, []);
+
   
   // Reset methods
   const resetPosition = useCallback((experienceId: string) => {
@@ -311,6 +327,7 @@ export function useARPositioning(): ARPositioningHookResult {
     // NEW: Anchor adjustment methods
     adjustAnchorPosition,
     resetAnchorPosition,
+    getCurrentAnchorGps,
     
     // Reset methods
     resetPosition,
