@@ -349,33 +349,43 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 
 //************ PASSING OVERRIDE FROM ARCAMERACOMPONENT WITH EVENT LISTENER */
 
-useEffect(() => {
-  if (USE_NEW_POSITIONING) return; // Skip if using new system
+// useEffect(() => {
+//   if (USE_NEW_POSITIONING) return; // Skip if using new system
 
-  const handleOverrideChange = (event: CustomEvent) => {
-    const newValue = event.detail.override;
-    console.log('🎯 LEGACY: Override changed via event to:', newValue);
-    setLegacyArTestingOverride(newValue);
+//   const handleOverrideChange = (event: CustomEvent) => {
+//     const newValue = event.detail.override;
+//     console.log('🎯 LEGACY: Override changed via event to:', newValue);
+//     setLegacyArTestingOverride(newValue);
     
-    if (modelRef.current) {
-      legacyPositionModel(modelRef.current);
+//     if (modelRef.current) {
+//       legacyPositionModel(modelRef.current);
       
-      // Force visual update
-      modelRef.current.visible = false;
-      setTimeout(() => {
-        if (modelRef.current) {
-          modelRef.current.visible = true;
-        }
-      }, 50);
-    }
-  };
+//       // Force visual update
+//       modelRef.current.visible = false;
+//       setTimeout(() => {
+//         if (modelRef.current) {
+//           modelRef.current.visible = true;
+//         }
+//       }, 50);
+//     }
+//   };
 
-  window.addEventListener('ar-override-changed', handleOverrideChange as EventListener);
+//   window.addEventListener('ar-override-changed', handleOverrideChange as EventListener);
   
-  return () => {
-    window.removeEventListener('ar-override-changed', handleOverrideChange as EventListener);
-  };
-}, [arPosition]);
+//   return () => {
+//     window.removeEventListener('ar-override-changed', handleOverrideChange as EventListener);
+//   };
+// }, [arPosition]);
+
+useEffect(() => {
+  if (USE_NEW_POSITIONING && newDebugMode !== undefined) {
+    const currentWindowOverride = (window as any).arTestingOverride ?? false;
+    if (newDebugMode !== currentWindowOverride) {
+      (window as any).arTestingOverride = newDebugMode;
+      console.log('🔗 Synced window.arTestingOverride with newDebugMode:', newDebugMode);
+    }
+  }
+}, [newDebugMode]);
 
   //******** WAIT FOR THE HOOK TO BE READY FOR NEW POSITION SYSTEM */
     useEffect(() => {
