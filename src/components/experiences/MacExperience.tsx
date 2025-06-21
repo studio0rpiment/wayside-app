@@ -378,17 +378,19 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 // }, [arPosition]);
 
 useEffect(() => {
-  if (newDebugMode !== undefined) {
-    const currentOverride = (window as any).arTestingOverride ?? false;
-    if (newDebugMode !== currentOverride) {
- 
-          (window as any).arTestingOverride = newDebugMode;
-     
-      console.log('🔗 Synced window.arTestingOverride with newDebugMode:', newDebugMode);
-      //     if (modelRef.current) {
-      //   positionModel(modelRef.current);
-      // }
-    }
+  if (USE_NEW_POSITIONING && newDebugMode !== undefined) {
+    console.log('🔗 newDebugMode changed to:', newDebugMode);
+    
+    (window as any).arTestingOverride = newDebugMode;
+    
+    // Add a small delay to ensure the anchor manager picks up the change
+    setTimeout(() => {
+      if (modelRef.current && newSystemReady) {
+        console.log('🔗 Calling newPositionObject after debug mode change...');
+        const success = newPositionObject(modelRef.current, 'mac');
+        console.log('🔗 Positioning result:', success);
+      }
+    }, 100);
   }
 }, [newDebugMode]);
 
