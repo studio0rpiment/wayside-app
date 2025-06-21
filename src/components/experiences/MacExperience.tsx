@@ -139,24 +139,12 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       return false;
     }
       console.log('🧪 NEW: Scale before positioning:', model.scale.x);
-     model.scale.set(initialScale, initialScale, initialScale);
+
     
     // Pass our locally calculated scale to the world system
     const success = newPositionObject(model, 'mac');
     // model.scale.set(initialScale, initialScale, initialScale);
 
-    if (success) {
-      console.log('🧪 NEW: Scale after positioning (before force):', model.scale.x);
-      
-      // FORCE our local scale AFTER positioning to override anchor scale
-      model.scale.set(initialScale, initialScale, initialScale);
-      
-      console.log('🧪 NEW: Forced local scale after positioning:', initialScale);
-      console.log('🧪 NEW: Final model position:', model.position.toArray());
-      console.log('🧪 NEW: Final model scale:', model.scale.x);
-    } else {
-      console.warn('🧪 NEW: Positioning failed');
-    }
     return success;
   } else {
     console.log('🎯 LEGACY: Positioning model with GPS-to-AR system');
