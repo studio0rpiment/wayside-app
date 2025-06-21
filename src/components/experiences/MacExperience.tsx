@@ -465,9 +465,9 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     useEffect(() => {
       if (USE_NEW_POSITIONING && newSystemReady && modelRef.current && hasPointCloud) {
         console.log('🧪 NEW: Hook became ready, positioning model now...');
-        positionModel(modelRef.current);
+        positionModel(modelRef.current)
       }
-    }, [newSystemReady, hasPointCloud]);
+    }, [newSystemReady, hasPointCloud])
     
     // Cleanup function
     return () => {
