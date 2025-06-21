@@ -138,11 +138,10 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       console.log('🧪 NEW: Hook not ready yet, skipping positioning');
       return false;
     }
-    
+      console.log('🧪 NEW: Scale before positioning:', model.scale.x);
+
     // Pass our locally calculated scale to the world system
-    const success = newPositionObject(model, 'mac', { 
-      manualScale: initialScale 
-    });
+    const success = newPositionObject(model, 'mac');
     
     if (success) {
       console.log('🧪 NEW: Scale after positioning (before force):', model.scale.x);
