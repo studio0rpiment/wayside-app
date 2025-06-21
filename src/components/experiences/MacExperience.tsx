@@ -133,14 +133,6 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   // Unified positioning interface that delegates to the active system
  const positionModel = (model: THREE.Points) => {
   if (USE_NEW_POSITIONING) {
-     console.log('🧪 NEW SYSTEM: Positioning model with world coordinate system');
-  console.log('🧪 NEW: Hook ready?', newSystemReady);
-  console.log('🧪 NEW: User position?', newUserPosition);
-  console.log('🧪 NEW: Scale before positioning:', model.scale.x);
-  
-
-    console.log('🧪 NEW SYSTEM: Positioning model with world coordinate system');
-    console.log('🧪 NEW: Scale before positioning:', model.scale.x);
     
     // Pass our locally calculated scale to the world system
     const success = newPositionObject(model, 'mac', { 
@@ -201,6 +193,8 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       };
     }
   };
+
+
 
   // =================================================================
   // SHARED MODEL SETUP AND CONFIGURATION
@@ -433,23 +427,8 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         // Add to scene
         scene.add(pointCloud);
         
-        // Apply initial positioning using the active system
-        const positioned = positionModel(pointCloud);
-        
-        if (positioned) {
-          // Store the final scale after positioning system applies its changes
-          activeScaleRef.current = pointCloud.scale.x;
-          
-          console.log(`✅ Model positioned successfully with ${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'} system`);
-          console.log('📍 Final model position:', pointCloud.position.toArray());
-          console.log('🔄 Final model rotation:', pointCloud.rotation.toArray());
-          console.log('📏 Final model scale:', pointCloud.scale.toArray());
-          console.log('💾 Stored active scale for reset:', activeScaleRef.current);
-        } else {
-          console.warn(`⚠️ Model positioning failed with ${USE_NEW_POSITIONING ? 'NEW' : 'LEGACY'} system`);
-          // Still store the scale even if positioning failed
-          activeScaleRef.current = pointCloud.scale.x;
-        }
+        activeScaleRef.current = pointCloud.scale.x;
+
         
         // Update state
         setHasPointCloud(true);
@@ -481,6 +460,14 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         }
       }
     );
+
+//******** WAIT FOR THE HOOK TO BE READY FOR NEW POSITION SYSTEM */
+    useEffect(() => {
+      if (USE_NEW_POSITIONING && newSystemReady && modelRef.current && hasPointCloud) {
+        console.log('🧪 NEW: Hook became ready, positioning model now...');
+        positionModel(modelRef.current);
+      }
+    }, [newSystemReady, hasPointCloud]);
     
     // Cleanup function
     return () => {
