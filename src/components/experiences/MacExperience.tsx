@@ -27,7 +27,6 @@ interface MacExperienceProps {
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
   onExperienceReady?: () => void;
-  onRegisterOverrideToggle?: (handler: (override: boolean) => void) => void;  
 
 }
 
@@ -44,7 +43,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   onSwipeUp,
   onSwipeDown,
   onExperienceReady,
-  onRegisterOverrideToggle
+ 
 }) => {
 
   // =================================================================
@@ -348,22 +347,35 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     return sampledGeometry;
   };
 
-//************ PASSING OVERRIDE FROM ARCAMERACOMPONENT THROUGH EXPERIENCE MANAGER */
-  useEffect(() => {
-  if (onRegisterOverrideToggle) {
-    onRegisterOverrideToggle((newValue: boolean) => {
-      console.log('🎯 Override toggled from ArCamera:', newValue);
-      setLegacyArTestingOverride(newValue);
-      if (modelRef.current) {
-        if (USE_NEW_POSITIONING) {
-          positionModel(modelRef.current);
-        } else {
-          legacyPositionModel(modelRef.current);
+//************ PASSING OVERRIDE FROM ARCAMERACOMPONENT WITH EVENT LISTENER */
+
+useEffect(() => {
+  if (USE_NEW_POSITIONING) return; // Skip if using new system
+
+  const handleOverrideChange = (event: CustomEvent) => {
+    const newValue = event.detail.override;
+    console.log('🎯 LEGACY: Override changed via event to:', newValue);
+    setLegacyArTestingOverride(newValue);
+    
+    if (modelRef.current) {
+      legacyPositionModel(modelRef.current);
+      
+      // Force visual update
+      modelRef.current.visible = false;
+      setTimeout(() => {
+        if (modelRef.current) {
+          modelRef.current.visible = true;
         }
-      }
-    });
-  }
-}, [onRegisterOverrideToggle, USE_NEW_POSITIONING]);
+      }, 50);
+    }
+  };
+
+  window.addEventListener('ar-override-changed', handleOverrideChange as EventListener);
+  
+  return () => {
+    window.removeEventListener('ar-override-changed', handleOverrideChange as EventListener);
+  };
+}, [arPosition]);
 
   //******** WAIT FOR THE HOOK TO BE READY FOR NEW POSITION SYSTEM */
     useEffect(() => {

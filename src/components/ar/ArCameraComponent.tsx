@@ -31,7 +31,6 @@ interface ArCameraProps {
   onModelReset?: () => void;
   onSwipeUp?: () => void;
   onSwipeDown?: () => void;
-    onOverrideToggle?: (override: boolean) => void;  
 
   children?: React.ReactNode;
 }
@@ -51,7 +50,6 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onModelReset,
   onSwipeUp,
   onSwipeDown,
-  onOverrideToggle,
   children
   
   
@@ -1167,7 +1165,9 @@ const currentUserPosition = getBestUserPosition();
                       const newValue = !arTestingOverride;
                       (window as any).arTestingOverride = newValue;
                       setArTestingOverride(newValue);
-                      onOverrideToggle?.(newValue);  // ADD THIS LINE
+                        window.dispatchEvent(new CustomEvent('ar-override-changed', { 
+                            detail: { override: newValue } 
+                          }));
 
                       // console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
                     }}

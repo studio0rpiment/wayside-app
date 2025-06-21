@@ -114,7 +114,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   const [experienceReady, setExperienceReady] = useState(true);
   const [arScene, setArScene] = useState<THREE.Scene | null>(null);
   const [arCamera, setArCamera] = useState<THREE.PerspectiveCamera | null>(null);
-  const [overrideToggleHandler, setOverrideToggleHandler] = useState<((override: boolean) => void) | null>(null);
+
 
   // Track experience engagement time for completion criteria
   const [experienceStartTime, setExperienceStartTime] = useState<number | null>(null);
@@ -299,7 +299,6 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       onSwipeUp: registerSwipeUpHandler,
       onSwipeDown: registerSwipeDownHandler,
       onExperienceReady: handleExperienceReady,
-      onRegisterOverrideToggle: setOverrideToggleHandler,  // ADD THIS LINE
 
     };
 
@@ -341,6 +340,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       arPosition: arObjectPosition,
       arScene: arScene,
       arCamera: arCamera,
+      
     };
     
     // Use stable props - no new object creation on each render
@@ -433,7 +433,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           onModelReset={handleModelReset}
           onSwipeUp={handleSwipeUp}
           onSwipeDown={handleSwipeDown}
-          onOverrideToggle={overrideToggleHandler || undefined} 
+         
         />
       )}
       
