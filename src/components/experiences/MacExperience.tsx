@@ -349,33 +349,26 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 
 //************ PASSING OVERRIDE FROM ARCAMERACOMPONENT WITH EVENT LISTENER */
 
-// useEffect(() => {
-//   if (USE_NEW_POSITIONING) return; // Skip if using new system
+// Add this useEffect to MacExperience to listen for elevation changes from debug panel
+useEffect(() => {
+  if (!USE_NEW_POSITIONING) return;
 
-//   const handleOverrideChange = (event: CustomEvent) => {
-//     const newValue = event.detail.override;
-//     console.log('🎯 LEGACY: Override changed via event to:', newValue);
-//     setLegacyArTestingOverride(newValue);
+  const handleElevationChange = (event: CustomEvent) => {
+    console.log('🧪 NEW: MacExperience received elevation change:', event.detail.delta);
     
-//     if (modelRef.current) {
-//       legacyPositionModel(modelRef.current);
-      
-//       // Force visual update
-//       modelRef.current.visible = false;
-//       setTimeout(() => {
-//         if (modelRef.current) {
-//           modelRef.current.visible = true;
-//         }
-//       }, 50);
-//     }
-//   };
+    if (modelRef.current && newSystemReady) {
+      console.log('🧪 NEW: Re-positioning Mac model after elevation change...');
+      const success = newPositionObject(modelRef.current, 'mac');
+      console.log('🧪 NEW: Re-positioning result:', success);
+    }
+  };
 
-//   window.addEventListener('ar-override-changed', handleOverrideChange as EventListener);
+  window.addEventListener('ar-elevation-changed', handleElevationChange as EventListener);
   
-//   return () => {
-//     window.removeEventListener('ar-override-changed', handleOverrideChange as EventListener);
-//   };
-// }, [arPosition]);
+  return () => {
+    window.removeEventListener('ar-elevation-changed', handleElevationChange as EventListener);
+  };
+}, [USE_NEW_POSITIONING, newSystemReady]);
 
 useEffect(() => {
   if (USE_NEW_POSITIONING && newDebugMode !== undefined) {

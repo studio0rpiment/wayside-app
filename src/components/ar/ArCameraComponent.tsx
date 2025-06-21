@@ -520,33 +520,37 @@ const handleCameraCheck = useCallback(() => {
   // Calculate and place AR object
 // In ArCameraComponent.tsx, update the placeArObject function:
 const placeArObject = useCallback(() => {
-  // console.log('🎯 placeArObject() called');
-  // console.log('🎯 onArObjectPlaced exists:', !!onArObjectPlaced);
+  console.log('🎯 placeArObject() called');
   
-  // Get the position once at the start
+  if (useNewPositioning || useNewPositioning) {
+    // NEW SYSTEM: Don't call onArObjectPlaced - let experiences handle their own positioning
+    console.log('🧪 NEW: Using ARPositioningManager - experiences handle their own positioning');
+    return;
+  }
+  
+  // LEGACY SYSTEM: Keep existing logic
   const userPosition = getBestUserPosition();
   
   if (!userPosition || !anchorPosition) {
-      // console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
-      return;
-    }
-    
-    const entrySide = detectEntrySide(userPosition, anchorPosition);
-    const finalElevationOffset = elevationOffset + manualElevationOffset;
+    console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
+    return;
+  }
+  
+  const entrySide = detectEntrySide(userPosition, anchorPosition);
+  const finalElevationOffset = elevationOffset + manualElevationOffset;
 
-   const position = gpsToThreeJsPositionWithEntryOffset(
-  userPosition,
-  activeAnchorPosition,
-  entrySide,
-  finalElevationOffset,
-  coordinateScale
-);
+  const position = gpsToThreeJsPositionWithEntryOffset(
+    userPosition,
+    activeAnchorPosition,
+    entrySide,
+    finalElevationOffset,
+    coordinateScale
+  );
 
   if (onArObjectPlaced) {
     onArObjectPlaced(position);
   }
-
-}, [getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
+}, [useNewPositioning, useNewPositioning, getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
 //   ^^^ Remove the () - include the function reference, not the call
   
 //***********Effect 1: Update camera rotation using quaternions (with debug logging)
@@ -1481,6 +1485,7 @@ const currentUserPosition = getBestUserPosition();
               color: 'white',
               cursor: 'pointer'
             };
+                        
             
             if (newSystemReady) {
               // NEW SYSTEM: Use ARPositioningManager elevation adjustment
@@ -1489,18 +1494,34 @@ const currentUserPosition = getBestUserPosition();
                   <button onClick={() => {
                     newAdjustElevation(-0.1);
                     console.log('🧪 NEW: Global elevation -0.1m');
+                    // Trigger experience re-positioning - this is the missing piece!
+                    window.dispatchEvent(new CustomEvent('ar-elevation-changed', { 
+                      detail: { delta: -0.1 } 
+                    }));
                   }} style={elevButtonStyle}>-0.1m</button>
+                  
                   <button onClick={() => {
                     newAdjustElevation(-0.01);
                     console.log('🧪 NEW: Global elevation -0.01m');
+                    window.dispatchEvent(new CustomEvent('ar-elevation-changed', { 
+                      detail: { delta: -0.01 } 
+                    }));
                   }} style={elevButtonStyle}>-1cm</button>
+                  
                   <button onClick={() => {
                     newAdjustElevation(0.01);
                     console.log('🧪 NEW: Global elevation +0.01m');
+                    window.dispatchEvent(new CustomEvent('ar-elevation-changed', { 
+                      detail: { delta: 0.01 } 
+                    }));
                   }} style={elevButtonStyle}>+1cm</button>
+                  
                   <button onClick={() => {
                     newAdjustElevation(0.1);
                     console.log('🧪 NEW: Global elevation +0.1m');
+                    window.dispatchEvent(new CustomEvent('ar-elevation-changed', { 
+                      detail: { delta: 0.1 } 
+                    }));
                   }} style={elevButtonStyle}>+0.1m</button>
                 </div>
               );
