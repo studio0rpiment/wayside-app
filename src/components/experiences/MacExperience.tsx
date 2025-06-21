@@ -8,10 +8,10 @@ import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 // Import positioning systems
 import { useARPositioning } from '../../hooks/useARPositioning';
 
-const SHOW_DEBUG_PANEL = false; // Enable for testing
+const SHOW_DEBUG_PANEL = true; // Enable for testing
 
 // POSITIONING SYSTEM TOGGLE
-const USE_NEW_POSITIONING = false; // Set to true to test new world coordinate system
+const USE_NEW_POSITIONING = true; // Set to true to test new world coordinate system
 
 interface MacExperienceProps {
   onClose: () => void;
@@ -414,17 +414,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         // Apply model centering (move model center to origin)
         pointCloud.position.set(-knownCenter.x, -knownCenter.y, -knownCenter.z);
         pointCloud.scale.set(initialScale, initialScale, initialScale);
-        
-        // Apply system-specific initial rotation
-        if (USE_NEW_POSITIONING) {
-          // New system uses same rotation as legacy for visual consistency
-          pointCloud.rotation.set(-Math.PI / 2, 0, 0);
-          console.log('🧪 NEW: Model prepared with Z-up to Y-up rotation for consistency');
-        } else {
-          // Legacy system needs Z-up to Y-up conversion
-          pointCloud.rotation.set(-Math.PI / 2, 0, 0);
-          console.log('🎯 LEGACY: Model prepared for GPS-to-AR positioning');
-        }
+        pointCloud.rotation.set(-Math.PI / 2, 0, 0);
         
         // Add to scene
         scene.add(pointCloud);
