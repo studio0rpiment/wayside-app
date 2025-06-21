@@ -1,9 +1,10 @@
-// ExperienceManager.tsx - Simplified: GPS quality gate only at entry, not during experience
+// ExperienceManager.tsx - Updated with shared AR positioning
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import ArCameraComponent from '../components/ar/ArCameraComponent';
 import { useSystemOptimization } from '../utils/systemOptimization';
 import { useGeofenceContext, useGeofencePrecision, PositionQuality } from '../context/GeofenceContext';
+import { useARPositioning } from '../hooks/useARPositioning';
 
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
@@ -33,7 +34,6 @@ interface ExperienceManagerProps {
   anchorPosition: [number, number];
   anchorElevation?: number;
   geofenceId?: string;
-  
   // Optional customization
   coordinateScale?: number;
 }
@@ -96,7 +96,6 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
   const { startArExperience, endArExperience } = useSystemOptimization();
   
-  
   // ✅ SIMPLIFIED: Use enhanced positioning with no quality restrictions
   const {
     getBestUserPosition,
@@ -108,13 +107,30 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     preciseUserPosition
   } = useEnhancedUserPosition(propUserPosition);
 
+  // ✅ NEW: Shared AR positioning system - single source of truth
+  const sharedARPositioning = useARPositioning();
+  const {
+    positionObject,
+    adjustGlobalElevation,
+    setGlobalElevation,
+    getCurrentElevationOffset,
+    isReady: positioningReady,
+    userPosition: positioningUserPosition,
+    debugMode: positioningDebugMode,
+    getDebugInfo,
+    resetAllAdjustments,
+    getPosition,
+    getWorldPosition,
+    getRelativePosition,
+    resetPosition
+  } = sharedARPositioning;
+
   // State management (unchanged)
   const [arInitialized, setArInitialized] = useState(false);
   const [arObjectPosition, setArObjectPosition] = useState<THREE.Vector3 | null>(null);
   const [experienceReady, setExperienceReady] = useState(true);
   const [arScene, setArScene] = useState<THREE.Scene | null>(null);
   const [arCamera, setArCamera] = useState<THREE.PerspectiveCamera | null>(null);
-
 
   // Track experience engagement time for completion criteria
   const [experienceStartTime, setExperienceStartTime] = useState<number | null>(null);
@@ -145,10 +161,11 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         position: currentUserPosition,
         accuracy: currentAccuracy?.toFixed(1) + 'm',
         quality: positionQuality,
-        stable: isPositionStable
+        stable: isPositionStable,
+        positioningReady: positioningReady
       });
     }
-  }, [currentUserPosition, currentAccuracy, positionQuality, isPositionStable, propUserPosition, preciseUserPosition, rawUserPosition]);
+  }, [currentUserPosition, currentAccuracy, positionQuality, isPositionStable, propUserPosition, preciseUserPosition, rawUserPosition, positioningReady]);
 
   // ✅ Reset state when modal opens/closes - keep this unchanged
   useEffect(() => {
@@ -251,8 +268,12 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   // NEW: Handle elevation changes from ArCameraComponent debug panel
   const handleElevationChanged = useCallback(() => {
     console.log('🧪 ExperienceManager: Elevation changed, triggering experience re-positioning');
+    console.log('🧪 ExperienceManager: Handler available?', !!elevationChangeHandlerRef.current);
     if (elevationChangeHandlerRef.current) {
+      console.log('🧪 ExperienceManager: Calling experience handler');
       elevationChangeHandlerRef.current();
+    } else {
+      console.warn('🧪 ExperienceManager: No experience handler registered!');
     }
   }, []);
 
@@ -279,8 +300,9 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
   // NEW: Register elevation change handler
   const registerElevationChangeHandler = useCallback((handler: () => void) => {
+    console.log('🧪 ExperienceManager: Registering elevation change handler');
     elevationChangeHandlerRef.current = handler;
-    console.log('🧪 ExperienceManager: Elevation change handler registered');
+    console.log('🧪 ExperienceManager: Handler registered successfully');
   }, []);
       
   // Handle experience completion -- checks minimum engagement time
@@ -305,7 +327,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     }, 50);
   }, [experienceStartTime, hasMetMinimumTime, geofenceId, onClose]);
 
-  // ✅ SIMPLIFIED: Experience props with no GPS quality restrictions
+  // ✅ UPDATED: Experience props with shared AR positioning
   const experienceProps = useMemo(() => {
     const baseProps = {
       onClose: handleExperienceComplete,
@@ -317,7 +339,9 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       onSwipeUp: registerSwipeUpHandler,
       onSwipeDown: registerSwipeDownHandler,
       onExperienceReady: handleExperienceReady,
-      onElevationChanged: registerElevationChangeHandler, // NEW: Pass elevation handler registration
+      onElevationChanged: registerElevationChangeHandler,
+      // ✅ NEW: Pass shared AR positioning to all experiences
+      sharedARPositioning: sharedARPositioning,
     };
 
     // Only include AR props if they have valid values
@@ -343,7 +367,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     registerResetHandler,
     registerSwipeUpHandler,
     registerSwipeDownHandler,
-    registerElevationChangeHandler // NEW: Include in dependencies
+    registerElevationChangeHandler,
+    sharedARPositioning // ✅ NEW: Include shared positioning in dependencies
   ]);
 
   // Render the appropriate 3D experience
@@ -435,10 +460,10 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         </div>
       )}
 
-      {/* ✅ AR Camera Component - no quality restrictions once started */}
+      {/* ✅ AR Camera Component with shared positioning */}
       {canStartAr && (
         <ArCameraComponent
-          userPosition={currentUserPosition} // ✅ Always use available position
+          userPosition={currentUserPosition}
           anchorPosition={anchorPosition}
           anchorElevation={anchorElevation}
           coordinateScale={coordinateScale}
@@ -451,7 +476,9 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           onModelReset={handleModelReset}
           onSwipeUp={handleSwipeUp}
           onSwipeDown={handleSwipeDown}
-          onElevationChanged={handleElevationChanged} // NEW: Pass the elevation change handler
+          onElevationChanged={handleElevationChanged}
+          // ✅ NEW: Pass shared AR positioning to ArCameraComponent
+          sharedARPositioning={sharedARPositioning}
         />
       )}
       
@@ -518,7 +545,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         </div>
       )}
 
-      {/* ✅ SIMPLIFIED: Debug Info (Development Only) - no GPS quality warnings */}
+      {/* ✅ ENHANCED: Debug Info with shared positioning status */}
       {process.env.NODE_ENV === 'development' && canStartAr && (
         <div style={{
           position: 'absolute',
@@ -533,9 +560,17 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           fontFamily: 'monospace',
           maxWidth: '250px'
         }}>
-          <div><strong>🎯 Experience Debug (Simplified):</strong></div>
+          <div><strong>🎯 Experience Debug (Shared Positioning):</strong></div>
           <div>Type: {experienceType}</div>
           <div>Geofence: {geofenceId || 'N/A'}</div>
+          
+          {/* Shared positioning status */}
+          <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)' }}>
+            <div><strong>Shared AR Positioning:</strong></div>
+            <div>Ready: {positioningReady ? '✅' : '❌'}</div>
+            <div>Debug Mode: {positioningDebugMode ? '✅' : '❌'}</div>
+            <div>Global Elevation: {getCurrentElevationOffset().toFixed(3)}m</div>
+          </div>
           
           {/* Position info */}
           <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)' }}>
@@ -557,9 +592,6 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
               {positionQuality}
             </span></div>
             <div>Stable: {isPositionStable ? '✅' : '❌'}</div>
-            <div style={{ marginTop: '3px', fontSize: '9px', opacity: 0.7 }}>
-              ℹ️ GPS quality shown for reference only - not blocking experience
-            </div>
           </div>
           
           {/* AR info */}

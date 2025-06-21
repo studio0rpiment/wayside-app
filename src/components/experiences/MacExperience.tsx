@@ -5,8 +5,8 @@ import { getAssetPath } from '../../utils/assetPaths';
 // Import PLYLoader separately to avoid Vite optimization issues
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 
-// Import positioning systems
 import { useARPositioning } from '../../hooks/useARPositioning';
+
 
 const SHOW_DEBUG_PANEL = false; // Enable for testing
 
@@ -28,6 +28,8 @@ interface MacExperienceProps {
   onSwipeDown?: (handler: () => void) => void;
   onExperienceReady?: () => void;
   onElevationChanged?: (handler: () => void) => void;
+  sharedARPositioning?: ReturnType<typeof useARPositioning>;
+
 
 
 }
@@ -45,14 +47,15 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   onSwipeUp,
   onSwipeDown,
   onExperienceReady,
-  onElevationChanged
+  onElevationChanged,
+  sharedARPositioning
  
 }) => {
 
   // =================================================================
   // NEW WORLD COORDINATE POSITIONING SYSTEM
   // =================================================================
-  const newPositioningSystem = useARPositioning();
+  const newPositioningSystem = sharedARPositioning  || useARPositioning();
   const {
     positionObject: newPositionObject,
     getPosition: newGetPosition,

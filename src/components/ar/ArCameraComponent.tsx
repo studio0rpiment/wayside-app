@@ -35,6 +35,8 @@ interface ArCameraProps {
   onSwipeDown?: () => void;
   useNewPositioning?: boolean;
   onElevationChanged?: () => void;  // NEW: Simple callback when elevation changes
+  sharedARPositioning?: ReturnType<typeof useARPositioning>;
+
   onPositioningReady?: (positioningFunctions: {
     positionObject: (object: THREE.Object3D, experienceId: string, options?: any) => boolean;
     adjustGlobalElevation: (delta: number) => void;
@@ -62,6 +64,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   useNewPositioning,
   onElevationChanged,
   onPositioningReady,
+  sharedARPositioning
   children
   
   
@@ -173,7 +176,7 @@ const groundPlaneDetectorRef = useRef<GroundPlaneDetectorRef>(null);
     const doubleTapDelay = 300;
     // Feature flag for new positioning system
     // const USE_NEW_POSITIONING = true; // Set to true to enable new positioning system
-    const newPositioningSystem = useARPositioning();
+    const newPositioningSystem = sharedARPositioning || useARPositioning();
     const { 
       adjustGlobalElevation: newAdjustElevation,
       positionObject: newPositionObject,
