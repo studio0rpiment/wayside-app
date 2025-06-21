@@ -219,16 +219,16 @@ const {
     
     const pointId = pointData.iconName;
     
-    // Debug logging
-    console.log('🔍 ExperienceModal Enhanced Debug:', {
-      pointId,
-      currentUserPosition,
-      previousPosition,
-      isTracking,
-      currentAccuracy,
-      positionQuality,
-      isPositionStable
-    });
+    // // Debug logging
+    // console.log('🔍 ExperienceModal Enhanced Debug:', {
+    //   pointId,
+    //   currentUserPosition,
+    //   previousPosition,
+    //   isTracking,
+    //   currentAccuracy,
+    //   positionQuality,
+    //   isPositionStable
+    // });
     
     // ✅ ENHANCED: Use enhanced geofence checking with hexagonal support
     const geofenceResult = checkGeofenceWithDirection(
@@ -238,14 +238,14 @@ const {
       
     );
     
-    console.log('🔍 Enhanced Geofence Result:', geofenceResult);
+    // console.log('🔍 Enhanced Geofence Result:', geofenceResult);
     
     // ✅ Get the actual radius and anchor data for this experience
     const anchorData = getArAnchorForPoint(pointId, currentUserPosition);
     const radiusMeters = currentRadius || 15;
     const radiusFeet = Math.round(radiusMeters * 3.28084);
     
-    console.log('🔍 Anchor Data:', anchorData);
+    // console.log('🔍 Anchor Data:', anchorData);
     
     // FALLBACK: If geofenceResult is null, use context functions
     let fallbackDistance = null;
@@ -260,11 +260,11 @@ const {
       fallbackDistance = contextDistance;
       fallbackDistanceFeet = Math.round(contextDistance * 3.28084);
       fallbackIsInside = contextInside;
-      console.log('🔍 Using Enhanced Context Distance:', {
-        contextDistance,
-        contextInside,
-        fallbackDistanceFeet
-      });
+      // console.log('🔍 Using Enhanced Context Distance:', {
+      //   contextDistance,
+      //   contextInside,
+      //   fallbackDistanceFeet
+      // });
     } else {
       // Manual calculation as last resort
       const pointFeature = getPointByName(pointId);
@@ -277,13 +277,13 @@ const {
         fallbackDistanceFeet = Math.round(fallbackDistance * 3.28084);
         fallbackIsInside = fallbackDistance <= radiusMeters;
         
-        console.log('🔍 Manual Distance Calculation:', {
-          pointCoords,
-          currentUserPosition,
-          fallbackDistance,
-          fallbackDistanceFeet,
-          fallbackIsInside
-        });
+        // console.log('🔍 Manual Distance Calculation:', {
+        //   pointCoords,
+        //   currentUserPosition,
+        //   fallbackDistance,
+        //   fallbackDistanceFeet,
+        //   fallbackIsInside
+        // });
       }
     }
     
@@ -318,12 +318,12 @@ const {
     const finalDistance = geofenceResult.distance !== null ? geofenceResult.distance : fallbackDistance;
     const distanceFeet = finalDistance ? Math.round(finalDistance * 3.28084) : fallbackDistanceFeet;
     
-    console.log('🔍 Final Enhanced Distance:', {
-      geofenceDistance: geofenceResult.distance,
-      fallbackDistance,
-      finalDistance,
-      distanceFeet
-    });
+    // console.log('🔍 Final Enhanced Distance:', {
+    //   geofenceDistance: geofenceResult.distance,
+    //   fallbackDistance,
+    //   finalDistance,
+    //   distanceFeet
+    // });
     
     return {
       isInside: geofenceResult.isInside || false,

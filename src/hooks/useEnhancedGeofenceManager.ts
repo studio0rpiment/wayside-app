@@ -96,7 +96,7 @@ export function useEnhancedGeofenceManager(
   const debugLog = useCallback((message: string, data?: any) => {
     if (debugMode) {
       const timestamp = new Date().toISOString();
-      console.log(`🎯 [EnhancedGeoManager ${timestamp}] ${message}`, data || '');
+    //   console.log(`🎯 [EnhancedGeoManager ${timestamp}] ${message}`, data || '');
     }
   }, [debugMode]);
   
@@ -195,15 +195,15 @@ export function useEnhancedGeofenceManager(
     const { coords } = position;
     const timestamp = Date.now();
     
-    debugLog('Raw GPS reading', {
-      lat: coords.latitude,
-      lon: coords.longitude,
-      accuracy: coords.accuracy,
-      altitude: coords.altitude,
-      altitudeAccuracy: coords.altitudeAccuracy,
-      heading: coords.heading,
-      speed: coords.speed
-    });
+    // debugLog('Raw GPS reading', {
+    //   lat: coords.latitude,
+    //   lon: coords.longitude,
+    //   accuracy: coords.accuracy,
+    //   altitude: coords.altitude,
+    //   altitudeAccuracy: coords.altitudeAccuracy,
+    //   heading: coords.heading,
+    //   speed: coords.speed
+    // });
     
     // Create enhanced position data
     const enhancedPosition: EnhancedPositionData = {
@@ -221,18 +221,18 @@ export function useEnhancedGeofenceManager(
     setPositionQuality(quality);
     setCurrentAccuracy(coords.accuracy);
     
-    debugLog('Position quality assessment', {
-      accuracy: coords.accuracy,
-      quality,
-      acceptable: coords.accuracy <= maxAcceptableAccuracy
-    });
+    // debugLog('Position quality assessment', {
+    //   accuracy: coords.accuracy,
+    //   quality,
+    //   acceptable: coords.accuracy <= maxAcceptableAccuracy
+    // });
     
     // Check if accuracy is acceptable
     if (coords.accuracy > minAcceptableAccuracy) {
-      debugLog('Position accuracy too poor, ignoring', {
-        accuracy: coords.accuracy,
-        maxAcceptable: minAcceptableAccuracy
-      });
+    //   debugLog('Position accuracy too poor, ignoring', {
+    //     accuracy: coords.accuracy,
+    //     maxAcceptable: minAcceptableAccuracy
+    //   });
       return;
     }
     
@@ -262,13 +262,13 @@ export function useEnhancedGeofenceManager(
     const stable = checkPositionStability(positionHistory);
     setIsPositionStable(stable);
     
-    debugLog('Position analysis updated', {
-      historyLength: positionHistory.length,
-      averagedPosition: averaged,
-      isStable: stable,
-      accuracy: currentAccuracy,
-      quality: positionQuality
-    });
+    // debugLog('Position analysis updated', {
+    //   historyLength: positionHistory.length,
+    //   averagedPosition: averaged,
+    //   isStable: stable,
+    //   accuracy: currentAccuracy,
+    //   quality: positionQuality
+    // });
     
     // Only update user position if we have good enough accuracy
     const latestPosition = positionHistory[positionHistory.length - 1];
@@ -278,14 +278,14 @@ export function useEnhancedGeofenceManager(
     if (shouldUsePosition) {
       // Use averaged position for better accuracy
       setUserPosition(averaged);
-      debugLog('Updated user position', { position: averaged, method: 'averaged' });
+    //   debugLog('Updated user position', { position: averaged, method: 'averaged' });
     } else {
-      debugLog('Position not ready for use', {
-        accuracy: latestPosition.accuracy,
-        maxAcceptable: maxAcceptableAccuracy,
-        requireStable: requireStablePosition,
-        isStable: stable
-      });
+    //   debugLog('Position not ready for use', {
+    //     accuracy: latestPosition.accuracy,
+    //     maxAcceptable: maxAcceptableAccuracy,
+    //     requireStable: requireStablePosition,
+    //     isStable: stable
+    //   });
     }
     
   }, [positionHistory, calculateAveragedPosition, checkPositionStability, maxAcceptableAccuracy, requireStablePosition, debugLog, currentAccuracy, positionQuality]);
@@ -293,20 +293,20 @@ export function useEnhancedGeofenceManager(
   // Process geofences (unchanged logic, but now uses enhanced position)
   const processGeofences = useCallback((position: [number, number]) => {
     if (!mapRouteData?.features || !isMountedRef.current) {
-      debugLog('Cannot process geofences - no data or unmounted');
+    //   debugLog('Cannot process geofences - no data or unmounted');
       return;
     }
     
     const radius = typeof window !== 'undefined' ? 
       window.geofenceDebuggerRadius ?? proximityThreshold : proximityThreshold;
     
-    debugLog('Processing geofences with enhanced position', {
-      position,
-      radius,
-      accuracy: currentAccuracy,
-      quality: positionQuality,
-      isStable: isPositionStable
-    });
+    // debugLog('Processing geofences with enhanced position', {
+    //   position,
+    //   radius,
+    //   accuracy: currentAccuracy,
+    //   quality: positionQuality,
+    //   isStable: isPositionStable
+    // });
     
     try {
       const results = checkGeofences(position, mapRouteData.features, radius);
@@ -342,28 +342,28 @@ export function useEnhancedGeofenceManager(
   // Enhanced start tracking with precision monitoring
   const startTracking = useCallback(async () => {
     if (isTracking) {
-      debugLog('Already tracking, ignoring start request');
+    //   debugLog('Already tracking, ignoring start request');
       return true;
     }
     
     if (!isPermissionGranted(PermissionType.LOCATION)) {
-      debugLog('Location permission not granted');
+    //   debugLog('Location permission not granted');
       return false;
     }
     
-    debugLog('Starting enhanced location tracking...', {
-      maxAcceptableAccuracy,
-      minAcceptableAccuracy,
-      positionAveragingWindow,
-      requireStablePosition
-    });
+    // debugLog('Starting enhanced location tracking...', {
+    //   maxAcceptableAccuracy,
+    //   minAcceptableAccuracy,
+    //   positionAveragingWindow,
+    //   requireStablePosition
+    // });
     
     try {
       const watchId = navigator.geolocation.watchPosition(
         processNewPosition,
         (error) => {
           console.error('Enhanced geolocation error:', error);
-          debugLog('Geolocation error', { error: error.message, code: error.code });
+        //   debugLog('Geolocation error', { error: error.message, code: error.code });
         },
         {
           enableHighAccuracy: true,
@@ -374,7 +374,7 @@ export function useEnhancedGeofenceManager(
       
       watchIdRef.current = watchId;
       setIsTracking(true);
-      debugLog('Enhanced location tracking started successfully');
+    //   debugLog('Enhanced location tracking started successfully');
       return true;
       
     } catch (error) {
@@ -385,7 +385,7 @@ export function useEnhancedGeofenceManager(
   
   // Stop tracking (enhanced cleanup)
   const stopTracking = useCallback(() => {
-    debugLog('Stopping enhanced location tracking...');
+    // debugLog('Stopping enhanced location tracking...');
     
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
@@ -400,13 +400,13 @@ export function useEnhancedGeofenceManager(
     setPositionQuality(PositionQuality.UNACCEPTABLE);
     setIsPositionStable(false);
     
-    debugLog('Enhanced location tracking stopped and state cleared');
+    // debugLog('Enhanced location tracking stopped and state cleared');
   }, [debugLog]);
   
   // Auto-start effect
   useEffect(() => {
     if (autoStart && !isTracking) {
-      debugLog('Auto-start enabled, starting enhanced tracking...');
+    //   debugLog('Auto-start enabled, starting enhanced tracking...');
       const timeout = setTimeout(() => {
         if (isMountedRef.current) {
           startTracking();
@@ -419,7 +419,7 @@ export function useEnhancedGeofenceManager(
   
   // Cleanup on unmount
   useEffect(() => {
-    debugLog('Enhanced geofence manager mounted');
+    // debugLog('Enhanced geofence manager mounted');
     
     return () => {
       debugLog('Enhanced geofence manager unmounting...');
@@ -453,7 +453,7 @@ export function useEnhancedGeofenceManager(
     
     // Enhanced utilities
     simulatePosition: (position: [number, number]) => {
-      debugLog('=== SIMULATING ENHANCED POSITION ===');
+    //   debugLog('=== SIMULATING ENHANCED POSITION ===');
       const simulatedData: EnhancedPositionData = {
         coordinates: position,
         accuracy: 1.0, // Perfect accuracy for simulation
