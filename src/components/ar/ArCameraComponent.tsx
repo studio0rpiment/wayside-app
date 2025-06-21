@@ -1162,157 +1162,165 @@ const currentUserPosition = getBestUserPosition();
       
 {/* *************  TOP Debug Panel */}
      
-         {SHOW_DEBUG_PANEL && (
-              <div style={{
-                position: 'absolute',
-                top: '1vh',
-                left: '1vw',
-                right: '35vw',
-                backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                color: 'white',
-                padding: '10px',
-                borderRadius: '4px',
-                fontSize: '10px',
-                zIndex: 1030,
-                pointerEvents: 'auto',
-                fontFamily: 'monospace'
-              }}>
-               {/* Collapsible header */}
-             <div 
-                onClick={() => setDebugCollapsed(!debugCollapsed)}
-                style={{ 
-                  cursor: 'pointer', 
-                  userSelect: 'none',
-                  marginBottom: debugCollapsed ? '0' : '5px'
-                }}  
-              >
-                <span style={{ fontSize: '14px', marginRight: '8px' }}>
-                  {debugCollapsed ? '▶' : '▼'}
-                </span>
-                <span style={{ color: 'yellow' }}>🎥 AR CAMERA DEBUG</span>
-              </div>
-                              <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'row' ,
-                    gap: '8px'
-                  }}>
-                  <div 
-                    onClick={() => {
-                      const newValue = !arTestingOverride;
-                      (window as any).arTestingOverride = newValue;
-                      setArTestingOverride(newValue);
-                        window.dispatchEvent(new CustomEvent('ar-override-changed', { 
-                            detail: { override: newValue } 
-                          }));
-
-                      // console.log('🎯 AR Override:', newValue ? 'ON' : 'OFF');
-                    }}
-                    style={{ cursor: 'pointer', 
-                      userSelect: 'none', 
-                      margin: '0rem', 
-                      padding: '4px 8px',
-                      backgroundColor: 'rgba(0,0,255,0.3)',
-                       marginTop: '8px',
-                      // border: '1px solid white', 
-                      width: '100%' }}
-                  >
-                    Override: {arTestingOverride ? '✅' : '❌'}
-                  </div>
-                      <button
-                          onClick={() => {
-                            setGpsOffset({ lon: 0, lat: 0 });
-                            setManualElevationOffset(0);
-                            setAdjustedAnchorPosition(null);
-                            console.log('🔄 GPS and elevation offsets reset');
-                          }}
-                          style={{
-                            fontSize: '10px',
-                            padding: '4px 8px',
-                            backgroundColor: 'rgba(255,0,0,0.3)',
-                            border: 'none',
-                            color: 'white',
-                            cursor: 'pointer',
-                            width: '100%',
-                            marginTop: '8px'
-                          }}
-                      >
-                    Reset Calibration
-                  </button>
-                </div>
-
-               {!debugCollapsed && (
-              <div>    
-                <div>
-                    User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
-                  </div>
-
-                  <div>Anchor: [{activeAnchorPosition[0].toFixed(10)}, {activeAnchorPosition[1].toFixed(10)}]</div>  
-                                        
-                  <div>
-                    GPS Bearing: {currentUserPosition ? `${calculateBearing(currentUserPosition, anchorPosition).toFixed(1)}°` : 'N/A'}
-                  </div>
-                  <div style={{ color: 'cyan' }}>
-                  GPS Source: {preciseUserPosition ? 'AVERAGED' : 'RAW'} | 
-                  Accuracy: {currentAccuracy?.toFixed(1)}m | 
-                  Stable: {isPositionStable ? '✅' : '❌'}
-                </div>
-                <div style={{ 
-                      color: positionQuality === 'excellent' || positionQuality === 'good' ? '#10B981' : 
-                            positionQuality === 'fair' ? '#F59E0B' : '#EF4444' 
-                    }}>
-                      Quality: {positionQuality?.toUpperCase() || 'UNKNOWN'}
-                    </div>
-
-
-         
-                <div>
-                  <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
-                  <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
-                </div>
-
-                  {orientationError && 
-                    <div style={{color: 'red'}}> Orient Error: {orientationError} </div>}
-                 
-
-{/* <button
-  onClick={() => {
-    if (groundPlaneDetectorRef.current?.checkCameraReadiness) {
-      const readiness = groundPlaneDetectorRef.current.checkCameraReadiness();
-      console.log('📹 Camera Readiness Check:', readiness);
-      // You could show this in a debug section too
-    }
-  }}
-  style={{
-    fontSize: '10px',
-    padding: '4px 8px',
-    backgroundColor: 'rgba(100,100,255,0.3)',
-    border: 'none',
+     {SHOW_DEBUG_PANEL && (
+  <div style={{
+    position: 'absolute',
+    top: '1vh',
+    left: '1vw',
+    right: '35vw',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     color: 'white',
-    cursor: 'pointer'
-  }}
->
-  📹 Check Camera
-</button> */}
-                  {/* <div>
-                  <GroundPlaneTestUI
-                        isTestMode={showGroundPlaneTest}
-                        onToggleTestMode={toggleGroundPlaneTest}
-                        onDetectNow={detectGroundNow}
-                        onAdjustGround={handleGroundAdjustment}
-                        onResetGround={handleGroundReset}
-                        onCheckCamera={handleCameraCheck}  // NEW
-                        currentOffset={groundPlaneDetectorRef.current?.getCurrentOffset?.() || 0}
-                        lastResult={groundPlaneDetectorRef.current?.lastResult || null}
-                      />
-                    </div> */}
-
-
-              </div>)}
-            </div>
+    padding: '10px',
+    borderRadius: '4px',
+    fontSize: '10px',
+    zIndex: 1030,
+    pointerEvents: 'auto',
+    fontFamily: 'monospace'
+  }}>
+    {/* Collapsible header */}
+    <div 
+      onClick={() => setDebugCollapsed(!debugCollapsed)}
+      style={{ 
+        cursor: 'pointer', 
+        userSelect: 'none',
+        marginBottom: debugCollapsed ? '0' : '5px'
+      }}  
+    >
+      <span style={{ fontSize: '14px', marginRight: '8px' }}>
+        {debugCollapsed ? '▶' : '▼'}
+      </span>
+      <span style={{ color: 'yellow' }}>🎥 AR CAMERA DEBUG</span>
+      {/* Show system type in header */}
+      <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '8px' }}>
+        {newSystemReady ? '(SHARED POSITIONING)' : '(LEGACY)'}
+      </span>
+    </div>
+    
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'row',
+      gap: '8px'
+    }}>
+      <div 
+        onClick={() => {
+          const newValue = !arTestingOverride;
+          (window as any).arTestingOverride = newValue;
+          setArTestingOverride(newValue);
+          window.dispatchEvent(new CustomEvent('ar-override-changed', { 
+            detail: { override: newValue } 
+          }));
+        }}
+        style={{ 
+          cursor: 'pointer', 
+          userSelect: 'none', 
+          margin: '0rem', 
+          padding: '4px 8px',
+          backgroundColor: 'rgba(0,0,255,0.3)',
+          marginTop: '8px',
+          width: '100%' 
+        }}
+      >
+        Override: {arTestingOverride ? '✅' : '❌'}
+      </div>
+      
+      {/* ✅ UPDATED: Reset button now uses shared positioning */}
+      <button
+        onClick={() => {
+          if (newSystemReady) {
+            // ✅ NEW SYSTEM: Reset through shared positioning
+            console.log('🔄 Resetting shared AR positioning system');
+            newPositioningSystem.resetAllAdjustments();
             
-              
-            )}
-                  
+            // Trigger model repositioning
+            if (onElevationChanged) {
+              onElevationChanged();
+            }
+            
+            console.log('🔄 Shared positioning system reset complete');
+          } else {
+            // ✅ LEGACY FALLBACK: Keep old behavior if new system not ready
+            setGpsOffset({ lon: 0, lat: 0 });
+            setManualElevationOffset(0);
+            setAdjustedAnchorPosition(null);
+            console.log('🔄 Legacy GPS and elevation offsets reset');
+          }
+        }}
+        style={{
+          fontSize: '10px',
+          padding: '4px 8px',
+          backgroundColor: newSystemReady ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)',
+          border: 'none',
+          color: 'white',
+          cursor: 'pointer',
+          width: '100%',
+          marginTop: '8px'
+        }}
+      >
+        {newSystemReady ? '🔄 Reset Shared System' : '🔄 Reset Legacy'}
+      </button>
+    </div>
+
+    {!debugCollapsed && (
+      <div>    
+        <div>
+          User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
+        </div>
+
+        {/* ✅ UPDATED: Show anchor position from shared system if available */}
+        <div>
+          Anchor: [{activeAnchorPosition[0].toFixed(10)}, {activeAnchorPosition[1].toFixed(10)}]
+          {newSystemReady && (
+            <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px' }}>
+              (from shared system)
+            </span>
+          )}
+        </div>  
+                                  
+        <div>
+          GPS Bearing: {currentUserPosition ? `${calculateBearing(currentUserPosition, anchorPosition).toFixed(1)}°` : 'N/A'}
+        </div>
+        
+        {/* ✅ ENHANCED: GPS quality info from enhanced context */}
+        <div style={{ color: 'cyan' }}>
+          GPS Source: {preciseUserPosition ? 'AVERAGED' : 'RAW'} | 
+          Accuracy: {currentAccuracy?.toFixed(1)}m | 
+          Stable: {isPositionStable ? '✅' : '❌'}
+        </div>
+        <div style={{ 
+          color: positionQuality === 'excellent' || positionQuality === 'good' ? '#10B981' : 
+                positionQuality === 'fair' ? '#F59E0B' : '#EF4444' 
+        }}>
+          Quality: {positionQuality?.toUpperCase() || 'UNKNOWN'}
+        </div>
+
+        {/* ✅ ENHANCED: Shared positioning system status */}
+        {newSystemReady && (
+          <div style={{ 
+            marginTop: '5px', 
+            paddingTop: '5px', 
+            borderTop: '1px solid rgba(255,255,255,0.3)' 
+          }}>
+            <div style={{ color: 'lightgreen', fontSize: '9px' }}>
+              <strong>Shared AR Positioning:</strong>
+            </div>
+            <div>Ready: {newSystemReady ? '✅' : '❌'}</div>
+            <div>Debug Mode: {newPositioningSystem.debugMode ? '✅' : '❌'}</div>
+            <div>Global Elevation: {newPositioningSystem.getCurrentElevationOffset().toFixed(3)}m</div>
+          </div>
+        )}
+        
+        <div>
+          <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
+          <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
+        </div>
+
+        {orientationError && 
+          <div style={{color: 'red'}}> Orient Error: {orientationError} </div>
+        }
+      </div>
+    )}
+  </div>
+)}
 
 //* *******LOWER DEBUG PANEL ******************** */ 
 {SHOW_DEBUG_PANEL && isInitialized && (
