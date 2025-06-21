@@ -364,10 +364,17 @@ useEffect(() => {
 
 const handleElevationChanged = () => {
   console.log('🧪 MacExperience: handleElevationChanged called!');
+  
   if (modelRef.current) {
     console.log('🧪 MacExperience: Repositioning model...');
-    const success = positionModel(modelRef.current);
+    
+    // Skip positionModel and call newPositionObject directly
+    // since the elevation change came from a working positioning system
+    const success = newPositionObject(modelRef.current, 'mac');
+    
     console.log('🧪 MacExperience: Model repositioned:', success);
+  } else {
+    console.warn('🧪 MacExperience: modelRef.current is null, cannot reposition');
   }
 };
 
