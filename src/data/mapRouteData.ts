@@ -121,7 +121,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Light gray area - low elevation
           'orientation': 180,      // Facing south
-          'scale': 1.5,            // Slightly larger than default
+          'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -169,7 +169,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Medium gray area - elevated
           'orientation': 180,      // Facing south
-          'scale': 1.5,            // Slightly larger than default
+          'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -217,7 +217,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Light-medium gray - water/pond area
           'orientation': 180,      // Facing south
-          'scale': 1.5,            // Slightly larger than default
+          'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -265,7 +265,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Medium-dark gray - elevated area
           'orientation': 180,      // Facing south
-          'scale': 1.5,            // Slightly larger than default
+          'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -309,7 +309,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Light-medium gray area
           'orientation': 180,      // Facing south
-          'scale': 1.5,            // Slightly larger than default
+          'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -353,7 +353,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Medium gray - slightly elevated
           'orientation': 180,      // Facing south
-          'scale': 1.5,            // Slightly larger than default
+          'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -398,7 +398,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Darker area - higher elevation (outside main pond)
           'orientation': 180,      // Facing south
-          'scale': 1.5,            // Slightly larger than default
+          'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -436,7 +436,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Dark area - elevated terrain (outside main pond)
           'orientation': 180,      // Facing south
-          'scale': 1.5,            // Slightly larger than default
+          'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -481,7 +481,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [-76.94867670536043, 38.91237400212842],
           'elevation': 0,        // Very dark area - highest elevation (outside main pond)
           'orientation': 180,      // Facing south
-          'scale': 1.5,            // Slightly larger than default
+          'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
