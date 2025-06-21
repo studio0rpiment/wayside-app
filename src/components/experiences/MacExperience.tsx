@@ -382,7 +382,7 @@ useEffect(() => {
     const currentOverride = (window as any).arTestingOverride ?? false;
     if (newDebugMode !== currentOverride) {
  
-          (window as any).arTestingOverride = !currentOverride;
+          (window as any).arTestingOverride = newDebugMode;
      
       console.log('🔗 Synced window.arTestingOverride with newDebugMode:', newDebugMode);
     }
