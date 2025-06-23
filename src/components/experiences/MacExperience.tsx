@@ -373,18 +373,13 @@ const handleElevationChanged = () => {
   console.log('🧪 MacExperience: handleElevationChanged called!');
   
   if (modelRef.current) {
-    console.log('🧪 MacExperience: Repositioning model...');
-    
-    // Check if using new positioning system
-    if (USE_NEW_POSITIONING && newPositionObject) {
-      // NEW SYSTEM: Use shared positioning
-      const success = newPositionObject(modelRef.current, 'mac');
-      console.log('🧪 MacExperience: NEW SYSTEM - Model repositioned:', success);
+      
+     if (isUniversalMode) {
+      const success = newPositionObject(modelRef.current, 'mac', { useDebugOverride: true });
+      console.log('🧪 MacExperience: UNIVERSAL MODE - Model repositioned:', success);
     } else {
-      // LEGACY SYSTEM: Manual repositioning (if you have legacy logic)
-      console.log('🧪 MacExperience: LEGACY SYSTEM - Manual repositioning');
-      // Add your legacy repositioning logic here if needed
-      // For example, recalculating position from GPS coordinates
+      const success = newPositionObject(modelRef.current, 'mac');
+      console.log('🧪 MacExperience: NORMAL MODE - Model repositioned:', success);
     }
     
   } else {
