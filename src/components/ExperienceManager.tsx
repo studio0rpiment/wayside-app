@@ -548,66 +548,6 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           )}
         </div>
       )}
-
-      {/* ✅ ENHANCED: Debug Info with shared positioning status */}
-      {process.env.NODE_ENV === 'development' && canStartAr && (
-        <div style={{
-          position: 'absolute',
-          top: '70px',
-          left: '10px',
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
-          padding: '10px',
-          borderRadius: '4px',
-          fontSize: '11px',
-          zIndex: 2001,
-          fontFamily: 'monospace',
-          maxWidth: '250px'
-        }}>
-          <div><strong>🎯 Experience Debug (Shared Positioning):</strong></div>
-          <div>Type: {experienceType}</div>
-          <div>Geofence: {geofenceId || 'N/A'}</div>
-          
-          {/* Shared positioning status */}
-          <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)' }}>
-            <div><strong>Shared AR Positioning:</strong></div>
-            <div>Ready: {positioningReady ? '✅' : '❌'}</div>
-            <div>Debug Mode: {positioningDebugMode ? '✅' : '❌'}</div>
-            <div>Global Elevation: {getCurrentElevationOffset().toFixed(3)}m</div>
-          </div>
-          
-          {/* Position info */}
-          <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)' }}>
-            <div><strong>Position:</strong></div>
-            <div>Current: [{currentUserPosition?.[0].toFixed(6)}, {currentUserPosition?.[1].toFixed(6)}]</div>
-            <div>Source: {
-              propUserPosition ? 'PROP' :
-              preciseUserPosition && isPositionStable ? 'ENHANCED_STABLE' :
-              preciseUserPosition ? 'ENHANCED_AVG' :
-              rawUserPosition ? 'RAW' : 'NONE'
-            }</div>
-            
-            {/* Precision info for reference only */}
-            <div>Accuracy: {currentAccuracy?.toFixed(1)}m</div>
-            <div>Quality: <span style={{ 
-              color: positionQuality === PositionQuality.EXCELLENT || positionQuality === PositionQuality.GOOD ? '#10B981' : 
-                    positionQuality === PositionQuality.FAIR ? '#F59E0B' : '#EF4444' 
-            }}>
-              {positionQuality}
-            </span></div>
-            <div>Stable: {isPositionStable ? '✅' : '❌'}</div>
-          </div>
-          
-          {/* AR info */}
-          <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)' }}>
-            <div>Anchor: [{anchorPosition[0].toFixed(6)}, {anchorPosition[1].toFixed(6)}]</div>
-            <div>Elevation: {anchorElevation}m</div>
-            <div>Scale: {coordinateScale}x</div>
-            <div>AR Ready: {arInitialized ? '✅' : '⏳'}</div>
-            <div>Experience: {experienceReady ? '✅' : '⏳'}</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

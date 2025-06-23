@@ -4,17 +4,10 @@ import * as THREE from 'three';
 import { calculateBearing, gpsToThreeJsPosition, gpsToThreeJsPositionWithEntryOffset } from '../../utils/geoArUtils';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
-
-
-
-
-import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 import { useGeofenceContext } from '../../context/GeofenceContext';
 import { useARPositioning } from '../../hooks/useARPositioning';
-
-
-
+import { ARRenderingEngine } from '../engines/ARRenderingEngine';
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -33,18 +26,15 @@ interface ArCameraProps {
   onSwipeUp?: () => void;
   onSwipeDown?: () => void;
   useNewPositioning?: boolean;
-  onElevationChanged?: () => void;  // NEW: Simple callback when elevation changes
+  onElevationChanged?: () => void;
   sharedARPositioning?: ReturnType<typeof useARPositioning>;
-
   onPositioningReady?: (positioningFunctions: {
     positionObject: (object: THREE.Object3D, experienceId: string, options?: any) => boolean;
     adjustGlobalElevation: (delta: number) => void;
     isReady: boolean;
   }) => void;
-
   children?: React.ReactNode;
 }
-
 
 const ArCameraComponent: React.FC<ArCameraProps> = ({
   userPosition: propUserPosition,
@@ -65,27 +55,22 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onPositioningReady,
   sharedARPositioning,
   children
-  
-  
 }) => {
   
   const {
-  userPosition: rawUserPosition,
-  averagedPosition: preciseUserPosition,
-  currentAccuracy,
-  positionQuality,
-  isPositionStable
-} = useGeofenceContext();
+    userPosition: rawUserPosition,
+    averagedPosition: preciseUserPosition,
+    currentAccuracy,
+    positionQuality,
+    isPositionStable
+  } = useGeofenceContext();
 
-//********** REFS REFS REFS  */
- 
+  //********** REFS **********
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const renderingEngineRef = useRef<ARRenderingEngine | null>(null);
 
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -101,39 +86,18 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const cameraDirectionVector = useRef(new THREE.Vector3());
   const lastCameraUpdateRef = useRef(0);
   const cameraUpdateIntervalRef = useRef<number | null>(null);
-
   const lastCameraQuaternionRef = useRef<THREE.Quaternion | null>(null);
-  const enableSmoothing = true; // Add this as a configurable option
-  const [manualScaleOffset, setManualScaleOffset] = useState(1.0); // Start at 1.0 (normal scale)
   const swipeStartY = useRef(0);
   const swipeStartTime = useRef(0);
 
-  
-
-
-
-//******** STATE STATE STATE */
-
+  //******** STATE **********
   const [isInitialized, setIsInitialized] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const { 
-    heading: deviceHeading,
-    deviceOrientation, 
-    isAvailable: orientationAvailable,
-    error: orientationError,
-    getCameraQuaternion  // Get the camera quaternion function
-  } = useDeviceOrientation({ 
-    enableSmoothing: true,
-    debugMode: SHOW_DEBUG_PANEL 
-  });
-  
-
-
+  const [manualScaleOffset, setManualScaleOffset] = useState(1.0);
   const [debugHeading, setDebugHeading] = useState<number | null>(null);
-  const [compassCalibration, setCompassCalibration] = useState(0); // Manual compass offset
+  const [compassCalibration, setCompassCalibration] = useState(0);
   const [adjustedAnchorPosition, setAdjustedAnchorPosition] = useState<[number, number] | null>(null);
   const [manualElevationOffset, setManualElevationOffset] = useState(0);
-//for comparing camera lookat inthe debug
   const [cameraLookDirection, setCameraLookDirection] = useState<{
     vector: THREE.Vector3 | null;
     bearing: number | null;
@@ -147,238 +111,133 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     aimError: null,
     modelDistance: null
   });
-//For Offseting in the debug panel
-  const [gpsOffset, setGpsOffset] = useState({ lon: 0, lat: 0 }); 
+  const [gpsOffset, setGpsOffset] = useState({ lon: 0, lat: 0 });
   const [accumulatedTransforms, setAccumulatedTransforms] = useState({
     rotation: { x: 0, y: 0, z: 0 },
     scale: 1.0
   });
-  // Debug/testing override state
   const [debugCollapsed, setDebugCollapsed] = useState(true);
   const [isBottomDebugCollapsed, setIsBottomDebugCollapsed] = useState(true);
-
-
   const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
-    // Initialize from global if available, otherwise false
     return typeof (window as any).arTestingOverride === 'boolean'
       ? (window as any).arTestingOverride
       : false;
   });
 
- 
+  //******** HOOKS **********
+  const { 
+    heading: deviceHeading,
+    deviceOrientation, 
+    isAvailable: orientationAvailable,
+    error: orientationError,
+    getCameraQuaternion
+  } = useDeviceOrientation({ 
+    enableSmoothing: true,
+    debugMode: SHOW_DEBUG_PANEL 
+  });
 
+  const newPositioningSystem = sharedARPositioning || useARPositioning();
+  const { 
+    adjustGlobalElevation: newAdjustElevation,
+    positionObject: newPositionObject,
+    isReady: newSystemReady 
+  } = newPositioningSystem;
 
+  const { isPermissionGranted, requestPermission } = usePermissions();
 
-//******** DECLARATIONS AND HELPERS */
-    // Touch constants
-    const minSwipeDistance = 50;
-    const doubleTapDelay = 300;
-    // Feature flag for new positioning system
-    // const USE_NEW_POSITIONING = true; // Set to true to enable new positioning system
-    const newPositioningSystem = sharedARPositioning || useARPositioning();
-    const { 
-      adjustGlobalElevation: newAdjustElevation,
-      positionObject: newPositionObject,
-      isReady: newSystemReady 
-    } = newPositioningSystem;
+  //******** CONSTANTS **********
+  const minSwipeDistance = 50;
+  const doubleTapDelay = 300;
+  const activeAnchorPosition = adjustedAnchorPosition || anchorPosition;
+  const CAMERA_UPDATE_INTERVAL = 200;
+  const currentExperienceType = experienceType || 'default';
+  const experienceOffsets: Record<string, number> = {
+    'lotus': -1.8,
+    'lily': -1.8,       
+    'cattail': -1.80,    
+    'mac': -1.8,
+    'helen_s': -1.8,    
+    'volunteers': -1.8, 
+    '2030-2105': -2,
+    '1968': 0,
+    '2200_bc': -1.6, 
+    'default': 0
+  };
 
-    // Permission handling - use existing system
-    const { isPermissionGranted, requestPermission } = usePermissions();
-    const activeAnchorPosition = adjustedAnchorPosition || anchorPosition;
+  const typeKey = experienceType ?? 'default';
+  const elevationOffset = experienceOffsets[typeKey] || experienceOffsets['default'];
 
-    const CAMERA_UPDATE_INTERVAL = 200; 
+  //******** HELPER FUNCTIONS **********
+  const formatWithSign = (num: number, decimals: number = 1, totalWidth: number = 10) => {
+    const sign = num >= 0 ? '+' : '';
+    return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
+  };
 
-    const currentExperienceType = experienceType || 'default';
-    const experienceOffsets: Record<string, number> = {
-      'lotus': -1.8,
-      'lily': -1.8,       
-      'cattail': -1.80,    
-      'mac': -1.8,
-      'helen_s': -1.8,    
-      'volunteers': -1.8, 
-      '2030-2105': -2,  // Water rise starts at water surface
-      '1968': 0,        // Smoke high above (was 10.0, now 8.2 relative to ground)
-      '2200_bc': -1.6, 
-      'default': 0
-    };
-
-
-    const typeKey = experienceType ?? 'default';
-    const elevationOffset = experienceOffsets[typeKey] || experienceOffsets['default'];
+  const detectEntrySide = useCallback((
+    userPos: [number, number], 
+    anchorPos: [number, number]
+  ): string | null => {
+    const angleToUser = Math.atan2(
+      userPos[1] - anchorPos[1],
+      userPos[0] - anchorPos[0]
+    ) * (180 / Math.PI);
     
+    const normalizedAngle = (angleToUser + 360) % 360;
+    const directionIndex = Math.round(normalizedAngle / 45) % 8;
+    const directions = ['east', 'northeast', 'north', 'northwest', 'west', 'southwest', 'south', 'southeast'];
+    
+    return directions[directionIndex];
+  }, []);
 
-    //helper
-    const formatWithSign = (num: number, decimals: number = 1, totalWidth: number = 10) => {
-      const sign = num >= 0 ? '+' : '';
-      return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
-    };
-
-
-//********* FOR ENTRY SIDE DETECTION */
-    // Add this function to ArCameraComponent.tsx
-    const detectEntrySide = useCallback((
-      userPos: [number, number], 
-      anchorPos: [number, number]
-    ): string | null => {
-      
-      // Calculate angle from anchor to user position
-      const angleToUser = Math.atan2(
-        userPos[1] - anchorPos[1],  // lat difference
-        userPos[0] - anchorPos[0]   // lon difference
-      ) * (180 / Math.PI);
-      
-      // Normalize to 0-360
-      const normalizedAngle = (angleToUser + 360) % 360;
-      
-      // Map to 8 cardinal directions (45° per direction)
-      const directionIndex = Math.round(normalizedAngle / 45) % 8;
-      const directions = ['east', 'northeast', 'north', 'northwest', 'west', 'southwest', 'south', 'southeast'];
-      
-      return directions[directionIndex];
-    }, []);
-
-//******** FOR UPDATING USER LOCATION PRECISION */
-    const getBestUserPosition = useCallback((): [number, number] | null => {
-    // Priority 1: Use prop if provided (manual override)
+  const getBestUserPosition = useCallback((): [number, number] | null => {
     if (propUserPosition) {
       return propUserPosition;
     }
     
-    // Priority 2: Use averaged position if stable and accurate
     if (preciseUserPosition && isPositionStable && 
         currentAccuracy && currentAccuracy <= 10) {
       return preciseUserPosition;
     }
     
-    // Priority 3: Use averaged position if accuracy is acceptable
     if (preciseUserPosition && currentAccuracy && currentAccuracy <= 15) {
       return preciseUserPosition;
     }
     
-    // Priority 4: Fall back to raw GPS
     if (rawUserPosition) {
       return rawUserPosition;
     }
     
     return null;
   }, [propUserPosition, preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable]);
-//*****ADDING FOR SCREEN ROTATION TO LANDSCAPE */
-    const getScreenOrientationCompensation = (): number => {
-      // Get current screen orientation
-      let screenOrientation = 0;
-      
-      if (screen && screen.orientation) {
-        screenOrientation = screen.orientation.angle;
-      } else if (window.orientation !== undefined) {
-        screenOrientation = window.orientation;
-      }
-      
-      // Convert to radians and return negative to compensate
-      return -screenOrientation * (Math.PI / 180);
-    }
 
-
-
-//******************* SWIPES FOR DEBUG PANEL */
-    const handleSwipeStart = (event: React.TouchEvent<HTMLDivElement>) => {
-      swipeStartY.current = event.touches[0].clientY;
-      swipeStartTime.current = Date.now();
-    };
-
-    const handleSwipeMove = (event: React.TouchEvent<HTMLDivElement>) => {
-      // Prevent scrolling while swiping on debug panel
-      event.preventDefault();
-    };
-
-    const handleSwipeEnd = (event: React.TouchEvent<HTMLDivElement>) => {
-      const swipeEndY = event.changedTouches[0].clientY;
-      const swipeDistance = swipeEndY - swipeStartY.current;
-      const swipeTime = Date.now() - swipeStartTime.current;
-      
-      const MIN_SWIPE_DISTANCE = 50; // Minimum pixels for swipe
-      const MAX_SWIPE_TIME = 500; // Maximum time for swipe (ms)
-      
-      // Check for valid swipe gesture
-      if (swipeTime < MAX_SWIPE_TIME) {
-        if (swipeDistance > MIN_SWIPE_DISTANCE) {
-          // Swipe down - collapse panel
-          setIsBottomDebugCollapsed(true);
-          // console.log('🔽 Debug panel collapsed');
-        } else if (swipeDistance < -MIN_SWIPE_DISTANCE) {
-          // Swipe up - expand panel
-          setIsBottomDebugCollapsed(false);
-          // console.log('🔼 Debug panel expanded');
-        }
-      }
-    };
-
-const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
-  // ✅ NEW: Use shared AR positioning system
-  if (!newPositioningSystem || !newSystemReady) return null;
-  
-  const experienceId = experienceType || 'mac';
-  const result = newPositioningSystem.getPosition(experienceId);
-  
-  if (!result) return null;
-  
-  // Return the relative position (what the model should be at relative to user)
-  return result.relativeToUser;
-}, [newPositioningSystem, newSystemReady, experienceType]);
-
-
-  const updateElevationOffset = useCallback((deltaElevation: number) => {
-  const newOffset = manualElevationOffset + deltaElevation;
-  setManualElevationOffset(newOffset);
-    // console.log('📏 Manual elevation offset:', newOffset);
-  }, [manualElevationOffset]);
-
-  const updateAnchorPosition = useCallback((deltaLon: number, deltaLat: number) => {
-    // Update the GPS offset state for display
-      const newOffset = {
-        lon: gpsOffset.lon + deltaLon,
-        lat: gpsOffset.lat + deltaLat
-      };
+  const getScreenOrientationCompensation = (): number => {
+    let screenOrientation = 0;
     
-      setGpsOffset(newOffset);
-
-    // Calculate new anchor position (use current anchor + total offset)
-    const newAnchorPosition: [number, number] = [
-      anchorPosition[0] + newOffset.lon,
-      anchorPosition[1] + newOffset.lat
-    ];
-    
-    // Store adjusted position locally
-    setAdjustedAnchorPosition(newAnchorPosition);
-    
-    // console.log('📍 Anchor moved to:', newAnchorPosition);
-    // console.log('📍 Total offset:', newOffset);
-  }, [anchorPosition, gpsOffset]);
-
-  const updateScaleOffset = useCallback((deltaScale: number) => {
-    const newScale = Math.max(0.1, Math.min(8.0, manualScaleOffset + deltaScale)); // Minimum 0.1, maximum 5.0
-
-    setManualScaleOffset(newScale);
-    
-    // Update accumulated transforms to show in debug
-    setAccumulatedTransforms(prev => ({
-      ...prev,
-      scale: newScale
-    }));
-    
-    // Call the model scale callback if available
-    if (onModelScale) {
-      onModelScale(newScale);
+    if (screen && screen.orientation) {
+      screenOrientation = screen.orientation.angle;
+    } else if (window.orientation !== undefined) {
+      screenOrientation = window.orientation;
     }
     
-    // console.log('📏 Manual scale:', newScale);
-  }, [manualScaleOffset, onModelScale]);
+    return -screenOrientation * (Math.PI / 180);
+  };
 
-  // Initialize camera stream
-  const initializeCamera = async () => {
+  const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
+    if (!newPositioningSystem || !newSystemReady) return null;
+    
+    const experienceId = experienceType || 'mac';
+    const result = newPositioningSystem.getPosition(experienceId);
+    
+    if (!result) return null;
+    
+    return result.relativeToUser;
+  }, [newPositioningSystem, newSystemReady, experienceType]);
+
+  //******** CAMERA INITIALIZATION **********
+  const initializeCamera = async (): Promise<boolean> => {
     try {
-      // console.log('🎥 Initializing AR camera...');
+      console.log('🎥 Initializing AR camera...');
       
-      // Check permissions using existing system
       if (!isPermissionGranted(PermissionType.CAMERA)) {
         throw new Error('Camera permission not granted. Please enable in settings.');
       }
@@ -387,10 +246,9 @@ const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => 
         throw new Error('getUserMedia not supported');
       }
       
-      // Request camera with appropriate constraints
       const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: 'environment', // Use back camera for AR
+          facingMode: 'environment',
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
@@ -403,7 +261,7 @@ const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
-        // console.log('✅ Camera stream initialized');
+        console.log('✅ Camera stream initialized');
       }
       
       return true;
@@ -413,82 +271,131 @@ const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => 
       return false;
     }
   };
-  
-//*********** INITIALIZE Three.js scene */ 
-  const initializeThreeJs = async () => {
-    if (!canvasRef.current || !containerRef.current) return false;
-    
-    console.log('🎨 Initializing Three.js scene...');
-    
-    // Create scene
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
 
-    // Create camera with realistic FOV for mobile AR
-      const camera = new THREE.PerspectiveCamera(
-        70, // Field of view (typical for mobile cameras)
-        window.innerWidth / window.innerHeight,
-        0.1,
-        1000
-      );
-      camera.lookAt(0, 0, -1);
-      camera.position.set(0, 0, 0); // Camera at origin
+  //******** RENDERING ENGINE INITIALIZATION **********
+  const initializeRenderingEngine = async (): Promise<boolean> => {
+    if (!canvasRef.current) {
+      console.error('❌ Canvas not available for rendering engine');
+      return false;
+    }
 
-    cameraRef.current = camera;
-    
-    // Create optimized renderer (CHANGED)
     try {
-      const rendererSettings = await getOptimizedRendererSettings(canvasRef.current);
-      const renderer = new THREE.WebGLRenderer(rendererSettings);
+      console.log('🎨 Initializing AR Rendering Engine...');
       
-      await optimizeWebGLRenderer(renderer);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(0x000000, 0); // Fully transparent background
-      rendererRef.current = renderer;
+      const engine = new ARRenderingEngine(
+        {
+          fov: 70,
+          near: 0.1,
+          far: 1000,
+          enableOptimizations: true,
+          antialias: true,
+          alpha: true,
+          clearColor: 0x000000,
+          clearAlpha: 0
+        },
+        {
+          onSceneReady: (scene, camera) => {
+            console.log('📡 AR Rendering Engine: Scene ready');
+            if (onSceneReady) {
+              onSceneReady(scene, camera);
+            }
+          },
+          onError: (error) => {
+            console.error('🎨 AR Rendering Engine Error:', error);
+            setCameraError(`Rendering engine error: ${error}`);
+          },
+          onRenderFrame: (deltaTime) => {
+            // Optional: Per-frame updates
+          }
+        }
+      );
+
+      const success = await engine.initialize(canvasRef.current);
+      if (!success) {
+        console.error('❌ Failed to initialize rendering engine');
+        return false;
+      }
+
+      renderingEngineRef.current = engine;
+      engine.startRenderLoop();
       
-      console.log('✅ Optimized renderer created');
+      console.log('✅ AR Rendering Engine initialized and started');
+      return true;
+      
     } catch (error) {
-      console.warn('⚠️ Failed to create optimized renderer, using fallback:', error);
-      // Fallback to your original renderer
-      const renderer = new THREE.WebGLRenderer({
-        canvas: canvasRef.current,
-        alpha: true,
-        antialias: true
-      });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(0x000000, 0);
-      rendererRef.current = renderer;
+      console.error('❌ Rendering engine initialization error:', error);
+      setCameraError(`Failed to initialize rendering engine: ${error}`);
+      return false;
     }
-    
-    // Add basic lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
-
-
-    if (onSceneReady) {
-      onSceneReady(scene, camera);
-      // console.log('📡 AR scene exposed to parent component');
-    }
-    
-    // console.log('✅ Three.js scene initialized with optimizations');
-    return true;
   };
-  
-//********************** update the placeArObject function:
+
+  //******** MAIN INITIALIZATION **********
+  const initialize = async () => {
+    console.log('🚀 Starting AR Camera initialization...');
+    
+    if (!isPermissionGranted(PermissionType.CAMERA)) {
+      console.log('📸 Camera permission not granted, requesting...');
+      const cameraGranted = await requestPermission(PermissionType.CAMERA);
+      if (!cameraGranted) {
+        setCameraError('Camera permission required for AR experience. Please allow camera access when prompted.');
+        return;
+      }
+    }
+    
+    if (!isPermissionGranted(PermissionType.ORIENTATION)) {
+      console.log('📱 Orientation permission not granted, requesting...');
+      await requestPermission(PermissionType.ORIENTATION);
+    }
+    
+    const cameraInitialized = await initializeCamera();
+    if (!cameraInitialized) return;
+    
+    const engineInitialized = await initializeRenderingEngine();
+    if (!engineInitialized) return;
+    
+    placeArObject();
+    
+    if (canvasRef.current) {
+      canvasRef.current.addEventListener('touchstart', handleTouchStart, { passive: false });
+      canvasRef.current.addEventListener('touchmove', handleTouchMove, { passive: false });
+      canvasRef.current.addEventListener('touchend', handleTouchEnd, { passive: false });
+      console.log('✅ Touch events attached to canvas');
+    }
+          
+    setIsInitialized(true);
+    console.log('✅ AR Camera fully initialized');
+  };
+
+  //******** REINITIALIZATION (FIXES PERMISSION BUG) **********
+  const reinitializeAR = async (): Promise<void> => {
+    console.log('🔄 Reinitializing AR after permission grant...');
+    
+    try {
+      if (renderingEngineRef.current) {
+        renderingEngineRef.current.dispose();
+        renderingEngineRef.current = null;
+      }
+      
+      setIsInitialized(false);
+      setCameraError(null);
+      
+      await initialize();
+      
+    } catch (error) {
+      console.error('❌ Reinitialization failed:', error);
+      setCameraError(`Reinitialization failed: ${error}`);
+    }
+  };
+
+  //******** AR OBJECT PLACEMENT **********
   const placeArObject = useCallback(() => {
     console.log('🎯 placeArObject() called');
     
-    if (useNewPositioning || useNewPositioning) {
-      // NEW SYSTEM: Don't call onArObjectPlaced - let experiences handle their own positioning
+    if (useNewPositioning) {
       console.log('🧪 NEW: Using ARPositioningManager - experiences handle their own positioning');
       return;
     }
     
-    // LEGACY SYSTEM: Keep existing logic
     const userPosition = getBestUserPosition();
     
     if (!userPosition || !anchorPosition) {
@@ -510,121 +417,312 @@ const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => 
     if (onArObjectPlaced) {
       onArObjectPlaced(position);
     }
-  }, [useNewPositioning, useNewPositioning, getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
- 
-  
-//***********Effect 1: Update camera rotation using quaternions (with debug logging)
-    useEffect(() => {
-      if (!isInitialized || !cameraRef.current) return;
+  }, [useNewPositioning, getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
+
+  //******** CAMERA DIRECTION UPDATES **********
+  const updateCameraDirection = useCallback(() => {
+    const camera = renderingEngineRef.current?.getCamera();
+    if (!camera) return;
+
+    camera.getWorldDirection(cameraDirectionVector.current);
+    
+    const bearing = Math.atan2(
+      cameraDirectionVector.current.x,
+      -cameraDirectionVector.current.z
+    ) * (180 / Math.PI);
+
+    const normalizedBearing = (bearing + 360) % 360;
+    const expectedModelPosition = getCurrentExpectedModelPosition();
+    
+    let aimError = null;
+    let modelDistance = null;
+    
+    if (expectedModelPosition && camera) {
+      const cameraPosition = camera.position;
+      const expectedDirection = expectedModelPosition.clone().sub(cameraPosition).normalize();
       
-      const cameraQuaternion = getCameraQuaternion();
-      if (!cameraQuaternion) {
-        cameraRef.current.lookAt(0, 0, -1);
+      const dotProduct = cameraDirectionVector.current.dot(expectedDirection);
+      const angleDifference = Math.acos(Math.max(-1, Math.min(1, dotProduct))) * (180 / Math.PI);
+      aimError = angleDifference;
+      
+      modelDistance = cameraPosition.distanceTo(expectedModelPosition);
+    }
+    
+    setCameraLookDirection({
+      vector: cameraDirectionVector.current.clone(),
+      bearing: normalizedBearing,
+      expectedModelPosition,
+      aimError,
+      modelDistance
+    });
+  }, [getCurrentExpectedModelPosition]);
+
+  //******** WINDOW RESIZE **********
+  const handleResize = useCallback(() => {
+    if (renderingEngineRef.current?.isReady()) {
+      renderingEngineRef.current.handleResize();
+      console.log('📱 Window resized, engine updated');
+    }
+  }, []);
+
+  //******** DEBUG PANEL FUNCTIONS **********
+  const handleSwipeStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    swipeStartY.current = event.touches[0].clientY;
+    swipeStartTime.current = Date.now();
+  };
+
+  const handleSwipeMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const handleSwipeEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const swipeEndY = event.changedTouches[0].clientY;
+    const swipeDistance = swipeEndY - swipeStartY.current;
+    const swipeTime = Date.now() - swipeStartTime.current;
+    
+    const MIN_SWIPE_DISTANCE = 50;
+    const MAX_SWIPE_TIME = 500;
+    
+    if (swipeTime < MAX_SWIPE_TIME) {
+      if (swipeDistance > MIN_SWIPE_DISTANCE) {
+        setIsBottomDebugCollapsed(true);
+      } else if (swipeDistance < -MIN_SWIPE_DISTANCE) {
+        setIsBottomDebugCollapsed(false);
+      }
+    }
+  };
+
+  const updateElevationOffset = useCallback((deltaElevation: number) => {
+    const newOffset = manualElevationOffset + deltaElevation;
+    setManualElevationOffset(newOffset);
+  }, [manualElevationOffset]);
+
+  const updateAnchorPosition = useCallback((deltaLon: number, deltaLat: number) => {
+    const newOffset = {
+      lon: gpsOffset.lon + deltaLon,
+      lat: gpsOffset.lat + deltaLat
+    };
+    
+    setGpsOffset(newOffset);
+
+    const newAnchorPosition: [number, number] = [
+      anchorPosition[0] + newOffset.lon,
+      anchorPosition[1] + newOffset.lat
+    ];
+    
+    setAdjustedAnchorPosition(newAnchorPosition);
+  }, [anchorPosition, gpsOffset]);
+
+  const updateScaleOffset = useCallback((deltaScale: number) => {
+    const newScale = Math.max(0.1, Math.min(8.0, manualScaleOffset + deltaScale));
+
+    setManualScaleOffset(newScale);
+    
+    setAccumulatedTransforms(prev => ({
+      ...prev,
+      scale: newScale
+    }));
+    
+    if (onModelScale) {
+      onModelScale(newScale);
+    }
+  }, [manualScaleOffset, onModelScale]);
+
+  //******** TOUCH HANDLERS **********
+  const handleTouchStart = (event: TouchEvent) => {
+    const now = new Date().getTime();
+    const timeSince = now - lastTapTime.current;
+    const timeSinceMultiTouch = now - lastMultiTouchTime.current;
+
+    if (event.touches.length === 1) {
+      touchStartX.current = event.touches[0].clientX;
+      touchStartY.current = event.touches[0].clientY;
+      lastTouchX.current = event.touches[0].clientX;
+      lastTouchY.current = event.touches[0].clientY;
+
+      if (timeSince < doubleTapDelay && timeSince > 0) {
+        setAccumulatedTransforms({
+          rotation: { x: 0, y: 0, z: 0 },
+          scale: 1.0
+        });
+
+        if (onModelReset) {
+          onModelReset();
+        }
+        event.preventDefault();
+        lastTapTime.current = 0;
         return;
       }
+
+      if (timeSinceMultiTouch < 200) {
+        return;
+      }
+
+      lastTapTime.current = now;
       
-      try {
-        // Apply quaternion from hook
-        cameraRef.current.quaternion.copy(cameraQuaternion);
-        
-        // Fix Y-axis (beta) - keep this since it's working
-        const betaCorrection = new THREE.Quaternion().setFromAxisAngle(
-          new THREE.Vector3(1, 0, 0), 
-          Math.PI / 2  // +90° for correct Y-axis
-        );
-        
-        // Fix upside down (rotate around Z-axis)
-        const flipUpDown = new THREE.Quaternion().setFromAxisAngle(
-          new THREE.Vector3(0, 0, 1), 
-          Math.PI  // 180° flip around Z
-        );
-        
-        // Fix 180° rotation in X-Z plane (rotate around Y-axis)
-        const flipXZ = new THREE.Quaternion().setFromAxisAngle(
-          new THREE.Vector3(0, 1, 0), 
-          Math.PI  // 180° flip around Y
-        );
+    } else if (event.touches.length === 2) {
+      lastTapTime.current = 0;
+      
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      const fingerDistance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      
+      initialPinchDistance.current = fingerDistance;
+      initialTwoFingerAngle.current = Math.atan2(
+        touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX
+      );
+      previousTwoFingerAngle.current = initialTwoFingerAngle.current;
 
-        // Compensate for screen orientation to keep world coordinates fixed
-        const screenCompensation = new THREE.Quaternion().setFromAxisAngle(
-          new THREE.Vector3(0, 0, 1), 
-          getScreenOrientationCompensation()
-        );
-        
-        // Apply all corrections in order
-        let finalQuaternion = cameraRef.current.quaternion.clone();
-        finalQuaternion.multiply(betaCorrection);  // Fix Y-axis first
-        finalQuaternion.multiply(flipUpDown);      // Fix upside down
-        finalQuaternion.multiply(flipXZ);          // Fix X-Z rotation
-        finalQuaternion.multiply(screenCompensation); //Cancel screen rotation
+    } else {
+      lastTapTime.current = 0;
+    }
+  };
+  
+  const handleTouchMove = (event: TouchEvent) => {
+    if (event.touches.length === 1) {
+      const now = new Date().getTime();
+      const timeSinceMultiTouch = now - lastMultiTouchTime.current;
+      
+      if (timeSinceMultiTouch < 200) {
+        return;
+      }
 
+      const currentX = event.touches[0].clientX;
+      const currentY = event.touches[0].clientY;
+      
+      const deltaX = currentX - lastTouchX.current;
+      const deltaY = currentY - lastTouchY.current;
+
+      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        const rotDeltaX = deltaX * 0.01;
+        const rotDeltaY = deltaY * 0.01;
         
-        cameraRef.current.quaternion.copy(finalQuaternion);
-        
-      } catch (error) {
-        console.warn('Error updating camera orientation:', error);
-        cameraRef.current.lookAt(0, 0, -1);
+        setAccumulatedTransforms(prev => ({
+          ...prev,
+          rotation: {
+            x: prev.rotation.x + rotDeltaY,
+            y: prev.rotation.y + rotDeltaX,
+            z: prev.rotation.z
+          }
+        }));
+
+        if (onModelRotate) {
+          onModelRotate(rotDeltaX, rotDeltaY, 0);
+        }
       }
       
-    }, [isInitialized, getCameraQuaternion]);
-
-// Effect 2: Update calculations on interval  
-    useEffect(() => {
-      if (!isInitialized || !cameraRef.current) return;
+      lastTouchX.current = currentX;
+      lastTouchY.current = currentY;
       
-      const updateCameraDirection = () => {
-        if (!cameraRef.current) return;
-
-        // Get camera world direction
-        cameraRef.current.getWorldDirection(cameraDirectionVector.current);
+    } else if (event.touches.length === 2) {
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      
+      const currentAngle = Math.atan2(
+        touch2.clientY - touch1.clientY, 
+        touch2.clientX - touch1.clientX
+      );
+      
+      const rotationDelta = currentAngle - previousTwoFingerAngle.current;
+      
+      if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
+        const zRotDelta = rotationDelta * 0.5;
         
-        // Convert to compass bearing
-        const bearing = Math.atan2(
-          cameraDirectionVector.current.x,
-          -cameraDirectionVector.current.z
-        ) * (180 / Math.PI);
-
-        const normalizedBearing = (bearing + 360) % 360;
-        
-        // Get expected model position
-        const expectedModelPosition = getCurrentExpectedModelPosition();
-        
-        // Calculate aim error and distance
-        let aimError = null;
-        let modelDistance = null;
-        
-        if (expectedModelPosition && cameraRef.current) {
-          const cameraPosition = cameraRef.current.position;
-          const expectedDirection = expectedModelPosition.clone().sub(cameraPosition).normalize();
+        setAccumulatedTransforms(prev => {
+          const newZRotation = prev.rotation.z + zRotDelta;
+          const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
           
-          const dotProduct = cameraDirectionVector.current.dot(expectedDirection);
-          const angleDifference = Math.acos(Math.max(-1, Math.min(1, dotProduct))) * (180 / Math.PI);
-          aimError = angleDifference;
+          if (limitedZRotation !== prev.rotation.z) {
+            const actualDelta = limitedZRotation - prev.rotation.z;
+            onModelRotate(0, 0, actualDelta);
+            
+            return {
+              ...prev,
+              rotation: {
+                ...prev.rotation,
+                z: limitedZRotation
+              }
+            };
+          }
           
-          modelDistance = cameraPosition.distanceTo(expectedModelPosition);
-        }
-        
-        // Update state
-        setCameraLookDirection({
-          vector: cameraDirectionVector.current.clone(),
-          bearing: normalizedBearing,
-          expectedModelPosition,
-          aimError,
-          modelDistance
+          return prev;
         });
-      };
+      }
       
-      // Create interval
-      cameraUpdateIntervalRef.current = window.setInterval(updateCameraDirection, 200);
+      previousTwoFingerAngle.current = currentAngle;
+    }
+    
+    event.preventDefault();
+  };
+
+  const handleTouchEnd = (event: TouchEvent) => {
+    if (event.touches.length === 0) {
+      lastMultiTouchTime.current = new Date().getTime();
+    } else if (event.touches.length === 1) {
+      lastMultiTouchTime.current = new Date().getTime();
+    }
+  };
+
+  //******** EFFECTS **********
+  
+  // Camera orientation updates
+  useEffect(() => {
+    if (!isInitialized || !renderingEngineRef.current?.isReady()) return;
+    
+    const cameraQuaternion = getCameraQuaternion();
+    if (!cameraQuaternion) return;
+    
+    try {
+      const betaCorrection = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(1, 0, 0), 
+        Math.PI / 2
+      );
       
-      return () => {
-        if (cameraUpdateIntervalRef.current) {
-          clearInterval(cameraUpdateIntervalRef.current);
-        }
-      };
-    }, [isInitialized, activeAnchorPosition, manualElevationOffset, coordinateScale, experienceType]);
+      const flipUpDown = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 0, 1), 
+        Math.PI
+      );
       
-  // Your onOrientationUpdate callback still works:
+      const flipXZ = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0), 
+        Math.PI
+      );
+
+      const screenCompensation = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 0, 1), 
+        getScreenOrientationCompensation()
+      );
+      
+      let finalQuaternion = cameraQuaternion.clone();
+      finalQuaternion.multiply(betaCorrection);
+      finalQuaternion.multiply(flipUpDown);
+      finalQuaternion.multiply(flipXZ);
+      finalQuaternion.multiply(screenCompensation);
+
+      renderingEngineRef.current.updateCameraOrientation(finalQuaternion);
+      
+    } catch (error) {
+      console.warn('🎨 Error updating camera orientation:', error);
+    }
+  }, [isInitialized, getCameraQuaternion]);
+
+  // Camera direction updates
+  useEffect(() => {
+    if (!isInitialized || !renderingEngineRef.current?.isReady()) return;
+    
+    cameraUpdateIntervalRef.current = window.setInterval(updateCameraDirection, 200);
+    
+    return () => {
+      if (cameraUpdateIntervalRef.current) {
+        clearInterval(cameraUpdateIntervalRef.current);
+      }
+    };
+  }, [isInitialized, updateCameraDirection]);
+
+  // Orientation callback
   useEffect(() => {
     if (onOrientationUpdate && deviceOrientation && 
         deviceOrientation.alpha !== null && 
@@ -638,279 +736,35 @@ const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => 
     }
   }, [deviceOrientation, onOrientationUpdate]);
 
-  const getDeviceHeading = (): number | null => {
-    // Use debug override if set
-    if (debugHeading !== null) {
-      return debugHeading;
-    }
-    
-    // Return heading from hook (already normalized to 0-360)
-    return deviceHeading;
-  };
-
-  // Animation loop
-  const animate = () => {
-    if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
-    
-    // Render the Three.js scene over the camera stream
-    rendererRef.current.render(sceneRef.current, cameraRef.current);
-    
-    requestAnimationFrame(animate);
-  };
-  
-  // Handle window resize
-  const handleResize = () => {
-    if (!cameraRef.current || !rendererRef.current) return;
-    
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    
-    cameraRef.current.aspect = width / height;
-    cameraRef.current.updateProjectionMatrix();
-    
-    rendererRef.current.setSize(width, height);
-  };
-  
-  // Initialize everything
+  // Positioning ready callback
   useEffect(() => {
-    const initialize = async () => {
-      // console.log('🚀 Starting AR Camera initialization...');
-      
-      // Check and request camera permission if needed
-      if (!isPermissionGranted(PermissionType.CAMERA)) {
-        // console.log('📸 Camera permission not granted, requesting...');
-        const cameraGranted = await requestPermission(PermissionType.CAMERA);
-        if (!cameraGranted) {
-          setCameraError('Camera permission required for AR experience. Please allow camera access when prompted.');
-          return;
-        }
-      }
-      
-      // Check and request orientation permission if needed
-      if (!isPermissionGranted(PermissionType.ORIENTATION)) {
-        // console.log('📱 Orientation permission not granted, requesting...');
-        await requestPermission(PermissionType.ORIENTATION);
-        // Don't fail if orientation is denied - AR can work without it
-      }
-      
-      // Initialize camera stream
-      const cameraInitialized = await initializeCamera();
-      if (!cameraInitialized) return;
-      
-      // Initialize Three.js
-      const threeInitialized = await initializeThreeJs();
-      if (!threeInitialized) return;
-      
-      // Setup orientation listener if permission is granted
-      if (isPermissionGranted(PermissionType.ORIENTATION)) {
-        // console.log('📱 Device orientation tracking enabled');
-      } else {
-        console.warn('⚠️ Device orientation not available or permission denied');
-      }
-       
-        
-      // Place AR object
-      placeArObject();
-      
-      // Start animation loop
-      animate();
+    if (newSystemReady && onPositioningReady && renderingEngineRef.current?.isReady()) {
+      onPositioningReady({
+        positionObject: newPositionObject,
+        adjustGlobalElevation: newAdjustElevation,
+        isReady: newSystemReady
+      });
+    }
+  }, [newSystemReady, onPositioningReady, newPositionObject, newAdjustElevation, isInitialized]);
 
-      // Right before setIsInitialized(true)
-      if (canvasRef.current) {
-        canvasRef.current.addEventListener('touchstart', handleTouchStart, { passive: false });
-        canvasRef.current.addEventListener('touchmove', handleTouchMove, { passive: false });
-        canvasRef.current.addEventListener('touchend', handleTouchEnd, { passive: false });
-        // console.log('✅ Touch events attached to canvas');
-      } else {
-        console.error('❌ Canvas ref is null, cannot attach touch events');
-      }
-            
-      
-      setIsInitialized(true);
-      // console.log('✅ AR Camera fully initialized');
-    };
-    
+  // AR object placement updates
+  useEffect(() => {
+    if (isInitialized) {
+      placeArObject();
+    }
+  }, [getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized, manualElevationOffset, placeArObject]);
+
+  // Main initialization
+  useEffect(() => {
     initialize();
 
-//************************************** */ Updated touch handlers:
-  const handleTouchStart = (event: TouchEvent) => {
-    const now = new Date().getTime();
-    const timeSince = now - lastTapTime.current;
-    const timeSinceMultiTouch = now - lastMultiTouchTime.current;
-
-    if (event.touches.length === 1) {
-      // Store positions first
-      touchStartX.current = event.touches[0].clientX;
-      touchStartY.current = event.touches[0].clientY;
-      lastTouchX.current = event.touches[0].clientX;
-      lastTouchY.current = event.touches[0].clientY;
-
-      // Check for double-tap FIRST (before cooldown check)
-      if (timeSince < doubleTapDelay && timeSince > 0) {
-        // Double-tap detected - this takes priority over cooldown
-        // console.log('👆 Double tap detected - reset');
-        setAccumulatedTransforms({
-          rotation: { x: 0, y: 0, z: 0 },
-          scale: 1.0
-        });
-
-        if (onModelReset) {
-          onModelReset();
-        }
-        event.preventDefault();
-        lastTapTime.current = 0;
-        return; // Exit early - don't check cooldown
-      }
-
-      // ONLY apply cooldown for non-double-tap single touches
-      if (timeSinceMultiTouch < 200) {
-        // console.log('🚫 Ignoring single finger - just ended multi-touch');
-        return;
-      }
-
-      // Regular single tap
-      lastTapTime.current = now;
-      
-    } else if (event.touches.length === 2) {
-      // Clear any pending double-tap when two fingers detected
-      lastTapTime.current = 0;
-      
-      // Two finger setup...
-      const touch1 = event.touches[0];
-      const touch2 = event.touches[1];
-      const fingerDistance = Math.hypot(
-        touch2.clientX - touch1.clientX,
-        touch2.clientY - touch1.clientY
-      );
-      
-      const MIN_TWO_FINGER_DISTANCE = 100;
-      
-      if (fingerDistance > MIN_TWO_FINGER_DISTANCE) {
-        // console.log(`🤲 Two fingers detected ${fingerDistance.toFixed(0)}px apart`);
-      }
-      
-      initialPinchDistance.current = fingerDistance;
-      initialTwoFingerAngle.current = Math.atan2(
-        touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX
-      );
-      previousTwoFingerAngle.current = initialTwoFingerAngle.current;
-
-    } else {
-      // More than 2 fingers: clear tap detection
-      lastTapTime.current = 0;
-    }
-
-  };
-  
-  const handleTouchMove = (event: TouchEvent) => {
-    if (event.touches.length === 1) {
-      // ADD THIS: Check if we just ended multi-touch
-      const now = new Date().getTime();
-      const timeSinceMultiTouch = now - lastMultiTouchTime.current;
-      
-      if (timeSinceMultiTouch < 200) {
-        // console.log('🚫 Ignoring single finger move - just ended multi-touch');
-        return;
-      }
-
-      // Single finger drag: rotate model
-      const currentX = event.touches[0].clientX;
-      const currentY = event.touches[0].clientY;
-      
-      const deltaX = currentX - lastTouchX.current;
-      const deltaY = currentY - lastTouchY.current;
-
-      // Only rotate if significant movement
-      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-        const rotDeltaX = deltaX * 0.01;
-        const rotDeltaY = deltaY * 0.01;
-        
-        // Update accumulated rotation
-        setAccumulatedTransforms(prev => ({
-          ...prev,
-          rotation: {
-            x: prev.rotation.x + rotDeltaY,
-            y: prev.rotation.y + rotDeltaX,
-            z: prev.rotation.z
-          }
-          }));
-
-          if (onModelRotate) {
-            onModelRotate(rotDeltaX, rotDeltaY, 0);
-          }
-        }
-      
-      lastTouchX.current = currentX;
-      lastTouchY.current = currentY;
-      
-      } else if (event.touches.length === 2) {
-        // Two finger Z-rotation (stays the same)...
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        
-        const currentAngle = Math.atan2(
-          touch2.clientY - touch1.clientY, 
-          touch2.clientX - touch1.clientX
-        );
-        
-        const rotationDelta = currentAngle - previousTwoFingerAngle.current;
-        
-        if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
-          const zRotDelta = rotationDelta * 0.5;
-          
-          setAccumulatedTransforms(prev => {
-            const newZRotation = prev.rotation.z + zRotDelta;
-            const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
-            
-            if (limitedZRotation !== prev.rotation.z) {
-              const actualDelta = limitedZRotation - prev.rotation.z;
-              onModelRotate(0, 0, actualDelta);
-              
-              return {
-                ...prev,
-                rotation: {
-                  ...prev.rotation,
-                  z: limitedZRotation
-                }
-              };
-            }
-            
-            return prev;
-          });
-        }
-        
-        previousTwoFingerAngle.current = currentAngle;
-      }
-      
-      event.preventDefault();
-  };
-
-  const handleTouchEnd = (event: TouchEvent) => {
-      // Track when multi-touch gestures end
-      if (event.touches.length === 0) {
-        // All fingers lifted
-        lastMultiTouchTime.current = new Date().getTime();
-        // console.log('👆 All touches ended');
-      } else if (event.touches.length === 1) {
-        // Went from multi-touch to single touch
-        lastMultiTouchTime.current = new Date().getTime();
-        // console.log('👆 Multi-touch ended, one finger remains');
-      }
-  };
-
-    // Add resize listener
     window.addEventListener('resize', handleResize);
-
-
     
-//********************* */ Cleanup function
     return () => {
-      // Stop camera stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
       
-      // Remove event listeners
       window.removeEventListener('resize', handleResize);
       if (canvasRef.current) {
         canvasRef.current.removeEventListener('touchstart', handleTouchStart);
@@ -918,41 +772,16 @@ const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => 
         canvasRef.current.removeEventListener('touchend', handleTouchEnd);
       }
             
-      // Cleanup Three.js
-      if (rendererRef.current) {
-        rendererRef.current.dispose();
+      if (renderingEngineRef.current) {
+        renderingEngineRef.current.dispose();
+        renderingEngineRef.current = null;
       }
       
-      // console.log('🧹 AR Camera cleaned up');
+      console.log('🧹 AR Camera cleaned up');
     };
-  }, []); // Remove permission dependency to avoid loops
-  
+  }, []);
 
- //******* For Position Ready */ 
- // In ArCameraComponent, add this useEffect:
-useEffect(() => {
-  if (newSystemReady && onPositioningReady) {
-    onPositioningReady({
-      positionObject: newPositionObject,
-      adjustGlobalElevation: newAdjustElevation,
-      isReady: newSystemReady
-    });
-  }
-}, [newSystemReady, onPositioningReady, newPositionObject, newAdjustElevation]);
-
-
-  // Update AR object position when GPS coordinates change
-useEffect(() => {
-  if (isInitialized) {
-    placeArObject();
-  }
-}, [getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized, manualElevationOffset]);
-
-const currentUserPosition = getBestUserPosition();
-  
-  // function handleSwipeStart(event: React.TouchEvent<HTMLDivElement>): void {
-  //   throw new Error('Function not implemented.');
-  // }
+  const currentUserPosition = getBestUserPosition();
 
   return (
     <div 
@@ -982,19 +811,20 @@ const currentUserPosition = getBestUserPosition();
         playsInline
         muted
       />
-      {/* Semi-transparent background for lily experience */}
-        {(experienceType === 'lily' || experienceType === 'lotus' || experienceType === 'cattail' || experienceType === '1968') && (
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.7)', // Light blue water tint
-            zIndex: 1015,
-            pointerEvents: 'none' // Allows AR interactions to pass through
-          }} />
-        )}
+
+      {/* Semi-transparent background for water experiences */}
+      {(experienceType === 'lily' || experienceType === 'lotus' || experienceType === 'cattail' || experienceType === '1968') && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          zIndex: 1015,
+          pointerEvents: 'none'
+        }} />
+      )}
 
       {/* Three.js canvas overlay */}
       <canvas
@@ -1007,11 +837,9 @@ const currentUserPosition = getBestUserPosition();
           height: '100%',
           zIndex: 1020,
           pointerEvents: 'auto', 
-          
         }}
       />
   
-      
       {/* Error display - only show for actual technical errors, not permission issues */}
       {cameraError && !cameraError.includes('permission') && (
         <div style={{
@@ -1057,8 +885,7 @@ const currentUserPosition = getBestUserPosition();
               setCameraError(null);
               const granted = await requestPermission(PermissionType.CAMERA);
               if (granted) {
-                // Retry initialization
-                window.location.reload(); // Simple approach - restart the component
+                await reinitializeAR();
               }
             }}
             style={{
@@ -1080,7 +907,7 @@ const currentUserPosition = getBestUserPosition();
         </div>
       )}
 
-            {/* Loading indicator - show permission request instead of error */}
+      {/* Loading indicator */}
       {!isInitialized && !cameraError && (
         <div style={{
           position: 'absolute',
@@ -1103,528 +930,461 @@ const currentUserPosition = getBestUserPosition();
         </div>
       )}
       
-{/* *************  TOP Debug Panel */}
-     
-{SHOW_DEBUG_PANEL && (
-  <div style={{
-    position: 'absolute',
-    top: '1vh',
-    left: '1vw',
-    right: '35vw',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    color: 'white',
-    padding: '10px',
-    borderRadius: '4px',
-    fontSize: '10px',
-    zIndex: 1030,
-    pointerEvents: 'auto',
-    fontFamily: 'monospace'
-  }}>
-    {/* Collapsible header */}
-    <div 
-      onClick={() => setDebugCollapsed(!debugCollapsed)}
-      style={{ 
-        cursor: 'pointer', 
-        userSelect: 'none',
-        marginBottom: debugCollapsed ? '0' : '5px'
-      }}  
-    >
-      <span style={{ fontSize: '14px', marginRight: '8px' }}>
-        {debugCollapsed ? '▶' : '▼'}
-      </span>
-      <span style={{ color: 'yellow' }}>🎥 AR CAMERA DEBUG</span>
-      {/* Show system type in header */}
-      <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '8px' }}>
-        {newSystemReady ? '(SHARED POSITIONING)' : '(LEGACY)'}
-      </span>
-    </div>
-    
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'row',
-      gap: '8px'
-    }}>
-      <div 
-        onClick={() => {
-          const newValue = !arTestingOverride;
-          (window as any).arTestingOverride = newValue;
-          setArTestingOverride(newValue);
-          window.dispatchEvent(new CustomEvent('ar-override-changed', { 
-            detail: { override: newValue } 
-          }));
-        }}
-        style={{ 
-          cursor: 'pointer', 
-          userSelect: 'none', 
-          margin: '0rem', 
-          padding: '4px 8px',
-          backgroundColor: 'rgba(0,0,255,0.3)',
-          marginTop: '8px',
-          width: '100%' 
-        }}
-      >
-        Override: {arTestingOverride ? '✅' : '❌'}
-      </div>
-      
-      {/* ✅ UPDATED: Reset button now uses shared positioning */}
-      <button
-        onClick={() => {
-          if (newSystemReady) {
-            // ✅ NEW SYSTEM: Reset through shared positioning
-            console.log('🔄 Resetting shared AR positioning system');
-            newPositioningSystem.resetAllAdjustments();
-            
-            // Trigger model repositioning
-            if (onElevationChanged) {
-              onElevationChanged();
-            }
-            
-            console.log('🔄 Shared positioning system reset complete');
-          } else {
-            // ✅ LEGACY FALLBACK: Keep old behavior if new system not ready
-            setGpsOffset({ lon: 0, lat: 0 });
-            setManualElevationOffset(0);
-            setAdjustedAnchorPosition(null);
-            console.log('🔄 Legacy GPS and elevation offsets reset');
-          }
-        }}
-        style={{
-          fontSize: '10px',
-          padding: '4px 8px',
-          backgroundColor: newSystemReady ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)',
-          border: 'none',
+      {/* TOP Debug Panel */}
+      {SHOW_DEBUG_PANEL && (
+        <div style={{
+          position: 'absolute',
+          top: '1vh',
+          left: '1vw',
+          right: '35vw',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
           color: 'white',
-          cursor: 'pointer',
-          width: '100%',
-          marginTop: '8px'
-        }}
-      >
-        {newSystemReady ? '🔄 Reset Shared System' : '🔄 Reset Legacy'}
-      </button>
-    </div>
-
-    {!debugCollapsed && (
-      <div>    
-        <div>
-          User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
-        </div>
-
-        {/* ✅ CLEAN: Show current anchor GPS coordinates from shared system */}
-        <div>
-          Anchor GPS: [{(() => {
-            if (newSystemReady && experienceType) {
-              // Get current GPS coordinates from shared positioning system
-              const currentGps = newPositioningSystem.getCurrentAnchorGps(experienceType);
-              if (currentGps) {
-                return `${currentGps[0].toFixed(10)}, ${currentGps[1].toFixed(10)}`;
-              }
-            }
-            
-            // Legacy fallback: original + offsets
-            const displayLon = activeAnchorPosition[0] + gpsOffset.lon;
-            const displayLat = activeAnchorPosition[1] + gpsOffset.lat;
-            return `${displayLon.toFixed(10)}, ${displayLat.toFixed(10)}`;
-          })()}]
-          <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px', color: newSystemReady ? 'lightgreen' : 'yellow' }}>
-            {newSystemReady ? '(live)' : '(legacy)'}
-          </span>
-        </div>  
-                                  
-        <div>
-          GPS Bearing: {currentUserPosition ? `${calculateBearing(currentUserPosition, anchorPosition).toFixed(1)}°` : 'N/A'}
-        </div>
-
-        {/* ✅ ENHANCED: Shared positioning system status */}
-        {newSystemReady && (
-          <div style={{ 
-            marginTop: '5px', 
-            paddingTop: '5px', 
-            borderTop: '1px solid rgba(255,255,255,0.3)' 
-          }}>
-            <div style={{ color: 'lightgreen', fontSize: '9px' }}>
-              <strong>Shared AR Positioning:</strong>
-            </div>
-            <div>Ready: {newSystemReady ? '✅' : '❌'}</div>
-            <div>Debug Mode: {newPositioningSystem.debugMode ? '✅' : '❌'}</div>
-            <div>Global Elevation: {newPositioningSystem.getCurrentElevationOffset().toFixed(3)}m</div>
+          padding: '10px',
+          borderRadius: '4px',
+          fontSize: '10px',
+          zIndex: 1030,
+          pointerEvents: 'auto',
+          fontFamily: 'monospace'
+        }}>
+          <div 
+            onClick={() => setDebugCollapsed(!debugCollapsed)}
+            style={{ 
+              cursor: 'pointer', 
+              userSelect: 'none',
+              marginBottom: debugCollapsed ? '0' : '5px'
+            }}  
+          >
+            <span style={{ fontSize: '14px', marginRight: '8px' }}>
+              {debugCollapsed ? '▶' : '▼'}
+            </span>
+            <span style={{ color: 'yellow' }}>🎥 AR CAMERA DEBUG</span>
+            <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '8px' }}>
+              {newSystemReady ? '(SHARED POSITIONING)' : '(LEGACY)'}
+            </span>
           </div>
-        )}
-        
-        <div>
-          <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
-          <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
-        </div>
-
-        {orientationError && 
-          <div style={{color: 'red'}}> Orient Error: {orientationError} </div>
-        }
-      </div>
-    )}
-  </div>
-)}
-
-//* *******LOWER DEBUG PANEL ******************** */ 
-{SHOW_DEBUG_PANEL && isInitialized && (
-  <div 
-    style={{
-      position: 'absolute',
-      bottom: experienceType === '2030-2105' ? '11svh' : '2svh',
-      left: '50%',
-      width: '90vw',
-      transform: 'translateX(-50%)',
-      backgroundColor: 'rgba(0, 0, 0, 0)',
-      backdropFilter: 'blur(20px)',
-      color: 'white',
-      padding: '0',
-      borderRadius: '1rem',
-      fontSize: '0.8rem',
-      fontFamily: 'monospace',
-      zIndex: 1025,
-      textAlign: 'center'
-    }}
-    onTouchStart={handleSwipeStart}
-    onTouchMove={handleSwipeMove}
-    onTouchEnd={handleSwipeEnd}
-  >
-    {/* Always visible: Title */}
-    <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
-    
-    {/* Always visible: Rotation values */}
-    <div>
-      Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)
-    </div>
-
-    {/* Collapsible content */}
-    {!isBottomDebugCollapsed ? (
-      <>
-        <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
-        
-        {/* User Position in Local Coordinates */}
-        <div style={{ fontSize: '0.5rem', marginBottom: '5px' }}>
-          <span style={{ color: 'cyan' }}>User Local Position: </span>
-          <span>
-            {(() => {
-              const userPos = getBestUserPosition();
-              if (!userPos) return 'No GPS';
-              
-              // Convert user GPS to local Three.js coordinates (relative to anchor)
-              const userLocalPos = gpsToThreeJsPosition(
-                userPos,
-                activeAnchorPosition, 
-                0, // User at ground level
-                coordinateScale
-              );
-              
-              return `[${userLocalPos.x.toFixed(1)}, ${userLocalPos.y.toFixed(1)}, ${userLocalPos.z.toFixed(1)}]`;
-            })()}
-          </span>
-        </div>
-
-        {/* Camera direction section */}
-        <div style={{ fontSize: '0.5rem' }}>
-          <span style={{ color: 'yellow' }}>Camera Lookat: {cameraLookDirection.bearing?.toFixed(1) ?? 'N/A'}°</span>
-          <span> Aim Error: </span>
-          <span style={{ color: 'yellow' }}>
-            {cameraLookDirection.aimError !== null ? `${cameraLookDirection.aimError.toFixed(1)}°` : 'N/A'}
-          </span>
-        </div>
-
-        {/* Model position section - UPDATED with feet conversion */}
-        {cameraLookDirection.expectedModelPosition ? (
-          <>
-            <div style={{ fontSize: '0.5rem' }}>
-              Model Position: [
-                {cameraLookDirection.expectedModelPosition.x.toFixed(1)},
-               {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, 
-               {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] 
-               | Distance: 
-               {cameraLookDirection.modelDistance !== null && cameraLookDirection.modelDistance !== undefined ? (cameraLookDirection.modelDistance * 3.28084).toFixed(1) : 'N/A'}ft
+          
+          <div style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+            <div 
+              onClick={() => {
+                const newValue = !arTestingOverride;
+                (window as any).arTestingOverride = newValue;
+                setArTestingOverride(newValue);
+                window.dispatchEvent(new CustomEvent('ar-override-changed', { 
+                  detail: { override: newValue } 
+                }));
+              }}
+              style={{ 
+                cursor: 'pointer', 
+                userSelect: 'none', 
+                margin: '0rem', 
+                padding: '4px 8px',
+                backgroundColor: 'rgba(0,0,255,0.3)',
+                marginTop: '8px',
+                width: '100%' 
+              }}
+            >
+              Override: {arTestingOverride ? '✅' : '❌'}
             </div>
+            
+            <button
+              onClick={() => {
+                if (newSystemReady) {
+                  console.log('🔄 Resetting shared AR positioning system');
+                  newPositioningSystem.resetAllAdjustments();
+                  
+                  if (onElevationChanged) {
+                    onElevationChanged();
+                  }
+                  
+                  console.log('🔄 Shared positioning system reset complete');
+                } else {
+                  setGpsOffset({ lon: 0, lat: 0 });
+                  setManualElevationOffset(0);
+                  setAdjustedAnchorPosition(null);
+                  console.log('🔄 Legacy GPS and elevation offsets reset');
+                }
+              }}
+              style={{
+                fontSize: '10px',
+                padding: '4px 8px',
+                backgroundColor: newSystemReady ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                width: '100%',
+                marginTop: '8px'
+              }}
+            >
+              {newSystemReady ? '🔄 Reset Shared System' : '🔄 Reset Legacy'}
+            </button>
+          </div>
 
-            {/* UPDATED turn indicators - now ±20° for "on target" */}
-            {cameraLookDirection.aimError !== null && (
-              <div style={{ fontSize: '0.8rem', opacity: 1, color: 'yellow' }}>
-                {(() => {
-                  if (cameraLookDirection.aimError < 20) { // CHANGED from 2 to 20
-                    return '⮕⮕ ON TARGET ⬅⬅';
-                  } else {
-                    // Calculate which direction to turn
+          <div>Engine Ready: {renderingEngineRef.current?.isReady() ? '✅' : '❌'}</div>
+          <div>Render Loop: {renderingEngineRef.current?.isRenderingActive() ? '🔄' : '⏸️'}</div>
+
+          {!debugCollapsed && (
+            <div>    
+              <div>
+                User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
+              </div>
+
+              <div>
+                Anchor GPS: [{(() => {
+                  const displayLon = activeAnchorPosition[0] + gpsOffset.lon;
+                  const displayLat = activeAnchorPosition[1] + gpsOffset.lat;
+                  return `${displayLon.toFixed(10)}, ${displayLat.toFixed(10)}`;
+                })()}]
+                <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px', color: newSystemReady ? 'lightgreen' : 'yellow' }}>
+                  {newSystemReady ? '(live)' : '(legacy)'}
+                </span>
+              </div>  
+                                        
+              <div>
+                GPS Bearing: {currentUserPosition ? `${calculateBearing(currentUserPosition, anchorPosition).toFixed(1)}°` : 'N/A'}
+              </div>
+
+              {newSystemReady && (
+                <div style={{ 
+                  marginTop: '5px', 
+                  paddingTop: '5px', 
+                  borderTop: '1px solid rgba(255,255,255,0.3)' 
+                }}>
+                  <div style={{ color: 'lightgreen', fontSize: '9px' }}>
+                    <strong>Shared AR Positioning:</strong>
+                  </div>
+                  <div>Ready: {newSystemReady ? '✅' : '❌'}</div>
+                  <div>Debug Mode: {newPositioningSystem.debugMode ? '✅' : '❌'}</div>
+                  <div>Global Elevation: {newPositioningSystem.getCurrentElevationOffset().toFixed(3)}m</div>
+                </div>
+              )}
+              
+              <div>
+                <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
+                <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
+              </div>
+
+              {orientationError && 
+                <div style={{color: 'red'}}> Orient Error: {orientationError} </div>
+              }
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* LOWER Debug Panel */}
+      {SHOW_DEBUG_PANEL && isInitialized && (
+        <div 
+          style={{
+            position: 'absolute',
+            bottom: experienceType === '2030-2105' ? '11svh' : '2svh',
+            left: '50%',
+            width: '90vw',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0)',
+            backdropFilter: 'blur(20px)',
+            color: 'white',
+            padding: '0',
+            borderRadius: '1rem',
+            fontSize: '0.8rem',
+            fontFamily: 'monospace',
+            zIndex: 1025,
+            textAlign: 'center'
+          }}
+          onTouchStart={handleSwipeStart}
+          onTouchMove={handleSwipeMove}
+          onTouchEnd={handleSwipeEnd}
+        >
+          <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
+          
+          <div>
+            Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)
+          </div>
+
+          {!isBottomDebugCollapsed && (
+            <>
+              <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
+              
+              <div style={{ fontSize: '0.5rem', marginBottom: '5px' }}>
+                <span style={{ color: 'cyan' }}>User Local Position: </span>
+                <span>
+                  {(() => {
                     const userPos = getBestUserPosition();
-                    if (!userPos) return 'No GPS position';
-                    const gpsToAnchor = calculateBearing(userPos, activeAnchorPosition);
-                    const currentLooking = cameraLookDirection.bearing || 0;
+                    if (!userPos) return 'No GPS';
                     
-                    let turnDirection = gpsToAnchor - currentLooking;
+                    const userLocalPos = gpsToThreeJsPosition(
+                      userPos,
+                      activeAnchorPosition, 
+                      0,
+                      coordinateScale
+                    );
                     
-                    // Handle wraparound (e.g., 350° to 10°)
-                    if (turnDirection > 180) turnDirection -= 360;
-                    if (turnDirection < -180) turnDirection += 360;
-                    
-                    const turnAmount = Math.abs(turnDirection).toFixed(0);
-                    if (cameraLookDirection.aimError < 40) { // CHANGED from 10 to 40
-                      return turnDirection > 0 
-                        ? `→  Close - turn RIGHT ${turnAmount}° →` 
-                        : `← Close - turn LEFT ${turnAmount}° ←`
-                    } else if (cameraLookDirection.aimError < 60) { // CHANGED from 30 to 60
-                      return turnDirection > 0 
-                        ? `⮕ TURN RIGHT ${turnAmount}° ⮕` 
-                        : `⬅ TURN LEFT ${turnAmount}° ⬅`;
-                    } else {
-                      return turnDirection > 0 
-                        ? `⮕⮕ TURN RIGHT ${turnAmount}° ⮕⮕` 
-                        : `⬅⬅ TURN LEFT ${turnAmount}° ⬅⬅`;
-                    }
+                    return `[${userLocalPos.x.toFixed(1)}, ${userLocalPos.y.toFixed(1)}, ${userLocalPos.z.toFixed(1)}]`;
+                  })()}
+                </span>
+              </div>
+
+              <div style={{ fontSize: '0.5rem' }}>
+                <span style={{ color: 'yellow' }}>Camera Lookat: {cameraLookDirection.bearing?.toFixed(1) ?? 'N/A'}°</span>
+                <span> Aim Error: </span>
+                <span style={{ color: 'yellow' }}>
+                  {cameraLookDirection.aimError !== null ? `${cameraLookDirection.aimError.toFixed(1)}°` : 'N/A'}
+                </span>
+              </div>
+
+              {cameraLookDirection.expectedModelPosition ? (
+                <>
+                  <div style={{ fontSize: '0.5rem' }}>
+                    Model Position: [
+                      {cameraLookDirection.expectedModelPosition.x.toFixed(1)},
+                     {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, 
+                     {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] 
+                     | Distance: 
+                     {cameraLookDirection.modelDistance !== null && cameraLookDirection.modelDistance !== undefined ? (cameraLookDirection.modelDistance * 3.28084).toFixed(1) : 'N/A'}ft
+                  </div>
+
+                  {cameraLookDirection.aimError !== null && (
+                    <div style={{ fontSize: '0.8rem', opacity: 1, color: 'yellow' }}>
+                      {(() => {
+                        if (cameraLookDirection.aimError < 20) {
+                          return '⮕⮕ ON TARGET ⬅⬅';
+                        } else {
+                          const userPos = getBestUserPosition();
+                          if (!userPos) return 'No GPS position';
+                          const gpsToAnchor = calculateBearing(userPos, activeAnchorPosition);
+                          const currentLooking = cameraLookDirection.bearing || 0;
+                          
+                          let turnDirection = gpsToAnchor - currentLooking;
+                          
+                          if (turnDirection > 180) turnDirection -= 360;
+                          if (turnDirection < -180) turnDirection += 360;
+                          
+                          const turnAmount = Math.abs(turnDirection).toFixed(0);
+                          if (cameraLookDirection.aimError < 40) {
+                            return turnDirection > 0 
+                              ? `→  Close - turn RIGHT ${turnAmount}° →` 
+                              : `← Close - turn LEFT ${turnAmount}° ←`
+                          } else if (cameraLookDirection.aimError < 60) {
+                            return turnDirection > 0 
+                              ? `⮕ TURN RIGHT ${turnAmount}° ⮕` 
+                              : `⬅ TURN LEFT ${turnAmount}° ⬅`;
+                          } else {
+                            return turnDirection > 0 
+                              ? `⮕⮕ TURN RIGHT ${turnAmount}° ⮕⮕` 
+                              : `⬅⬅ TURN LEFT ${turnAmount}° ⬅⬅`;
+                          }
+                        }
+                      })()}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ fontSize: '9px', opacity: 0.6 }}>No position calculated</div>
+              )}
+
+              {/* GPS calibration section */}
+              <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
+                <div style={{ color: 'yellow', fontSize: '0.7rem' }}>
+                  {newSystemReady ? 
+                    'NEW SYSTEM - ANCHOR ADJUSTMENTS:' : 
+                    `USE BUTTONS TO MOVE ANCHOR: [${(adjustedAnchorPosition || anchorPosition)[0].toFixed(6)}, ${(adjustedAnchorPosition || anchorPosition)[1].toFixed(6)}]`
+                  }
+                </div>
+
+                {(() => {
+                  const buttonStyle = {
+                    fontSize: '20px',
+                    padding: '4px 12px',
+                    backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    color: 'white',
+                    cursor: 'pointer'
+                  };
+                  
+                  if (newSystemReady) {
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                        <button onClick={() => {
+                          console.log('🧪 NEW: Anchor adjustment - WEST');
+                          if (onElevationChanged) onElevationChanged();
+                        }} style={buttonStyle}>WEST</button>
+                        
+                        <button onClick={() => {
+                          console.log('🧪 NEW: Anchor adjustment - EAST');
+                          if (onElevationChanged) onElevationChanged();
+                        }} style={buttonStyle}>EAST</button>
+                        
+                        <button onClick={() => {
+                          console.log('🧪 NEW: Anchor adjustment - NORTH');
+                          if (onElevationChanged) onElevationChanged();
+                        }} style={buttonStyle}>NORTH</button>
+                        
+                        <button onClick={() => {
+                          console.log('🧪 NEW: Anchor adjustment - SOUTH');
+                          if (onElevationChanged) onElevationChanged();
+                        }} style={buttonStyle}>SOUTH</button>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                        <button onClick={() => updateAnchorPosition(-0.00001, 0)} style={buttonStyle}>WEST</button>
+                        <button onClick={() => updateAnchorPosition(0.00001, 0)} style={buttonStyle}>EAST</button>
+                        <button onClick={() => updateAnchorPosition(0, 0.00001)} style={buttonStyle}>NORTH</button>
+                        <button onClick={() => updateAnchorPosition(0, -0.00001)} style={buttonStyle}>SOUTH</button>
+                      </div>
+                    );
                   }
                 })()}
               </div>
-            )}
-          </>
-        ) : (
-          <div style={{ fontSize: '9px', opacity: 0.6 }}>No position calculated</div>
-        )}
 
-        {/* GPS calibration section */}
-        <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
-          <div style={{ color: 'yellow', fontSize: '0.7rem' }}>
-            {newSystemReady ? 
-              'NEW SYSTEM - ANCHOR ADJUSTMENTS:' : 
-              `USE BUTTONS TO MOVE ANCHOR: [${(adjustedAnchorPosition || anchorPosition)[0].toFixed(6)}, ${(adjustedAnchorPosition || anchorPosition)[1].toFixed(6)}]`
-            }
-          </div>
-
-          {(() => {
-            const buttonStyle = {
-              fontSize: '20px',
-              padding: '4px 12px',
-              backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
-              border: 'none',
-              borderRadius: '0.5rem',
-              color: 'white',
-              cursor: 'pointer'
-            };
-            
-            if (newSystemReady) {
-  // NEW SYSTEM: Use shared anchor adjustments
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-      <button onClick={() => {
-        console.log('🧪 NEW: Anchor adjustment - WEST');
-        newPositioningSystem.adjustAnchorPosition(experienceType || 'mac', -0.00001, 0);
-        if (onElevationChanged) onElevationChanged(); // Trigger repositioning
-      }} style={buttonStyle}>WEST</button>
-      
-      <button onClick={() => {
-        console.log('🧪 NEW: Anchor adjustment - EAST');
-        newPositioningSystem.adjustAnchorPosition(experienceType || 'mac', 0.00001, 0);
-        if (onElevationChanged) onElevationChanged();
-      }} style={buttonStyle}>EAST</button>
-      
-      <button onClick={() => {
-        console.log('🧪 NEW: Anchor adjustment - NORTH');
-        newPositioningSystem.adjustAnchorPosition(experienceType || 'mac', 0, 0.00001);
-        if (onElevationChanged) onElevationChanged();
-      }} style={buttonStyle}>NORTH</button>
-      
-      <button onClick={() => {
-        console.log('🧪 NEW: Anchor adjustment - SOUTH');
-        newPositioningSystem.adjustAnchorPosition(experienceType || 'mac', 0, -0.00001);
-        if (onElevationChanged) onElevationChanged();
-      }} style={buttonStyle}>SOUTH</button>
-    </div>
-  );
-} else {
-              // LEGACY SYSTEM: Use existing GPS offset logic
-              return (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                  <button onClick={() => updateAnchorPosition(-0.00001, 0)} style={buttonStyle}>WEST</button>
-                  <button onClick={() => updateAnchorPosition(0.00001, 0)} style={buttonStyle}>EAST</button>
-                  <button onClick={() => updateAnchorPosition(0, 0.00001)} style={buttonStyle}>NORTH</button>
-                  <button onClick={() => updateAnchorPosition(0, -0.00001)} style={buttonStyle}>SOUTH</button>
+              {/* Elevation section */}
+              <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
+                <div style={{ color: 'yellow', fontSize: '10px' }}>
+                  {newSystemReady ? 
+                    `NEW SYSTEM ELEVATION: Global Offset ${newPositioningSystem.getCurrentElevationOffset().toFixed(3)}m`
+                         :
+                    `ELEVATION: ${((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: ${manualElevationOffset.toFixed(3)}m`
+                  }
                 </div>
-              );
-            }
-          })()}
-        </div>
-
-        {/* Elevation section */}
-        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
-          <div style={{ color: 'yellow', fontSize: '10px' }}>
-            {newSystemReady ? 
-              `NEW SYSTEM ELEVATION: Global Offset ${newPositioningSystem.getCurrentElevationOffset().toFixed(3)}m`
-                   :
-              `ELEVATION: ${((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: ${manualElevationOffset.toFixed(3)}m`
-            }
-          </div>
-          
-          {(() => {
-            const elevButtonStyle = {
-              fontSize: '20px',
-              padding: '4px 12px',
-              backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
-              border: 'none',
-              borderRadius: '0.5rem',
-              color: 'white',
-              cursor: 'pointer'
-            };
+                
+                {(() => {
+                  const elevButtonStyle = {
+                    fontSize: '20px',
+                    padding: '4px 12px',
+                    backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    color: 'white',
+                    cursor: 'pointer'
+                  };
+                  
+                  if (newSystemReady) {
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                        <button onClick={() => {
+                          console.log('🧪 Adjusting global elevation -0.1m');
+                          newAdjustElevation(-0.1);
+                          if (onElevationChanged) {
+                            onElevationChanged();
+                          }
+                        }} style={elevButtonStyle}>-0.1m</button>
                         
-            
-  if (newSystemReady) {
-  // NEW SYSTEM: Use ARPositioningManager elevation adjustment
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-<button onClick={() => {
-  console.log('🧪 STEP 1: Adjusting global elevation -0.1m');
-  newAdjustElevation(-0.1);
-  
-  console.log('🧪 STEP 2: Current global elevation:', newPositioningSystem.getCurrentElevationOffset());
-  
-  console.log('🧪 STEP 3: onElevationChanged available?', !!onElevationChanged);
-  if (onElevationChanged) {
-    console.log('🧪 STEP 4: Calling onElevationChanged callback');
-    onElevationChanged();
-  } else {
-    console.error('🧪 ERROR: onElevationChanged callback not available!');
-  }
-}} style={elevButtonStyle}>-0.1m</button>
-      
-      <button onClick={() => {
-        newAdjustElevation(-0.01);
-        console.log('🧪 NEW: Global elevation -0.01m');
-        if (onElevationChanged) {
-          onElevationChanged();
-        }
-      }} style={elevButtonStyle}>-1cm</button>
-      
-      <button onClick={() => {
-        newAdjustElevation(0.01);
-        console.log('🧪 NEW: Global elevation +0.01m');
-        if (onElevationChanged) {
-          onElevationChanged();
-        }
-      }} style={elevButtonStyle}>+1cm</button>
-      
-      <button onClick={() => {
-        newAdjustElevation(0.1);
-        console.log('🧪 NEW: Global elevation +0.1m');
-        if (onElevationChanged) {
-          onElevationChanged();
-        }
-      }} style={elevButtonStyle}>+0.1m</button>
-    </div>
-  );
-} else {
-              // LEGACY SYSTEM: Use existing elevation offset logic
-              return (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                  <button onClick={() => updateElevationOffset(-0.1)} style={elevButtonStyle}>-0.1m</button>
-                  <button onClick={() => updateElevationOffset(-0.01)} style={elevButtonStyle}>-1cm</button>
-                  <button onClick={() => updateElevationOffset(0.01)} style={elevButtonStyle}>+1cm</button>
-                  <button onClick={() => updateElevationOffset(0.1)} style={elevButtonStyle}>+0.1m</button>
-                </div>
-              );
-            }
-          })()}
-        </div>
+                        <button onClick={() => {
+                          newAdjustElevation(-0.01);
+                          if (onElevationChanged) {
+                            onElevationChanged();
+                          }
+                        }} style={elevButtonStyle}>-1cm</button>
+                        
+                        <button onClick={() => {
+                          newAdjustElevation(0.01);
+                          if (onElevationChanged) {
+                            onElevationChanged();
+                          }
+                        }} style={elevButtonStyle}>+1cm</button>
+                        
+                        <button onClick={() => {
+                          newAdjustElevation(0.1);
+                          if (onElevationChanged) {
+                            onElevationChanged();
+                          }
+                        }} style={elevButtonStyle}>+0.1m</button>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                        <button onClick={() => updateElevationOffset(-0.1)} style={elevButtonStyle}>-0.1m</button>
+                        <button onClick={() => updateElevationOffset(-0.01)} style={elevButtonStyle}>-1cm</button>
+                        <button onClick={() => updateElevationOffset(0.01)} style={elevButtonStyle}>+1cm</button>
+                        <button onClick={() => updateElevationOffset(0.1)} style={elevButtonStyle}>+0.1m</button>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
 
-        {/* Scale section */}
-        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', paddingRight: '5px' }}>
-          <div style={{ color: 'yellow', fontSize: '10px' }}>
-            {newSystemReady ? 'NEW SYSTEM SCALE:' : 'SCALE:'} {manualScaleOffset.toFixed(1)}x
-          </div>
+              {/* Scale section */}
+              <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', paddingRight: '5px' }}>
+                <div style={{ color: 'yellow', fontSize: '10px' }}>
+                  {newSystemReady ? 'NEW SYSTEM SCALE:' : 'SCALE:'} {manualScaleOffset.toFixed(1)}x
+                </div>
+                
+                {(() => {
+                  const scaleButtonStyle = {
+                    fontSize: '12px',
+                    padding: '4px 12px',
+                    backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    color: 'white',
+                    cursor: 'pointer'
+                  };
+                  
+                  if (newSystemReady) {
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                        <button onClick={() => {
+                          const newScale = Math.max(0.1, manualScaleOffset - 0.2);
+                          setManualScaleOffset(newScale);
+                          if (onModelScale) onModelScale(newScale);
+                        }} style={scaleButtonStyle}>-0.2</button>
+                        <button onClick={() => {
+                          const newScale = Math.max(0.1, manualScaleOffset - 0.05);
+                          setManualScaleOffset(newScale);
+                          if (onModelScale) onModelScale(newScale);
+                        }} style={scaleButtonStyle}>-0.05</button>
+                        <button onClick={() => {
+                          setManualScaleOffset(1.0);
+                          setAccumulatedTransforms(prev => ({ ...prev, scale: 1.0 }));
+                          if (onModelReset) onModelReset();
+                        }} style={scaleButtonStyle}>1.0</button>
+                        <button onClick={() => {
+                          const newScale = Math.min(10, manualScaleOffset + 0.05);
+                          setManualScaleOffset(newScale);
+                          if (onModelScale) onModelScale(newScale);
+                        }} style={scaleButtonStyle}>+0.05</button>
+                        <button onClick={() => {
+                          const newScale = Math.min(10, manualScaleOffset + 0.2);
+                          setManualScaleOffset(newScale);
+                          if (onModelScale) onModelScale(newScale);
+                        }} style={scaleButtonStyle}>+0.2</button>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+                        <button onClick={() => updateScaleOffset(-0.2)} style={scaleButtonStyle}>-0.2</button>
+                        <button onClick={() => updateScaleOffset(-0.05)} style={scaleButtonStyle}>-0.05</button>
+                        <button onClick={() => {
+                          setManualScaleOffset(1.0);
+                          setAccumulatedTransforms(prev => ({ ...prev, scale: 1.0 }));
+                          if (onModelScale) onModelScale(1.0);
+                          if (onModelReset) onModelReset();
+                        }} style={scaleButtonStyle}>1.0</button>
+                        <button onClick={() => updateScaleOffset(0.05)} style={scaleButtonStyle}>+0.05</button>
+                        <button onClick={() => updateScaleOffset(0.2)} style={scaleButtonStyle}>+0.2</button>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
+            </>
+          )}
           
-          {(() => {
-            const scaleButtonStyle = {
-              fontSize: '12px',
-              padding: '4px 12px',
-              backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
-              border: 'none',
-              borderRadius: '0.5rem',
-              color: 'white',
-              cursor: 'pointer'
-            };
-            
-            if (newSystemReady) {
-              // NEW SYSTEM: Update local scale and call gesture handler
-              return (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                  <button onClick={() => {
-                    const newScale = Math.max(0.1, manualScaleOffset - 0.2);
-                    setManualScaleOffset(newScale);
-                    if (onModelScale) onModelScale(newScale);
-                    console.log('🧪 NEW: Scale adjustment -0.2');
-                  }} style={scaleButtonStyle}>-0.2</button>
-                  <button onClick={() => {
-                    const newScale = Math.max(0.1, manualScaleOffset - 0.05);
-                    setManualScaleOffset(newScale);
-                    if (onModelScale) onModelScale(newScale);
-                    console.log('🧪 NEW: Scale adjustment -0.05');
-                  }} style={scaleButtonStyle}>-0.05</button>
-                  <button onClick={() => {
-                    setManualScaleOffset(1.0);
-                    setAccumulatedTransforms(prev => ({ ...prev, scale: 1.0 }));
-                    if (onModelReset) onModelReset();
-                    console.log('🧪 NEW: Scale reset to 1.0');
-                  }} style={scaleButtonStyle}>1.0</button>
-                  <button onClick={() => {
-                    const newScale = Math.min(10, manualScaleOffset + 0.05);
-                    setManualScaleOffset(newScale);
-                    if (onModelScale) onModelScale(newScale);
-                    console.log('🧪 NEW: Scale adjustment +0.05');
-                  }} style={scaleButtonStyle}>+0.05</button>
-                  <button onClick={() => {
-                    const newScale = Math.min(10, manualScaleOffset + 0.2);
-                    setManualScaleOffset(newScale);
-                    if (onModelScale) onModelScale(newScale);
-                    console.log('🧪 NEW: Scale adjustment +0.2');
-                  }} style={scaleButtonStyle}>+0.2</button>
-                </div>
-              );
-            } else {
-              // LEGACY SYSTEM: Use existing scale logic
-              return (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                  <button onClick={() => updateScaleOffset(-0.2)} style={scaleButtonStyle}>-0.2</button>
-                  <button onClick={() => updateScaleOffset(-0.05)} style={scaleButtonStyle}>-0.05</button>
-                  <button onClick={() => {
-                    setManualScaleOffset(1.0);
-                    setAccumulatedTransforms(prev => ({
-                      ...prev,
-                      scale: 1.0
-                    }));
-                    
-                    if (onModelScale) {
-                      onModelScale(1.0);
-                    }
-                    
-                    if (onModelReset) {
-                      onModelReset();
-                    }
-                    
-                    console.log('🔄 Scale reset to 1.0');
-                  }} style={scaleButtonStyle}>1.0</button>
-                  <button onClick={() => updateScaleOffset(0.05)} style={scaleButtonStyle}>+0.05</button>
-                  <button onClick={() => updateScaleOffset(0.2)} style={scaleButtonStyle}>+0.2</button>
-                </div>
-              );
-            }
-          })()}
+          {isBottomDebugCollapsed && (
+            <div style={{ 
+              fontSize: '8px', 
+              opacity: 0.7, 
+              marginTop: '2px',
+              color: 'cyan'
+            }}>
+              ⬆ swipe up to expand
+            </div>
+          )}
         </div>
-      </>
-    ) : (
-      /* Collapsed state indicator */
-      <div style={{ 
-        fontSize: '8px', 
-        opacity: 0.7, 
-        marginTop: '2px',
-        color: 'cyan'
-      }}>
-        ⬆ swipe up to expand
-      </div>
-    )}
-  </div>
-)}
-
-      
+      )}
       
       {/* Child components (AR objects will be added here) */}
       {children}
@@ -1633,5 +1393,3 @@ const currentUserPosition = getBestUserPosition();
 };
 
 export default ArCameraComponent;
-
-
