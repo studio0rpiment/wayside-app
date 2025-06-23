@@ -10,7 +10,7 @@ export interface ARInteractionCallbacks {
 }
 
 export interface ARInteractionOptions {
-  canvasRef: React.RefObject<HTMLCanvasElement>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
   callbacks: ARInteractionCallbacks;
   enableDebugSwipes?: boolean;
   debugMode?: boolean;

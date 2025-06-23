@@ -8,6 +8,8 @@ import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 import { useGeofenceContext } from '../../context/GeofenceContext';
 import { useARPositioning } from '../../hooks/useARPositioning';
 import { ARRenderingEngine } from '../engines/ARRenderingEngine';
+import { useARInteractions } from '../../hooks/useARInteractions';
+
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -65,6 +67,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     isPositionStable
   } = useGeofenceContext();
 
+
+
   //********** REFS **********
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -72,17 +76,6 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const renderingEngineRef = useRef<ARRenderingEngine | null>(null);
 
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const touchEndX = useRef(0);
-  const touchEndY = useRef(0);
-  const lastTapTime = useRef(0);
-  const lastTouchX = useRef(0);
-  const lastTouchY = useRef(0);
-  const initialPinchDistance = useRef(0);
-  const initialTwoFingerAngle = useRef(0);
-  const previousTwoFingerAngle = useRef(0);
-  const lastMultiTouchTime = useRef(0);
   const cameraDirectionVector = useRef(new THREE.Vector3());
   const lastCameraUpdateRef = useRef(0);
   const cameraUpdateIntervalRef = useRef<number | null>(null);
@@ -124,7 +117,37 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       : false;
   });
 
+
+
+   //******** DEBUG PANEL FUNCTIONS **********
+   const handleDebugSwipeUp = useCallback(() => {
+      setIsBottomDebugCollapsed(false);
+      console.log('🔼 Debug panel expanded');
+    }, []);
+
+    const handleDebugSwipeDown = useCallback(() => {
+      setIsBottomDebugCollapsed(true);
+      console.log('🔽 Debug panel collapsed');
+    }, []);
+
+
   //******** HOOKS **********
+
+    const { attachListeners, detachListeners, isListening } = useARInteractions({
+        canvasRef,
+        callbacks: {
+          onModelRotate,
+          onModelScale,
+          onModelReset,
+          onDebugSwipeUp: handleDebugSwipeUp,
+          onDebugSwipeDown: handleDebugSwipeDown
+        },
+        enableDebugSwipes: true,
+        debugMode: SHOW_DEBUG_PANEL
+      });
+
+
+
   const { 
     heading: deviceHeading,
     deviceOrientation, 
@@ -146,8 +169,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const { isPermissionGranted, requestPermission } = usePermissions();
 
   //******** CONSTANTS **********
-  const minSwipeDistance = 50;
-  const doubleTapDelay = 300;
+
   const activeAnchorPosition = adjustedAnchorPosition || anchorPosition;
   const CAMERA_UPDATE_INTERVAL = 200;
   const currentExperienceType = experienceType || 'default';
@@ -166,6 +188,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 
   const typeKey = experienceType ?? 'default';
   const elevationOffset = experienceOffsets[typeKey] || experienceOffsets['default'];
+
 
   //******** HELPER FUNCTIONS **********
   const formatWithSign = (num: number, decimals: number = 1, totalWidth: number = 10) => {
@@ -355,13 +378,11 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     
     placeArObject();
     
-    if (canvasRef.current) {
-      canvasRef.current.addEventListener('touchstart', handleTouchStart, { passive: false });
-      canvasRef.current.addEventListener('touchmove', handleTouchMove, { passive: false });
-      canvasRef.current.addEventListener('touchend', handleTouchEnd, { passive: false });
-      console.log('✅ Touch events attached to canvas');
+    if (canvasRef.current && !isListening) {
+      attachListeners();
+      console.log('✅ AR interactions attached');
     }
-          
+              
     setIsInitialized(true);
     console.log('✅ AR Camera fully initialized');
   };
@@ -464,34 +485,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       console.log('📱 Window resized, engine updated');
     }
   }, []);
-
-  //******** DEBUG PANEL FUNCTIONS **********
-  const handleSwipeStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    swipeStartY.current = event.touches[0].clientY;
-    swipeStartTime.current = Date.now();
-  };
-
-  const handleSwipeMove = (event: React.TouchEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  };
-
-  const handleSwipeEnd = (event: React.TouchEvent<HTMLDivElement>) => {
-    const swipeEndY = event.changedTouches[0].clientY;
-    const swipeDistance = swipeEndY - swipeStartY.current;
-    const swipeTime = Date.now() - swipeStartTime.current;
-    
-    const MIN_SWIPE_DISTANCE = 50;
-    const MAX_SWIPE_TIME = 500;
-    
-    if (swipeTime < MAX_SWIPE_TIME) {
-      if (swipeDistance > MIN_SWIPE_DISTANCE) {
-        setIsBottomDebugCollapsed(true);
-      } else if (swipeDistance < -MIN_SWIPE_DISTANCE) {
-        setIsBottomDebugCollapsed(false);
-      }
-    }
-  };
-
+  
   const updateElevationOffset = useCallback((deltaElevation: number) => {
     const newOffset = manualElevationOffset + deltaElevation;
     setManualElevationOffset(newOffset);
@@ -528,143 +522,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     }
   }, [manualScaleOffset, onModelScale]);
 
-  //******** TOUCH HANDLERS **********
-  const handleTouchStart = (event: TouchEvent) => {
-    const now = new Date().getTime();
-    const timeSince = now - lastTapTime.current;
-    const timeSinceMultiTouch = now - lastMultiTouchTime.current;
-
-    if (event.touches.length === 1) {
-      touchStartX.current = event.touches[0].clientX;
-      touchStartY.current = event.touches[0].clientY;
-      lastTouchX.current = event.touches[0].clientX;
-      lastTouchY.current = event.touches[0].clientY;
-
-      if (timeSince < doubleTapDelay && timeSince > 0) {
-        setAccumulatedTransforms({
-          rotation: { x: 0, y: 0, z: 0 },
-          scale: 1.0
-        });
-
-        if (onModelReset) {
-          onModelReset();
-        }
-        event.preventDefault();
-        lastTapTime.current = 0;
-        return;
-      }
-
-      if (timeSinceMultiTouch < 200) {
-        return;
-      }
-
-      lastTapTime.current = now;
-      
-    } else if (event.touches.length === 2) {
-      lastTapTime.current = 0;
-      
-      const touch1 = event.touches[0];
-      const touch2 = event.touches[1];
-      const fingerDistance = Math.hypot(
-        touch2.clientX - touch1.clientX,
-        touch2.clientY - touch1.clientY
-      );
-      
-      initialPinchDistance.current = fingerDistance;
-      initialTwoFingerAngle.current = Math.atan2(
-        touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX
-      );
-      previousTwoFingerAngle.current = initialTwoFingerAngle.current;
-
-    } else {
-      lastTapTime.current = 0;
-    }
-  };
-  
-  const handleTouchMove = (event: TouchEvent) => {
-    if (event.touches.length === 1) {
-      const now = new Date().getTime();
-      const timeSinceMultiTouch = now - lastMultiTouchTime.current;
-      
-      if (timeSinceMultiTouch < 200) {
-        return;
-      }
-
-      const currentX = event.touches[0].clientX;
-      const currentY = event.touches[0].clientY;
-      
-      const deltaX = currentX - lastTouchX.current;
-      const deltaY = currentY - lastTouchY.current;
-
-      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-        const rotDeltaX = deltaX * 0.01;
-        const rotDeltaY = deltaY * 0.01;
-        
-        setAccumulatedTransforms(prev => ({
-          ...prev,
-          rotation: {
-            x: prev.rotation.x + rotDeltaY,
-            y: prev.rotation.y + rotDeltaX,
-            z: prev.rotation.z
-          }
-        }));
-
-        if (onModelRotate) {
-          onModelRotate(rotDeltaX, rotDeltaY, 0);
-        }
-      }
-      
-      lastTouchX.current = currentX;
-      lastTouchY.current = currentY;
-      
-    } else if (event.touches.length === 2) {
-      const touch1 = event.touches[0];
-      const touch2 = event.touches[1];
-      
-      const currentAngle = Math.atan2(
-        touch2.clientY - touch1.clientY, 
-        touch2.clientX - touch1.clientX
-      );
-      
-      const rotationDelta = currentAngle - previousTwoFingerAngle.current;
-      
-      if (onModelRotate && Math.abs(rotationDelta) > 0.02) {
-        const zRotDelta = rotationDelta * 0.5;
-        
-        setAccumulatedTransforms(prev => {
-          const newZRotation = prev.rotation.z + zRotDelta;
-          const limitedZRotation = Math.max(-Math.PI, Math.min(Math.PI, newZRotation));
-          
-          if (limitedZRotation !== prev.rotation.z) {
-            const actualDelta = limitedZRotation - prev.rotation.z;
-            onModelRotate(0, 0, actualDelta);
-            
-            return {
-              ...prev,
-              rotation: {
-                ...prev.rotation,
-                z: limitedZRotation
-              }
-            };
-          }
-          
-          return prev;
-        });
-      }
-      
-      previousTwoFingerAngle.current = currentAngle;
-    }
-    
-    event.preventDefault();
-  };
-
-  const handleTouchEnd = (event: TouchEvent) => {
-    if (event.touches.length === 0) {
-      lastMultiTouchTime.current = new Date().getTime();
-    } else if (event.touches.length === 1) {
-      lastMultiTouchTime.current = new Date().getTime();
-    }
-  };
+ 
 
   //******** EFFECTS **********
   
@@ -766,10 +624,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       }
       
       window.removeEventListener('resize', handleResize);
-      if (canvasRef.current) {
-        canvasRef.current.removeEventListener('touchstart', handleTouchStart);
-        canvasRef.current.removeEventListener('touchmove', handleTouchMove);
-        canvasRef.current.removeEventListener('touchend', handleTouchEnd);
+      if (isListening) {
+        detachListeners();
       }
             
       if (renderingEngineRef.current) {
@@ -1090,9 +946,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
             zIndex: 1025,
             textAlign: 'center'
           }}
-          onTouchStart={handleSwipeStart}
-          onTouchMove={handleSwipeMove}
-          onTouchEnd={handleSwipeEnd}
+
         >
           <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
           
