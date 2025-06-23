@@ -1,6 +1,6 @@
 // src/components/ar/GroundPlaneTestUI.tsx - Enhanced with Edge Detection Controls
 import React from 'react';
-import { GroundPlaneResult, EdgeDetectionStatus } from './GroundPlaneDetector';
+import { GroundPlaneResult, EdgeDetectionStatus } from '../GroundPlaneDetector';
 
 interface GroundPlaneTestUIProps {
   isTestMode: boolean;

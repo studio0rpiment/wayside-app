@@ -6,8 +6,7 @@ import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 import { validateTerrainCoverage, getEnhancedAnchorPosition } from '../../utils/geoArUtils'
 
-import GroundPlaneDetector, { GroundPlaneDetectorRef, GroundPlaneResult } from './GroundPlaneDetector';
-import GroundPlaneTestUI from './GroundPlaneTestUI';
+
 
 import { getOptimizedRendererSettings, optimizeWebGLRenderer } from '../../utils/systemOptimization';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
@@ -129,7 +128,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   });
   
 
-  const [showChevrons, setShowChevrons] = useState(true); //for chevrons may delete
+
   const [debugHeading, setDebugHeading] = useState<number | null>(null);
   const [compassCalibration, setCompassCalibration] = useState(0); // Manual compass offset
   const [adjustedAnchorPosition, setAdjustedAnchorPosition] = useState<[number, number] | null>(null);
@@ -166,8 +165,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       : false;
   });
 
-  const [showGroundPlaneTest, setShowGroundPlaneTest] = useState(false);
-const groundPlaneDetectorRef = useRef<GroundPlaneDetectorRef>(null);
+ 
+
 
 
 //******** DECLARATIONS AND HELPERS */
@@ -277,51 +276,6 @@ const groundPlaneDetectorRef = useRef<GroundPlaneDetectorRef>(null);
       // Convert to radians and return negative to compensate
       return -screenOrientation * (Math.PI / 180);
     }
-//********FOR GROUND PLANE DETECTION  ******* */
-const handleGroundPlaneDetected = useCallback((result: GroundPlaneResult) => {
-  console.log('🌍 Ground plane detected in ArCamera:', result);
-  
-  // Here you could update your experience offsets based on detected ground
-  // setDetectedGroundLevel(-result.distance);
-}, []);
-
-// Add these functions for the UI
-const toggleGroundPlaneTest = useCallback(() => {
-  setShowGroundPlaneTest(!showGroundPlaneTest);
-}, [showGroundPlaneTest]);
-
-const detectGroundNow = useCallback(() => {
-  if (groundPlaneDetectorRef.current?.detectNow) {
-    groundPlaneDetectorRef.current.detectNow();
-  }
-}, []);
-
-const handleGroundAdjustment = useCallback((deltaOffset: number) => {
-  console.log('🌍 ArCamera: handleGroundAdjustment called with:', deltaOffset);
-  if (groundPlaneDetectorRef.current?.adjustGroundOffset) {
-    groundPlaneDetectorRef.current.adjustGroundOffset(deltaOffset);
-  } else {
-    console.warn('❌ adjustGroundOffset method not available');
-  }
-}, []);
-
-const handleGroundReset = useCallback(() => {
-  console.log('🌍 ArCamera: handleGroundReset called');
-  if (groundPlaneDetectorRef.current?.setManualGroundOffset) {
-    groundPlaneDetectorRef.current.setManualGroundOffset(0);
-  } else {
-    console.warn('❌ setManualGroundOffset method not available');
-  }
-}, []);
-const handleCameraCheck = useCallback(() => {
-  const detector = groundPlaneDetectorRef.current;
-  if (detector && 'checkCameraReadiness' in detector) {
-    const readiness = (detector as any).checkCameraReadiness();
-    console.log('📹 Camera Readiness:', readiness);
-  } else {
-    console.log('❌ checkCameraReadiness method not found');
-  }
-}, []);
 
 
 
@@ -460,105 +414,104 @@ const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => 
     }
   };
   
-  // Initialize Three.js scene
- const initializeThreeJs = async () => {
-  if (!canvasRef.current || !containerRef.current) return false;
-  
-  console.log('🎨 Initializing Three.js scene...');
-  
-  // Create scene
-  const scene = new THREE.Scene();
-  sceneRef.current = scene;
+//*********** INITIALIZE Three.js scene */ 
+  const initializeThreeJs = async () => {
+    if (!canvasRef.current || !containerRef.current) return false;
+    
+    console.log('🎨 Initializing Three.js scene...');
+    
+    // Create scene
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
 
-  // Create camera with realistic FOV for mobile AR
-    const camera = new THREE.PerspectiveCamera(
-      70, // Field of view (typical for mobile cameras)
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
+    // Create camera with realistic FOV for mobile AR
+      const camera = new THREE.PerspectiveCamera(
+        70, // Field of view (typical for mobile cameras)
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.lookAt(0, 0, -1);
+      camera.position.set(0, 0, 0); // Camera at origin
+
+    cameraRef.current = camera;
+    
+    // Create optimized renderer (CHANGED)
+    try {
+      const rendererSettings = await getOptimizedRendererSettings(canvasRef.current);
+      const renderer = new THREE.WebGLRenderer(rendererSettings);
+      
+      await optimizeWebGLRenderer(renderer);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 0); // Fully transparent background
+      rendererRef.current = renderer;
+      
+      console.log('✅ Optimized renderer created');
+    } catch (error) {
+      console.warn('⚠️ Failed to create optimized renderer, using fallback:', error);
+      // Fallback to your original renderer
+      const renderer = new THREE.WebGLRenderer({
+        canvas: canvasRef.current,
+        alpha: true,
+        antialias: true
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 0);
+      rendererRef.current = renderer;
+    }
+    
+    // Add basic lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
+
+
+    if (onSceneReady) {
+      onSceneReady(scene, camera);
+      // console.log('📡 AR scene exposed to parent component');
+    }
+    
+    // console.log('✅ Three.js scene initialized with optimizations');
+    return true;
+  };
+  
+//********************** update the placeArObject function:
+  const placeArObject = useCallback(() => {
+    console.log('🎯 placeArObject() called');
+    
+    if (useNewPositioning || useNewPositioning) {
+      // NEW SYSTEM: Don't call onArObjectPlaced - let experiences handle their own positioning
+      console.log('🧪 NEW: Using ARPositioningManager - experiences handle their own positioning');
+      return;
+    }
+    
+    // LEGACY SYSTEM: Keep existing logic
+    const userPosition = getBestUserPosition();
+    
+    if (!userPosition || !anchorPosition) {
+      console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
+      return;
+    }
+    
+    const entrySide = detectEntrySide(userPosition, anchorPosition);
+    const finalElevationOffset = elevationOffset + manualElevationOffset;
+
+    const position = gpsToThreeJsPositionWithEntryOffset(
+      userPosition,
+      activeAnchorPosition,
+      entrySide,
+      finalElevationOffset,
+      coordinateScale
     );
-    camera.lookAt(0, 0, -1);
-    camera.position.set(0, 0, 0); // Camera at origin
 
-  cameraRef.current = camera;
-  
-  // Create optimized renderer (CHANGED)
-  try {
-    const rendererSettings = await getOptimizedRendererSettings(canvasRef.current);
-    const renderer = new THREE.WebGLRenderer(rendererSettings);
-    
-    await optimizeWebGLRenderer(renderer);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 0); // Fully transparent background
-    rendererRef.current = renderer;
-    
-    console.log('✅ Optimized renderer created');
-  } catch (error) {
-    console.warn('⚠️ Failed to create optimized renderer, using fallback:', error);
-    // Fallback to your original renderer
-    const renderer = new THREE.WebGLRenderer({
-      canvas: canvasRef.current,
-      alpha: true,
-      antialias: true
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 0);
-    rendererRef.current = renderer;
-  }
-  
-  // Add basic lighting
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-  scene.add(ambientLight);
-  
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  directionalLight.position.set(1, 1, 1);
-  scene.add(directionalLight);
-
-
-  if (onSceneReady) {
-    onSceneReady(scene, camera);
-    // console.log('📡 AR scene exposed to parent component');
-  }
-  
-  // console.log('✅ Three.js scene initialized with optimizations');
-  return true;
-};
-  
-  // Calculate and place AR object
-// In ArCameraComponent.tsx, update the placeArObject function:
-const placeArObject = useCallback(() => {
-  console.log('🎯 placeArObject() called');
-  
-  if (useNewPositioning || useNewPositioning) {
-    // NEW SYSTEM: Don't call onArObjectPlaced - let experiences handle their own positioning
-    console.log('🧪 NEW: Using ARPositioningManager - experiences handle their own positioning');
-    return;
-  }
-  
-  // LEGACY SYSTEM: Keep existing logic
-  const userPosition = getBestUserPosition();
-  
-  if (!userPosition || !anchorPosition) {
-    console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
-    return;
-  }
-  
-  const entrySide = detectEntrySide(userPosition, anchorPosition);
-  const finalElevationOffset = elevationOffset + manualElevationOffset;
-
-  const position = gpsToThreeJsPositionWithEntryOffset(
-    userPosition,
-    activeAnchorPosition,
-    entrySide,
-    finalElevationOffset,
-    coordinateScale
-  );
-
-  if (onArObjectPlaced) {
-    onArObjectPlaced(position);
-  }
-}, [useNewPositioning, useNewPositioning, getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
-//   ^^^ Remove the () - include the function reference, not the call
+    if (onArObjectPlaced) {
+      onArObjectPlaced(position);
+    }
+  }, [useNewPositioning, useNewPositioning, getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
+ 
   
 //***********Effect 1: Update camera rotation using quaternions (with debug logging)
     useEffect(() => {
@@ -1057,16 +1010,6 @@ const currentUserPosition = getBestUserPosition();
           
         }}
       />
-
-      {/* <GroundPlaneDetector
-        videoElement={videoRef.current}
-        deviceOrientation={deviceOrientation}
-        scene={sceneRef.current}
-        isTestMode={showGroundPlaneTest}
-        onGroundPlaneDetected={handleGroundPlaneDetected}
-        ref={groundPlaneDetectorRef}
-      /> */}
-
   
       
       {/* Error display - only show for actual technical errors, not permission issues */}

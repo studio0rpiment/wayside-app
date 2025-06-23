@@ -24,9 +24,9 @@ Wayside.at is an immersive AR web app for Kenilworth Aquatic Gardens created by 
 
 ### Current Positioning Method
 - User GPS position as origin (0,0,0)
-- Terrain-aware elevation calculation using LIDAR 2022 Open DC heightmap data
+**`NO LONGER IN USE`** (- Terrain-aware elevation calculation using LIDAR 2022 Open DC heightmap data)
 - `coordinateScale` factor for fine-tuning AR placement
-- Experience-specific elevation offsets (water plants at surface level, people at human height)
+**`NOW SETTING MANUALLY`**   - Experience-specific elevation offsets (water plants at surface level, people at human height)
 
 ### Experience Types
 - Point cloud animations (water rise, plant lifecycles, historical smoke)
@@ -86,5 +86,14 @@ ArCameraComponent (terrain-aware positioning, single source of truth)
 - **Terrain-aware positioning**: combines LIDAR elevation data with GPS coordinates for accurate 3D placement
 
 ---
+updated: 	unix:1749427476*
 
-*Last updated: 	unix:1749427476*
+There have been sveral additions
+
+## Enhanced Precision Location Tracker
+
+## Hexagonal Geofence Update
+
+## Established a World Coordinate System for placing the anchors/models
+
+updated: 	unix:1750632356

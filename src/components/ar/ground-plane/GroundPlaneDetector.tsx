@@ -1,7 +1,7 @@
 // src/components/ar/GroundPlaneDetector.tsx - Simplified with Debug Edge Detection
 import React, { forwardRef, useImperativeHandle, useRef, useCallback, useState, useEffect } from 'react';
 import * as THREE from 'three';
-import { DeviceOrientationData } from '../../hooks/useDeviceOrientation';
+import { DeviceOrientationData } from '../../../hooks/useDeviceOrientation';
 
 // Define the interface for methods exposed via ref
 export interface GroundPlaneDetectorRef {
