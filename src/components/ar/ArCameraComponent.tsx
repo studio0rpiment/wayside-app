@@ -9,6 +9,8 @@ import { useGeofenceContext } from '../../context/GeofenceContext';
 import { useARPositioning } from '../../hooks/useARPositioning';
 import { ARRenderingEngine } from '../engines/ARRenderingEngine';
 import { useARInteractions } from '../../hooks/useARInteractions';
+import ModelPositioningPanel from '../debug/ModelPositioningPanel';
+
 
 
 const SHOW_DEBUG_PANEL = true;
@@ -485,7 +487,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       console.log('📱 Window resized, engine updated');
     }
   }, []);
-  
+
   const updateElevationOffset = useCallback((deltaElevation: number) => {
     const newOffset = manualElevationOffset + deltaElevation;
     setManualElevationOffset(newOffset);
@@ -928,318 +930,35 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       )}
 
       {/* LOWER Debug Panel */}
-      {SHOW_DEBUG_PANEL && isInitialized && (
-        <div 
-          style={{
-            position: 'absolute',
-            bottom: experienceType === '2030-2105' ? '11svh' : '2svh',
-            left: '50%',
-            width: '90vw',
-            transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(0, 0, 0, 0)',
-            backdropFilter: 'blur(20px)',
-            color: 'white',
-            padding: '0',
-            borderRadius: '1rem',
-            fontSize: '0.8rem',
-            fontFamily: 'monospace',
-            zIndex: 1025,
-            textAlign: 'center'
-          }}
-
-        >
-          <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
-          
-          <div>
-            Rot: X:{formatWithSign(accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)
-          </div>
-
-          {!isBottomDebugCollapsed && (
-            <>
-              <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
-              
-              <div style={{ fontSize: '0.5rem', marginBottom: '5px' }}>
-                <span style={{ color: 'cyan' }}>User Local Position: </span>
-                <span>
-                  {(() => {
-                    const userPos = getBestUserPosition();
-                    if (!userPos) return 'No GPS';
-                    
-                    const userLocalPos = gpsToThreeJsPosition(
-                      userPos,
-                      activeAnchorPosition, 
-                      0,
-                      coordinateScale
-                    );
-                    
-                    return `[${userLocalPos.x.toFixed(1)}, ${userLocalPos.y.toFixed(1)}, ${userLocalPos.z.toFixed(1)}]`;
-                  })()}
-                </span>
-              </div>
-
-              <div style={{ fontSize: '0.5rem' }}>
-                <span style={{ color: 'yellow' }}>Camera Lookat: {cameraLookDirection.bearing?.toFixed(1) ?? 'N/A'}°</span>
-                <span> Aim Error: </span>
-                <span style={{ color: 'yellow' }}>
-                  {cameraLookDirection.aimError !== null ? `${cameraLookDirection.aimError.toFixed(1)}°` : 'N/A'}
-                </span>
-              </div>
-
-              {cameraLookDirection.expectedModelPosition ? (
-                <>
-                  <div style={{ fontSize: '0.5rem' }}>
-                    Model Position: [
-                      {cameraLookDirection.expectedModelPosition.x.toFixed(1)},
-                     {cameraLookDirection.expectedModelPosition.y.toFixed(1)}, 
-                     {cameraLookDirection.expectedModelPosition.z.toFixed(1)}] 
-                     | Distance: 
-                     {cameraLookDirection.modelDistance !== null && cameraLookDirection.modelDistance !== undefined ? (cameraLookDirection.modelDistance * 3.28084).toFixed(1) : 'N/A'}ft
-                  </div>
-
-                  {cameraLookDirection.aimError !== null && (
-                    <div style={{ fontSize: '0.8rem', opacity: 1, color: 'yellow' }}>
-                      {(() => {
-                        if (cameraLookDirection.aimError < 20) {
-                          return '⮕⮕ ON TARGET ⬅⬅';
-                        } else {
-                          const userPos = getBestUserPosition();
-                          if (!userPos) return 'No GPS position';
-                          const gpsToAnchor = calculateBearing(userPos, activeAnchorPosition);
-                          const currentLooking = cameraLookDirection.bearing || 0;
-                          
-                          let turnDirection = gpsToAnchor - currentLooking;
-                          
-                          if (turnDirection > 180) turnDirection -= 360;
-                          if (turnDirection < -180) turnDirection += 360;
-                          
-                          const turnAmount = Math.abs(turnDirection).toFixed(0);
-                          if (cameraLookDirection.aimError < 40) {
-                            return turnDirection > 0 
-                              ? `→  Close - turn RIGHT ${turnAmount}° →` 
-                              : `← Close - turn LEFT ${turnAmount}° ←`
-                          } else if (cameraLookDirection.aimError < 60) {
-                            return turnDirection > 0 
-                              ? `⮕ TURN RIGHT ${turnAmount}° ⮕` 
-                              : `⬅ TURN LEFT ${turnAmount}° ⬅`;
-                          } else {
-                            return turnDirection > 0 
-                              ? `⮕⮕ TURN RIGHT ${turnAmount}° ⮕⮕` 
-                              : `⬅⬅ TURN LEFT ${turnAmount}° ⬅⬅`;
-                          }
-                        }
-                      })()}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div style={{ fontSize: '9px', opacity: 0.6 }}>No position calculated</div>
-              )}
-
-              {/* GPS calibration section */}
-              <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
-                <div style={{ color: 'yellow', fontSize: '0.7rem' }}>
-                  {newSystemReady ? 
-                    'NEW SYSTEM - ANCHOR ADJUSTMENTS:' : 
-                    `USE BUTTONS TO MOVE ANCHOR: [${(adjustedAnchorPosition || anchorPosition)[0].toFixed(6)}, ${(adjustedAnchorPosition || anchorPosition)[1].toFixed(6)}]`
-                  }
-                </div>
-
-                {(() => {
-                  const buttonStyle = {
-                    fontSize: '20px',
-                    padding: '4px 12px',
-                    backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    color: 'white',
-                    cursor: 'pointer'
-                  };
-                  
-                  if (newSystemReady) {
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                        <button onClick={() => {
-                          console.log('🧪 NEW: Anchor adjustment - WEST');
-                          if (onElevationChanged) onElevationChanged();
-                        }} style={buttonStyle}>WEST</button>
-                        
-                        <button onClick={() => {
-                          console.log('🧪 NEW: Anchor adjustment - EAST');
-                          if (onElevationChanged) onElevationChanged();
-                        }} style={buttonStyle}>EAST</button>
-                        
-                        <button onClick={() => {
-                          console.log('🧪 NEW: Anchor adjustment - NORTH');
-                          if (onElevationChanged) onElevationChanged();
-                        }} style={buttonStyle}>NORTH</button>
-                        
-                        <button onClick={() => {
-                          console.log('🧪 NEW: Anchor adjustment - SOUTH');
-                          if (onElevationChanged) onElevationChanged();
-                        }} style={buttonStyle}>SOUTH</button>
-                      </div>
-                    );
-                  } else {
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                        <button onClick={() => updateAnchorPosition(-0.00001, 0)} style={buttonStyle}>WEST</button>
-                        <button onClick={() => updateAnchorPosition(0.00001, 0)} style={buttonStyle}>EAST</button>
-                        <button onClick={() => updateAnchorPosition(0, 0.00001)} style={buttonStyle}>NORTH</button>
-                        <button onClick={() => updateAnchorPosition(0, -0.00001)} style={buttonStyle}>SOUTH</button>
-                      </div>
-                    );
-                  }
-                })()}
-              </div>
-
-              {/* Elevation section */}
-              <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
-                <div style={{ color: 'yellow', fontSize: '10px' }}>
-                  {newSystemReady ? 
-                    `NEW SYSTEM ELEVATION: Global Offset ${newPositioningSystem.getCurrentElevationOffset().toFixed(3)}m`
-                         :
-                    `ELEVATION: ${((experienceOffsets[experienceType ?? 'default'] || experienceOffsets['default']) + manualElevationOffset).toFixed(3)}m, offset: ${manualElevationOffset.toFixed(3)}m`
-                  }
-                </div>
-                
-                {(() => {
-                  const elevButtonStyle = {
-                    fontSize: '20px',
-                    padding: '4px 12px',
-                    backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    color: 'white',
-                    cursor: 'pointer'
-                  };
-                  
-                  if (newSystemReady) {
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                        <button onClick={() => {
-                          console.log('🧪 Adjusting global elevation -0.1m');
-                          newAdjustElevation(-0.1);
-                          if (onElevationChanged) {
-                            onElevationChanged();
-                          }
-                        }} style={elevButtonStyle}>-0.1m</button>
-                        
-                        <button onClick={() => {
-                          newAdjustElevation(-0.01);
-                          if (onElevationChanged) {
-                            onElevationChanged();
-                          }
-                        }} style={elevButtonStyle}>-1cm</button>
-                        
-                        <button onClick={() => {
-                          newAdjustElevation(0.01);
-                          if (onElevationChanged) {
-                            onElevationChanged();
-                          }
-                        }} style={elevButtonStyle}>+1cm</button>
-                        
-                        <button onClick={() => {
-                          newAdjustElevation(0.1);
-                          if (onElevationChanged) {
-                            onElevationChanged();
-                          }
-                        }} style={elevButtonStyle}>+0.1m</button>
-                      </div>
-                    );
-                  } else {
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                        <button onClick={() => updateElevationOffset(-0.1)} style={elevButtonStyle}>-0.1m</button>
-                        <button onClick={() => updateElevationOffset(-0.01)} style={elevButtonStyle}>-1cm</button>
-                        <button onClick={() => updateElevationOffset(0.01)} style={elevButtonStyle}>+1cm</button>
-                        <button onClick={() => updateElevationOffset(0.1)} style={elevButtonStyle}>+0.1m</button>
-                      </div>
-                    );
-                  }
-                })()}
-              </div>
-
-              {/* Scale section */}
-              <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', paddingRight: '5px' }}>
-                <div style={{ color: 'yellow', fontSize: '10px' }}>
-                  {newSystemReady ? 'NEW SYSTEM SCALE:' : 'SCALE:'} {manualScaleOffset.toFixed(1)}x
-                </div>
-                
-                {(() => {
-                  const scaleButtonStyle = {
-                    fontSize: '12px',
-                    padding: '4px 12px',
-                    backgroundColor: newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    color: 'white',
-                    cursor: 'pointer'
-                  };
-                  
-                  if (newSystemReady) {
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                        <button onClick={() => {
-                          const newScale = Math.max(0.1, manualScaleOffset - 0.2);
-                          setManualScaleOffset(newScale);
-                          if (onModelScale) onModelScale(newScale);
-                        }} style={scaleButtonStyle}>-0.2</button>
-                        <button onClick={() => {
-                          const newScale = Math.max(0.1, manualScaleOffset - 0.05);
-                          setManualScaleOffset(newScale);
-                          if (onModelScale) onModelScale(newScale);
-                        }} style={scaleButtonStyle}>-0.05</button>
-                        <button onClick={() => {
-                          setManualScaleOffset(1.0);
-                          setAccumulatedTransforms(prev => ({ ...prev, scale: 1.0 }));
-                          if (onModelReset) onModelReset();
-                        }} style={scaleButtonStyle}>1.0</button>
-                        <button onClick={() => {
-                          const newScale = Math.min(10, manualScaleOffset + 0.05);
-                          setManualScaleOffset(newScale);
-                          if (onModelScale) onModelScale(newScale);
-                        }} style={scaleButtonStyle}>+0.05</button>
-                        <button onClick={() => {
-                          const newScale = Math.min(10, manualScaleOffset + 0.2);
-                          setManualScaleOffset(newScale);
-                          if (onModelScale) onModelScale(newScale);
-                        }} style={scaleButtonStyle}>+0.2</button>
-                      </div>
-                    );
-                  } else {
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                        <button onClick={() => updateScaleOffset(-0.2)} style={scaleButtonStyle}>-0.2</button>
-                        <button onClick={() => updateScaleOffset(-0.05)} style={scaleButtonStyle}>-0.05</button>
-                        <button onClick={() => {
-                          setManualScaleOffset(1.0);
-                          setAccumulatedTransforms(prev => ({ ...prev, scale: 1.0 }));
-                          if (onModelScale) onModelScale(1.0);
-                          if (onModelReset) onModelReset();
-                        }} style={scaleButtonStyle}>1.0</button>
-                        <button onClick={() => updateScaleOffset(0.05)} style={scaleButtonStyle}>+0.05</button>
-                        <button onClick={() => updateScaleOffset(0.2)} style={scaleButtonStyle}>+0.2</button>
-                      </div>
-                    );
-                  }
-                })()}
-              </div>
-            </>
-          )}
-          
-          {isBottomDebugCollapsed && (
-            <div style={{ 
-              fontSize: '8px', 
-              opacity: 0.7, 
-              marginTop: '2px',
-              color: 'cyan'
-            }}>
-              ⬆ swipe up to expand
-            </div>
-          )}
-        </div>
-      )}
-      
+  
+      <ModelPositioningPanel
+        isCollapsed={isBottomDebugCollapsed}
+        isVisible={SHOW_DEBUG_PANEL && isInitialized}
+        data={{
+          accumulatedTransforms,
+          cameraLookDirection,
+          userPosition: currentUserPosition,
+          activeAnchorPosition,
+          coordinateScale,
+          newSystemReady,
+          experienceType,
+          experienceOffsets,
+          manualElevationOffset,
+          manualScaleOffset,
+          adjustedAnchorPosition,
+          anchorPosition,
+          gpsOffset,
+          globalElevationOffset: newPositioningSystem.getCurrentElevationOffset()
+        }}
+        callbacks={{
+          onElevationAdjust: newSystemReady ? newAdjustElevation : updateElevationOffset,
+          onAnchorAdjust: updateAnchorPosition,
+          onScaleAdjust: updateScaleOffset,
+          onModelScale,
+          onModelReset,
+          onElevationChanged
+        }}
+      />
       {/* Child components (AR objects will be added here) */}
       {children}
     </div>
