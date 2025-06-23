@@ -169,9 +169,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     if (USE_NEW_POSITIONING) {
       console.log('🔄 NEW SYSTEM: Resetting model');
       // Reset transforms first - keep same orientation as legacy for consistency
-      model.rotation.set(-Math.PI / 2, 0, 0); // Same Z-up to Y-up conversion as legacy
-   
-      newPositionObject(model, 'mac');
+      if (isUniversalMode) {
+        newPositionObject(model, 'mac', { useDebugOverride: true });
+      } else {
+        newPositionObject(model, 'mac');
+      }
       // Store the final scale after positioning system applies its changes
       activeScaleRef.current = model.scale.x;
       console.log('🔄 NEW: Reset completed with local scale:', initialScale);
