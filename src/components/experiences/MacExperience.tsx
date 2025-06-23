@@ -167,7 +167,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 
   const handleModelReset = (model: THREE.Points) => {
     if (USE_NEW_POSITIONING) {
-      console.log('🔄 NEW SYSTEM: Resetting model');
+     // console.log('🔄 NEW SYSTEM: Resetting model');
       // Reset transforms first - keep same orientation as legacy for consistency
       if (isUniversalMode) {
         newPositionObject(model, 'mac', { useDebugOverride: true });
@@ -375,11 +375,18 @@ const handleElevationChanged = () => {
   if (modelRef.current) {
     console.log('🧪 MacExperience: Repositioning model...');
     
-    // Skip positionModel and call newPositionObject directly
-    // since the elevation change came from a working positioning system
-    const success = newPositionObject(modelRef.current, 'mac');
+    // Check if using new positioning system
+    if (USE_NEW_POSITIONING && newPositionObject) {
+      // NEW SYSTEM: Use shared positioning
+      const success = newPositionObject(modelRef.current, 'mac');
+      console.log('🧪 MacExperience: NEW SYSTEM - Model repositioned:', success);
+    } else {
+      // LEGACY SYSTEM: Manual repositioning (if you have legacy logic)
+      console.log('🧪 MacExperience: LEGACY SYSTEM - Manual repositioning');
+      // Add your legacy repositioning logic here if needed
+      // For example, recalculating position from GPS coordinates
+    }
     
-    console.log('🧪 MacExperience: Model repositioned:', success);
   } else {
     console.warn('🧪 MacExperience: modelRef.current is null, cannot reposition');
   }
