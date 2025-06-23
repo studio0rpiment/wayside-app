@@ -73,8 +73,12 @@ function useEnhancedUserPosition() {
     getCurrentRadius,
     currentRadius,
     updateGlobalRadius,
-    resetGlobalRadius
+    resetGlobalRadius,
+    isUniversalMode: contextUniversalMode 
   } = useGeofenceContext();
+
+// Add this temporary console log
+// console.log("🧪 Context Universal Mode:", contextUniversalMode);
 
  const getBestUserPosition = useCallback((): [number, number] | null => {
     // Priority 1: Use averaged position if stable and accurate (≤10m)
@@ -103,13 +107,21 @@ function useEnhancedUserPosition() {
       const latest = positionHistory[positionHistory.length - 1];
       return latest.coordinates;
     }
+
+    if (contextUniversalMode) {
+    return preciseUserPosition || rawUserPosition || [-76.943, 38.9125]; // Kenilworth center fallback
+  }
     
     return null;
-  }, [preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable, positionHistory]);
+  }, [preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable, positionHistory, contextUniversalMode]);
 
   // ✅ STRICT function for starting AR (high quality requirements)
   const getArReadyPosition = useCallback((): [number, number] | null => {
     // Only return position if good enough for AR startup
+
+    if (contextUniversalMode) {
+      return preciseUserPosition || rawUserPosition || [-76.943, 38.9125]; // Kenilworth center fallback
+    }
     if (preciseUserPosition && isPositionStable && 
         currentAccuracy && currentAccuracy <= 10) {
       return preciseUserPosition;
@@ -170,7 +182,8 @@ const {
   const { 
     isInsideGeofence,
     getDistanceToPoint,
-    isTracking
+    isTracking,
+    isUniversalMode
   } = useGeofenceContext();
   
   // Track previous position for hexagonal entry direction detection
@@ -192,6 +205,25 @@ const {
 
   // ✅ ENHANCED: Calculate geofence info using enhanced context and precision data
   const enhancedGeofenceInfo = React.useMemo((): EnhancedGeofenceInfo => {
+
+    if (isUniversalMode) {
+      console.log('🌐 Universal Mode: Bypassing geofence checks');
+      return {
+        isInside: true, // Always "inside" in Universal Mode
+        distance: 0,
+        direction: null,
+        radius: 15,
+        radiusFeet: 49,
+        distanceFeet: 0,
+        shape: 'circle',
+        positionQuality: positionQuality || PositionQuality.EXCELLENT, // Show as excellent
+        positionAccuracy: 1, // Perfect accuracy in Universal Mode
+        isPositionStable: true // Always stable in Universal Mode
+      };
+    }
+
+
+
     if (!pointData || !pointData.iconName || !currentUserPosition) {
       console.log('❌ Missing required data for ExperienceModal:', { 
         hasPointData: !!pointData, 
@@ -395,26 +427,30 @@ const {
   const anchorData = getAnchorData();
 
   // ✅ FIXED: Show AR Experience Manager if active - use ANY available position once started
-  if (showArExperience && currentUserPosition && anchorData) {
+  if (showArExperience && (currentUserPosition || isUniversalMode)  && anchorData) {
+
+      const positionToUse = currentUserPosition || [-76.943, 38.9125]; // Kenilworth center as fallback
+
+
     return (
       <ExperienceManager
         isOpen={showArExperience}
         onClose={handleArExperienceClose}
         experienceType={getExperienceType(pointData.modalContent.experienceRoute) as any}
-        userPosition={currentUserPosition} // ✅ FIXED: Use currentUserPosition (any available), not arReadyPosition
+        userPosition={positionToUse} 
         anchorPosition={anchorData.position}
         anchorElevation={anchorData.elevation}
         geofenceId={pointData.iconName}
         coordinateScale={1.0}
+        isUniversalMode={isUniversalMode} 
       />
     );
   }
 
   // ✅ Check if position quality is good enough for AR STARTUP (not maintenance)
-  const isPositionGoodEnoughForArStartup = arReadyPosition !== null && 
-                                          currentAccuracy !== null && 
-                                          currentAccuracy <= 30 &&
-                                          positionQuality !== PositionQuality.UNACCEPTABLE;
+  const isPositionGoodEnoughForArStartup = isUniversalMode ||
+    arReadyPosition !== null && currentAccuracy !== null && 
+    currentAccuracy <= 30 && positionQuality !== PositionQuality.UNACCEPTABLE;
 
   // Show regular modal
   return (
@@ -596,10 +632,12 @@ const {
                 opacity: isPositionGoodEnoughForArStartup ? 1 : 0.6
               }}
             >
-              {isPositionGoodEnoughForArStartup 
-                ? (pointData.modalContent.buttonText || `Launch ${pointData.title}`)
-                : '⚠️ Waiting for better GPS accuracy for startup'
-              }
+              {isUniversalMode 
+                  ? `🌐 ${pointData.modalContent.buttonText || `Launch ${pointData.title}`}` // Universal Mode button
+                  : isPositionGoodEnoughForArStartup 
+                    ? (pointData.modalContent.buttonText || `Launch ${pointData.title}`)
+                    : '⚠️ Waiting for better GPS accuracy for startup'
+                }
             </button>
             
             {/* GPS improvement tip - only for startup */}

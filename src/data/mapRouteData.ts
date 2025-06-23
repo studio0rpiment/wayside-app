@@ -2,7 +2,7 @@
 
 import * as THREE from 'three';
 import { getAssetPath } from '../utils/assetPaths';
-import { getEnhancedAnchorPosition } from '../utils/geoArUtils';
+
 
 /**
  * Map route data with coordinates and SVG icon references
@@ -628,37 +628,25 @@ export const getArAnchorForPoint = (
   
   const anchor = point.properties.arAnchor;
   const currentRadius = GEOFENCE_CONFIG.DEFAULT_RADIUS; 
-
   const destination = point.properties.arAnchor.destination;
 
-  
-  // Use terrain-aware positioning
-  const result = getEnhancedAnchorPosition(
-    userPosition,
-    anchor.coordinates,
-    pointId, // Use pointId as experience type
-    anchor.heightMapScale || 1.0
-  );
+  // ✅ SIMPLIFIED: Just use the anchor elevation directly, no terrain utils
+  const elevation = anchor.elevation || 0;
   
   return {
     position: anchor.coordinates,
     destination: destination,
-    elevation: result.terrainElevation !== null 
-      ? result.terrainElevation + result.experienceOffset 
-      : anchor.elevation || 0,
+    elevation,
     orientation: anchor.orientation || 0,
     scale: anchor.scale || 1.0,
-    usedTerrain: result.usedTerrain,
+    usedTerrain: false, // Always false since we're not using terrain
     
-    // NEW: Geofence configuration
-    
-  geofenceShape: anchor.geofenceShape || 'circle',
-  radius: currentRadius,
-  directionSensitive: anchor.directionSensitive || false
+    // Geofence configuration
+    geofenceShape: anchor.geofenceShape || 'circle',
+    radius: currentRadius,
+    directionSensitive: anchor.directionSensitive || false
   };
 };
-
-
 
 // NEW: Enhanced geofence checking function
 export const checkGeofenceWithDirection = (

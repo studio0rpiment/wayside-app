@@ -36,6 +36,7 @@ interface ExperienceManagerProps {
   geofenceId?: string;
   // Optional customization
   coordinateScale?: number;
+  isUniversalMode?: boolean
 }
 
 /**
@@ -92,6 +93,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   anchorElevation = 2.0,
   geofenceId,
   coordinateScale = 1.0,
+  isUniversalMode
 }) => {
 
   const { startArExperience, endArExperience } = useSystemOptimization();
@@ -342,6 +344,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       onElevationChanged: registerElevationChangeHandler,
       // ✅ NEW: Pass shared AR positioning to all experiences
       sharedARPositioning: sharedARPositioning,
+      isUniversalMode: isUniversalMode,
     };
 
     // Only include AR props if they have valid values
@@ -368,7 +371,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     registerSwipeUpHandler,
     registerSwipeDownHandler,
     registerElevationChangeHandler,
-    sharedARPositioning // ✅ NEW: Include shared positioning in dependencies
+    sharedARPositioning,
+    isUniversalMode
   ]);
 
   // Render the appropriate 3D experience

@@ -1,6 +1,6 @@
 // src/utils/geoArUtils.ts - Enhanced with terrain awareness
 import * as THREE from 'three';
-import { getElevationAtGPS, gpsToThreeJsPositionWithTerrain } from './terrainUtils';
+
 
 /**
  * Enhanced utilities for converting GPS coordinates to AR 3D space
@@ -150,17 +150,17 @@ export function gpsToThreeJsPositionTerrain(
 } {
   try {
     // Try to use terrain-aware positioning
-    const result = gpsToThreeJsPositionWithTerrain(
-      userGps, 
-      anchorGps, 
-      elevationOffset, 
-      coordinateScale
-    );
+  const fallbackPosition = gpsToThreeJsPosition(
+    userGps, 
+    anchorGps, 
+    fallbackElevation + elevationOffset, // Add offset to fallback
+    coordinateScale
+  );
     
     return {
-      position: result.position,
-      terrainElevation: result.terrainElevation,
-      usedTerrain: result.terrainElevation !== null
+      position: fallbackPosition,
+      terrainElevation: null,
+      usedTerrain: false
     };
     
   } catch (error) {
@@ -290,74 +290,74 @@ export function getEnhancedAnchorPosition(
 /**
  * Validate terrain data availability for your anchor positions
  */
-export function validateTerrainCoverage(anchors: Array<{ name: string; coordinates: [number, number] }>): void {
-  // console.log('🔍 Validating terrain coverage for anchors...');
+// export function validateTerrainCoverage(anchors: Array<{ name: string; coordinates: [number, number] }>): void {
+//   // console.log('🔍 Validating terrain coverage for anchors...');
   
-  let terrainAvailable = 0;
-  let noTerrain = 0;
+//   let terrainAvailable = 0;
+//   let noTerrain = 0;
   
-  anchors.forEach(anchor => {
-    const [lon, lat] = anchor.coordinates;
-    const elevation = getElevationAtGPS(lon, lat);
-    if (elevation !== null) {
-      console.log(`✅ ${anchor.name}: ${elevation.toFixed(2)}m elevation`);
-      terrainAvailable++;
-      // console.log(`✅ ${anchor.name}: ${elevation.toFixed(2)}m elevation`);
-    } else {
-      console.log(`❌ ${anchor.name}: No terrain data`);
-      noTerrain++;
-      // console.log(`❌ ${anchor.name}: No terrain data`);
-    }
-  });
+//   anchors.forEach(anchor => {
+//     const [lon, lat] = anchor.coordinates;
+//     const elevation = getElevationAtGPS(lon, lat);
+//     if (elevation !== null) {
+//       console.log(`✅ ${anchor.name}: ${elevation.toFixed(2)}m elevation`);
+//       terrainAvailable++;
+//       // console.log(`✅ ${anchor.name}: ${elevation.toFixed(2)}m elevation`);
+//     } else {
+//       console.log(`❌ ${anchor.name}: No terrain data`);
+//       noTerrain++;
+//       // console.log(`❌ ${anchor.name}: No terrain data`);
+//     }
+//   });
   
-  // console.log(`📊 Terrain coverage: ${terrainAvailable}/${anchors.length} anchors have elevation data`);
-}
+//   // console.log(`📊 Terrain coverage: ${terrainAvailable}/${anchors.length} anchors have elevation data`);
+// }
 
 /**
  * Test function for terrain-aware positioning with your specific anchors
  */
-export function testTerrainPositioning(): void {
-  const testUserPosition: [number, number] = [-76.943, 38.9125]; // Center of gardens
+// export function testTerrainPositioning(): void {
+//   const testUserPosition: [number, number] = [-76.943, 38.9125]; // Center of gardens
   
-  const testAnchors = [
-    { name: 'mac', coordinates: [-76.942076, 38.912485] as [number, number], experience: 'mac' },
-    { name: 'lotus', coordinates: [-76.942954, 38.912327] as [number, number], experience: 'lotus' },
-    { name: 'volunteers', coordinates: [-76.944148, 38.9125] as [number, number], experience: 'volunteers' },
-    { name: 'cattail', coordinates: [-76.947519, 38.911934] as [number, number], experience: 'cattail' }
-  ];
+//   const testAnchors = [
+//     { name: 'mac', coordinates: [-76.942076, 38.912485] as [number, number], experience: 'mac' },
+//     { name: 'lotus', coordinates: [-76.942954, 38.912327] as [number, number], experience: 'lotus' },
+//     { name: 'volunteers', coordinates: [-76.944148, 38.9125] as [number, number], experience: 'volunteers' },
+//     { name: 'cattail', coordinates: [-76.947519, 38.911934] as [number, number], experience: 'cattail' }
+//   ];
   
-  // console.log('🧪 Testing terrain-aware positioning...');
-  // console.log(`👤 User position: ${testUserPosition[0]}, ${testUserPosition[1]}`);
+//   // console.log('🧪 Testing terrain-aware positioning...');
+//   // console.log(`👤 User position: ${testUserPosition[0]}, ${testUserPosition[1]}`);
   
-  testAnchors.forEach(anchor => {
-    // console.log(`\n🎯 Testing ${anchor.name} (${anchor.experience}):`);
+//   testAnchors.forEach(anchor => {
+//     // console.log(`\n🎯 Testing ${anchor.name} (${anchor.experience}):`);
     
-    // Test original method
-    const originalPos = gpsToThreeJsPosition(
-      testUserPosition,
-      anchor.coordinates,
-      2.0, // Fixed elevation
-      1.0
-    );
+//     // Test original method
+//     const originalPos = gpsToThreeJsPosition(
+//       testUserPosition,
+//       anchor.coordinates,
+//       2.0, // Fixed elevation
+//       1.0
+//     );
     
-    // Test terrain-aware method
-    const terrainPos = getEnhancedAnchorPosition(
-      testUserPosition,
-      anchor.coordinates,
-      anchor.experience,
-      1.0
-    );
+//     // Test terrain-aware method
+//     const terrainPos = getEnhancedAnchorPosition(
+//       testUserPosition,
+//       anchor.coordinates,
+//       anchor.experience,
+//       1.0
+//     );
     
-    // console.log(`   Original: (${originalPos.x.toFixed(2)}, ${originalPos.y.toFixed(2)}, ${originalPos.z.toFixed(2)})`);
-    // console.log(`   Terrain:  (${terrainPos.position.x.toFixed(2)}, ${terrainPos.position.y.toFixed(2)}, ${terrainPos.position.z.toFixed(2)})`);
-    // console.log(`   Method: ${terrainPos.usedTerrain ? 'LiDAR elevation' : 'Fallback'}`);
+//     // console.log(`   Original: (${originalPos.x.toFixed(2)}, ${originalPos.y.toFixed(2)}, ${originalPos.z.toFixed(2)})`);
+//     // console.log(`   Terrain:  (${terrainPos.position.x.toFixed(2)}, ${terrainPos.position.y.toFixed(2)}, ${terrainPos.position.z.toFixed(2)})`);
+//     // console.log(`   Method: ${terrainPos.usedTerrain ? 'LiDAR elevation' : 'Fallback'}`);
     
-    if (terrainPos.terrainElevation !== null) {
-      // console.log(`   Ground level: ${terrainPos.terrainElevation.toFixed(2)}m`);
-      // console.log(`   Experience offset: +${terrainPos.experienceOffset}m`);
-    }
-  });
-}
+//     if (terrainPos.terrainElevation !== null) {
+//       // console.log(`   Ground level: ${terrainPos.terrainElevation.toFixed(2)}m`);
+//       // console.log(`   Experience offset: +${terrainPos.experienceOffset}m`);
+//     }
+//   });
+// }
 
 //********** */ Enhanced version of gpsToThreeJsPosition For Hexagon Offset
 export function gpsToThreeJsPositionWithEntryOffset(

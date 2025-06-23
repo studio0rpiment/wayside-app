@@ -29,7 +29,7 @@ interface MacExperienceProps {
   onExperienceReady?: () => void;
   onElevationChanged?: (handler: () => void) => void;
   sharedARPositioning?: ReturnType<typeof useARPositioning>;
-
+  isUniversalMode?: boolean;
 
 
 }
@@ -48,7 +48,8 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   onSwipeDown,
   onExperienceReady,
   onElevationChanged,
-  sharedARPositioning
+  sharedARPositioning,
+  isUniversalMode = false 
  
 }) => {
 
@@ -147,7 +148,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       return false;
     }
       // console.log('🧪 NEW: Scale before positioning:', model.scale.x);
-
+    if (isUniversalMode) {
+      console.log('🌐 Universal Mode: Forcing debug position for Mac');
+      const success = newPositionObject(model, 'mac', { useDebugOverride: true });
+      return success;
+    }
     
     // Pass our locally calculated scale to the world system
     const success = newPositionObject(model, 'mac');
@@ -428,7 +433,8 @@ useEffect(() => {
     loadingDiv.style.padding = '20px';
     loadingDiv.style.borderRadius = '10px';
     loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = `Loading MAC Model...<br><small>Using ${USE_NEW_POSITIONING ? 'World Coordinate' : 'Legacy GPS'} System</small>`;
+    loadingDiv.innerHTML = `Loading MAC Model...<br><small>Using ${USE_NEW_POSITIONING ? 'World Coordinate' : 'Legacy GPS'} System${isUniversalMode ? ' - Universal Mode' : ''}</small>`;
+;
     document.body.appendChild(loadingDiv);
 
     // Load the PLY model

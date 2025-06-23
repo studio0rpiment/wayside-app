@@ -100,6 +100,7 @@ export const useGeofenceBasics = () => {
     isInsideGeofence: context.isInsideGeofence,
     getDistanceTo: context.getDistanceTo,
     getDistanceToPoint: context.getDistanceToPoint,
-    getCurrentRadius: context.getCurrentRadius
+    getCurrentRadius: context.getCurrentRadius,
+     isUniversalMode: context.isUniversalMode
   };
 };

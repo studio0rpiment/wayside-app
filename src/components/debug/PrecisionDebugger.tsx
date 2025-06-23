@@ -42,7 +42,8 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   const [showHistory, setShowHistory] = useState(false);
   const [displayRadius, setDisplayRadius] = useState(currentRadius);
 
-  const { updateGlobalRadius, currentRadius: contextRadius } = useGeofenceContext();
+  const { updateGlobalRadius, currentRadius: contextRadius, isUniversalMode } = useGeofenceContext();
+  
 
   // Function to change radius
   const changeRadius = (newRadius: number) => {
@@ -221,6 +222,13 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
             <span>Stable:</span>
             <span style={{ color: isPositionStable ? '#10B981' : '#F59E0B' }}>
               {isPositionStable ? '✅ YES' : '⏳ NO'}
+            </span>
+          </div>
+    {/* Universal Mode indicator */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px' }}>
+            <span>Universal:</span>
+            <span style={{ color: isUniversalMode ? '#FFD700' : '#6B7280' }}>
+              {isUniversalMode ? '🌐 ON' : '📍 OFF'}
             </span>
           </div>
         </div>

@@ -69,7 +69,7 @@ export function useEnhancedGeofenceManager(
     stabilityDuration = 5000         // For 5 seconds
   } = options;
   
-  // Core state
+//*********** STATE ********** */
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [activeGeofences, setActiveGeofences] = useState<GeofenceEntry[]>([]);
   const [isTracking, setIsTracking] = useState(false);
@@ -80,11 +80,14 @@ export function useEnhancedGeofenceManager(
   const [isPositionStable, setIsPositionStable] = useState(false);
   const [positionHistory, setPositionHistory] = useState<EnhancedPositionData[]>([]);
   const [averagedPosition, setAveragedPosition] = useState<[number, number] | null>(null);
+  
+  const [globalRadius, setGlobalRadius] = useState(GEOFENCE_CONFIG.DEFAULT_RADIUS);
 
-    const [globalRadius, setGlobalRadius] = useState(GEOFENCE_CONFIG.DEFAULT_RADIUS);
+  const [isUniversalMode, setIsUniversalMode] = useState(false);
+
 
   
-  // Refs
+//********* REFS REFS REFS ******* */
   const watchIdRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
   const lastStableCheckRef = useRef<number>(0);
@@ -189,6 +192,54 @@ export function useEnhancedGeofenceManager(
       return distance <= stabilityThreshold;
     });
   }, [stabilityDuration, stabilityThreshold]);
+
+//****************** */ Check if Universal Mode should be activated
+    const checkUniversalMode = useCallback((): boolean => {
+    // Development/Testing environment
+    if (process.env.NODE_ENV === 'development' || (window as any).arTestingOverride) {
+        return true;
+    }
+
+    // Desktop/Non-mobile devices (no GPS hardware)
+    if (!('geolocation' in navigator)) {
+        return true;
+    }
+
+    // Location permissions denied
+    if (!isPermissionGranted(PermissionType.LOCATION)) {
+        return true;
+    }
+
+    // GPS quality unacceptable
+    if (positionQuality === PositionQuality.UNACCEPTABLE) {
+        return true;
+    }
+
+    // Location services unavailable (no tracking after reasonable time)
+    if (!isTracking && isMountedRef.current) {
+        return true;
+    }
+
+    // User not inside Kenilworth Gardens (simplified check)
+    if (userPosition) {
+        const [lon, lat] = userPosition;
+        const kenilworthBounds = {
+        minLon: -76.950, maxLon: -76.935,
+        minLat: 38.910, maxLat: 38.916
+        };
+        
+        const outsideKenilworth = lon < kenilworthBounds.minLon || 
+                                lon > kenilworthBounds.maxLon ||
+                                lat < kenilworthBounds.minLat || 
+                                lat > kenilworthBounds.maxLat;
+        
+        if (outsideKenilworth) {
+        return true;
+        }
+    }
+
+    return false;
+    }, [positionQuality, isTracking, userPosition, isPermissionGranted]);
   
   // Process new GPS position with enhanced precision handling
   const processNewPosition = useCallback((position: GeolocationPosition) => {
@@ -338,6 +389,15 @@ export function useEnhancedGeofenceManager(
       processGeofences(userPosition);
     }
   }, [userPosition, processGeofences]);
+
+//************* */ Monitor Universal Mode conditions
+    useEffect(() => {
+    const shouldBeUniversal = checkUniversalMode();
+    if (shouldBeUniversal !== isUniversalMode) {
+        setIsUniversalMode(shouldBeUniversal);
+        debugLog(`Universal Mode ${shouldBeUniversal ? 'ACTIVATED' : 'DEACTIVATED'}`);
+    }
+    }, [checkUniversalMode, isUniversalMode, debugLog]);
   
   // Enhanced start tracking with precision monitoring
   const startTracking = useCallback(async () => {
@@ -430,76 +490,78 @@ export function useEnhancedGeofenceManager(
     };
   }, [debugLog]);
   
-  // Enhanced public API
-  return {
-    // Original API
-    userPosition,
-    activeGeofences,
-    isTracking,
-    startTracking,
-    stopTracking,
-    
-    // Enhanced precision data
-    currentAccuracy,
-    positionQuality,
-    isPositionStable,
-    averagedPosition,
-    positionHistory: positionHistory.slice(-3), // Last 3 positions for debugging
+//*********************** */ API
+    return {
+        // Original API
+        userPosition,
+        activeGeofences,
+        isTracking,
+        startTracking,
+        stopTracking,
+        
+        // Enhanced precision data
+        currentAccuracy,
+        positionQuality,
+        isPositionStable,
+        averagedPosition,
+        positionHistory: positionHistory.slice(-3), // Last 3 positions for debugging
 
-    getCurrentRadius,
-    updateGlobalRadius,
-    resetGlobalRadius,
-    currentRadius: globalRadius,
-    
-    // Enhanced utilities
-    simulatePosition: (position: [number, number]) => {
-    //   debugLog('=== SIMULATING ENHANCED POSITION ===');
-      const simulatedData: EnhancedPositionData = {
-        coordinates: position,
-        accuracy: 1.0, // Perfect accuracy for simulation
-        timestamp: Date.now()
-      };
-      setPositionHistory([simulatedData]);
-      setUserPosition(position);
-      setCurrentAccuracy(1.0);
-      setPositionQuality(PositionQuality.EXCELLENT);
-      setIsPositionStable(true);
-    },
-    
-    isInsideGeofence: (geofenceId: string) => {
-      return activeGeofences.some(g => g.id === geofenceId);
-    },
-    
-    getDistanceTo: (geofenceId: string) => {
-      const geofence = activeGeofences.find(g => g.id === geofenceId);
-      return geofence?.distance ?? null;
-    },
-    
-    getDistanceToPoint: (pointId: string) => {
-      if (!userPosition || !mapRouteData?.features) return null;
-      
-      const pointFeature = mapRouteData.features.find(
-        (feature: { properties: { iconName: string; }; }) => feature.properties.iconName === pointId
-      );
-      
-      if (!pointFeature) return null;
-      
-      try {
-        return calculateDistance(userPosition, pointFeature.geometry.coordinates);
-      } catch (error) {
-        console.error('Error calculating distance:', error);
-        return null;
-      }
-    },
-    
-    
-    getPositionStats: () => ({
-      accuracy: currentAccuracy,
-      quality: positionQuality,
-      isStable: isPositionStable,
-      historyLength: positionHistory.length,
-      hasPosition: !!userPosition,
-      isTracking
-    })
-  };
+        getCurrentRadius,
+        updateGlobalRadius,
+        resetGlobalRadius,
+        currentRadius: globalRadius,
+
+        isUniversalMode,
+        
+        // Enhanced utilities
+        simulatePosition: (position: [number, number]) => {
+        //   debugLog('=== SIMULATING ENHANCED POSITION ===');
+        const simulatedData: EnhancedPositionData = {
+            coordinates: position,
+            accuracy: 1.0, // Perfect accuracy for simulation
+            timestamp: Date.now()
+        };
+        setPositionHistory([simulatedData]);
+        setUserPosition(position);
+        setCurrentAccuracy(1.0);
+        setPositionQuality(PositionQuality.EXCELLENT);
+        setIsPositionStable(true);
+        },
+        
+        isInsideGeofence: (geofenceId: string) => {
+        return activeGeofences.some(g => g.id === geofenceId);
+        },
+        
+        getDistanceTo: (geofenceId: string) => {
+        const geofence = activeGeofences.find(g => g.id === geofenceId);
+        return geofence?.distance ?? null;
+        },
+        
+        getDistanceToPoint: (pointId: string) => {
+        if (!userPosition || !mapRouteData?.features) return null;
+        
+        const pointFeature = mapRouteData.features.find(
+            (feature: { properties: { iconName: string; }; }) => feature.properties.iconName === pointId
+        );
+        
+        if (!pointFeature) return null;
+        
+        try {
+            return calculateDistance(userPosition, pointFeature.geometry.coordinates);
+        } catch (error) {
+            console.error('Error calculating distance:', error);
+            return null;
+        }
+        },
+        
+        
+        getPositionStats: () => ({
+        accuracy: currentAccuracy,
+        quality: positionQuality,
+        isStable: isPositionStable,
+        historyLength: positionHistory.length,
+        hasPosition: !!userPosition,
+        isTracking
+        })
+    };
 }

@@ -6,6 +6,7 @@ import { AnchorManager, WorldAnchor } from './AnchorManager';
 export interface UserPositionInput {
   gpsPosition?: [number, number] | null;
   worldPosition?: THREE.Vector3 | null;
+  isUniversalMode?: boolean;
 }
 
 export interface ExperiencePositionResult {
@@ -50,6 +51,11 @@ export class ARPositioningManager {
   private debugMode: boolean = false;
   private globalDebugPosition: THREE.Vector3 = new THREE.Vector3(0, 0, -5);
 
+  private positionCache: Map<string, {
+  result: ExperiencePositionResult;
+  cacheKey: string;
+  }> = new Map();
+
   constructor(worldSystem: WorldCoordinateSystem, anchorManager: AnchorManager) {
     this.worldSystem = worldSystem;
     this.anchorManager = anchorManager;
@@ -65,7 +71,19 @@ export class ARPositioningManager {
     userInput: UserPositionInput,
     options: PositioningOptions = {}
   ): ExperiencePositionResult | null {
+
+//****** */ Check cache first
+    const cacheKey = this.generateCacheKey(experienceId, userInput, options);
+    const cached = this.positionCache.get(experienceId);
     
+    if (cached && cached.cacheKey === cacheKey) {
+      return cached.result; // Return cached result without console logs
+    }
+    // Clear old cache entry
+    this.positionCache.delete(experienceId);
+    
+//***** FIND ANCHOR */    
+
     const anchor = this.anchorManager.getAnchor(experienceId);
     if (!anchor) {
       console.warn(`🎯 ARPositioningManager: No anchor found for ${experienceId}`);
@@ -78,26 +96,43 @@ export class ARPositioningManager {
 
     // Get anchor world position (with debug override support)
     let anchorWorldPosition: THREE.Vector3;
-    
-   if (this.debugMode || options.useDebugOverride) {
-        if (options.forcePosition) {
-            anchorWorldPosition = options.forcePosition.clone();
-            console.log("force Position")
+
+    // ✅ DEBUG: Check for Universal Mode from user input
+    const isUniversalMode = userInput.isUniversalMode || false;
+
+    console.log("🔍 Positioning Debug:", {
+      debugMode: this.debugMode,
+      useDebugOverride: options.useDebugOverride,
+      isUniversalMode,
+      hasForcePosition: !!options.forcePosition,
+      userWorldPosition: !!userWorldPosition
+    });
+
+    if (this.debugMode || options.useDebugOverride || isUniversalMode) {
+      if (options.forcePosition) {
+        anchorWorldPosition = options.forcePosition.clone();
+        console.log("🎯 Using force position");
+      } else {
+        // Make debug position relative to user, not world origin
+        if (userWorldPosition) {
+          anchorWorldPosition = userWorldPosition.clone().add(this.globalDebugPosition);
+          console.log("🌐 Universal Mode: Using debug position relative to user", {
+            userWorldPosition: userWorldPosition.toArray(),
+            globalDebugPosition: this.globalDebugPosition.toArray(),
+            finalPosition: anchorWorldPosition.toArray()
+          });
         } else {
-            // Make debug position relative to user, not world origin
-            if (userWorldPosition) {
-            anchorWorldPosition = userWorldPosition.clone().add(this.globalDebugPosition);
-            console.log(anchorWorldPosition)
-            
-            } else {
-            // Fallback if no user position available
-            anchorWorldPosition = this.globalDebugPosition.clone();
-            console.log("fallback postition")
-            }
+          // Fallback if no user position available
+          anchorWorldPosition = this.globalDebugPosition.clone();
+          console.log("🌐 Universal Mode: Using fallback debug position", {
+            globalDebugPosition: this.globalDebugPosition.toArray()
+          });
         }
-        } else {
-        anchorWorldPosition = anchor.worldPosition.clone();
-        }
+      }
+    } else {
+      anchorWorldPosition = anchor.worldPosition.clone();
+      console.log("📍 Using normal anchor position");
+    }
 
     // Apply elevation adjustments to address "too high" issue
     const totalElevationOffset = this.globalElevationOffset + (options.manualElevationOffset || 0);
@@ -121,20 +156,46 @@ export class ARPositioningManager {
     // Apply scale adjustments
     const finalScale = anchor.scale * (options.manualScale || 1.0);
 
-    return {
+    const result: ExperiencePositionResult = {
       worldPosition: anchorWorldPosition,
       relativeToUser,
-        rotation: new THREE.Euler(anchor.rotation.x, anchor.rotation.y + Math.PI, anchor.rotation.z), // Add 180° Y rotation
-
+      rotation: new THREE.Euler(anchor.rotation.x, anchor.rotation.y + Math.PI, anchor.rotation.z),
       scale: finalScale,
-      isUsingDebugMode: this.debugMode || !!options.useDebugOverride,
+      isUsingDebugMode: this.debugMode || !!options.useDebugOverride || isUniversalMode,
       distanceFromUser,
-      
       anchor,
       userWorldPosition,
       userGpsPosition
     };
-  }
+
+    // ✅ NEW: Cache the result
+    this.positionCache.set(experienceId, {
+      result,
+      cacheKey
+    });
+
+    // Only log when we actually calculate (not from cache)
+    console.log("🎯 Calculated new position for", experienceId);
+
+    return result;
+    }
+
+  /**
+ * Generate cache key for position calculation
+ */
+    private generateCacheKey(
+      experienceId: string,
+      userInput: UserPositionInput,
+      options: PositioningOptions
+    ): string {
+      const userPos = userInput.gpsPosition || userInput.worldPosition?.toArray() || [0,0,0];
+      const isUniversal = userInput.isUniversalMode || false;
+      const debugOverride = options.useDebugOverride || false;
+      const manualElevation = options.manualElevationOffset || 0;
+      const manualScale = options.manualScale || 1;
+      
+      return `${experienceId}:${userPos.join(',')}:${isUniversal}:${this.debugMode}:${debugOverride}:${manualElevation}:${manualScale}:${this.globalElevationOffset}`;
+    }
 
 /**
    * Adjust anchor position by GPS offset

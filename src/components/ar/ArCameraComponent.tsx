@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { calculateBearing, gpsToThreeJsPosition, gpsToThreeJsPositionWithEntryOffset } from '../../utils/geoArUtils';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
-import { validateTerrainCoverage, getEnhancedAnchorPosition } from '../../utils/geoArUtils'
+
 
 
 
