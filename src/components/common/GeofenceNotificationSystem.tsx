@@ -5,6 +5,7 @@ import ExperienceModal from './ExperienceModal';
 import { useGeofenceContext } from '../../context/GeofenceContext'; // Use context instead
 
 import { routePointsData } from '../../data/mapRouteData';
+import mapboxgl from 'mapbox-gl';
 
 // Define proper types for the modal state
 interface ModalState {
@@ -12,17 +13,15 @@ interface ModalState {
   pointData: any | null;
 }
 
-// Add children prop
+
 interface GeofenceNotificationSystemProps {
   children?: React.ReactNode;
+  map?: mapboxgl.Map;
 }
 
-const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({ children }) => {
+const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({ children, map }) => {
   const navigate = useNavigate();
-  
-  // Use the centralized geofence manager HERE (only instance)
 
-  
    const {
     userPosition,
     activeGeofences,
@@ -41,9 +40,18 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
     isOpen: false,
     pointData: null
   });
+
+    // Track zoom state
+  const [isZoomedIn, setIsZoomedIn] = useState(false);
+  const [originalMapState, setOriginalMapState] = useState<{
+    center: [number, number];
+    zoom: number;
+    bearing: number;
+  } | null>(null);
+    
   
   // Track geofence entries and show notifications
-  useEffect(() => {
+ useEffect(() => {
     if (!activeGeofences || activeGeofences.length === 0) {
       return;
     }
@@ -57,12 +65,6 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
       id => !previousActiveIds.includes(id)
     );
     
-    // console.log('Geofence check:', {
-    //   currentActive: currentActiveIds,
-    //   previousActive: previousActiveIds,
-    //   newlyEntered: newlyEnteredIds
-    // });
-    
     // Handle newly entered geofences
     if (newlyEnteredIds.length > 0) {
       // Get the first new geofence to show
@@ -70,7 +72,6 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
       
       // Only show notification if we haven't already notified for this geofence
       if (!notifiedGeofences.includes(newGeofenceId)) {
-        // console.log('Showing notification for new geofence:', newGeofenceId);
         
         // Find the corresponding point data
         const pointFeature = routePointsData.features.find(
@@ -78,7 +79,29 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
         );
         
         if (pointFeature && pointFeature.properties) {
-          // Show modal with notification styling
+          // NEW: Handle map zoom BEFORE showing modal
+          if (map && !isZoomedIn) {
+            // Store original map state for restoration later
+            setOriginalMapState({
+              center: [map.getCenter().lng, map.getCenter().lat],
+              zoom: map.getZoom(),
+              bearing: map.getBearing()
+            });
+            
+            // Zoom to experience location - CENTER THE MARKER
+            map.flyTo({
+              center: pointFeature.geometry.coordinates, // Centers the marker
+              zoom: 19, // Zoom level 19
+              bearing: map.getBearing(), // Keep current bearing
+              duration: 1500, // Smooth animation
+              essential: true // Reduce motion for accessibility
+            });
+            
+            setIsZoomedIn(true);
+            console.log(`🔍 Zoomed to level 19, centered on: ${pointFeature.properties.title}`);
+          }
+          
+          // EXISTING: Show modal with notification styling
           setModalState({
             isOpen: true,
             pointData: pointFeature.properties
@@ -96,7 +119,32 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
     // Update previous active geofences for next comparison
     previousActiveGeofencesRef.current = currentActiveIds;
     
-  }, [activeGeofences, notifiedGeofences]);
+  }, [activeGeofences, notifiedGeofences, map, isZoomedIn]); 
+
+
+  //handle zooming out when leaving all geofences
+useEffect(() => {
+    if (activeGeofences.length === 0 && isZoomedIn && originalMapState && map) {
+      console.log('🔍 Zooming back out - no active geofences');
+      
+      // Restore original map view
+      map.flyTo({
+        center: originalMapState.center,
+        zoom: originalMapState.zoom,
+        bearing: originalMapState.bearing,
+        duration: 1500,
+        essential: true
+      });
+      
+      setIsZoomedIn(false);
+      setOriginalMapState(null);
+      
+      // Clear notified geofences when user moves away from all geofences
+      console.log('User left all geofences, clearing notification history');
+      setNotifiedGeofences([]);
+    }
+  }, [activeGeofences.length, isZoomedIn, originalMapState, map]);
+
   
   // Show notification effects (sound, vibration, etc.)
   const showNotificationEffects = (title: string) => {

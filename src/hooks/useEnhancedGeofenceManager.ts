@@ -49,24 +49,22 @@ export interface GeofenceEntry {
   properties: any;
 }
 
-// Enhanced geofence manager with precision improvements
+
 export function useEnhancedGeofenceManager(
   mapRouteData: any,
-  options: EnhancedGeofenceOptions = {}
+  options: EnhancedGeofenceOptions
 ) {
   const {
-    proximityThreshold = 5,
-    debugMode = false,
-    autoStart = false,
-    
-    // Precision defaults
-    maxAcceptableAccuracy = 10,      // Only use readings better than 10m
-    minAcceptableAccuracy = 50,      // Stop functioning if worse than 30m
-    positionAveragingWindow = 5,     // Average last 5 positions
-    qualityUpdateInterval = 2000,    // Update quality every 2 seconds
-    requireStablePosition = true,    // Wait for stable positioning
-    stabilityThreshold = 3,          // Must stay within 3m
-    stabilityDuration = 5000         // For 5 seconds
+    proximityThreshold,
+    debugMode,
+    autoStart,
+    maxAcceptableAccuracy,
+    minAcceptableAccuracy,
+    positionAveragingWindow,
+    qualityUpdateInterval,
+    requireStablePosition,
+    stabilityThreshold,
+    stabilityDuration
   } = options;
   
 //*********** STATE ********** */
@@ -180,7 +178,7 @@ export function useEnhancedGeofenceManager(
     
     const now = Date.now();
     const recentPositions = history.filter(pos => 
-      now - pos.timestamp <= stabilityDuration
+      now - pos.timestamp <= (stabilityDuration ?? 5000)
     );
     
     if (recentPositions.length < 2) return false;
@@ -189,7 +187,7 @@ export function useEnhancedGeofenceManager(
     const firstPos = recentPositions[0].coordinates;
     return recentPositions.every(pos => {
       const distance = calculateDistance(firstPos, pos.coordinates);
-      return distance <= stabilityThreshold;
+      return distance <= (stabilityThreshold ?? 3);
     });
   }, [stabilityDuration, stabilityThreshold]);
 
@@ -279,7 +277,7 @@ export function useEnhancedGeofenceManager(
     // });
     
     // Check if accuracy is acceptable
-    if (coords.accuracy > minAcceptableAccuracy) {
+    if (coords.accuracy > (minAcceptableAccuracy ?? 10)) {
     //   debugLog('Position accuracy too poor, ignoring', {
     //     accuracy: coords.accuracy,
     //     maxAcceptable: minAcceptableAccuracy
@@ -292,14 +290,14 @@ export function useEnhancedGeofenceManager(
       const newHistory = [...prev, enhancedPosition];
       
       // Keep only recent positions within window
-      const cutoffTime = timestamp - (qualityUpdateInterval * positionAveragingWindow);
+      const cutoffTime = timestamp - (qualityUpdateInterval ?? 2000 * (positionAveragingWindow ?? 8));
       const trimmedHistory = newHistory.filter(pos => pos.timestamp > cutoffTime);
       
       // Limit to window size
-      return trimmedHistory.slice(-positionAveragingWindow);
+      return trimmedHistory.slice(- (positionAveragingWindow ?? 8));
     });
     
-  }, [maxAcceptableAccuracy, minAcceptableAccuracy, getPositionQuality, qualityUpdateInterval, positionAveragingWindow, debugLog]);
+  }, [maxAcceptableAccuracy, minAcceptableAccuracy, getPositionQuality, qualityUpdateInterval,  (positionAveragingWindow ?? 8), debugLog]);
   
   // Update averaged position and stability when history changes
   useEffect(() => {
@@ -323,7 +321,7 @@ export function useEnhancedGeofenceManager(
     
     // Only update user position if we have good enough accuracy
     const latestPosition = positionHistory[positionHistory.length - 1];
-    const shouldUsePosition = latestPosition.accuracy <= maxAcceptableAccuracy && 
+    const shouldUsePosition = latestPosition.accuracy <= (maxAcceptableAccuracy ?? 50) && 
                              (!requireStablePosition || stable);
     
     if (shouldUsePosition) {
@@ -349,7 +347,7 @@ export function useEnhancedGeofenceManager(
     }
     
     const radius = typeof window !== 'undefined' ? 
-      window.geofenceDebuggerRadius ?? proximityThreshold : proximityThreshold;
+      window.geofenceDebuggerRadius ?? proximityThreshold ?? 5 : proximityThreshold ?? 5;
     
     // debugLog('Processing geofences with enhanced position', {
     //   position,

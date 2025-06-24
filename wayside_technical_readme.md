@@ -96,4 +96,8 @@ There have been sveral additions
 
 ## Established a World Coordinate System for placing the anchors/models
 
+## created an AR engine that ARCamera uses
+
+## Created a universal mode that allows users to see models in the 'override' position
+
 updated: 	unix:1750632356

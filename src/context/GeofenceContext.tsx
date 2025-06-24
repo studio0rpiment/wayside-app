@@ -36,11 +36,11 @@ export const GeofenceProvider: React.FC<GeofenceProviderProps> = ({
     
     // NEW precision settings optimized for AR
     maxAcceptableAccuracy: 10,      // Only use readings better than 10m
-    minAcceptableAccuracy: 30,      // Stop functioning if worse than 30m
-    positionAveragingWindow: 5,     // Average last 5 positions
+    minAcceptableAccuracy: 50,      // Stop functioning if worse than 30m
+    positionAveragingWindow: 12,     // Average last 5 positions
     requireStablePosition: true,    // Wait for stable positioning
     stabilityThreshold: 3,          // Must stay within 3m
-    stabilityDuration: 5000,        // For 5 seconds
+    stabilityDuration: 8000,        // For 5 seconds
     qualityUpdateInterval: 2000     // Check quality every 2 seconds
   });
   

@@ -16,6 +16,7 @@ import { useGeofenceContext, useGeofencePrecision } from '../../context/Geofence
 import { testKenilworthExperiences } from '../../utils/geoArUtils'
 import ExperienceProgressTracker, { ExperienceProgressTrackerRef } from '../common/ExperienceProgressTracker';
 import { SystemOptimizationManager } from '../../utils/systemOptimization';
+import GeofenceNotificationSystem from '../common/GeofenceNotificationSystem';
 
 // Interface for the modal state
 interface ModalState {
@@ -68,6 +69,24 @@ const Map: React.FC = () => {
   
   const { permissionsState } = usePermissions();
   const navigate = useNavigate();
+
+  //JUST TO SEE THE ZOOM LEVELS REMOVE WHEN DONE
+    // useEffect(() => {
+    //   if (!mapRef.current) return;
+      
+    //   const handleZoom = () => {
+    //     const currentZoom = mapRef.current?.getZoom();
+    //     console.log(`🔍 Map Zoom: ${currentZoom?.toFixed(2)}`);
+    //   };
+      
+    //   mapRef.current.on('zoom', handleZoom);
+      
+    //   return () => {
+    //     mapRef.current?.off('zoom', handleZoom);
+    //   };
+    // }, [mapLoaded]);
+
+
 
   useEffect(() => {
     console.log('🗺️ Map component MOUNTED');
@@ -269,13 +288,64 @@ const Map: React.FC = () => {
           />
         </div>
         
-        {/* User location tracker */}
-        {mapLoaded && mapRef.current && (
-          <UserLocationTracker 
-            map={mapRef.current} 
-            userPosition={geofenceUserPosition}
-          />
-        )}
+        {/* User location tracker and mapref to geofenceNotificaiton */}
+{/* DEBUG: Add this right after the UserLocationTracker */}
+{mapLoaded && mapRef.current && (
+  <>
+    <UserLocationTracker 
+      map={mapRef.current} 
+      userPosition={geofenceUserPosition}
+    />
+    
+    {/* DEBUG PANEL - Remove this after testing */}
+    <div style={{
+      position: 'absolute',
+      top: '10px',
+      left: '10px',
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+      color: 'white',
+      padding: '12px',
+      borderRadius: '6px',
+      fontSize: '12px',
+      zIndex: 1000,
+      fontFamily: 'monospace',
+      minWidth: '250px'
+    }}>
+      <div style={{ color: 'yellow', marginBottom: '8px' }}>🗺️ LOCATION TRACKER DEBUG</div>
+      <div>Map Loaded: {mapLoaded ? '✅ Yes' : '❌ No'}</div>
+      <div>Has Map Ref: {mapRef.current ? '✅ Yes' : '❌ No'}</div>
+      <div>User Position: {geofenceUserPosition ? 
+        `✅ [${geofenceUserPosition[1].toFixed(6)}, ${geofenceUserPosition[0].toFixed(6)}]` : 
+        '❌ None'
+      }</div>
+      <div>Is Tracking: {isTracking ? '✅ Yes' : '❌ No'}</div>
+      <div>Accuracy: {currentAccuracy ? `${currentAccuracy.toFixed(1)}m` : '❌ Unknown'}</div>
+      <div>Position Quality: {positionQuality || 'Unknown'}</div>
+      <div>Position Stable: {isPositionStable ? '✅ Yes' : '❌ No'}</div>
+      
+      {!isTracking && (
+        <button 
+          onClick={startTracking}
+          style={{
+            marginTop: '8px',
+            padding: '4px 8px',
+            backgroundColor: 'blue',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Start Tracking
+        </button>
+      )}
+    </div>
+    
+    <GeofenceNotificationSystem 
+      map={mapRef.current}
+    />
+  </>
+)}
 
         {/* Permission status indicators */}
         <div style={{ position: 'absolute', bottom: '10px', left: '20px', zIndex: 10 }}>
@@ -339,17 +409,21 @@ const Map: React.FC = () => {
           })()}
         </div> */}
 
-        {/* Experience modal */}
-        <ExperienceModal
-          isOpen={modalState.isOpen}
-          pointData={modalState.pointData}
-          onClose={closeModal}
-          isInsideGeofence={modalGeofenceInfo.isInside}
-          distanceToGeofence={modalGeofenceInfo.distance}
-          directionToGeofence={modalGeofenceInfo.direction}
-          currentRadius={currentRadius}
-          
-        />
+       {/* Experience modal and geofence notifications with map zoom */}
+          {mapLoaded && mapRef.current && (
+            <GeofenceNotificationSystem map={mapRef.current}>
+              {/* Experience modal */}
+              <ExperienceModal
+                isOpen={modalState.isOpen}
+                pointData={modalState.pointData}
+                onClose={closeModal}
+                isInsideGeofence={modalGeofenceInfo.isInside}
+                distanceToGeofence={modalGeofenceInfo.distance}
+                directionToGeofence={modalGeofenceInfo.direction}
+                currentRadius={currentRadius}
+              />
+            </GeofenceNotificationSystem>
+          )}
        
       </VerticalSection>
     </div>
