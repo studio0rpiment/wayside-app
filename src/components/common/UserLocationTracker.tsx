@@ -31,10 +31,10 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   widgetMode = false,
   showDirectionBeam = false,
   size = 40,
-  beamLength = 2.5,
+  beamLength = 6,
   beamAngle = 30,
   beamGradient = true,
-  debugId = "UNKNOWN"
+  debugId = "MAIN"
 }) => {
 
   console.log(`🧭 UserLocationTracker [${debugId}] props:`, {
@@ -62,7 +62,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   // Determine which heading to use (prop takes precedence for backward compatibility)
   const finalHeading = propHeading !== undefined ? propHeading : deviceHeading;
   
-  // Create minimal center ball marker with subtle bearing triangle
+  // Create minimal center ball marker with subtle bearing triangle and optional beam
   const createMinimalMarker = useCallback((bearing?: number): HTMLElement => {
     const el = document.createElement('div');
     el.className = 'user-location-marker-minimal';
@@ -79,20 +79,48 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     const viewBoxSize = size / 2;
     const center = viewBoxSize / 2;
     const radius = center - 2;
+    const beamRadius = radius * beamLength;
+    
+    // Calculate beam arc points using trigonometry (scaled for minimal size)
+    const halfAngleRad = (beamAngle / 2) * (Math.PI / 180);
+    const leftAngle = -halfAngleRad;
+    const rightAngle = halfAngleRad;
+    
+    // Calculate outer arc points
+    const leftX = center + beamRadius * Math.sin(leftAngle);
+    const leftY = center - beamRadius * Math.cos(leftAngle);
+    const rightX = center + beamRadius * Math.sin(rightAngle);
+    const rightY = center - beamRadius * Math.cos(rightAngle);
+    
+    // Determine if we need a large arc (for angles > 180°)
+    const largeArcFlag = beamAngle > 180 ? 1 : 0;
     
     const svgContent = `
       <svg width="${viewBoxSize}" height="${viewBoxSize}" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" xmlns="http://www.w3.org/2000/svg">
-        <!-- Subtle bearing triangle (behind the circle) -->
-        ${bearing !== undefined ? `
-          <g transform="rotate(${finalBearing} ${center} ${center})">
-            <polygon 
-              points="${center},${center/3} ${center + radius/2},${center + radius/2} ${center - radius/2},${center + radius/2}" 
-              fill="rgba(0, 0, 0, 0.2)" 
-              stroke="rgba(0, 0, 0, 0.3)" 
-              stroke-width="0.5"
+        <defs>
+          ${beamGradient ? `
+            <radialGradient id="beamGradientMinimal${Date.now()}" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(255, 255, 255, 0.8)" />
+              <stop offset="20%" stop-color="rgba(255, 255, 255, 0.8)" />
+              <stop offset="100%" stop-color="rgba(255, 255, 255, 0.8)" />
+            </radialGradient>
+          ` : ''}
+        </defs>
+        
+        <!-- Direction beam (extends from device heading) - behind everything -->
+        ${showDirectionBeam && bearing !== undefined ? `
+          <g class="direction-beam-group" transform="rotate(${finalBearing}, ${center}, ${center})">
+            <path 
+              class="direction-beam"
+              d="M ${center},${center} L ${leftX},${leftY} A ${beamRadius},${beamRadius} 0 ${largeArcFlag},1 ${rightX},${rightY} Z" 
+              fill="${beamGradient ? `url(#beamGradientMinimal${Date.now()})` : 'rgba(255, 255, 255, 0.8)'}"
+              stroke="none"
             />
           </g>
         ` : ''}
+        
+     
+
         
         <!-- Center circle (on top) -->
         <circle 
@@ -108,7 +136,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     
     el.innerHTML = svgContent;
     return el;
-  }, [map, size]);
+  }, [map, size, showDirectionBeam, beamLength, beamAngle, beamGradient]);
   
   // Create full SVG location marker with compass bearing and direction beam
   const createSvgMarker = useCallback((rotation: number, showWarning: boolean): HTMLElement => {
@@ -169,10 +197,10 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
             }
           </style>
           ${beamGradient ? `
-            <radialGradient id="beamGradient${Date.now()}" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="rgba(0, 123, 255, 0.6)" />
-              <stop offset="70%" stop-color="rgba(0, 123, 255, 0.3)" />
-              <stop offset="100%" stop-color="rgba(0, 123, 255, 0.1)" />
+            <radialGradient id="beamGradientFull${Date.now()}" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(0, 0, 0, .6)" />
+              <stop offset="20%" stop-color="rgba(0, 0, 0, 1)" />
+              <stop offset="100%" stop-color="rgba(255, 255, 255, 0.6)" />
             </radialGradient>
           ` : ''}
         </defs>
@@ -183,19 +211,14 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
             <path 
               class="direction-beam"
               d="M ${center},${center} L ${leftX},${leftY} A ${beamRadius},${beamRadius} 0 ${largeArcFlag},1 ${rightX},${rightY} Z" 
-              fill="${beamGradient ? `url(#beamGradient${Date.now()})` : 'rgba(0, 123, 255, 0.3)'}"
+              fill="${beamGradient ? `url(#beamGradientFull${Date.now()})` : 'rgba(255, 255, 255, 0.8)'}"
               stroke="none"
             />
           </g>
         ` : ''}
         
-        <!-- Subtle bearing triangle (behind circles) -->
-        <g class="bearing-indicator" transform="rotate(${finalRotation}, ${center}, ${center})">
-          <polygon 
-            class="bearing-triangle" 
-            points="${center},${radius/3} ${center + radius/3},${center + radius/3} ${center - radius/3},${center + radius/3}" 
-          />
-        </g>
+       
+   
         
         <!-- Outer circle (location indicator) -->
         <circle class="outer-circle" cx="${center}" cy="${center}" r="${radius * 0.6}"/>

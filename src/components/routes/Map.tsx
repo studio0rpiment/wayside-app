@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import VerticalSection from '../sections/vertical/VerticalSection';
 import PermissionsStatus from '../common/PermissionsStatus';
-import { routePointsData, getIconPath, GEOFENCE_CONFIG } from '../../data/mapRouteData';
+import { routePointsData, getIconPath, GEOFENCE_CONFIG, getArAnchorForPoint } from '../../data/mapRouteData';
 import { usePermissions } from '../../context/PermissionsContext';
 import UserLocationTracker from '../common/UserLocationTracker';
 import GeofenceDebugger from '../debug/GeofenceDebugger';
@@ -33,6 +33,8 @@ const Map: React.FC = () => {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const progressTrackerRef = useRef<ExperienceProgressTrackerRef>(null);
   
+  const anchorMarkersRef = useRef<mapboxgl.Marker[]>([]);
+
   // State that should trigger UI updates
   const [mapLoaded, setMapLoaded] = useState(false);
   
@@ -86,7 +88,10 @@ const Map: React.FC = () => {
     //   };
     // }, [mapLoaded]);
 
-
+const getInvertedIconPath = useCallback((iconName: string): string => {
+  // Add '_inv' before the file extension
+  return getIconPath(iconName).replace('.svg', '_inv.svg');
+}, []);
 
   useEffect(() => {
     console.log('🗺️ Map component MOUNTED');
@@ -101,7 +106,7 @@ const Map: React.FC = () => {
     SystemOptimizationManager.getInstance().forceReset();
   }, []); // Empty deps = runs only once on mount
   
-  // Create markers on the map - simplified without dots
+//********* GEOFENCE MARKERS */ Create markers on the map - simplified without dots
   const createMarkers = useCallback((map: mapboxgl.Map) => {
     // Clean up any existing markers
     markersRef.current.forEach(marker => marker.remove());
@@ -143,15 +148,89 @@ const Map: React.FC = () => {
       progressTrackerRef.current.updateMapDots(markersRef.current);
     }
   }, []); // No dependencies needed
+//********* Anchors Markers */
+const createAnchorMarkers = useCallback((map: mapboxgl.Map) => {
+  // Clean up any existing anchor markers
+  anchorMarkersRef.current.forEach(marker => marker.remove());
+  anchorMarkersRef.current = [];
+  
+  // Check zoom level - only show anchors at zoom 17+
+  const currentZoom = map.getZoom();
+  if (currentZoom < 17) {
+    console.log(`🔍 Zoom ${currentZoom.toFixed(1)} < 17, hiding anchor markers`);
+    return;
+  }
+  
+  // Create inverted anchor markers for each experience
+  routePointsData.features.forEach(point => {
+    const { iconName } = point.properties;
+    
+    // Create inverted marker element (half size)
+    const el = document.createElement('div');
+    el.className = 'map-anchor-icon';
+    el.style.backgroundImage = `url(${getInvertedIconPath(iconName)})`;
+    el.style.width = '15px';  // Half of normal 30px
+    el.style.height = '15px'; // Half of normal 30px
+    el.style.backgroundSize = 'cover';
+    el.style.cursor = 'pointer';
+    el.style.opacity = '0.7'; // Make them more subtle
+    el.style.zIndex = '1'; // Behind main markers
+    
+    // Get the anchor position for this experience
+    // You'll need to import your anchor data or use your existing getArAnchorForPoint function
+    const anchorData = getArAnchorForPoint(iconName, point.geometry.coordinates);
+    
+    if (anchorData && anchorData.position) {
+      // Create marker at anchor position
+      const anchorMarker = new mapboxgl.Marker(el)
+        .setLngLat(anchorData.position)
+        .addTo(map);
+      
+      // Optional: Add click handler for debugging
+      el.addEventListener('click', () => {
+        console.log(`🎯 Anchor clicked: ${iconName}`, {
+          anchorPosition: anchorData.position,
+          experiencePosition: point.geometry.coordinates,
+          elevation: anchorData.elevation
+        });
+      });
+      
+      anchorMarkersRef.current.push(anchorMarker);
+    }
+  });
+  
+  console.log(`✅ Created ${anchorMarkersRef.current.length} anchor markers at zoom ${currentZoom.toFixed(1)}`);
+}, [getInvertedIconPath]);
 
-  // finding the locationtracker
-  console.log('🗺️ Debug UserLocationTracker props:', {
-  map: mapRef.current,
-  mapLoaded: mapRef.current?.loaded(),
-  userPosition: averagedPosition,
-  widgetMode: false,
-  showDirectionBeam: true
-});
+
+//******* ZOOM EVENT LISTENER */
+
+const handleMapZoom = useCallback(() => {
+  if (!mapRef.current) return;
+  
+  const currentZoom = mapRef.current.getZoom();
+  
+  if (currentZoom >= 17 && anchorMarkersRef.current.length === 0) {
+    // Zoomed in enough and no anchors showing - create them
+    console.log(`🔍 Zoomed to ${currentZoom.toFixed(1)} - showing anchor markers`);
+    createAnchorMarkers(mapRef.current);
+  } else if (currentZoom < 17 && anchorMarkersRef.current.length > 0) {
+    // Zoomed out too far and anchors are showing - hide them
+    console.log(`🔍 Zoomed to ${currentZoom.toFixed(1)} - hiding anchor markers`);
+    anchorMarkersRef.current.forEach(marker => marker.remove());
+    anchorMarkersRef.current = [];
+  }
+}, [createAnchorMarkers]);
+
+
+      // finding the locationtracker
+      console.log('🗺️ Debug UserLocationTracker props:', {
+      map: mapRef.current,
+      mapLoaded: mapRef.current?.loaded(),
+      userPosition: averagedPosition,
+      widgetMode: false,
+      showDirectionBeam: true
+    });
 
 console.log('🗺️ Rendering UserLocationTracker with:', {
   map: mapRef.current,
@@ -161,21 +240,36 @@ console.log('🗺️ Rendering UserLocationTracker with:', {
 });
   
   // Handle map loaded
-  const handleMapLoaded = useCallback((map: mapboxgl.Map) => {
-    mapRef.current = map;
-    createMarkers(map);
-    setMapLoaded(true);
-  }, [createMarkers]);
+    const handleMapLoaded = useCallback((map: mapboxgl.Map) => {
+      mapRef.current = map;
+      createMarkers(map);        // Create main experience markers
+      createAnchorMarkers(map);  // Create inverted anchor markers (only if zoom >= 17)
+      
+      // Add zoom event listener
+      map.on('zoom', handleMapZoom);
+      
+      setMapLoaded(true);
+    }, [createMarkers, createAnchorMarkers, handleMapZoom]);
   
+
   // Handle map removed
-  const handleMapRemoved = useCallback(() => {
-    // Clean up markers
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
-    
-    mapRef.current = null;
-    setMapLoaded(false);
-  }, []);
+const handleMapRemoved = useCallback(() => {
+  // Clean up experience markers
+  markersRef.current.forEach(marker => marker.remove());
+  markersRef.current = [];
+  
+  // Clean up anchor markers
+  anchorMarkersRef.current.forEach(marker => marker.remove());
+  anchorMarkersRef.current = [];
+  
+  // Remove zoom event listener
+  if (mapRef.current) {
+    mapRef.current.off('zoom', handleMapZoom);
+  }
+  
+  mapRef.current = null;
+  setMapLoaded(false);
+}, [handleMapZoom]);
   
   // Close modal
   const closeModal = useCallback(() => {
@@ -292,6 +386,7 @@ console.log('🗺️ Rendering UserLocationTracker with:', {
             userPosition={averagedPosition}  // Use context position
             showDirectionBeam={true}
              debugId="MAP"
+             beamLength={9}
 
             />
             {/* NEW: Pass map reference to GeofenceNotificationSystem */}
