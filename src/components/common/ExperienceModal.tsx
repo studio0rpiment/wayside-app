@@ -149,7 +149,7 @@ function useEnhancedUserPosition() {
   return {
     getBestUserPosition,
     getArReadyPosition,
-    currentUserPosition: getBestUserPosition(),
+    averagedPosition: preciseUserPosition,
     arReadyPosition: getArReadyPosition(),
     
     // Expose precision data
@@ -183,7 +183,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   const {
     getBestUserPosition,
     getArReadyPosition,
-    currentUserPosition,
+    averagedPosition,
     arReadyPosition,
     currentAccuracy,
     positionQuality,
@@ -206,17 +206,17 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   
   // Update previous position when best position changes
   useEffect(() => {
-    if (currentUserPosition) {
-      setPreviousPosition(prev => prev || currentUserPosition); // Only set if not already set
+    if (averagedPosition) {
+      setPreviousPosition(prev => prev || averagedPosition); // Only set if not already set
       
       // Update previous position after a delay to track movement
       const timeout = setTimeout(() => {
-        setPreviousPosition(currentUserPosition);
+        setPreviousPosition(averagedPosition);
       }, 2000); // Update every 2 seconds
       
       return () => clearTimeout(timeout);
     }
-  }, [currentUserPosition]);
+  }, [averagedPosition]);
 
   // ✅ ENHANCED: Calculate geofence info using enhanced context and precision data
   const enhancedGeofenceInfo = React.useMemo((): EnhancedGeofenceInfo => {
@@ -237,11 +237,11 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       };
     }
 
-    if (!pointData || !pointData.iconName || !currentUserPosition) {
+    if (!pointData || !pointData.iconName || !averagedPosition) {
       console.log('❌ Missing required data for ExperienceModal:', { 
         hasPointData: !!pointData, 
         pointId: pointData?.iconName, 
-        hasPosition: !!currentUserPosition,
+        hasPosition: !!averagedPosition,
         isTracking,
         currentAccuracy,
         positionQuality,
@@ -266,13 +266,13 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     
     // ✅ ENHANCED: Use enhanced geofence checking with hexagonal support
     const geofenceResult = checkGeofenceWithDirection(
-      currentUserPosition,
+      averagedPosition,
       pointId,
       previousPosition || undefined, // For directional entry detection
     );
     
     // ✅ Get the actual radius and anchor data for this experience
-    const anchorData = getArAnchorForPoint(pointId, currentUserPosition);
+    const anchorData = getArAnchorForPoint(pointId, averagedPosition);
     const radiusMeters = currentRadius || 15;
     const radiusFeet = Math.round(radiusMeters * 3.28084);
     
@@ -292,11 +292,11 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     } else {
       // Manual calculation as last resort
       const pointFeature = getPointByName(pointId);
-      if (pointFeature && currentUserPosition) {
+      if (pointFeature && averagedPosition) {
         const pointCoords = pointFeature.geometry.coordinates;
         // Simple distance calculation in meters
-        const dx = (pointCoords[0] - currentUserPosition[0]) * 111320 * Math.cos(currentUserPosition[1] * Math.PI / 180);
-        const dy = (pointCoords[1] - currentUserPosition[1]) * 110540;
+        const dx = (pointCoords[0] - averagedPosition[0]) * 111320 * Math.cos(averagedPosition[1] * Math.PI / 180);
+        const dy = (pointCoords[1] - averagedPosition[1]) * 110540;
         fallbackDistance = Math.sqrt(dx * dx + dy * dy);
         fallbackDistanceFeet = Math.round(fallbackDistance * 3.28084);
         fallbackIsInside = fallbackDistance <= radiusMeters;
@@ -318,18 +318,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       };
     }
     
-    // Calculate direction to the point (for compass arrow)
-    let direction = null;
-    const pointFeature = getPointByName(pointId);
-    if (pointFeature && currentUserPosition) {
-      const pointCoords = pointFeature.geometry.coordinates;
-      const dx = pointCoords[0] - currentUserPosition[0];
-      const dy = pointCoords[1] - currentUserPosition[1];
-      direction = Math.atan2(dy, dx) * (180 / Math.PI);
-      // Normalize to 0-360
-      direction = (direction + 360) % 360;
-    }
-    
+
     // Use geofenceResult distance, but fallback to manual calculation if null
     const finalDistance = geofenceResult.distance !== null ? geofenceResult.distance : fallbackDistance;
     const distanceFeet = finalDistance ? Math.round(finalDistance * 3.28084) : fallbackDistanceFeet;
@@ -337,8 +326,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     return {
       isInside: FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG ? false : (geofenceResult.isInside || false),
       distance: finalDistance,
-      direction,
       radius: radiusMeters,
+      direction: null,
       radiusFeet,
       distanceFeet,
       shape: geofenceResult.shape || 'circle',
@@ -349,7 +338,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       positionAccuracy: currentAccuracy,
       isPositionStable: isPositionStable || false
     };
-  }, [pointData?.iconName, currentUserPosition, previousPosition, positionQuality, currentAccuracy, isPositionStable, isInsideGeofence, getDistanceToPoint, currentRadius, isUniversalMode]);
+  }, [pointData?.iconName, averagedPosition, previousPosition, positionQuality, currentAccuracy, isPositionStable, isInsideGeofence, getDistanceToPoint, currentRadius, isUniversalMode]);
 
   // Handle experience start
   const handleExperienceStart = useCallback(() => {
@@ -366,12 +355,12 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
 
   // Get AR anchor data for the experience
   const getAnchorData = useCallback(() => {
-    if (!pointData || !currentUserPosition) return null;
+    if (!pointData || !averagedPosition) return null;
     
-    const anchorData = getArAnchorForPoint(pointData.iconName, currentUserPosition);
+    const anchorData = getArAnchorForPoint(pointData.iconName, averagedPosition);
     if (!anchorData) {
       return {
-        position: [currentUserPosition[0] + 0.00001, currentUserPosition[1] + 0.00001] as [number, number],
+        position: [averagedPosition[0] + 0.00001, averagedPosition[1] + 0.00001] as [number, number],
         elevation: 2.0,
         orientation: 0,
         scale: 1.0
@@ -379,7 +368,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     }
     
     return anchorData;
-  }, [pointData, currentUserPosition]);
+  }, [pointData, averagedPosition]);
 
   // Map experience iconName to experience type
   const getExperienceType = useCallback((iconName: string) => {
@@ -405,8 +394,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   const anchorData = getAnchorData();
 
   // ✅ FIXED: Show AR Experience Manager if active - use ANY available position once started
-  if (showArExperience && (currentUserPosition || isUniversalMode) && anchorData) {
-    const positionToUse = currentUserPosition || [-76.943, 38.9125]; // Kenilworth center as fallback
+  if (showArExperience && (averagedPosition || isUniversalMode) && anchorData) {
+    const positionToUse = averagedPosition || [-76.943, 38.9125]; // Kenilworth center as fallback
 
     return (
       <ExperienceManager
@@ -495,7 +484,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         {isUniversalMode ? null : (
           <>
             {/* Normal GPS Mode - Position Quality Warning */}
-            {currentUserPosition && !isPositionGoodEnoughForArStartup && (
+            {averagedPosition && !isPositionGoodEnoughForArStartup && (
               <div style={{
                 backgroundColor: 'rgba(255, 165, 0, 0.1)',
                 border: '1px solid rgba(255, 165, 0, 0.3)',
@@ -535,14 +524,15 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                   }}>
                     {/* Compass arrow pointing to experience center */}
                     {enhancedGeofenceInfo.direction !== null && (
-                          <UserLocationTracker
-                          widgetMode={true}
-                          showDirectionBeam={true}
-                          userPosition={currentUserPosition}
-                          size={40}
-                          beamLength={2.5}
-                          beamAngle={30}
-                        />
+                 <UserLocationTracker
+                 
+                        widgetMode={true}
+                        showDirectionBeam={true}
+                        userPosition={averagedPosition}
+                        size={28}
+                        beamLength={2.0}
+                        beamAngle={25}
+                      />
                     )}
                     
                     {/* Distance and status info */}
@@ -597,7 +587,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                     <UserLocationTracker
                       widgetMode={true}
                       showDirectionBeam={true}
-                      userPosition={currentUserPosition}
+                      userPosition={averagedPosition}
                       size={40}
                       beamLength={2.5}
                       beamAngle={30}
@@ -690,7 +680,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
             {/* Enhanced position debug */}
             <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
               <div><strong>Position Debug:</strong></div>
-              <div>Current: {currentUserPosition ? `${currentUserPosition[0].toFixed(6)}, ${currentUserPosition[1].toFixed(6)}` : 'undefined'}</div>
+              <div>Current: {averagedPosition ? `${averagedPosition[0].toFixed(6)}, ${averagedPosition[1].toFixed(6)}` : 'undefined'}</div>
               <div>AR Ready: {arReadyPosition ? `${arReadyPosition[0].toFixed(6)}, ${arReadyPosition[1].toFixed(6)}` : 'undefined'}</div>
               <div>Accuracy: {enhancedGeofenceInfo.positionAccuracy?.toFixed(1) || 'unknown'}m</div>
               <div>Quality: {enhancedGeofenceInfo.positionQuality || 'unknown'}</div>

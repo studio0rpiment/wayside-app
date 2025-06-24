@@ -36,6 +36,8 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
 }) => {
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const widgetRef = useRef<HTMLDivElement | null>(null);
+
+  console.log("Im here")
   
   // Use the new device orientation hook
   const { 
@@ -211,6 +213,14 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   
   // Update marker position and appearance
   const updateUserMarker = useCallback((position: [number, number]) => {
+      console.log('🧭 updateUserMarker called:', {
+    position,
+    hasMap: !!map,
+    mapReady: map?.loaded(),
+    widgetMode
+  });
+
+
     if (widgetMode) {
       // Widget mode - don't interact with map
       return;

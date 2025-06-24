@@ -35,7 +35,7 @@ const Map: React.FC = () => {
   
   // State that should trigger UI updates
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
+  
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
     pointData: null
@@ -143,6 +143,22 @@ const Map: React.FC = () => {
       progressTrackerRef.current.updateMapDots(markersRef.current);
     }
   }, []); // No dependencies needed
+
+  // finding the locationtracker
+  console.log('🗺️ Debug UserLocationTracker props:', {
+  map: mapRef.current,
+  mapLoaded: mapRef.current?.loaded(),
+  userPosition: averagedPosition,
+  widgetMode: false,
+  showDirectionBeam: true
+});
+
+console.log('🗺️ Rendering UserLocationTracker with:', {
+  map: mapRef.current,
+  
+  mapIsNull: mapRef.current === null,
+  
+});
   
   // Handle map loaded
   const handleMapLoaded = useCallback((map: mapboxgl.Map) => {
@@ -191,26 +207,6 @@ const Map: React.FC = () => {
       distance = getDistanceToPoint(pointId);
     }
     
-    // Calculate direction if we have user position and point coordinates
-    let direction = null;
-    if (userPosition) {
-      const pointFeature = routePointsData.features.find(
-        feature => feature.properties.iconName === pointId
-      );
-      
-      if (pointFeature) {
-        const pointCoords = pointFeature.geometry.coordinates;
-        const dx = pointCoords[0] - userPosition[0];
-        const dy = pointCoords[1] - userPosition[1];
-        direction = Math.atan2(dy, dx) * (180 / Math.PI);
-      }
-    }
-    
-    return {
-      isInside,
-      distance,
-      direction
-    };
   }, [
     modalState.isOpen, // Only recalculate when modal opens/closes
     modalState.pointData?.iconName, // Only when the point changes
@@ -291,16 +287,12 @@ const Map: React.FC = () => {
         {/* User location tracker and mapref to geofenceNotificaiton */}
           {mapLoaded && mapRef.current && (
           <>
-            <UserLocationTracker
-                map={mapRef.current}
-                widgetMode={false}
-                showDirectionBeam={true}
-                userPosition={userPosition}
-                size={80}
-                beamLength={6}
-                beamAngle={30}
-              />
-            
+        <UserLocationTracker
+            map={mapRef.current}
+            userPosition={averagedPosition}  // Use context position
+            showDirectionBeam={true}
+
+            />
             {/* NEW: Pass map reference to GeofenceNotificationSystem */}
             <GeofenceNotificationSystem 
               map={mapRef.current}
@@ -378,9 +370,6 @@ const Map: React.FC = () => {
                 isOpen={modalState.isOpen}
                 pointData={modalState.pointData}
                 onClose={closeModal}
-                isInsideGeofence={modalGeofenceInfo.isInside}
-                distanceToGeofence={modalGeofenceInfo.distance}
-                directionToGeofence={modalGeofenceInfo.direction}
                 currentRadius={currentRadius}
               />
      
