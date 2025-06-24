@@ -292,11 +292,12 @@ const Map: React.FC = () => {
           {mapLoaded && mapRef.current && (
           <>
             <UserLocationTracker
+                map={mapRef.current}
                 widgetMode={false}
                 showDirectionBeam={true}
                 userPosition={userPosition}
-                size={40}
-                beamLength={2.5}
+                size={80}
+                beamLength={6}
                 beamAngle={30}
               />
             
