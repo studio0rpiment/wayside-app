@@ -291,14 +291,14 @@ const Map: React.FC = () => {
         {/* User location tracker and mapref to geofenceNotificaiton */}
           {mapLoaded && mapRef.current && (
           <>
-         <UserLocationTracker
-            map={mapRef.current}
-            userPosition={userPosition}
-            showDirectionBeam={true}
-            beamLength={3.0}
-            beamAngle={40}
-            size={60}
-          />
+            <UserLocationTracker
+                widgetMode={false}
+                showDirectionBeam={true}
+                userPosition={userPosition}
+                size={40}
+                beamLength={2.5}
+                beamAngle={30}
+              />
             
             {/* NEW: Pass map reference to GeofenceNotificationSystem */}
             <GeofenceNotificationSystem 
