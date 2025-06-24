@@ -16,7 +16,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   userPosition, 
   heading: propHeading, // Rename to avoid confusion with hook heading
   accuracy,
-  minimalMode = true // NEW: Default to minimal mode for geofenced experiences
+  minimalMode = false // NEW: Default to minimal mode for geofenced experiences
 }) => {
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   
