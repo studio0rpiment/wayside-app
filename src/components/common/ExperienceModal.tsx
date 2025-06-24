@@ -59,9 +59,11 @@ interface EnhancedGeofenceInfo {
 }
 
 // ✅ NEW: Desktop debug flag to see outside geofence state
-const FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG = true; // Set to true to see outside geofence UI on desktop
+const FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG = false; // Set to true to see outside geofence UI on desktop
 
 const showDebug = false; // Separate debug flag
+
+
 
 /**
  * Enhanced user position hook that leverages the GeofenceContext
@@ -87,6 +89,8 @@ function useEnhancedUserPosition() {
   contextUniversalMode || 
   (typeof window !== 'undefined' && !('geolocation' in navigator))
 );
+
+
 
   const getBestUserPosition = useCallback((): [number, number] | null => {
 
@@ -176,6 +180,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   onClose,
   isNotification = false,
 }) => {
+
+  
   
   const [showArExperience, setShowArExperience] = useState(false);
   
@@ -203,6 +209,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   
   // Track previous position for hexagonal entry direction detection
   const [previousPosition, setPreviousPosition] = useState<[number, number] | null>(null);
+
+  
   
   // Update previous position when best position changes
   useEffect(() => {
@@ -318,6 +326,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       };
     }
     
+    
+
 
     // Use geofenceResult distance, but fallback to manual calculation if null
     const finalDistance = geofenceResult.distance !== null ? geofenceResult.distance : fallbackDistance;
@@ -416,6 +426,15 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   const isPositionGoodEnoughForArStartup = isUniversalMode ||
     arReadyPosition !== null && currentAccuracy !== null && 
     currentAccuracy <= 30 && positionQuality !== PositionQuality.UNACCEPTABLE;
+
+         console.log('🧭 About to render Modal UserLocationTracker:', {
+                        shouldRender: true, 
+                        averagedPosition,
+                        isModalOpen: isOpen,
+                        
+                      });
+
+    
 
   // Show regular modal
   return (
@@ -523,17 +542,19 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                     justifyContent: 'center' 
                   }}>
                     {/* Compass arrow pointing to experience center */}
-                    {enhancedGeofenceInfo.direction !== null && (
-                 <UserLocationTracker
-                 
+                  
+                      
+
+                      <UserLocationTracker
+                        map={null}
                         widgetMode={true}
                         showDirectionBeam={true}
                         userPosition={averagedPosition}
-                        size={28}
-                        beamLength={2.0}
-                        beamAngle={25}
+                        size={40} // Try larger size first
+                        debugId="MODAL"
+                        minimalMode={false} // Make sure this is explicitly false
                       />
-                    )}
+                
                     
                     {/* Distance and status info */}
                     <div style={{ fontSize: '14px', marginBottom: '8px' }}>
@@ -583,16 +604,17 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                   marginBottom: '12px' 
                 }}>
                   {/* Compass arrow pointing toward experience */}
-                  {enhancedGeofenceInfo.direction !== null && (
-                    <UserLocationTracker
-                      widgetMode={true}
-                      showDirectionBeam={true}
-                      userPosition={averagedPosition}
-                      size={40}
-                      beamLength={2.5}
-                      beamAngle={30}
-                    />
-                  )}
+                
+                  <UserLocationTracker
+                  map={null}
+                  widgetMode={true}
+                  showDirectionBeam={true}
+                  userPosition={averagedPosition}
+                  size={40} // Try larger size first
+                  debugId="MODAL"
+                  minimalMode={false} // Make sure this is explicitly false
+                />
+              
                   
                   {/* Distance and navigation info */}
                   <div style={{ marginBottom: '8px' }}>
@@ -630,7 +652,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
           </>
         )}
         
-        {/* ✅ NEW: Experience Launch Button - Always visible, different logic */}
+        {/*  Experience Launch Button - Always visible, different logic */}
         <button
           onClick={handleExperienceStart}
           disabled={isUniversalMode ? false : !isPositionGoodEnoughForArStartup}

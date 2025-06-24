@@ -19,6 +19,7 @@ interface UserLocationTrackerProps {
   beamLength?: number; // How far the beam extends as multiplier of radius (default 2.5)
   beamAngle?: number;  // Beam width in degrees (default 30)
   beamGradient?: boolean; // Use gradient (default true)
+  debugId?: string;
 }
 
 const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({ 
@@ -32,12 +33,19 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   size = 40,
   beamLength = 2.5,
   beamAngle = 30,
-  beamGradient = true
+  beamGradient = true,
+  debugId = "UNKNOWN"
 }) => {
+
+  console.log(`🧭 UserLocationTracker [${debugId}] props:`, {
+    widgetMode,
+    hasMap: !!map,
+    userPosition,
+    showDirectionBeam
+  });
+
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const widgetRef = useRef<HTMLDivElement | null>(null);
-
-  console.log("Im here")
   
   // Use the new device orientation hook
   const { 
@@ -200,7 +208,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
         <!-- Warning triangle (shown when no orientation available) -->
         ${showWarning ? `
           <g class="warning-indicator">
-            <polygon class="warning-triangle" points="${center},${radius/3} ${center - radius/4},${center} ${center + radius/4},${center}" />
+            <polygon class="warning-triangle" points="${center},${radius/3} ${center - radius/4},${center}" ${center + radius/4},${center}" />
             <text x="${center}" y="${center - radius/6}" text-anchor="middle" font-size="${size/8}" fill="#000">!</text>
           </g>
         ` : ''}
@@ -213,13 +221,12 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   
   // Update marker position and appearance
   const updateUserMarker = useCallback((position: [number, number]) => {
-      console.log('🧭 updateUserMarker called:', {
-    position,
-    hasMap: !!map,
-    mapReady: map?.loaded(),
-    widgetMode
-  });
-
+    console.log('🧭 updateUserMarker called:', {
+      position,
+      hasMap: !!map,
+      mapReady: map?.loaded(),
+      widgetMode
+    });
 
     if (widgetMode) {
       // Widget mode - don't interact with map
@@ -293,11 +300,19 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   
   // Update marker when position changes (map mode only)
   useEffect(() => {
+    console.log('🧭 useEffect triggered:', {
+      widgetMode,
+      userPosition: !!userPosition,
+      hasMap: !!map,
+      shouldCallUpdate: !widgetMode && !!userPosition && !!map
+    });
+    
     if (!widgetMode && userPosition && map) {
+      console.log('🧭 Calling updateUserMarker from useEffect');
       updateUserMarker(userPosition);
     }
   }, [userPosition, updateUserMarker, widgetMode]);
-  
+
   // Update when heading/bearing changes (both modes)
   useEffect(() => {
     if (widgetMode) {
@@ -357,6 +372,12 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   
   // Render widget mode as JSX
   if (widgetMode) {
+    console.log('🧭 Widget mode rendering:', {
+      userPosition,
+      size,
+      hasWidgetRef: !!widgetRef.current
+    });
+    
     return (
       <div 
         ref={widgetRef}

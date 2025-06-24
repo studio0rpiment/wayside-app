@@ -291,6 +291,7 @@ console.log('🗺️ Rendering UserLocationTracker with:', {
             map={mapRef.current}
             userPosition={averagedPosition}  // Use context position
             showDirectionBeam={true}
+             debugId="MAP"
 
             />
             {/* NEW: Pass map reference to GeofenceNotificationSystem */}
