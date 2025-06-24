@@ -12,8 +12,7 @@ interface UserLocationTrackerProps {
   
   // NEW: Widget mode props
   widgetMode?: boolean; // Don't add to map, just render as widget
-  showDirectionBeam?: boolean; // Show direction beam pointing to target
-  targetBearing?: number | null; // Bearing to target location
+  showDirectionBeam?: boolean; // Show direction beam extending from device heading
   size?: number; // Widget size in pixels (default 40)
   
   // NEW: Direction beam customization
@@ -29,8 +28,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   accuracy,
   minimalMode = false,
   widgetMode = false,
-  showDirectionBeam = true,
-  targetBearing = null,
+  showDirectionBeam = false,
   size = 40,
   beamLength = 2.5,
   beamAngle = 30,
@@ -103,7 +101,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   }, [map, size]);
   
   // Create full SVG location marker with compass bearing and direction beam
-  const createSvgMarker = useCallback((rotation: number, showWarning: boolean, targetBearing?: number | null): HTMLElement => {
+  const createSvgMarker = useCallback((rotation: number, showWarning: boolean): HTMLElement => {
     const el = document.createElement('div');
     el.className = widgetMode ? 'user-location-widget' : 'user-location-marker';
     el.style.position = 'relative';
@@ -114,18 +112,6 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     // Calculate final rotation accounting for map rotation (if map exists)
     const mapBearing = map?.getBearing() || 0;
     const finalRotation = rotation - mapBearing;
-    
-    // Calculate target direction beam rotation - FIXED for widget mode
-    let targetRotation = null;
-    if (targetBearing !== null && targetBearing !== undefined) {
-      if (widgetMode) {
-        // Widget mode: rotate relative to device heading
-        targetRotation = targetBearing - rotation;
-      } else {
-        // Map mode: account for map bearing
-        targetRotation = targetBearing - mapBearing;
-      }
-    }
     
     const center = size / 2;
     const radius = center - 2;
@@ -144,7 +130,6 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     
     // Determine if we need a large arc (for angles > 180°)
     const largeArcFlag = beamAngle > 180 ? 1 : 0;
-  
     
     // Define SVG for location marker with enhanced direction beam
     const svgContent = `
@@ -182,9 +167,9 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
           ` : ''}
         </defs>
         
-        <!-- Direction beam (if target bearing provided) - behind everything -->
-        ${showDirectionBeam && targetRotation !== null ? `
-          <g class="direction-beam-group" transform="rotate(${targetRotation}, ${center}, ${center})">
+        <!-- Direction beam (extends from device heading) - behind everything -->
+        ${showDirectionBeam ? `
+          <g class="direction-beam-group" transform="rotate(${finalRotation}, ${center}, ${center})">
             <path 
               class="direction-beam"
               d="M ${center},${center} L ${leftX},${leftY} A ${beamRadius},${beamRadius} 0 ${largeArcFlag},1 ${rightX},${rightY} Z" 
@@ -205,7 +190,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
         <!-- Outer circle (location indicator) -->
         <circle class="outer-circle" cx="${center}" cy="${center}" r="${radius * 0.6}"/>
         
-        <!-- Inner circle (bearing indicator) that rotates -->
+        <!-- Inner circle (bearing indicator) that rotates with SAME rotation as beam -->
         <g class="bearing-indicator" transform="rotate(${finalRotation}, ${center}, ${center})">
           <circle class="inner-circle" cx="${center}" cy="${center - radius/3}" r="${radius/4}"/>
         </g>
@@ -241,8 +226,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
       ? createMinimalMarker(finalHeading || undefined)
       : createSvgMarker(
           finalHeading !== null ? finalHeading : 0,
-          !orientationAvailable || finalHeading === null,
-          showDirectionBeam ? targetBearing : null
+          !orientationAvailable || finalHeading === null
         );
     
     // Update existing marker
@@ -274,13 +258,12 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
         position,
         heading: finalHeading,
         orientationAvailable,
-        showDirectionBeam,
-        targetBearing
+        showDirectionBeam
       });
     } catch (error) {
       console.error('Error creating user location marker:', error);
     }
-  }, [map, createMinimalMarker, createSvgMarker, finalHeading, orientationAvailable, minimalMode, widgetMode, showDirectionBeam, targetBearing]);
+  }, [map, createMinimalMarker, createSvgMarker, finalHeading, orientationAvailable, minimalMode, widgetMode, showDirectionBeam]);
   
   // Update widget appearance (for widget mode)
   const updateWidget = useCallback(() => {
@@ -290,14 +273,13 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
       ? createMinimalMarker(finalHeading || undefined)
       : createSvgMarker(
           finalHeading !== null ? finalHeading : 0,
-          !orientationAvailable || finalHeading === null,
-          showDirectionBeam ? targetBearing : null
+          !orientationAvailable || finalHeading === null
         );
     
     // Replace widget content
     widgetRef.current.innerHTML = '';
     widgetRef.current.appendChild(newElement);
-  }, [widgetMode, minimalMode, finalHeading, orientationAvailable, showDirectionBeam, targetBearing, createMinimalMarker, createSvgMarker]);
+  }, [widgetMode, minimalMode, finalHeading, orientationAvailable, showDirectionBeam, createMinimalMarker, createSvgMarker]);
   
   // Update marker when position changes (map mode only)
   useEffect(() => {
@@ -313,7 +295,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     } else if (userMarkerRef.current && userPosition) {
       updateUserMarker(userPosition);
     }
-  }, [finalHeading, orientationAvailable, targetBearing, updateWidget, updateUserMarker, widgetMode, userPosition]);
+  }, [finalHeading, orientationAvailable, updateWidget, updateUserMarker, widgetMode, userPosition]);
   
   // Update marker when mode changes
   useEffect(() => {

@@ -535,14 +535,14 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                   }}>
                     {/* Compass arrow pointing to experience center */}
                     {enhancedGeofenceInfo.direction !== null && (
-                     <UserLocationTracker
-                        widgetMode={true}
-                        showDirectionBeam={true}
-                        targetBearing={enhancedGeofenceInfo.direction}
-                        userPosition={currentUserPosition}
-                        minimalMode={false}
-                        size={40}
-                      />
+                          <UserLocationTracker
+                          widgetMode={true}
+                          showDirectionBeam={true}
+                          userPosition={currentUserPosition}
+                          size={40}
+                          beamLength={2.5}
+                          beamAngle={30}
+                        />
                     )}
                     
                     {/* Distance and status info */}
@@ -594,14 +594,13 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                 }}>
                   {/* Compass arrow pointing toward experience */}
                   {enhancedGeofenceInfo.direction !== null && (
-                   <UserLocationTracker
+                    <UserLocationTracker
                       widgetMode={true}
                       showDirectionBeam={true}
-                      targetBearing={enhancedGeofenceInfo.direction}
                       userPosition={currentUserPosition}
-                      size={28}
-                      beamLength={2.0}
-                      beamAngle={25}
+                      size={40}
+                      beamLength={2.5}
+                      beamAngle={30}
                     />
                   )}
                   
