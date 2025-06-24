@@ -24,7 +24,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   accuracy,
   minimalMode = false,
   widgetMode = false,
-  showDirectionBeam = false,
+  showDirectionBeam = true,
   targetBearing = null,
   size = 40
 }) => {

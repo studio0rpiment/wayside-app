@@ -8,7 +8,7 @@ import {
   getPointByName 
 } from '../../data/mapRouteData';
 import { useGeofenceContext, PositionQuality } from '../../context/GeofenceContext';
-import { ExperienceProgressTrackerRef } from './ExperienceProgressTracker';
+import UserLocationTracker from './UserLocationTracker';
 
 interface ModalContent {
   title: string;
@@ -535,9 +535,13 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                   }}>
                     {/* Compass arrow pointing to experience center */}
                     {enhancedGeofenceInfo.direction !== null && (
-                      <CompassArrow 
-                        direction={enhancedGeofenceInfo.direction} 
-                        size={28}
+                     <UserLocationTracker
+                        widgetMode={true}
+                        showDirectionBeam={true}
+                        targetBearing={enhancedGeofenceInfo.direction}
+                        userPosition={currentUserPosition}
+                        minimalMode={false}
+                        size={40}
                       />
                     )}
                     
@@ -590,11 +594,15 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                 }}>
                   {/* Compass arrow pointing toward experience */}
                   {enhancedGeofenceInfo.direction !== null && (
-                    <CompassArrow 
-                      direction={enhancedGeofenceInfo.direction} 
-                      size={40}
-                    />
-                  )}
+                    <UserLocationTracker
+                          widgetMode={true}
+                          showDirectionBeam={true}
+                          targetBearing={enhancedGeofenceInfo.direction}
+                          userPosition={currentUserPosition}
+                          minimalMode={false}
+                          size={40}
+                        />
+                                  )}
                   
                   {/* Distance and navigation info */}
                   <div style={{ marginBottom: '8px' }}>
