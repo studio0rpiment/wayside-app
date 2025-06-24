@@ -15,6 +15,11 @@ interface UserLocationTrackerProps {
   showDirectionBeam?: boolean; // Show direction beam pointing to target
   targetBearing?: number | null; // Bearing to target location
   size?: number; // Widget size in pixels (default 40)
+  
+  // NEW: Direction beam customization
+  beamLength?: number; // How far the beam extends as multiplier of radius (default 2.5)
+  beamAngle?: number;  // Beam width in degrees (default 30)
+  beamGradient?: boolean; // Use gradient (default true)
 }
 
 const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({ 
@@ -26,7 +31,10 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   widgetMode = false,
   showDirectionBeam = true,
   targetBearing = null,
-  size = 40
+  size = 40,
+  beamLength = 2.5,
+  beamAngle = 30,
+  beamGradient = true
 }) => {
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const widgetRef = useRef<HTMLDivElement | null>(null);
@@ -107,13 +115,38 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     const mapBearing = map?.getBearing() || 0;
     const finalRotation = rotation - mapBearing;
     
-    // Calculate target direction beam rotation
-    const targetRotation = targetBearing !== null && targetBearing !== undefined ? targetBearing - mapBearing : null;
+    // Calculate target direction beam rotation - FIXED for widget mode
+    let targetRotation = null;
+    if (targetBearing !== null && targetBearing !== undefined) {
+      if (widgetMode) {
+        // Widget mode: rotate relative to device heading
+        targetRotation = targetBearing - rotation;
+      } else {
+        // Map mode: account for map bearing
+        targetRotation = targetBearing - mapBearing;
+      }
+    }
     
     const center = size / 2;
     const radius = center - 2;
+    const beamRadius = radius * beamLength;
     
-    // Define SVG for location marker with direction beam
+    // Calculate beam arc points using trigonometry
+    const halfAngleRad = (beamAngle / 2) * (Math.PI / 180);
+    const leftAngle = -halfAngleRad;
+    const rightAngle = halfAngleRad;
+    
+    // Calculate outer arc points
+    const leftX = center + beamRadius * Math.sin(leftAngle);
+    const leftY = center - beamRadius * Math.cos(leftAngle);
+    const rightX = center + beamRadius * Math.sin(rightAngle);
+    const rightY = center - beamRadius * Math.cos(rightAngle);
+    
+    // Determine if we need a large arc (for angles > 180°)
+    const largeArcFlag = beamAngle > 180 ? 1 : 0;
+  
+    
+    // Define SVG for location marker with enhanced direction beam
     const svgContent = `
       <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 ${size} ${size}">
         <defs>
@@ -133,10 +166,6 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
               stroke: rgba(0, 0, 0, 0.25);
               stroke-width: 1;
             }
-            .direction-beam {
-              fill: rgba(0, 123, 255, 0.3);
-              stroke: none;
-            }
             .warning-triangle {
               fill: #FFD700;
               stroke: #FFA500;
@@ -144,6 +173,13 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
               display: ${showWarning ? 'block' : 'none'};
             }
           </style>
+          ${beamGradient ? `
+            <radialGradient id="beamGradient${Date.now()}" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(0, 123, 255, 0.6)" />
+              <stop offset="70%" stop-color="rgba(0, 123, 255, 0.3)" />
+              <stop offset="100%" stop-color="rgba(0, 123, 255, 0.1)" />
+            </radialGradient>
+          ` : ''}
         </defs>
         
         <!-- Direction beam (if target bearing provided) - behind everything -->
@@ -151,7 +187,9 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
           <g class="direction-beam-group" transform="rotate(${targetRotation}, ${center}, ${center})">
             <path 
               class="direction-beam"
-              d="M ${center},${center} L ${center - radius/2},${radius/3} A ${radius * 0.8},${radius * 0.8} 0 0,1 ${center + radius/2},${radius/3} Z" 
+              d="M ${center},${center} L ${leftX},${leftY} A ${beamRadius},${beamRadius} 0 ${largeArcFlag},1 ${rightX},${rightY} Z" 
+              fill="${beamGradient ? `url(#beamGradient${Date.now()})` : 'rgba(0, 123, 255, 0.3)'}"
+              stroke="none"
             />
           </g>
         ` : ''}
@@ -184,7 +222,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     
     el.innerHTML = svgContent;
     return el;
-  }, [map, size, widgetMode, showDirectionBeam]);
+  }, [map, size, widgetMode, showDirectionBeam, beamLength, beamAngle, beamGradient]);
   
   // Update marker position and appearance
   const updateUserMarker = useCallback((position: [number, number]) => {
