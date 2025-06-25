@@ -63,7 +63,7 @@ interface EnhancedGeofenceInfo {
 }
 
 // ✅ NEW: Desktop debug flag to see outside geofence state
-const FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG = true; // Set to true to see outside geofence UI on desktop
+const FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG = false; // Set to true to see outside geofence UI on desktop
 
 const showDebug = false; // Separate debug flag
 
@@ -162,16 +162,16 @@ function useEnhancedUserPosition() {
   const currentBestPosition = getBestUserPosition();
   const currentArReadyPosition = getArReadyPosition();
 
-   useEffect(() => {
-    console.log('🌐 Universal Mode Status:', {
-      isUniversalMode,
-      contextUniversalMode,
-      hasGeolocation: typeof window !== 'undefined' && 'geolocation' in navigator,
-      forceDebugOutside: FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG,
-      bestPosition: currentBestPosition,
-      arReadyPosition: currentArReadyPosition
-    });
-  }, [isUniversalMode, currentBestPosition, currentArReadyPosition]);
+  //  useEffect(() => {
+  //   console.log('🌐 Universal Mode Status:', {
+  //     isUniversalMode,
+  //     contextUniversalMode,
+  //     hasGeolocation: typeof window !== 'undefined' && 'geolocation' in navigator,
+  //     forceDebugOutside: FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG,
+  //     bestPosition: currentBestPosition,
+  //     arReadyPosition: currentArReadyPosition
+  //   });
+  // }, [isUniversalMode, currentBestPosition, currentArReadyPosition]);
 
   return {
     getBestUserPosition,
@@ -251,7 +251,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   const enhancedGeofenceInfo = React.useMemo((): EnhancedGeofenceInfo => {
 
     if (isUniversalMode) {
-      console.log('🌐 Universal Mode: Bypassing geofence checks');
+      // console.log('🌐 Universal Mode: Bypassing geofence checks');
       return {
         isInside: true, // Always "inside" in Universal Mode
         distance: 0,
@@ -267,15 +267,15 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     }
 
     if (!pointData || !pointData.iconName || !averagedPosition) {
-      console.log('❌ Missing required data for ExperienceModal:', { 
-        hasPointData: !!pointData, 
-        pointId: pointData?.iconName, 
-        hasPosition: !!averagedPosition,
-        isTracking,
-        currentAccuracy,
-        positionQuality,
-        isPositionStable
-      });
+      // console.log('❌ Missing required data for ExperienceModal:', { 
+      //   hasPointData: !!pointData, 
+      //   pointId: pointData?.iconName, 
+      //   hasPosition: !!averagedPosition,
+      //   isTracking,
+      //   currentAccuracy,
+      //   positionQuality,
+      //   isPositionStable
+      // });
       
       return {
         isInside: false,

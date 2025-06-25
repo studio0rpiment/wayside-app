@@ -295,12 +295,12 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   
   // Update marker position and appearance
   const updateUserMarker = useCallback((position: [number, number]) => {
-    console.log('🧭 updateUserMarker called:', {
-      position,
-      hasMap: !!map,
-      mapReady: map?.loaded(),
-      widgetMode
-    });
+    // console.log('🧭 updateUserMarker called:', {
+    //   position,
+    //   hasMap: !!map,
+    //   mapReady: map?.loaded(),
+    //   widgetMode
+    // });
 
     if (widgetMode) {
       // Widget mode - don't interact with map
