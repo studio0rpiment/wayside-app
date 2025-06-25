@@ -389,7 +389,7 @@ const handleMapRemoved = useCallback(() => {
              debugId="MAP"
              beamLength={4}
              minimalMode = {true}
-           
+              beamAngle={30}
 
             />
             {/* NEW: Pass map reference to GeofenceNotificationSystem */}

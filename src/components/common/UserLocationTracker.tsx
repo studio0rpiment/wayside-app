@@ -130,8 +130,8 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
         <defs>
           <!-- Black to white linear gradient -->
           <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="white" stop-opacity="0.8" />
-            <stop offset="50%" stop-color="gray" stop-opacity="0.6" />
+            <stop offset="0%" stop-color="white" stop-opacity="0.7" />
+            <stop offset="80%" stop-color="gray" stop-opacity="0.6" />
             <stop offset="100%" stop-color="black" stop-opacity="0.4" />
           </linearGradient>
         </defs>
@@ -253,8 +253,8 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
           </style>
           <!-- Black to white linear gradient -->
           <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="white" stop-opacity="0.8" />
-            <stop offset="50%" stop-color="gray" stop-opacity="0.6" />
+            <stop offset="0%" stop-color="white" stop-opacity="0.6" />
+            <stop offset="80%" stop-color="gray" stop-opacity="0.6" />
             <stop offset="100%" stop-color="black" stop-opacity="0.4" />
           </linearGradient>
         </defs>
