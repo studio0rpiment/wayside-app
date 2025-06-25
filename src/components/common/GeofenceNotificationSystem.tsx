@@ -240,6 +240,7 @@ useEffect(() => {
         distanceToGeofence={modalGeofenceInfo.distance}
         directionToGeofence={modalGeofenceInfo.direction}
         currentRadius={getCurrentRadius()}
+        
       />
       
       {/* Optional: Debug info for development */}

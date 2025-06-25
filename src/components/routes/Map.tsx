@@ -421,56 +421,21 @@ const handleMapRemoved = useCallback(() => {
           currentRadius={GEOFENCE_CONFIG.DEFAULT_RADIUS}
         /> */}
 
-        {/* Compass calibration Debugger
-        <div style={{
-          position: 'absolute',
-          bottom: '10px',
-          right: '10px',
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          color: 'white',
-          padding: '6px',
-          borderRadius: '4px',
-          fontSize: '8px',
-          pointerEvents: 'auto'
-        }}>
-          <div style={{ color: 'yellow', fontSize: '10px' }}>
-            COMPASS CALIBRATION: {compassCalibration}° offset
-          </div>
-          
-          {(() => {
-            const compassButtonStyle = {
-              fontSize: '16px',
-              padding: '4px 8px',
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              border: 'none',
-              borderRadius: '0.5rem',
-              color: 'white',
-              cursor: 'pointer'
-            };
-            
-            return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                <button onClick={() => setCompassCalibration(prev => prev - 45)} style={compassButtonStyle}>-45°</button>
-                <button onClick={() => setCompassCalibration(prev => prev - 5)} style={compassButtonStyle}>-5°</button>
-                <button onClick={() => setCompassCalibration(0)} style={compassButtonStyle}>Reset</button>
-                <button onClick={() => setCompassCalibration(prev => prev + 5)} style={compassButtonStyle}>+5°</button>
-                <button onClick={() => setCompassCalibration(prev => prev + 45)} style={compassButtonStyle}>+45°</button>
-              </div>
-            );
-          })()}
-        </div> */}
+     
 
        {/* Experience modal and geofence notifications with map zoom */}
        
         
               {/* Experience modal */}
+             {mapLoaded && mapRef.current && (
               <ExperienceModal
                 isOpen={modalState.isOpen}
                 pointData={modalState.pointData}
                 onClose={closeModal}
                 currentRadius={currentRadius}
+                mapRef={mapRef as React.RefObject<mapboxgl.Map>}
               />
-     
+              )}
         
        
       </VerticalSection>

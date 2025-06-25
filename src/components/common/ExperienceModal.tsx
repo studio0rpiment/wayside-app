@@ -1,5 +1,6 @@
 // src/components/common/ExperienceModal.tsx - Enhanced with Universal Mode Integration
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import mapboxgl from 'mapbox-gl';
 import CompassArrow from './CompassArrow';
 import ExperienceManager from '../ExperienceManager'
 import { 
@@ -9,6 +10,8 @@ import {
 } from '../../data/mapRouteData';
 import { useGeofenceContext, PositionQuality } from '../../context/GeofenceContext';
 import UserLocationTracker from './UserLocationTracker';
+
+import SynchronizedMiniMap from './SynchronizedMiniMap';
 
 interface ModalContent {
   title: string;
@@ -34,11 +37,12 @@ interface ExperienceModalProps {
   onClose: () => void;
   isNotification?: boolean;
 
-  // ✅ REMOVED: Legacy geofence props - now handled by enhanced context
   isInsideGeofence?: boolean;
   distanceToGeofence?: number | null;
   directionToGeofence?: number | null;
   currentRadius?: number;
+
+  mapRef?: React.RefObject<mapboxgl.Map>
 }
 
 // Enhanced geofence info interface
@@ -59,11 +63,9 @@ interface EnhancedGeofenceInfo {
 }
 
 // ✅ NEW: Desktop debug flag to see outside geofence state
-const FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG = false; // Set to true to see outside geofence UI on desktop
+const FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG = true; // Set to true to see outside geofence UI on desktop
 
 const showDebug = false; // Separate debug flag
-
-
 
 /**
  * Enhanced user position hook that leverages the GeofenceContext
@@ -89,8 +91,6 @@ function useEnhancedUserPosition() {
   contextUniversalMode || 
   (typeof window !== 'undefined' && !('geolocation' in navigator))
 );
-
-
 
   const getBestUserPosition = useCallback((): [number, number] | null => {
 
@@ -173,7 +173,6 @@ function useEnhancedUserPosition() {
     });
   }, [isUniversalMode, currentBestPosition, currentArReadyPosition]);
 
-
   return {
     getBestUserPosition,
     getArReadyPosition,
@@ -199,15 +198,13 @@ function useEnhancedUserPosition() {
   };
 }
 
-
 const ExperienceModal: React.FC<ExperienceModalProps> = ({
   isOpen,
   pointData,
   onClose,
   isNotification = false,
+  mapRef
 }) => {
-
-  
   
   const [showArExperience, setShowArExperience] = useState(false);
   
@@ -224,7 +221,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     currentRadius,
     updateGlobalRadius,
     resetGlobalRadius,
-    isUniversalMode // ✅ NEW: Get enhanced Universal Mode flag
+    isUniversalMode // 
   } = useEnhancedUserPosition();
   
   const { 
@@ -235,8 +232,6 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   
   // Track previous position for hexagonal entry direction detection
   const [previousPosition, setPreviousPosition] = useState<[number, number] | null>(null);
-
-  
   
   // Update previous position when best position changes
   useEffect(() => {
@@ -351,9 +346,6 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         isPositionStable: isPositionStable || false
       };
     }
-    
-    
-
 
     // Use geofenceResult distance, but fallback to manual calculation if null
     const finalDistance = geofenceResult.distance !== null ? geofenceResult.distance : fallbackDistance;
@@ -453,15 +445,6 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     arReadyPosition !== null && currentAccuracy !== null && 
     currentAccuracy <= 30 && positionQuality !== PositionQuality.UNACCEPTABLE;
 
-         console.log('🧭 About to render Modal UserLocationTracker:', {
-                        shouldRender: true, 
-                        averagedPosition,
-                        isModalOpen: isOpen,
-                        
-                      });
-
-    
-
   // Show regular modal
   return (
     <>
@@ -503,6 +486,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
           Universal Access
         </div>
       )}
+
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 style={{ margin: 0, fontSize: '24px' }}>
@@ -545,8 +529,37 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         {/* Universal Mode - No UI, just direct button */}
         {isUniversalMode ? null : (
           <>
+            {/* ✅ Mini-map - show whenever not in Universal Mode */}
+            {(() => {
+              console.log('🗺️ Mini-map render check:', {
+                hasAveragedPosition: !!averagedPosition,
+                averagedPosition,
+                hasMapRef: !!mapRef,
+                hasMapRefCurrent: !!mapRef?.current,
+                isUniversalMode,
+                pointDataIconName: pointData.iconName,
+                willRender: !isUniversalMode && averagedPosition && mapRef
+              });
+              return null;
+            })()}
+            
+            {averagedPosition && mapRef && (
+              <SynchronizedMiniMap
+                experienceId={pointData.iconName}
+                userPosition={averagedPosition}
+                mainMapRef={mapRef}
+                width="auto"
+                height="150px"
+                className="mini-map"
+                style={{ marginBottom: '10px' }}
+                zoomOffset={-3} // Show wider area than main map
+                showAnchors={true} // Include AR anchor markers
+              />
+            )}
+         
+
             {/* Normal GPS Mode - Position Quality Warning */}
-            {averagedPosition && !isPositionGoodEnoughForArStartup && (
+            {/* {averagedPosition && !isPositionGoodEnoughForArStartup && (
               <div style={{
                 backgroundColor: 'rgba(255, 165, 0, 0.1)',
                 border: '1px solid rgba(255, 165, 0, 0.3)',
@@ -564,7 +577,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                   For best AR experience, move to an area with clearer sky view
                 </div>
               </div>
-            )}
+            )} */}
             
             {/* Normal GPS Mode - Geofence Status */}
             {enhancedGeofenceInfo.isInside ? (
@@ -584,21 +597,6 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                     alignItems: 'center', 
                     justifyContent: 'center' 
                   }}>
-                    {/* Compass arrow pointing to experience center */}
-                  
-                      
-
-                      <UserLocationTracker
-                        map={null}
-                        widgetMode={true}
-                        showDirectionBeam={true}
-                        userPosition={averagedPosition}
-                        size={40} // Try larger size first
-                        debugId="MODAL"
-                        minimalMode={false} // Make sure this is explicitly false
-                      />
-                
-                    
                     {/* Distance and status info */}
                     <div style={{ fontSize: '14px', marginBottom: '8px' }}>
                       <strong style={{ color: '#90EE90' }}>✓ In Range</strong>
@@ -639,6 +637,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
                 borderRadius: '8px' 
               }}>
+
                 <div style={{ 
                   display: 'flex', 
                   flexDirection: 'column',
@@ -647,30 +646,20 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                   marginBottom: '12px' 
                 }}>
                   {/* Compass arrow pointing toward experience */}
-                
-                  <UserLocationTracker
-                  map={null}
-                  widgetMode={true}
-                  showDirectionBeam={true}
-                  userPosition={averagedPosition}
-                  size={40} // Try larger size first
-                  debugId="MODAL"
-                  minimalMode={false} // Make sure this is explicitly false
-                />
-              
-                  
-                  {/* Distance and navigation info */}
-                  <div style={{ marginBottom: '8px' }}>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '4px' }}>
-                      {enhancedGeofenceInfo.distanceFeet !== null 
-                        ? `${enhancedGeofenceInfo.distanceFeet}ft away` 
-                        : 'Distance unknown'
-                      }
-                    </div>
-                  </div>
+                  {/* <UserLocationTracker
+                    map={null}
+                    widgetMode={true}
+                    showDirectionBeam={true}
+                    userPosition={averagedPosition}
+                    size={40}
+                    debugId="MODAL"
+                    minimalMode={false}
+                  />
+                   */}
+               
                   
                   {/* Navigation instruction */}
-                  <div style={{ 
+                  {/* <div style={{ 
                     fontSize: '12px', 
                     opacity: 0.7,
                     padding: '6px 10px',
@@ -679,17 +668,17 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                     marginTop: '4px'
                   }}>
                     Follow the compass arrow to find the experience
-                  </div>
+                  </div> */}
                 </div>
                 
-                <p style={{ 
+                {/* <p style={{ 
                   margin: '0', 
                   color: 'var(--color-light)', 
                   opacity: 0.8,
                   fontSize: '14px' 
                 }}>
                   You need to be at the location to start this experience
-                </p>
+                </p> */}
               </div>
             )}
           </>
@@ -717,12 +706,12 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
             ? `Launch ${pointData.title}` // Universal Mode button
             : isPositionGoodEnoughForArStartup 
               ? (pointData.modalContent.buttonText || `Launch ${pointData.title}`)
-              : '⚠️ Waiting for better GPS accuracy for startup'
+              : '⚠️ Get Closer to Launch Experience'
           }
         </button>
         
         {/* ✅ SEPARATE: Enhanced Debug info (always available in development, separate from Universal Mode) */}
-        {(process.env.NODE_ENV === 'development' && showDebug) && (
+        {/* {(process.env.NODE_ENV === 'development' && showDebug) && (
           <div style={{
             marginTop: '15px',
             padding: '8px',
@@ -742,7 +731,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
             <div>Inside: {enhancedGeofenceInfo.isInside ? 'Yes' : 'No'}</div>
             <div>Show AR: {showArExperience ? 'Yes' : 'No'}</div>
             
-            {/* Enhanced position debug */}
+        
             <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
               <div><strong>Position Debug:</strong></div>
               <div>Current: {averagedPosition ? `${averagedPosition[0].toFixed(6)}, ${averagedPosition[1].toFixed(6)}` : 'undefined'}</div>
@@ -755,7 +744,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
               <div>Startup Ready: {isPositionGoodEnoughForArStartup ? 'Yes' : 'No'}</div>
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Backdrop overlay */}
