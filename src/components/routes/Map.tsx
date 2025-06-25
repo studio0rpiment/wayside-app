@@ -381,6 +381,7 @@ const handleMapRemoved = useCallback(() => {
         {/* User location tracker and mapref to geofenceNotificaiton */}
           {mapLoaded && mapRef.current && (
           <>
+           {/* Control the beam */}
         <UserLocationTracker
             map={mapRef.current}
             userPosition={averagedPosition}  // Use context position
