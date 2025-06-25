@@ -30,7 +30,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   minimalMode = false,
   widgetMode = false,
   showDirectionBeam = false,
-  size = 40,
+  size = 30,
   beamLength = 10,
   beamAngle = 40,
   beamGradient = true,
@@ -97,7 +97,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     const scaledBeamRadius = scaledRadius * beamLength;
     
     // ✅ Calculate bearing dot position (same as working version)
-    const dotOffset = scaledRadius * 0.4;
+    const dotOffset = scaledRadius * 0.6;
     const dotRadius = scaledRadius * 0.3;
 
     
@@ -155,7 +155,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
           r="${scaledRadius}" 
           fill="white" 
           stroke="black" 
-          stroke-width="2"
+          stroke-width="4"
         />
         
         <!-- Bearing indicator dot (always show, defaults to North) -->
