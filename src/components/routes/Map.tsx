@@ -386,7 +386,7 @@ const handleMapRemoved = useCallback(() => {
             userPosition={averagedPosition}  // Use context position
             showDirectionBeam={true}
              debugId="MAP"
-             beamLength={4}
+             beamLength={1}
              minimalMode = {true}
            
 
