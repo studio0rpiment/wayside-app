@@ -6447,6 +6447,8 @@ void main() {
         width="${n/2}" 
         height="${n/2}" 
         viewBox="0 0 ${Ve} ${Ve}" 
+        style="position: absolute; overflow: visible;"
+        xmlns="http://www.w3.org/2000/svg"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
@@ -6496,6 +6498,7 @@ void main() {
         version="1.1" 
         width="${n}"
         height="${n}"
+        style="position: absolute; overflow: visible;"
         viewBox="0 0 ${De} ${De}"
       >
         <defs>
