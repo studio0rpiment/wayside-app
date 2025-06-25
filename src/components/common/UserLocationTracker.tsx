@@ -41,7 +41,8 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     widgetMode,
     hasMap: !!map,
     userPosition,
-    showDirectionBeam
+    showDirectionBeam,
+    beamLength
   });
 
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -62,96 +63,115 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
   // Determine which heading to use (prop takes precedence for backward compatibility)
   const finalHeading = propHeading !== undefined ? propHeading : deviceHeading;
   
-  // Create minimal center ball marker with subtle bearing triangle and optional beam
-// Updated createMinimalMarker function with bearing dot
-// Updated createMinimalMarker function with bearing dot
-const createMinimalMarker = useCallback((bearing?: number): HTMLElement => {
-  const el = document.createElement('div');
-  el.className = 'user-location-marker-minimal';
-  el.style.width = `${size / 2}px`;
-  el.style.height = `${size / 2}px`;
-  el.style.position = 'relative';
-  el.style.pointerEvents = 'none';
-  el.style.zIndex = '1';
-  
-  // Calculate final bearing accounting for map rotation (if map exists)
-  const mapBearing = map?.getBearing() || 0;
-  const finalBearing = bearing !== undefined ? bearing - mapBearing : 0;
-  
-  const viewBoxSize = size / 2;
-  const center = viewBoxSize / 2;
-  const radius = center - 2;
-  const beamRadius = radius * beamLength;
-  
-  // ✅ NEW: Calculate bearing dot position (smaller offset for minimal size)
-  const dotOffset = radius * 0.4; // Place dot 40% from center toward edge
-  const dotRadius = radius * 0.3; // Small dot size (15% of main circle radius)
-  
-  // Calculate beam arc points using trigonometry (scaled for minimal size)
-  const halfAngleRad = (beamAngle / 2) * (Math.PI / 180);
-  const leftAngle = -halfAngleRad;
-  const rightAngle = halfAngleRad;
-  
-  // Calculate outer arc points
-  const leftX = center + beamRadius * Math.sin(leftAngle);
-  const leftY = center - beamRadius * Math.cos(leftAngle);
-  const rightX = center + beamRadius * Math.sin(rightAngle);
-  const rightY = center - beamRadius * Math.cos(rightAngle);
-  
-  // Determine if we need a large arc (for angles > 180°)
-  const largeArcFlag = beamAngle > 180 ? 1 : 0;
-  
-  const svgContent = `
-    <svg width="${viewBoxSize}" height="${viewBoxSize}" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        ${beamGradient ? `
-          <radialGradient id="beamGradientMinimal${Date.now()}" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="rgba(0, 150, 255, 0.8)" />
-            <stop offset="50%" stop-color="rgba(0, 100, 200, 0.6)" />
-            <stop offset="100%" stop-color="rgba(0, 50, 150, 0.3)" />
-          </radialGradient>
+  // Create minimal center ball marker with bearing dot - FIXED VIEWBOX (based on working version)
+  const createMinimalMarker = useCallback((bearing?: number): HTMLElement => {
+    const el = document.createElement('div');
+    el.className = 'user-location-marker-minimal';
+    el.style.width = `${size / 2}px`;
+    el.style.height = `${size / 2}px`;
+    el.style.position = 'relative';
+    el.style.pointerEvents = 'none';
+    el.style.zIndex = '1';
+    
+    // Calculate final bearing accounting for map rotation (if map exists)
+    const mapBearing = map?.getBearing() || 0;
+    const finalBearing = bearing !== undefined ? bearing - mapBearing : 0;
+    
+    // Base calculations (same as working version)
+    const center = size / 4;
+    const radius = center - 2;
+    const beamRadius = radius * beamLength;
+    
+    // ✅ FIXED: Dynamic viewBox that accommodates beam size
+    const baseViewBoxSize = size / 2;
+    const requiredViewBoxSize = showDirectionBeam ? Math.max(baseViewBoxSize, beamRadius * 2.2) : baseViewBoxSize;
+    
+    // Use the larger viewBox but keep same center calculations
+    const viewBoxSize = requiredViewBoxSize;
+    const viewBoxCenter = viewBoxSize / 2;
+    
+    // ✅ Keep original coordinate system but scale for larger viewBox
+    const scaleFactor = viewBoxSize / baseViewBoxSize;
+    const scaledCenter = viewBoxCenter;
+    const scaledRadius = radius * scaleFactor;
+    const scaledBeamRadius = scaledRadius * beamLength;
+    
+    // ✅ Calculate bearing dot position (same as working version)
+    const dotOffset = scaledRadius * 0.4;
+    const dotRadius = scaledRadius * 0.3;
+    
+    // Calculate beam arc points using trigonometry
+    const halfAngleRad = (beamAngle / 2) * (Math.PI / 180);
+    const leftAngle = -halfAngleRad;
+    const rightAngle = halfAngleRad;
+    
+    // Calculate outer arc points
+    const leftX = scaledCenter + scaledBeamRadius * Math.sin(leftAngle);
+    const leftY = scaledCenter - scaledBeamRadius * Math.cos(leftAngle);
+    const rightX = scaledCenter + scaledBeamRadius * Math.sin(rightAngle);
+    const rightY = scaledCenter - scaledBeamRadius * Math.cos(rightAngle);
+    
+    // Determine if we need a large arc (for angles > 180°)
+    const largeArcFlag = beamAngle > 180 ? 1 : 0;
+    
+    // ✅ Unique gradient ID
+    const gradientId = `beamGradientMinimal_${debugId}_${Date.now()}`;
+    
+    const svgContent = `
+      <svg 
+        width="${size / 2}" 
+        height="${size / 2}" 
+        viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" 
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <!-- Black to white linear gradient -->
+          <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="black" stop-opacity="0.8" />
+            <stop offset="50%" stop-color="gray" stop-opacity="0.6" />
+            <stop offset="100%" stop-color="white" stop-opacity="0.4" />
+          </linearGradient>
+        </defs>
+        
+        <!-- Direction beam (extends from device heading) - behind everything -->
+        ${showDirectionBeam && bearing !== undefined ? `
+          <g class="direction-beam-group" transform="rotate(${finalBearing}, ${scaledCenter}, ${scaledCenter})">
+            <path 
+              class="direction-beam"
+              d="M ${scaledCenter},${scaledCenter} L ${leftX},${leftY} A ${scaledBeamRadius},${scaledBeamRadius} 0 ${largeArcFlag},1 ${rightX},${rightY} Z" 
+              fill="url(#${gradientId})"
+              stroke="none"
+            />
+          </g>
         ` : ''}
-      </defs>
-      
-      <!-- Direction beam (extends from device heading) - behind everything -->
-      ${showDirectionBeam && bearing !== undefined ? `
-        <g class="direction-beam-group" transform="rotate(${finalBearing}, ${center}, ${center})">
-          <path 
-            class="direction-beam"
-            d="M ${center},${center} L ${leftX},${leftY} A ${beamRadius},${beamRadius} 0 ${largeArcFlag},1 ${rightX},${rightY} Z" 
-            fill="${beamGradient ? `url(#beamGradientMinimal${Date.now()})` : 'rgba(0, 150, 255, 0.6)'}"
-            stroke="none"
+        
+        <!-- Main center circle (white with black border) -->
+        <circle 
+          cx="${scaledCenter}" 
+          cy="${scaledCenter}" 
+          r="${scaledRadius}" 
+          fill="white" 
+          stroke="black" 
+          stroke-width="2"
+        />
+        
+        <!-- Bearing indicator dot (always show, defaults to North) -->
+        <g class="bearing-indicator" transform="rotate(${bearing !== undefined ? finalBearing : 0}, ${scaledCenter}, ${scaledCenter})">
+          <circle 
+            cx="${scaledCenter}" 
+            cy="${scaledCenter - dotOffset}" 
+            r="${dotRadius}" 
+            fill="black"
           />
         </g>
-      ` : ''}
-      
-      <!-- Main center circle (white with black border) -->
-      <circle 
-        cx="${center}" 
-        cy="${center}" 
-        r="${radius}" 
-        fill="white" 
-        stroke="black" 
-        stroke-width="2"
-      />
-      
-      <!-- ✅ NEW: Bearing indicator dot (always show, defaults to North) -->
-      <g class="bearing-indicator" transform="rotate(${bearing !== undefined ? finalBearing : 0}, ${center}, ${center})">
-        <circle 
-          cx="${center}" 
-          cy="${center - dotOffset}" 
-          r="${dotRadius}" 
-          fill="black"
-        />
-      </g>
-    </svg>
-  `;
+      </svg>
+    `;
+    
+    el.innerHTML = svgContent;
+    return el;
+  }, [map, size, showDirectionBeam, beamLength, beamAngle, beamGradient, debugId]);
   
-  el.innerHTML = svgContent;
-  return el;
-}, [map, size, showDirectionBeam, beamLength, beamAngle, beamGradient]);
-  
-  // Create full SVG location marker with compass bearing and direction beam
+  // Create full SVG location marker - FIXED VIEWBOX (based on working version)
   const createSvgMarker = useCallback((rotation: number, showWarning: boolean): HTMLElement => {
     const el = document.createElement('div');
     el.className = widgetMode ? 'user-location-widget' : 'user-location-marker';
@@ -164,9 +184,24 @@ const createMinimalMarker = useCallback((bearing?: number): HTMLElement => {
     const mapBearing = map?.getBearing() || 0;
     const finalRotation = rotation - mapBearing;
     
+    // Base calculations (same as working version)
     const center = size / 2;
     const radius = center - 2;
     const beamRadius = radius * beamLength;
+    
+    // ✅ FIXED: Dynamic viewBox that accommodates beam size
+    const baseViewBoxSize = size;
+    const requiredViewBoxSize = showDirectionBeam ? Math.max(baseViewBoxSize, beamRadius * 2.2) : baseViewBoxSize;
+    
+    // Use the larger viewBox
+    const viewBoxSize = requiredViewBoxSize;
+    const viewBoxCenter = viewBoxSize / 2;
+    
+    // ✅ Keep original coordinate system but scale for larger viewBox
+    const scaleFactor = viewBoxSize / baseViewBoxSize;
+    const scaledCenter = viewBoxCenter;
+    const scaledRadius = radius * scaleFactor;
+    const scaledBeamRadius = scaledRadius * beamLength;
     
     // Calculate beam arc points using trigonometry
     const halfAngleRad = (beamAngle / 2) * (Math.PI / 180);
@@ -174,17 +209,25 @@ const createMinimalMarker = useCallback((bearing?: number): HTMLElement => {
     const rightAngle = halfAngleRad;
     
     // Calculate outer arc points
-    const leftX = center + beamRadius * Math.sin(leftAngle);
-    const leftY = center - beamRadius * Math.cos(leftAngle);
-    const rightX = center + beamRadius * Math.sin(rightAngle);
-    const rightY = center - beamRadius * Math.cos(rightAngle);
+    const leftX = scaledCenter + scaledBeamRadius * Math.sin(leftAngle);
+    const leftY = scaledCenter - scaledBeamRadius * Math.cos(leftAngle);
+    const rightX = scaledCenter + scaledBeamRadius * Math.sin(rightAngle);
+    const rightY = scaledCenter - scaledBeamRadius * Math.cos(rightAngle);
     
     // Determine if we need a large arc (for angles > 180°)
     const largeArcFlag = beamAngle > 180 ? 1 : 0;
     
-    // Define SVG for location marker with enhanced direction beam
+    // ✅ Unique gradient ID
+    const gradientId = `beamGradientFull_${debugId}_${Date.now()}`;
+    
     const svgContent = `
-      <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 ${size} ${size}">
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        version="1.1" 
+        width="${size}"
+        height="${size}"
+        viewBox="0 0 ${viewBoxSize} ${viewBoxSize}"
+      >
         <defs>
           <style>
             .outer-circle {
@@ -197,11 +240,6 @@ const createMinimalMarker = useCallback((bearing?: number): HTMLElement => {
               fill: black;
               transition: transform 0.3s ease-out;
             }
-            .bearing-triangle {
-              fill: rgba(0, 0, 0, 0.15);
-              stroke: rgba(0, 0, 0, 0.25);
-              stroke-width: 1;
-            }
             .warning-triangle {
               fill: #FFD700;
               stroke: #FFA500;
@@ -209,43 +247,39 @@ const createMinimalMarker = useCallback((bearing?: number): HTMLElement => {
               display: ${showWarning ? 'block' : 'none'};
             }
           </style>
-          ${beamGradient ? `
-            <radialGradient id="beamGradientFull${Date.now()}" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="rgba(0, 0, 0, .6)" />
-              <stop offset="20%" stop-color="rgba(0, 0, 0, 1)" />
-              <stop offset="100%" stop-color="rgba(255, 255, 255, 0.6)" />
-            </radialGradient>
-          ` : ''}
+          <!-- Black to white linear gradient -->
+          <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="black" stop-opacity="0.8" />
+            <stop offset="50%" stop-color="gray" stop-opacity="0.6" />
+            <stop offset="100%" stop-color="white" stop-opacity="0.4" />
+          </linearGradient>
         </defs>
         
         <!-- Direction beam (extends from device heading) - behind everything -->
         ${showDirectionBeam ? `
-          <g class="direction-beam-group" transform="rotate(${finalRotation}, ${center}, ${center})">
+          <g class="direction-beam-group" transform="rotate(${finalRotation}, ${scaledCenter}, ${scaledCenter})">
             <path 
               class="direction-beam"
-              d="M ${center},${center} L ${leftX},${leftY} A ${beamRadius},${beamRadius} 0 ${largeArcFlag},1 ${rightX},${rightY} Z" 
-              fill="${beamGradient ? `url(#beamGradientFull${Date.now()})` : 'rgba(255, 255, 255, 0.8)'}"
+              d="M ${scaledCenter},${scaledCenter} L ${leftX},${leftY} A ${scaledBeamRadius},${scaledBeamRadius} 0 ${largeArcFlag},1 ${rightX},${rightY} Z" 
+              fill="url(#${gradientId})"
               stroke="none"
             />
           </g>
         ` : ''}
         
-       
-   
-        
         <!-- Outer circle (location indicator) -->
-        <circle class="outer-circle" cx="${center}" cy="${center}" r="${radius * 0.6}"/>
+        <circle class="outer-circle" cx="${scaledCenter}" cy="${scaledCenter}" r="${scaledRadius * 0.6}"/>
         
         <!-- Inner circle (bearing indicator) that rotates with SAME rotation as beam -->
-        <g class="bearing-indicator" transform="rotate(${finalRotation}, ${center}, ${center})">
-          <circle class="inner-circle" cx="${center}" cy="${center - radius/3}" r="${radius/4}"/>
+        <g class="bearing-indicator" transform="rotate(${finalRotation}, ${scaledCenter}, ${scaledCenter})">
+          <circle class="inner-circle" cx="${scaledCenter}" cy="${scaledCenter - scaledRadius/3}" r="${scaledRadius/4}"/>
         </g>
         
         <!-- Warning triangle (shown when no orientation available) -->
         ${showWarning ? `
           <g class="warning-indicator">
-            <polygon class="warning-triangle" points="${center},${radius/3} ${center - radius/4},${center}" ${center + radius/4},${center}" />
-            <text x="${center}" y="${center - radius/6}" text-anchor="middle" font-size="${size/8}" fill="#000">!</text>
+            <polygon class="warning-triangle" points="${scaledCenter},${scaledRadius/3} ${scaledCenter - scaledRadius/4},${scaledCenter} ${scaledCenter + scaledRadius/4},${scaledCenter}" />
+            <text x="${scaledCenter}" y="${scaledCenter - scaledRadius/6}" text-anchor="middle" font-size="${viewBoxSize/8}" fill="#000">!</text>
           </g>
         ` : ''}
       </svg>
@@ -253,7 +287,7 @@ const createMinimalMarker = useCallback((bearing?: number): HTMLElement => {
     
     el.innerHTML = svgContent;
     return el;
-  }, [map, size, widgetMode, showDirectionBeam, beamLength, beamAngle, beamGradient]);
+  }, [map, size, widgetMode, showDirectionBeam, beamLength, beamAngle, beamGradient, debugId]);
   
   // Update marker position and appearance
   const updateUserMarker = useCallback((position: [number, number]) => {
@@ -311,7 +345,8 @@ const createMinimalMarker = useCallback((bearing?: number): HTMLElement => {
         position,
         heading: finalHeading,
         orientationAvailable,
-        showDirectionBeam
+        showDirectionBeam,
+        beamLength
       });
     } catch (error) {
       console.error('Error creating user location marker:', error);

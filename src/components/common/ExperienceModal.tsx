@@ -552,6 +552,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
                 height="150px"
                 className="mini-map"
                 style={{ marginBottom: '10px' }}
+                
                 zoomOffset={-3} // Show wider area than main map
                 showAnchors={true} // Include AR anchor markers
               />

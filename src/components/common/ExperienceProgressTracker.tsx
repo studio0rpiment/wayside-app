@@ -263,7 +263,7 @@ const ExperienceProgressTracker = forwardRef<ExperienceProgressTrackerRef, Exper
       width: '22px',
       height: '22px',
       borderRadius: '50%',
-      border: `0.5px solid ${'var(--color-light)'}`,
+      // border: `0.5px solid ${'var(--color-light)'}`,
       backgroundColor: isCompleted ? experience.color : 'var(--color-dark)', // Keep color as fallback
       backgroundImage: isCompleted ? `url(${getAssetPath(`icons/${experience.id}_inv.svg`)})` : 'none',
       backgroundSize: 'contain',
