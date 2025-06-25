@@ -486,6 +486,23 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
           })
         }}
       >
+    {/*  Universal Mode Banner */}
+      {isUniversalMode && (
+        <div style={{
+          backgroundColor: 'var(--color-green)',
+          color: 'var(--color-light)',
+          padding: '8px 12px',
+          margin: '-20px -20px 15px -20px', // Negative margins to extend to modal edges
+          borderRadius: '12px 12px 0 0', // Rounded top corners only
+          textAlign: 'center',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase'
+        }}>
+          Universal Access
+        </div>
+      )}
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 style={{ margin: 0, fontSize: '24px' }}>
