@@ -99,6 +99,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
     // ✅ Calculate bearing dot position (same as working version)
     const dotOffset = scaledRadius * 0.4;
     const dotRadius = scaledRadius * 0.3;
+
     
     // Calculate beam arc points using trigonometry
     const halfAngleRad = (beamAngle / 2) * (Math.PI / 180);
@@ -122,6 +123,8 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
         width="${size / 2}" 
         height="${size / 2}" 
         viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" 
+        style="position: absolute; overflow: visible;"
+        xmlns="http://www.w3.org/2000/svg"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
@@ -226,6 +229,7 @@ const UserLocationTracker: React.FC<UserLocationTrackerProps> = ({
         version="1.1" 
         width="${size}"
         height="${size}"
+        style="position: absolute; overflow: visible;"
         viewBox="0 0 ${viewBoxSize} ${viewBoxSize}"
       >
         <defs>
