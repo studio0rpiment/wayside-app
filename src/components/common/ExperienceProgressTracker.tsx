@@ -244,11 +244,13 @@ const ExperienceProgressTracker = forwardRef<ExperienceProgressTrackerRef, Exper
     // Container styles
     const containerStyle: React.CSSProperties = {
       position: 'fixed',
-      top: '5vh',
+      top: '0vh',
       left: '50%',
       transform: 'translateX(-50%)',
       width: '100%',
-      maxWidth: '75vw',
+      height: '5svh',
+      
+      backdropFilter: 'blur(2px)',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
