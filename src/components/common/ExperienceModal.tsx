@@ -84,7 +84,7 @@ function useEnhancedUserPosition() {
     isUniversalMode: contextUniversalMode 
   } = useGeofenceContext();
 
-  // ✅ NEW: Override Universal Mode only by actual system detection, not manual flag
+  // Override Universal Mode only by actual system detection, not manual flag
  const isUniversalMode = FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG ? false : (
   contextUniversalMode || 
   (typeof window !== 'undefined' && !('geolocation' in navigator))
@@ -94,10 +94,15 @@ function useEnhancedUserPosition() {
 
   const getBestUserPosition = useCallback((): [number, number] | null => {
 
+       if (isUniversalMode) {
+      return [-76.943, 38.9125]; // Kenilworth center fallback
+    }
+
      if (FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG) {
     return [-76.940, 38.910]; // Position outside Kenilworth for testing
   }
-    // Priority 1: Use averaged position if stable and accurate (≤10m)
+
+    // Use averaged position if stable and accurate (≤10m)
     if (preciseUserPosition && isPositionStable && 
         currentAccuracy && currentAccuracy <= 10) {
       return preciseUserPosition;
@@ -124,20 +129,24 @@ function useEnhancedUserPosition() {
       return latest.coordinates;
     }
 
-    if (isUniversalMode) {
-      return preciseUserPosition || rawUserPosition || [-76.943, 38.9125]; // Kenilworth center fallback
-    }
+       console.warn('❌ No position available - GPS failed and not in Universal Mode');
+    return null;
     
     return null;
-  }, [preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable, positionHistory, isUniversalMode]);
+  }, [isUniversalMode, preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable, positionHistory ]);
 
   // ✅ STRICT function for starting AR (high quality requirements)
   const getArReadyPosition = useCallback((): [number, number] | null => {
     // Only return position if good enough for AR startup
 
     if (isUniversalMode) {
-      return preciseUserPosition || rawUserPosition || [-76.943, 38.9125]; // Kenilworth center fallback
+      return [-76.943, 38.9125]; // Kenilworth center fallback
     }
+
+      if (FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG) {
+      return [-76.940, 38.910];
+    }
+
     if (preciseUserPosition && isPositionStable && 
         currentAccuracy && currentAccuracy <= 10) {
       return preciseUserPosition;
@@ -148,22 +157,38 @@ function useEnhancedUserPosition() {
     }
     
     return null;
-  }, [preciseUserPosition, currentAccuracy, isPositionStable, isUniversalMode]);
+  }, [isUniversalMode,preciseUserPosition, currentAccuracy, isPositionStable]);
+
+  const currentBestPosition = getBestUserPosition();
+  const currentArReadyPosition = getArReadyPosition();
+
+   useEffect(() => {
+    console.log('🌐 Universal Mode Status:', {
+      isUniversalMode,
+      contextUniversalMode,
+      hasGeolocation: typeof window !== 'undefined' && 'geolocation' in navigator,
+      forceDebugOutside: FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG,
+      bestPosition: currentBestPosition,
+      arReadyPosition: currentArReadyPosition
+    });
+  }, [isUniversalMode, currentBestPosition, currentArReadyPosition]);
+
 
   return {
     getBestUserPosition,
     getArReadyPosition,
-    averagedPosition: preciseUserPosition,
-    arReadyPosition: getArReadyPosition(),
+     averagedPosition: getBestUserPosition(),      // Call the function to get the value
+    arReadyPosition: getArReadyPosition(),  
     
     // Expose precision data
-    currentAccuracy,
-    positionQuality,
-    isPositionStable,
-    rawUserPosition,
-    preciseUserPosition,
+    currentAccuracy: isUniversalMode ? 1.0 : currentAccuracy, // Perfect accuracy in Universal Mode
+    positionQuality: isUniversalMode ? PositionQuality.EXCELLENT : positionQuality,
+    isPositionStable: isUniversalMode ? true : isPositionStable, // Always stable in Universal Mode
     
-    // ✅ NEW: Return enhanced Universal Mode flag
+    // Raw GPS data (may be null in Universal Mode - that's fine)
+    rawUserPosition,
+    
+    // Return enhanced Universal Mode flag
     isUniversalMode,
     
     // Radius functions from context:
@@ -173,6 +198,7 @@ function useEnhancedUserPosition() {
     resetGlobalRadius
   };
 }
+
 
 const ExperienceModal: React.FC<ExperienceModalProps> = ({
   isOpen,
