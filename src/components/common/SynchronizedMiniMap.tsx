@@ -441,7 +441,7 @@ const SynchronizedMiniMap: React.FC<SynchronizedMiniMapProps> = ({
             userPosition={userPosition}
             showDirectionBeam={true}
             debugId="MINIMAP"
-            beamLength={20} // Shorter beam for minimap
+            beamLength={6} // Shorter beam for minimap
             minimalMode={true}
           />
         )}
