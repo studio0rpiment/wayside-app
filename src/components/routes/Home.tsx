@@ -48,7 +48,7 @@ const Home: React.FC = () => {
           color='transparent'
           // color='gradient(var(--color-dark), var(--color-pink), var(--color-blue))'
         >
-          <div style={{ textDecoration: 'none', margin: '1rem 1rem 1rem 1rem', height: '100%', overflow: 'auto',  overflowY: 'scroll',WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ textDecoration: 'none', margin: '1rem 1rem 1rem 1rem', height: '100%', overflow: 'visible',  overflowY: 'scroll',WebkitOverflowScrolling: 'touch' }}>
             <ContentContainer {...headerConfig} />
           </div>
           <ContentContainer {...heroConfig} />

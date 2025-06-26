@@ -1,10 +1,10 @@
 // src/hooks/useARPositioning.ts
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
-import { WorldCoordinateSystem } from '../utils/coordinate-system/WorldCoordinateSystem';
-import { AnchorManager } from '../utils/coordinate-system/AnchorManager';
 import { ARPositioningManager, ExperiencePositionResult, PositioningOptions } from '../utils/coordinate-system/ARPositioningManager';
 import { useGeofenceContext } from '../context/GeofenceContext';
+// Import the singleton instance
+import { arPositioningManager } from '../utils/coordinate-system/PositioningSystemSingleton';
 
 export interface ARPositioningHookResult {
   // Main positioning methods
@@ -20,10 +20,10 @@ export interface ARPositioningHookResult {
   setGlobalElevation: (offset: number) => void;
   getCurrentElevationOffset: () => number;
   
-// Anchor adjustment (NEW)
-adjustAnchorPosition: (experienceId: string, deltaLon: number, deltaLat: number) => boolean;
-resetAnchorPosition: (experienceId: string) => boolean;
-getCurrentAnchorGps: (experienceId: string) => any;
+  // Anchor adjustment
+  adjustAnchorPosition: (experienceId: string, deltaLon: number, deltaLat: number) => boolean;
+  resetAnchorPosition: (experienceId: string) => boolean;
+  getCurrentAnchorGps: (experienceId: string) => [number, number] | null;
   
   // Reset and debug
   resetPosition: (experienceId: string) => void;
@@ -40,7 +40,7 @@ getCurrentAnchorGps: (experienceId: string) => any;
 
 /**
  * React hook that provides simple AR positioning API for experiences
- * Replaces all the scattered positioning logic across components
+ * Now uses singleton positioning system for consistency across all components
  */
 export function useARPositioning(): ARPositioningHookResult {
   
@@ -50,17 +50,16 @@ export function useARPositioning(): ARPositioningHookResult {
     averagedPosition: preciseUserPosition,
     currentAccuracy,
     positionQuality,
-    isPositionStable
+    isPositionStable,
+    isUniversalMode
   } = useGeofenceContext();
 
   // State for hook
   const [isReady, setIsReady] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   
-  // Refs for positioning system (created once, stable across renders)
-  const worldSystemRef = useRef<WorldCoordinateSystem | null>(null);
-  const anchorManagerRef = useRef<AnchorManager | null>(null);
-  const arPositioningManagerRef = useRef<ARPositioningManager | null>(null);
+  // Use the singleton instance directly (no more creating new instances!)
+  const arPositioningManagerRef = useRef<ARPositioningManager>(arPositioningManager);
   
   // Track debug mode changes
   useEffect(() => {
@@ -75,38 +74,14 @@ export function useARPositioning(): ARPositioningHookResult {
     return () => clearInterval(interval);
   }, [debugMode]);
   
-  // Initialize positioning system (once on mount)
+  // Simplified initialization - singleton is already created
   useEffect(() => {
-    console.log('🎣 useARPositioning: Initializing positioning system...');
+    console.log('🎣 useARPositioning: Using singleton positioning system');
+    setIsReady(true);
     
-    try {
-      // Create coordinate system with Kenilworth centroid
-      const worldSystem = new WorldCoordinateSystem(0, true);
-      worldSystemRef.current = worldSystem;
-      
-      // Create anchor manager
-      const anchorManager = new AnchorManager(worldSystem);
-      anchorManagerRef.current = anchorManager;
-      
-      // Create AR positioning manager
-      const arPositioningManager = new ARPositioningManager(worldSystem, anchorManager);
-      arPositioningManagerRef.current = arPositioningManager;
-      
-      setIsReady(true);
-      console.log('✅ useARPositioning: Positioning system ready');
-      
-    } catch (error) {
-      console.error('❌ useARPositioning: Failed to initialize positioning system:', error);
-      setIsReady(false);
-    }
-    
-    // Cleanup on unmount
+    // No cleanup needed since we're using singleton
     return () => {
-      console.log('🧹 useARPositioning: Cleaning up positioning system');
-      worldSystemRef.current = null;
-      anchorManagerRef.current = null;
-      arPositioningManagerRef.current = null;
-      setIsReady(false);
+      console.log('🎣 useARPositioning: Hook cleanup (singleton remains active)');
     };
   }, []); // Empty dependency array - initialize once
   
@@ -150,7 +125,10 @@ export function useARPositioning(): ARPositioningHookResult {
       return false;
     }
     
-    const userInput = { gpsPosition: currentUserPosition };
+    const userInput = { 
+      gpsPosition: currentUserPosition,
+      isUniversalMode
+    };
     
     try {
       const success = arPositioningManagerRef.current.positionObject(
@@ -169,7 +147,7 @@ export function useARPositioning(): ARPositioningHookResult {
       console.error(`🎣 useARPositioning: Error positioning ${experienceId}:`, error);
       return false;
     }
-  }, [isReady, currentUserPosition]);
+  }, [isReady, currentUserPosition, isUniversalMode]);
   
   // Get position data without applying to object
   const getPosition = useCallback((
@@ -180,7 +158,10 @@ export function useARPositioning(): ARPositioningHookResult {
       return null;
     }
     
-    const userInput = { gpsPosition: currentUserPosition };
+    const userInput = { 
+      gpsPosition: currentUserPosition,
+      isUniversalMode
+    };
     
     try {
       return arPositioningManagerRef.current.getExperiencePosition(
@@ -192,7 +173,7 @@ export function useARPositioning(): ARPositioningHookResult {
       console.error(`🎣 useARPositioning: Error getting position for ${experienceId}:`, error);
       return null;
     }
-  }, [isReady, currentUserPosition]);
+  }, [isReady, currentUserPosition, isUniversalMode]);
   
   // Convenience method: Get world position only
   const getWorldPosition = useCallback((experienceId: string): THREE.Vector3 | null => {
@@ -210,12 +191,14 @@ export function useARPositioning(): ARPositioningHookResult {
   const adjustGlobalElevation = useCallback((delta: number) => {
     if (arPositioningManagerRef.current) {
       arPositioningManagerRef.current.adjustGlobalElevationOffset(delta);
+      console.log(`🎣 useARPositioning: Adjusted global elevation by ${delta}m`);
     }
   }, []);
   
   const setGlobalElevation = useCallback((offset: number) => {
     if (arPositioningManagerRef.current) {
       arPositioningManagerRef.current.setGlobalElevationOffset(offset);
+      console.log(`🎣 useARPositioning: Set global elevation to ${offset}m`);
     }
   }, []);
   
@@ -223,7 +206,7 @@ export function useARPositioning(): ARPositioningHookResult {
     return arPositioningManagerRef.current?.getGlobalElevationOffset() || 0;
   }, []);
   
-  // NEW: Anchor adjustment methods
+  // Anchor adjustment methods
   const adjustAnchorPosition = useCallback((
     experienceId: string, 
     deltaLon: number, 
@@ -235,7 +218,11 @@ export function useARPositioning(): ARPositioningHookResult {
     }
     
     try {
-      return arPositioningManagerRef.current.adjustAnchorPosition(experienceId, deltaLon, deltaLat);
+      const success = arPositioningManagerRef.current.adjustAnchorPosition(experienceId, deltaLon, deltaLat);
+      if (success) {
+        console.log(`🎣 useARPositioning: Adjusted anchor ${experienceId} by [${deltaLon.toFixed(8)}, ${deltaLat.toFixed(8)}]`);
+      }
+      return success;
     } catch (error) {
       console.error('🎣 useARPositioning: Error adjusting anchor position:', error);
       return false;
@@ -249,39 +236,41 @@ export function useARPositioning(): ARPositioningHookResult {
     }
     
     try {
-      return arPositioningManagerRef.current.resetAnchorPosition(experienceId);
+      const success = arPositioningManagerRef.current.resetAnchorPosition(experienceId);
+      if (success) {
+        console.log(`🎣 useARPositioning: Reset anchor ${experienceId} to original position`);
+      }
+      return success;
     } catch (error) {
       console.error('🎣 useARPositioning: Error resetting anchor position:', error);
       return false;
     }
   }, []);
 
-  // Add this function implementation in the hook (around line 200, with the other useCallback functions):
-const getCurrentAnchorGps = useCallback((experienceId: string): [number, number] | null => {
-  if (!arPositioningManagerRef.current) {
-    return null;
-  }
-  
-  try {
-    return arPositioningManagerRef.current.getCurrentAnchorGps(experienceId);
-  } catch (error) {
-    console.error('🎣 useARPositioning: Error getting current anchor GPS:', error);
-    return null;
-  }
-}, []);
-
+  const getCurrentAnchorGps = useCallback((experienceId: string): [number, number] | null => {
+    if (!arPositioningManagerRef.current) {
+      return null;
+    }
+    
+    try {
+      return arPositioningManagerRef.current.getCurrentAnchorGps(experienceId);
+    } catch (error) {
+      console.error('🎣 useARPositioning: Error getting current anchor GPS:', error);
+      return null;
+    }
+  }, []);
   
   // Reset methods
   const resetPosition = useCallback((experienceId: string) => {
     console.log(`🎣 useARPositioning: Resetting position for ${experienceId}`);
-    // Reset is handled by re-calling positionObject with default options
-    // The positioning manager will use the original anchor position
-  }, []);
+    // Reset is handled by calling resetAnchorPosition
+    resetAnchorPosition(experienceId);
+  }, [resetAnchorPosition]);
   
   const resetAllAdjustments = useCallback(() => {
     if (arPositioningManagerRef.current) {
       arPositioningManagerRef.current.resetAdjustments();
-      console.log('🎣 useARPositioning: Reset all positioning adjustments');
+      console.log('🎣 useARPositioning: Reset all positioning adjustments (singleton)');
     }
   }, []);
   
@@ -295,10 +284,15 @@ const getCurrentAnchorGps = useCallback((experienceId: string): [number, number]
     
     return {
       ...baseInfo,
+      singletonInfo: {
+        usingSingleton: true,
+        arPositioningManagerInstance: arPositioningManagerRef.current.constructor.name
+      },
       hookState: {
         isReady,
         debugMode,
         currentUserPosition,
+        isUniversalMode,
         userPositionSource: preciseUserPosition && isPositionStable ? 'ENHANCED_STABLE' :
                            preciseUserPosition ? 'ENHANCED_AVERAGED' :
                            rawUserPosition ? 'RAW_GPS' : 'NO_POSITION',
@@ -307,7 +301,7 @@ const getCurrentAnchorGps = useCallback((experienceId: string): [number, number]
         isPositionStable
       }
     };
-  }, [isReady, debugMode, currentUserPosition, preciseUserPosition, rawUserPosition, currentAccuracy, positionQuality, isPositionStable]);
+  }, [isReady, debugMode, currentUserPosition, isUniversalMode, preciseUserPosition, rawUserPosition, currentAccuracy, positionQuality, isPositionStable]);
   
   // Memoized return value to prevent unnecessary re-renders
   const hookResult = useMemo((): ARPositioningHookResult => ({
@@ -324,7 +318,7 @@ const getCurrentAnchorGps = useCallback((experienceId: string): [number, number]
     setGlobalElevation,
     getCurrentElevationOffset,
     
-    // NEW: Anchor adjustment methods
+    // Anchor adjustment methods
     adjustAnchorPosition,
     resetAnchorPosition,
     getCurrentAnchorGps,
@@ -350,6 +344,7 @@ const getCurrentAnchorGps = useCallback((experienceId: string): [number, number]
     getCurrentElevationOffset,
     adjustAnchorPosition,
     resetAnchorPosition,
+    getCurrentAnchorGps,
     resetPosition,
     resetAllAdjustments,
     isReady,

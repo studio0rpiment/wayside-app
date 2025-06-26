@@ -161,7 +161,13 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     debugMode: SHOW_DEBUG_PANEL 
   });
 
-  const newPositioningSystem = sharedARPositioning || useARPositioning();
+  const newPositioningSystem = sharedARPositioning;
+// And add a guard:
+if (!newPositioningSystem) {
+  console.error('❌ ArCameraComponent: No shared AR positioning provided!');
+  return null;
+}
+
   const { 
     adjustGlobalElevation: newAdjustElevation,
     positionObject: newPositionObject,
@@ -233,7 +239,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     }
     
     return null;
-  }, [propUserPosition, preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable]);
+  }, [propUserPosition, preciseUserPosition, rawUserPosition]);
 
   const getScreenOrientationCompensation = (): number => {
     let screenOrientation = 0;
@@ -612,7 +618,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     if (isInitialized) {
       placeArObject();
     }
-  }, [getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized, manualElevationOffset, placeArObject]);
+  }, [anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized, manualElevationOffset]);
 
   // Main initialization
   useEffect(() => {

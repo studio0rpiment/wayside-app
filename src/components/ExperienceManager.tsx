@@ -153,19 +153,19 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   // ✅ SIMPLIFIED: Log position source changes (development only)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      const source = propUserPosition ? 'PROP_OVERRIDE' : 
-                    (preciseUserPosition && isPositionStable) ? 'ENHANCED_STABLE' :
-                    preciseUserPosition ? 'ENHANCED_AVERAGED' :
-                    rawUserPosition ? 'RAW_GPS' : 'NO_POSITION';
+      // const source = propUserPosition ? 'PROP_OVERRIDE' : 
+      //               (preciseUserPosition && isPositionStable) ? 'ENHANCED_STABLE' :
+      //               preciseUserPosition ? 'ENHANCED_AVERAGED' :
+      //               rawUserPosition ? 'RAW_GPS' : 'NO_POSITION';
       
-      console.log('🎯 ExperienceManager position source:', {
-        source,
-        position: currentUserPosition,
-        accuracy: currentAccuracy?.toFixed(1) + 'm',
-        quality: positionQuality,
-        stable: isPositionStable,
-        positioningReady: positioningReady
-      });
+      // console.log('🎯 ExperienceManager position source:', {
+      //   source,
+      //   position: currentUserPosition,
+      //   accuracy: currentAccuracy?.toFixed(1) + 'm',
+      //   quality: positionQuality,
+      //   stable: isPositionStable,
+      //   positioningReady: positioningReady
+      // });
     }
   }, [currentUserPosition, currentAccuracy, positionQuality, isPositionStable, propUserPosition, preciseUserPosition, rawUserPosition, positioningReady]);
 

@@ -2,6 +2,11 @@
 import * as THREE from 'three';
 import { kenilworthPolygonCoordinates } from '../../data/kenilworth_aquatic_gardens';
 
+
+// Calculate ONCE at module level
+let CACHED_CENTROID: [number, number] | null = null;
+
+
 // Earth radius in meters (WGS84)
 const EARTH_RADIUS = 6378137;
 
@@ -17,6 +22,11 @@ function toDegrees(radians: number): number {
  * Calculate the centroid of the Kenilworth polygon for precise origin
  */
 function calculateKenilworthCentroid(): [number, number] {
+  if (CACHED_CENTROID) {
+    console.log(`📍 Using cached Kenilworth centroid: [${CACHED_CENTROID[0]}, ${CACHED_CENTROID[1]}]`);
+    return CACHED_CENTROID;
+  }
+
   const coordinates = kenilworthPolygonCoordinates.features[0].geometry.coordinates[0];
   
   let totalLon = 0;
@@ -31,8 +41,10 @@ function calculateKenilworthCentroid(): [number, number] {
   const centroidLon = totalLon / pointCount;
   const centroidLat = totalLat / pointCount;
   
-  console.log(`📍 Calculated Kenilworth centroid: [${centroidLon}, ${centroidLat}]`);
-  return [centroidLon, centroidLat];
+  CACHED_CENTROID = [centroidLon, centroidLat]; // ← Add semicolon here
+
+  console.log(`📍 Calculated and cached Kenilworth centroid: [${centroidLon}, ${centroidLat}]`);
+  return CACHED_CENTROID;
 }
 
 /**
