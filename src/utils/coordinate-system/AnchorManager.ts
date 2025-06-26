@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { WorldCoordinateSystem } from './WorldCoordinateSystem';
 import { routePointsData, ArAnchorPoint } from '../../data/mapRouteData';
+import { mlAnchorCorrections } from '../anchorCorrections';
 
 export interface WorldAnchor {
   id: string;
@@ -21,6 +22,10 @@ export interface WorldAnchor {
   experienceType: string;
   title: string;
   debugPosition?: THREE.Vector3;
+  
+  // NEW: ML correction metadata
+  mlCorrectionApplied?: boolean;
+  originalGPS?: [number, number]; // Store original for comparison
 }
 
 export interface AnchorQuery {
@@ -81,16 +86,23 @@ export class AnchorManager {
   }
 
   /**
-   * Convert GPS-based anchor to world coordinate anchor
+   * Enhanced convertToWorldAnchor with ML corrections
    */
   private convertToWorldAnchor(
     id: string, 
     arAnchor: ArAnchorPoint, 
     properties: any
   ): WorldAnchor {
-    // Convert GPS to world coordinates
+    
+    // Apply ML correction if available and enabled
+    const correctionResult = mlAnchorCorrections.applyCorrectionToGPS(
+      id, 
+      arAnchor.coordinates
+    );
+
+    // Use corrected coordinates for world position
     const worldPosition = this.worldSystem.gpsToWorld(
-      arAnchor.coordinates,
+      correctionResult.gps,
       arAnchor.elevation || 0
     );
 
@@ -106,7 +118,7 @@ export class AnchorManager {
 
     return {
       id,
-      gpsCoordinates: arAnchor.coordinates,
+      gpsCoordinates: correctionResult.gps, // Store corrected coordinates
       worldPosition,
       elevationOffset: arAnchor.elevation || 0,
       rotation,
@@ -121,7 +133,11 @@ export class AnchorManager {
       // Metadata
       experienceType: id,
       title: properties.title || id,
-      debugPosition: new THREE.Vector3(0, 0, -5) // Standard debug position
+      debugPosition: new THREE.Vector3(0, 0, -5), // Standard debug position
+      
+      // NEW: ML correction metadata
+      mlCorrectionApplied: correctionResult.corrected,
+      originalGPS: arAnchor.coordinates // Always store original
     };
   }
 
@@ -317,43 +333,128 @@ export class AnchorManager {
   }
 
   /**
- * Reset all anchors to their original positions from mapRouteData
- */
-resetAllAnchorsToOriginal(): void {
-  console.log('🔗 AnchorManager: Resetting all anchors to original positions...');
-  
-  // Clear current anchors
-  this.anchors.clear();
-  
-  // Reload from route data (this calls the existing loadAnchorsFromRouteData logic)
-  this.loadAnchorsFromRouteData();
-  
-  console.log('🔗 AnchorManager: All anchors reset to original positions');
-}
-
-/**
- * Reset a specific anchor to its original position
- */
-resetAnchorToOriginal(experienceId: string): boolean {
-  // Find the original anchor data in routePointsData
-  const originalFeature = routePointsData.features.find(
-    feature => feature.properties.iconName === experienceId
-  );
-  
-  if (!originalFeature || !originalFeature.properties.arAnchor) {
-    console.warn(`🔗 AnchorManager: No original anchor data found for ${experienceId}`);
-    return false;
+   * Reset all anchors to their original positions from mapRouteData
+   */
+  resetAllAnchorsToOriginal(): void {
+    console.log('🔗 AnchorManager: Resetting all anchors to original positions...');
+    
+    // Clear current anchors
+    this.anchors.clear();
+    
+    // Reload from route data (this calls the existing loadAnchorsFromRouteData logic)
+    this.loadAnchorsFromRouteData();
+    
+    console.log('🔗 AnchorManager: All anchors reset to original positions');
   }
-  
-  const originalAnchor = originalFeature.properties.arAnchor;
-  
-  // Update the anchor to original position
-  return this.updateAnchorPosition(
-    experienceId,
-    originalAnchor.coordinates,
-    originalAnchor.elevation || 0
-  );
-}
+
+  /**
+   * Reset a specific anchor to its original position
+   */
+  resetAnchorToOriginal(experienceId: string): boolean {
+    // Find the original anchor data in routePointsData
+    const originalFeature = routePointsData.features.find(
+      feature => feature.properties.iconName === experienceId
+    );
+    
+    if (!originalFeature || !originalFeature.properties.arAnchor) {
+      console.warn(`🔗 AnchorManager: No original anchor data found for ${experienceId}`);
+      return false;
+    }
+    
+    const originalAnchor = originalFeature.properties.arAnchor;
+    
+    // Update the anchor to original position
+    return this.updateAnchorPosition(
+      experienceId,
+      originalAnchor.coordinates,
+      originalAnchor.elevation || 0
+    );
+  }
+
+  /**
+   * Toggle ML corrections and reload all anchors
+   */
+  toggleMLCorrections(enabled: boolean): void {
+    mlAnchorCorrections.setEnabled(enabled);
+    
+    // Reload all anchors with new correction settings
+    console.log('🔄 Reloading anchors with new ML correction settings...');
+    const loadedCount = this.anchors.size;
+    
+    this.anchors.clear();
+    this.loadAnchorsFromRouteData();
+    
+    console.log(`🧠 ML corrections ${enabled ? 'ENABLED' : 'DISABLED'}, ${loadedCount} anchors reloaded`);
+  }
+
+  /**
+   * Get ML correction info for an experience
+   */
+  getMLInfo(experienceId: string): {
+    available: boolean;
+    enabled: boolean;
+    valid: boolean;
+    applied: boolean;
+    correction?: any;
+  } {
+    const info = mlAnchorCorrections.getInfo(experienceId);
+    const anchor = this.anchors.get(experienceId);
+    
+    return {
+      ...info,
+      applied: anchor?.mlCorrectionApplied ?? false
+    };
+  }
+
+  /**
+   * Get summary of all ML corrections
+   */
+  getMLSummary(): {
+    enabled: boolean;
+    totalExperiences: number;
+    trainedExperiences: number;
+    availableExperiences: string[];
+    appliedCount: number;
+  } {
+    const availableExperiences = mlAnchorCorrections.getAvailableExperiences();
+    const appliedCount = Array.from(this.anchors.values())
+      .filter(anchor => anchor.mlCorrectionApplied).length;
+
+    return {
+      enabled: mlAnchorCorrections.isEnabled(),
+      totalExperiences: this.anchors.size,
+      trainedExperiences: mlAnchorCorrections.getTrainedCount(),
+      availableExperiences,
+      appliedCount
+    };
+  }
+
+  /**
+   * Compare original vs corrected position for an experience
+   */
+  getPositionComparison(experienceId: string): {
+    original: [number, number] | null;
+    corrected: [number, number] | null;
+    deltaMeters: number | null;
+  } | null {
+    const anchor = this.anchors.get(experienceId);
+    if (!anchor || !anchor.originalGPS) return null;
+
+    const deltaLon = anchor.gpsCoordinates[0] - anchor.originalGPS[0];
+    const deltaLat = anchor.gpsCoordinates[1] - anchor.originalGPS[1];
+    
+    // Rough conversion to meters (for display purposes)
+    const deltaMeters = Math.sqrt(
+      Math.pow(deltaLon * 111320 * Math.cos(anchor.originalGPS[1] * Math.PI / 180), 2) +
+      Math.pow(deltaLat * 110540, 2)
+    );
+
+    return {
+      original: anchor.originalGPS,
+      corrected: anchor.gpsCoordinates,
+      deltaMeters
+    };
+  }
 
   /**
    * Get anchor metadata for geofencing

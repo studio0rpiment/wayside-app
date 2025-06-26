@@ -1,5 +1,5 @@
 // src/components/debug/ModelPositioningPanel.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
 export interface ModelPositioningData {
@@ -26,6 +26,23 @@ export interface ModelPositioningData {
   anchorPosition: [number, number];
   gpsOffset: { lon: number; lat: number };
   globalElevationOffset: number;
+  
+  // NEW: ML correction data
+  mlSummary?: {
+    enabled: boolean;
+    totalExperiences: number;
+    trainedExperiences: number;
+    availableExperiences: string[];
+    appliedCount: number;
+  };
+  mlInfoForExperience?: {
+    available: boolean;
+    enabled: boolean;
+    valid: boolean;
+    applied: boolean;
+    correction?: any;
+    positionComparison?: any;
+  };
 }
 
 export interface ModelPositioningCallbacks {
@@ -35,6 +52,9 @@ export interface ModelPositioningCallbacks {
   onModelScale?: (scaleFactor: number) => void;
   onModelReset?: () => void;
   onElevationChanged?: () => void;
+  
+  // NEW: ML correction callback
+  onMLCorrectionToggle?: (enabled: boolean) => void;
 }
 
 interface ModelPositioningPanelProps {
@@ -53,6 +73,33 @@ const ModelPositioningPanel: React.FC<ModelPositioningPanelProps> = ({
   
   if (!isVisible) return null;
 
+  // ML Correction state - tracks current toggle state
+  const [mlEnabled, setMLEnabled] = useState(() => {
+    return (window as any).mlAnchorCorrectionsEnabled ?? false;
+  });
+
+  // Sync with window variable changes
+  useEffect(() => {
+    const checkMLState = () => {
+      const windowState = (window as any).mlAnchorCorrectionsEnabled ?? false;
+      if (windowState !== mlEnabled) {
+        setMLEnabled(windowState);
+      }
+    };
+
+    const interval = setInterval(checkMLState, 100);
+    return () => clearInterval(interval);
+  }, [mlEnabled]);
+
+  const handleMLToggle = () => {
+    const newEnabled = !mlEnabled;
+    setMLEnabled(newEnabled);
+    
+    if (callbacks.onMLCorrectionToggle) {
+      callbacks.onMLCorrectionToggle(newEnabled);
+    }
+  };
+
   // Helper function for formatting numbers with signs
   const formatWithSign = (num: number, decimals: number = 1, totalWidth: number = 10) => {
     const sign = num >= 0 ? '+' : '';
@@ -63,7 +110,7 @@ const ModelPositioningPanel: React.FC<ModelPositioningPanelProps> = ({
   const getUserLocalPosition = () => {
     if (!data.userPosition) return 'No GPS';
     
-    // Simple local coordinate calculation (you may need to import this function)
+    // Simple local coordinate calculation
     const deltaLon = data.userPosition[0] - data.activeAnchorPosition[0];
     const deltaLat = data.userPosition[1] - data.activeAnchorPosition[1];
     
@@ -142,9 +189,77 @@ const ModelPositioningPanel: React.FC<ModelPositioningPanelProps> = ({
         Rot: X:{formatWithSign(data.accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(data.accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(data.accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)
       </div>
 
+      {/* NEW: ML Correction Toggle - Always visible, minimal */}
+      <div style={{ 
+        marginTop: '3px', 
+        borderTop: '1px solid rgba(255,255,255,0.3)', 
+        paddingTop: '3px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '8px'
+      }}>
+        <span style={{ fontSize: '10px', color: 'cyan' }}>ML:</span>
+        <button
+          onClick={handleMLToggle}
+          style={{
+            fontSize: '10px',
+            padding: '2px 8px',
+            backgroundColor: mlEnabled ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: '4px',
+            color: 'white',
+            cursor: 'pointer'
+          }}
+        >
+          {mlEnabled ? '✅' : '❌'}
+        </button>
+        
+        {/* Show training info if available */}
+        {data.mlSummary && data.mlSummary.trainedExperiences > 0 && (
+          <span style={{ fontSize: '8px', color: 'yellow' }}>
+            {data.mlSummary.appliedCount}/{data.mlSummary.trainedExperiences}
+          </span>
+        )}
+      </div>
+
       {/* Collapsible content */}
       {!isCollapsed && (
         <>
+          {/* ML Details when expanded and enabled */}
+          {mlEnabled && data.mlInfoForExperience?.available && (
+            <div style={{ 
+              marginTop: '5px', 
+              borderTop: '1px solid rgba(255,255,255,0.3)', 
+              paddingTop: '3px',
+              backgroundColor: data.mlInfoForExperience.applied ? 'rgba(0,255,0,0.1)' : 'rgba(255,255,0,0.1)',
+              borderRadius: '4px',
+              padding: '4px'
+            }}>
+              <div style={{ fontSize: '9px', color: 'lightgreen' }}>
+                🧠 ML CORRECTION: {data.mlInfoForExperience.applied ? 'ACTIVE' : 'AVAILABLE'}
+              </div>
+              
+              {data.mlInfoForExperience.correction && (
+                <>
+                  <div style={{ fontSize: '8px', color: 'white' }}>
+                    Δ: [{(data.mlInfoForExperience.correction.deltaLon * 1e6).toFixed(1)}μ°, {(data.mlInfoForExperience.correction.deltaLat * 1e6).toFixed(1)}μ°]
+                  </div>
+                  <div style={{ fontSize: '8px', color: 'white' }}>
+                    Conf: {(data.mlInfoForExperience.correction.confidence * 100).toFixed(1)}% 
+                    | Samples: {data.mlInfoForExperience.correction.sampleCount}
+                  </div>
+                </>
+              )}
+              
+              {data.mlInfoForExperience.positionComparison && (
+                <div style={{ fontSize: '8px', color: 'white' }}>
+                  Shift: {data.mlInfoForExperience.positionComparison.deltaMeters.toFixed(2)}m
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
           
           {/* User Position in Local Coordinates */}

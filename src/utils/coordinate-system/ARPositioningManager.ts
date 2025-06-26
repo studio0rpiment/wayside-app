@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { WorldCoordinateSystem } from './WorldCoordinateSystem';
 import { AnchorManager, WorldAnchor } from './AnchorManager';
+import { mlAnchorCorrections } from '../anchorCorrections';
+
 
 export interface UserPositionInput {
   gpsPosition?: [number, number] | null;
@@ -421,42 +423,6 @@ resetAnchorPosition(experienceId: string): boolean {
     }, 100);
   }
 
-  /**
-   * Get positioning debug info
-   */
-  getDebugInfo(experienceId?: string): {
-    debugMode: boolean;
-    globalElevationOffset: number;
-    globalDebugPosition: THREE.Vector3;
-    totalAnchors: number;
-    experienceInfo?: {
-      id: string;
-      anchorWorldPos: THREE.Vector3;
-      debugPos: THREE.Vector3;
-      elevationOffset: number;
-    };
-  } {
-    const debugInfo = {
-      debugMode: this.debugMode,
-      globalElevationOffset: this.globalElevationOffset,
-      globalDebugPosition: this.globalDebugPosition.clone(),
-      totalAnchors: this.anchorManager.getAllAnchors().length
-    };
-
-    if (experienceId) {
-      const anchor = this.anchorManager.getAnchor(experienceId);
-      if (anchor) {
-        (debugInfo as any).experienceInfo = {
-          id: experienceId,
-          anchorWorldPos: anchor.worldPosition.clone(),
-          debugPos: this.globalDebugPosition.clone(),
-          elevationOffset: this.globalElevationOffset
-        };
-      }
-    }
-
-    return debugInfo;
-  }
 
 /**
  * Reset all positioning adjustments
@@ -518,4 +484,96 @@ resetAdjustments(): void {
       });
     }
   }
+/**
+   * Toggle ML corrections (called from debug panel)
+   */
+  toggleMLCorrections = (enabled: boolean): void => {
+    console.log(`🧠 ARPositioningManager: Toggling ML corrections ${enabled ? 'ON' : 'OFF'}`);
+    
+    // Update the anchor manager
+    this.anchorManager.toggleMLCorrections(enabled);
+    
+    // Clear position cache to force recalculation
+    this.positionCache.clear();
+    
+    console.log(`🧠 ML corrections ${enabled ? 'ENABLED' : 'DISABLED'}, position cache cleared`);
+  };
+
+  /**
+   * Get ML correction summary for debugging
+   */
+  getMLSummary(): {
+    enabled: boolean;
+    totalExperiences: number;
+    trainedExperiences: number;
+    availableExperiences: string[];
+    appliedCount: number;
+  } {
+    return this.anchorManager.getMLSummary();
+  }
+
+  /**
+   * Get ML info for specific experience
+   */
+  getMLInfo(experienceId: string): {
+    available: boolean;
+    enabled: boolean;
+    valid: boolean;
+    applied: boolean;
+    correction?: any;
+    positionComparison?: any;
+  } {
+    const mlInfo = this.anchorManager.getMLInfo(experienceId);
+    const positionComparison = this.anchorManager.getPositionComparison(experienceId);
+    
+    return {
+      ...mlInfo,
+      positionComparison
+    };
+  }
+
+  /**
+   * Enhanced debug info with ML correction data
+   */
+  getDebugInfo(experienceId?: string): {
+    debugMode: boolean;
+    globalElevationOffset: number;
+    globalDebugPosition: THREE.Vector3;
+    totalAnchors: number;
+    mlSummary: any; // NEW
+    experienceInfo?: {
+      id: string;
+      anchorWorldPos: THREE.Vector3;
+      debugPos: THREE.Vector3;
+      elevationOffset: number;
+      mlInfo?: any; // NEW
+    };
+  } {
+    const baseDebugInfo = {
+      debugMode: this.debugMode,
+      globalElevationOffset: this.globalElevationOffset,
+      globalDebugPosition: this.globalDebugPosition.clone(),
+      totalAnchors: this.anchorManager.getAllAnchors().length,
+      mlSummary: this.getMLSummary() // NEW: Add ML summary
+    };
+
+    if (experienceId) {
+      const anchor = this.anchorManager.getAnchor(experienceId);
+      if (anchor) {
+        (baseDebugInfo as any).experienceInfo = {
+          id: experienceId,
+          anchorWorldPos: anchor.worldPosition.clone(),
+          debugPos: this.globalDebugPosition.clone(),
+          elevationOffset: this.globalElevationOffset,
+          mlInfo: this.getMLInfo(experienceId) // NEW: Add ML info
+        };
+      }
+    }
+
+    return baseDebugInfo;
+  }
+
+
+
+
 }
