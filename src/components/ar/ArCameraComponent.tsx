@@ -10,6 +10,9 @@ import { useARPositioning } from '../../hooks/useARPositioning';
 import { ARRenderingEngine } from '../engines/ARRenderingEngine';
 import { useARInteractions } from '../../hooks/useARInteractions';
 import ModelPositioningPanel from '../debug/ModelPositioningPanel';
+import { arPositioningManager } from '../../utils/coordinate-system/PositioningSystemSingleton';
+
+
 
 
 
@@ -131,6 +134,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       setIsBottomDebugCollapsed(true);
       console.log('🔽 Debug panel collapsed');
     }, []);
+
+
 
 
   //******** HOOKS **********
@@ -263,6 +268,15 @@ if (!newPositioningSystem) {
     
     return result.relativeToUser;
   }, [newPositioningSystem, newSystemReady, experienceType]);
+
+const mlSummary = arPositioningManager.getMLSummary();
+const mlInfoForExperience = arPositioningManager.getMLInfo(experienceType || 'mac');
+
+
+  const handleMLCorrectionToggle = useCallback((enabled: boolean) => {
+    console.log(`🧠 ML Corrections ${enabled ? 'ENABLED' : 'DISABLED'}`);
+    arPositioningManager.toggleMLCorrections(enabled);
+  }, []);
 
   //******** CAMERA INITIALIZATION **********
   const initializeCamera = async (): Promise<boolean> => {
@@ -954,6 +968,8 @@ if (!newPositioningSystem) {
           adjustedAnchorPosition,
           anchorPosition,
           gpsOffset,
+          mlSummary,              
+           mlInfoForExperience,
           globalElevationOffset: newPositioningSystem.getCurrentElevationOffset()
         }}
         callbacks={{
@@ -962,6 +978,8 @@ if (!newPositioningSystem) {
           onScaleAdjust: updateScaleOffset,
           onModelScale,
           onModelReset,
+          onMLCorrectionToggle: handleMLCorrectionToggle,  
+
           onElevationChanged
         }}
       />
