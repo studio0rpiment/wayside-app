@@ -1,10 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import * as THREE from 'three';
-import { getAssetPath } from '../../utils/assetPaths';
-
-// Import PLYLoader separately to avoid Vite optimization issues
-import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
-
+import StaticPointCloudEngine, { StaticPointCloudConfig } from '../engines/StaticPointCloudEngine';
 import { useARPositioning } from '../../hooks/useARPositioning';
 
 interface MacExperienceProps {
@@ -45,6 +41,19 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 }) => {
 
   // =================================================================
+  // RENDER DEBUG IF NEEDED
+  // =================================================================
+
+  // const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
+  // console.log(`🔄 MacExperience: Component render (ID: ${renderIdRef.current})`);
+  
+  // console.log('🔍 MacExperience props:', {
+  //   isUniversalMode,
+  //   sharedARPositioning: !!sharedARPositioning,
+  //   arPosition: arPosition.toArray()
+  // });
+
+  // =================================================================
   // NEW WORLD COORDINATE POSITIONING SYSTEM
   // =================================================================
   const newPositioningSystem = sharedARPositioning || useARPositioning();
@@ -59,10 +68,37 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   } = newPositioningSystem;
 
   // =================================================================
+  // STATE AND REFS
+  // =================================================================
+  
+  // Point cloud reference (from engine)
+  const modelRef = useRef<THREE.Points | null>(null);
+  const activeScaleRef = useRef<number>(1);
+  
+  // Loading state
+  const [isEngineReady, setIsEngineReady] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mac-specific configuration for the engine (matches original MacExperience)
+  const macConfig: StaticPointCloudConfig = useMemo(() => ({
+    modelName: 'mac' as const,
+    knownMaxDim: 13.2659,
+    knownCenter: new THREE.Vector3(0.357610, -0.017726, 4.838261),
+    targetScale: 2.5 / 13.2659,
+    pointSize: 2.0,
+    pointDensity: 0.7,
+    fallbackColor: 0xff6b6b,
+    rotationCorrection: new THREE.Euler(-Math.PI / 2, 0, 0), // Z-up to Y-up (matches original)
+    centerModel: true,
+    maxVertices: 60000
+  }), []); // Config never changes
+
+  // =================================================================
   // POSITIONING SYSTEM INTERFACE
   // =================================================================
   
-  const positionModel = (model: THREE.Points) => {
+  const positionModel = useCallback((model: THREE.Points) => {
     if (!newSystemReady) {
       console.log('🧪 NEW: Hook not ready yet, skipping positioning');
       return false;
@@ -76,9 +112,9 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     
     const success = newPositionObject(model, 'mac');
     return success;
-  };
+  }, [newSystemReady, isUniversalMode, newPositionObject]);
 
-  const handleModelReset = (model: THREE.Points) => {
+  const handleModelReset = useCallback((model: THREE.Points) => {
     console.log('🔄 NEW SYSTEM: Resetting model');
     
     if (isUniversalMode) {
@@ -90,36 +126,66 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     // Store the final scale after positioning system applies its changes
     activeScaleRef.current = model.scale.x;
     console.log('🔄 NEW: Reset completed with scale:', model.scale.x);
-  };
+  }, [isUniversalMode, newPositionObject]);
 
-  const getPositionInfo = () => {
+  const getPositionInfo = useCallback(() => {
     return newGetPosition('mac');
-  };
+  }, [newGetPosition]);
 
   // =================================================================
-  // SHARED MODEL SETUP AND CONFIGURATION
+  // ENGINE CALLBACKS (MEMOIZED)
   // =================================================================
 
-  // Refs for Three.js objects
-  const modelRef = useRef<THREE.Points | null>(null);
-  const initialScaleRef = useRef<number>(1);
-  const originalGeometryRef = useRef<THREE.BufferGeometry | null>(null);
-  const activeScaleRef = useRef<number>(1); // Store the actual scale after positioning system applies
+  const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
+    console.log('🎯 MacExperience: Model loaded from engine');
+    modelRef.current = pointCloud;
+    
+    // Store initial scale
+    activeScaleRef.current = pointCloud.scale.x;
+    
+    // Position the model using AR positioning system
+    if (newSystemReady) {
+      positionModel(pointCloud);
+    }
+    
+    setIsEngineReady(true);
+  }, [newSystemReady, positionModel]);
 
-  // Point cloud state
-  const [hasPointCloud, setHasPointCloud] = useState(false);
-  const [pointCount, setPointCount] = useState(0);
+  const handleEngineReady = useCallback(() => {
+    console.log('🎉 MacExperience: Engine ready');
+    onExperienceReady?.();
+  }, [onExperienceReady]);
 
-  // Model configuration
-  const knownMaxDim = 13.2659; // X dimension is largest for Mac
-  const knownCenter = new THREE.Vector3(0.357610, -0.017726, 4.838261);
-  const scale = 2.5 / knownMaxDim;
-  initialScaleRef.current = scale; 
-  const initialScale = initialScaleRef.current;
-  
-  // Point cloud configuration
-  const POINT_SIZE = 2;
-  const POINT_DENSITY = 0.7;
+  const handleEngineError = useCallback((errorMessage: string) => {
+    console.error('❌ MacExperience: Engine error:', errorMessage);
+    setError(errorMessage);
+  }, []);
+
+  // =================================================================
+  // MEMOIZED ENGINE COMPONENT
+  // =================================================================
+
+  const staticEngine = useMemo(() => {
+    console.log('🔧 MacExperience: Creating memoized StaticPointCloudEngine');
+    
+    return (
+      <StaticPointCloudEngine
+        config={macConfig}
+        scene={arScene}
+        enabled={true}
+        onModelLoaded={handleModelLoaded}
+        onLoadingProgress={setLoadingProgress}
+        onError={handleEngineError}
+        onReady={handleEngineReady}
+      />
+    );
+  }, [
+    macConfig,
+    arScene,
+    handleModelLoaded,
+    handleEngineError,
+    handleEngineReady
+  ]); // Only recreate if these actually change
 
   // =================================================================
   // GESTURE HANDLERS
@@ -191,76 +257,8 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     }
   }, [onElevationChanged]);
 
-  // =================================================================
-  // MODEL LOADING AND SCENE SETUP
-  // =================================================================
-
-  // Geometry sampling function
-  const sampleGeometry = (geometry: THREE.BufferGeometry, density: number): THREE.BufferGeometry => {
-    if (density >= 1.0) return geometry;
-    
-    const positions = geometry.attributes.position;
-    const colors = geometry.attributes.color;
-    const normals = geometry.attributes.normal;
-    
-    const totalPoints = positions.count;
-    const sampleCount = Math.floor(totalPoints * density);
-    
-    // Create new geometry
-    const sampledGeometry = new THREE.BufferGeometry();
-    
-    // Sample positions
-    const sampledPositions = new Float32Array(sampleCount * 3);
-    const sampledColors = colors ? new Float32Array(sampleCount * 3) : null;
-    const sampledNormals = normals ? new Float32Array(sampleCount * 3) : null;
-    
-    // Random sampling with consistent distribution
-    const indices = [];
-    for (let i = 0; i < totalPoints; i++) indices.push(i);
-    
-    // Shuffle for random sampling
-    for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
-    }
-    
-    // Copy sampled data
-    for (let i = 0; i < sampleCount; i++) {
-      const idx = indices[i];
-      
-      // Positions
-      sampledPositions[i * 3] = positions.getX(idx);
-      sampledPositions[i * 3 + 1] = positions.getY(idx);
-      sampledPositions[i * 3 + 2] = positions.getZ(idx);
-      
-      // Colors
-      if (colors && sampledColors) {
-        sampledColors[i * 3] = colors.getX(idx);
-        sampledColors[i * 3 + 1] = colors.getY(idx);
-        sampledColors[i * 3 + 2] = colors.getZ(idx);
-      }
-      
-      // Normals
-      if (normals && sampledNormals) {
-        sampledNormals[i * 3] = normals.getX(idx);
-        sampledNormals[i * 3 + 1] = normals.getY(idx);
-        sampledNormals[i * 3 + 2] = normals.getZ(idx);
-      }
-    }
-    
-    sampledGeometry.setAttribute('position', new THREE.BufferAttribute(sampledPositions, 3));
-    if (sampledColors) {
-      sampledGeometry.setAttribute('color', new THREE.BufferAttribute(sampledColors, 3));
-    }
-    if (sampledNormals) {
-      sampledGeometry.setAttribute('normal', new THREE.BufferAttribute(sampledNormals, 3));
-    }
-    
-    return sampledGeometry;
-  };
-
   // Handle elevation changes from ArCameraComponent debug panel
-  const handleElevationChanged = () => {
+  const handleElevationChanged = useCallback(() => {
     console.log('🧪 MacExperience: handleElevationChanged called!');
     
     if (modelRef.current) {
@@ -274,7 +272,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     } else {
       console.warn('🧪 MacExperience: modelRef.current is null, cannot reposition');
     }
-  };
+  }, [isUniversalMode, newPositionObject]);
 
   // Monitor debug mode changes and reposition accordingly
   useEffect(() => {
@@ -296,152 +294,62 @@ const MacExperience: React.FC<MacExperienceProps> = ({
 
   // Wait for the positioning system to be ready and position the model
   useEffect(() => {
-    if (newSystemReady && modelRef.current && hasPointCloud) {
+    if (newSystemReady && modelRef.current && isEngineReady) {
       console.log('🧪 NEW: Hook became ready, positioning model now...');
       positionModel(modelRef.current);
     }
-  }, [newSystemReady, hasPointCloud]);
+  }, [newSystemReady, isEngineReady, positionModel]);
 
-  // Main model loading effect
-  useEffect(() => {
-    let isMounted = true;
-    
-    console.log(`🎯 MAC Experience starting with NEW WORLD COORDINATE positioning system`);
-    
-    // Use provided AR scene and camera
-    const scene = arScene;
-    const camera = arCamera;
+  // =================================================================
+  // RENDER
+  // =================================================================
 
-    // Create loader
-    const loader = new PLYLoader();
-    
-    // Create loading indicator
-    const loadingDiv = document.createElement('div');
-    loadingDiv.style.position = 'absolute';
-    loadingDiv.style.top = '50%';
-    loadingDiv.style.left = '50%';
-    loadingDiv.style.transform = 'translate(-50%, -50%)';
-    loadingDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    loadingDiv.style.color = 'white';
-    loadingDiv.style.padding = '20px';
-    loadingDiv.style.borderRadius = '10px';
-    loadingDiv.style.zIndex = '1003';
-    loadingDiv.innerHTML = `Loading MAC Model...<br><small>Using World Coordinate System${isUniversalMode ? ' - Universal Mode' : ''}</small>`;
-    document.body.appendChild(loadingDiv);
+  return (
+    <>
+      {/* Memoized Static Point Cloud Engine */}
+      {staticEngine}
 
-    // Load the PLY model
-    const modelPath = getAssetPath('models/mac.ply');
-    console.log('📦 Loading MAC PLY model:', modelPath);
+      {/* Loading indicator */}
+      {!isEngineReady && !error && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '20px',
+          borderRadius: '10px',
+          zIndex: 1003,
+          textAlign: 'center'
+        }}>
+          Loading MAC Model... {loadingProgress.toFixed(0)}%
+          <br />
+          <small>Using StaticPointCloudEngine{isUniversalMode ? ' - Universal Mode' : ''}</small>
+        </div>
+      )}
 
-    loader.load(
-      modelPath,
-      (geometry) => {
-        if (!isMounted) return;
-
-        console.log('📊 PLY geometry loaded:', {
-          vertices: geometry.attributes.position.count,
-          hasColors: !!geometry.attributes.color,
-          hasNormals: !!geometry.attributes.normal,
-          positioningSystem: 'NEW_WORLD_COORDINATE'
-        });
-
-        // Store original geometry
-        originalGeometryRef.current = geometry.clone();
-        
-        // Apply density sampling
-        const sampledGeometry = sampleGeometry(geometry, POINT_DENSITY);
-        const finalPointCount = sampledGeometry.attributes.position.count;
-        
-        // Create point material
-        const material = new THREE.PointsMaterial({
-          size: 1.0,
-          sizeAttenuation: false,
-          vertexColors: !!sampledGeometry.attributes.color
-        });
-
-        // Set fallback color if no vertex colors
-        if (!sampledGeometry.attributes.color) {
-          material.color.setHex(0xff6b6b);
-        }
-
-        // Create point cloud
-        const pointCloud = new THREE.Points(sampledGeometry, material);
-        pointCloud.name = 'mac-point-cloud';
-        modelRef.current = pointCloud;
-        
-        // Apply model centering (move model center to origin)
-        pointCloud.position.set(-knownCenter.x, -knownCenter.y, -knownCenter.z);
-        pointCloud.scale.set(initialScale, initialScale, initialScale);
-        pointCloud.rotation.set(-Math.PI / 2, 0, 0);
-        
-        // Add to scene
-        scene.add(pointCloud);
-        
-        activeScaleRef.current = pointCloud.scale.x;
-
-        // Update state
-        setHasPointCloud(true);
-        setPointCount(finalPointCount);
-        onExperienceReady?.();
-        
-        // Remove loading indicator
-        if (document.body.contains(loadingDiv)) {
-          document.body.removeChild(loadingDiv);
-        }
-        
-        console.log(`🎉 MAC Experience ready with NEW positioning system`);
-      },
-      
-      // Progress callback
-      (xhr) => {
-        const percent = (xhr.loaded / xhr.total) * 100;
-        if (loadingDiv && document.body.contains(loadingDiv)) {
-          loadingDiv.innerHTML = `Loading MAC ${percent.toFixed(0)}%<br><small>Using World Coordinate System</small>`;
-        }
-      },
-      
-      // Error callback
-      (error) => {
-        console.error('❌ Error loading MAC PLY:', error);
-        if (document.body.contains(loadingDiv)) {
-          loadingDiv.innerHTML = `Error loading MAC PLY file<br><small>World Coordinate System</small>`;
-          loadingDiv.style.color = '#ff6666';
-        }
-      }
-    );
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-      
-      // Clean up geometries
-      if (originalGeometryRef.current) {
-        originalGeometryRef.current.dispose();
-      }
-      
-      if (modelRef.current && modelRef.current.geometry) {
-        modelRef.current.geometry.dispose();
-      }
-      
-      if (modelRef.current && modelRef.current.material) {
-        if (Array.isArray(modelRef.current.material)) {
-          modelRef.current.material.forEach(material => material.dispose());
-        } else {
-          modelRef.current.material.dispose();
-        }
-      }
-      
-      // Remove loading indicator if still present
-      if (document.body.contains(loadingDiv)) {
-        document.body.removeChild(loadingDiv);
-      }
-      
-      console.log(`🧹 MAC Experience cleanup completed`);
-    };
-  }, []); // Only run once on mount
-
-  // No visible UI - this component only manages the 3D model in the AR scene
-  return null;
+      {/* Error indicator */}
+      {error && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: '#ff6666',
+          padding: '20px',
+          borderRadius: '10px',
+          zIndex: 1003,
+          textAlign: 'center'
+        }}>
+          Error loading MAC Model
+          <br />
+          <small>{error}</small>
+        </div>
+      )}
+    </>
+  );
 };
 
 export default MacExperience;

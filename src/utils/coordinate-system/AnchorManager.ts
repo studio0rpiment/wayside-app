@@ -149,7 +149,7 @@ export class AnchorManager {
     switch (experienceId) {
       case 'mac':
         // Mac needs Z-up to Y-up conversion (from MacExperience.tsx)
-        rotation.x = -Math.PI / 2;
+       rotation.x = -Math.PI / 2;
         break;
         
       case 'lily':
@@ -172,7 +172,10 @@ export class AnchorManager {
         break;
         
       case 'volunteers':
+        rotation.x = -Math.PI / 2;
+        break;
       case 'helen_s':
+        rotation.x = -Math.PI / 2;
         // Human figures might need specific orientation
         break;
         
