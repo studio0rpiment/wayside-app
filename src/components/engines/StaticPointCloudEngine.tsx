@@ -33,6 +33,7 @@ interface StaticPointCloudEngineProps {
   scene: THREE.Scene;
   experienceId: string;         // Which experience this model belongs to
   isUniversalMode?: boolean;    // Universal mode override
+  lockPosition?: boolean;       // NEW: Lock position after first render
   
   // State management
   enabled?: boolean;
@@ -372,6 +373,7 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
   scene,
   experienceId,
   isUniversalMode = false,
+  lockPosition = true,          // NEW: Default to locking position
   enabled = true,
   onModelLoaded,
   onLoadingProgress,
@@ -382,6 +384,7 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
   const pointCloudRef = useRef<THREE.Points | null>(null);
   const initializationStartedRef = useRef(false);
   const componentIdRef = useRef(Math.random().toString(36).substr(2, 9));
+  const positionLockedRef = useRef(false);  // NEW: Track if position is locked
 
   // Get geofence context for user position and universal mode detection
   const { userPosition, isUniversalMode: contextUniversalMode } = useGeofenceBasics();
@@ -468,6 +471,12 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
         pointCloudRef.current = pointCloud;
         scene.add(pointCloud);
 
+        // NEW: Lock position after successful positioning
+        if (lockPosition) {
+          positionLockedRef.current = true;
+          console.log(`🔒 ${config.modelName}: Position locked after initial render`);
+        }
+
         console.log(`✅ ${config.modelName}: Instance ready in scene with direct positioning (Component ID: ${componentIdRef.current})`);
 
         // Notify callbacks
@@ -498,6 +507,52 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
       pointCloudRef.current = null;
     };
   }, []); // No dependencies - run once per component lifecycle
+
+  // NEW: Effect to handle position updates (only if not locked)
+  useEffect(() => {
+    // Skip if position is locked or model not ready
+    if (lockPosition && positionLockedRef.current) {
+      console.log(`🔒 ${config.modelName}: Position locked, ignoring updates`);
+      return;
+    }
+
+    if (!pointCloudRef.current) {
+      console.log(`⏭️ ${config.modelName}: Model not ready for position updates`);
+      return;
+    }
+
+    // Only reposition if explicitly allowed
+    if (!lockPosition) {
+      console.log(`🔄 ${config.modelName}: Updating position (lock disabled)`);
+      
+      const finalUniversalMode = isUniversalMode || contextUniversalMode;
+      const positionResult = PositioningSystemSingleton.getExperiencePosition(
+        experienceId,
+        {
+          gpsPosition: userPosition,
+          isUniversalMode: finalUniversalMode
+        }
+      );
+
+      if (positionResult && pointCloudRef.current) {
+        // Reset to model corrections first
+        const corrections = globalModelCache.cache?.get(config.modelName)?.modelCorrections;
+        if (corrections) {
+          pointCloudRef.current.position.copy(corrections.centerOffset);
+          pointCloudRef.current.rotation.copy(corrections.rotationCorrection);
+        }
+
+        // Apply new positioning
+        pointCloudRef.current.position.add(positionResult.relativeToUser);
+        pointCloudRef.current.rotation.x += positionResult.rotation.x;
+        pointCloudRef.current.rotation.y += positionResult.rotation.y;
+        pointCloudRef.current.rotation.z += positionResult.rotation.z;
+        pointCloudRef.current.scale.setScalar(positionResult.scale);
+
+        console.log(`🔄 ${config.modelName}: Position updated`);
+      }
+    }
+  }, [userPosition, isUniversalMode, contextUniversalMode, lockPosition, experienceId, config.modelName]);
 
   // Handle enabled state changes
   useEffect(() => {
