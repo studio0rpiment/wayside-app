@@ -1,11 +1,13 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 import { getAssetPath } from '../../utils/assetPaths';
 import { getDeviceCapabilities } from '../../utils/deviceOptimization';
 import { PositioningSystemSingleton } from '../../utils/coordinate-system/PositioningSystemSingleton';
 import { useGeofenceBasics } from '../../context/GeofenceContext';
+import { debugModeManager } from '../../utils/DebugModeManager';
+
 
 export interface StaticPointCloudConfig {
   modelName: 'mac' | 'volunteers' | 'helen_s' | '2200_bc';
@@ -44,6 +46,11 @@ interface StaticPointCloudEngineProps {
   onError?: (error: string) => void;
   onReady?: () => void;
 }
+
+
+//*** STATE STAET STATE */
+const [debugMode, setDebugMode] = useState(false);
+
 
 // =================================================================
 // GLOBAL MODEL CACHE - Clean models without positioning
@@ -312,6 +319,8 @@ const globalModelCache = new StaticModelCache();
 // Expose cache for debugging
 (window as any).staticModelCache = globalModelCache;
 
+
+
 // =================================================================
 // GEOMETRY SAMPLING UTILITY
 // =================================================================
@@ -518,6 +527,7 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
 
     loadModel();
 
+
     // Cleanup function
     return () => {
       console.log(`🧹 ${config.modelName}: Component cleanup (ID: ${componentIdRef.current})`);
@@ -534,6 +544,77 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
       pointCloudRef.current = null;
     };
   }, []); // No dependencies - run once per component lifecycle
+
+  // Add this function inside the component:
+const forceReposition = useCallback((currentDebugMode: boolean) => {
+  if (!pointCloudRef.current) {
+    console.log(`⏭️ ${config.modelName}: Model not ready for forced reposition`);
+    return;
+  }
+  
+  const finalUniversalMode = capturedUniversalModeRef.current;
+  const finalUserPosition = capturedUserPositionRef.current;
+  
+  console.log(`🎯 ${config.modelName}: Forcing reposition (debug: ${currentDebugMode})`);
+  
+  const positionResult = PositioningSystemSingleton.getExperiencePosition(
+    experienceId,
+    {
+      gpsPosition: finalUserPosition,
+      isUniversalMode: finalUniversalMode
+    },
+    {
+      useDebugOverride: currentDebugMode // Force debug override
+    }
+  );
+
+  if (positionResult && pointCloudRef.current) {
+    // Reset to model corrections first
+    const corrections = globalModelCache.getModelCorrections(config.modelName);
+    if (corrections) {
+      pointCloudRef.current.position.copy(corrections.centerOffset);
+      pointCloudRef.current.rotation.copy(corrections.rotationCorrection);
+    }
+
+    // Apply new positioning
+    pointCloudRef.current.position.add(positionResult.relativeToUser);
+    pointCloudRef.current.rotation.x += positionResult.rotation.x;
+    pointCloudRef.current.rotation.y += positionResult.rotation.y;
+    pointCloudRef.current.rotation.z += positionResult.rotation.z;
+    pointCloudRef.current.scale.setScalar(positionResult.scale);
+
+    console.log(`✅ ${config.modelName}: Forced reposition complete (debug: ${currentDebugMode})`);
+  } else {
+    console.warn(`⚠️ ${config.modelName}: No position result for forced reposition`);
+  }
+}, [experienceId, config.modelName]);
+
+  // Add this useEffect after the main loading effect:
+useEffect(() => {
+  debugModeManager.initialize();
+  
+  const handleDebugModeChange = (event: CustomEvent) => {
+    const newDebugMode = event.detail.enabled;
+    const previousDebugMode = debugMode;
+    
+    setDebugMode(newDebugMode);
+    
+    // Force reposition if debug mode actually changed and model is ready
+    if (previousDebugMode !== newDebugMode && pointCloudRef.current) {
+      console.log(`🐛 ${config.modelName}: Debug mode changed ${previousDebugMode} → ${newDebugMode}, forcing reposition`);
+      
+      // Force repositioning regardless of lock status
+      forceReposition(newDebugMode);
+    }
+  };
+  
+  debugModeManager.addEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+  setDebugMode(debugModeManager.debugMode); // Initialize
+  
+  return () => {
+    debugModeManager.removeEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+  };
+}, [debugMode, config.modelName]); // Include debugMode in deps to detect changes
 
   // NEW: Effect to handle position updates (only if not locked)
   useEffect(() => {
@@ -590,6 +671,8 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
 
   return null;
 };
+
+
 
 export default StaticPointCloudEngine;
 export { globalModelCache };
