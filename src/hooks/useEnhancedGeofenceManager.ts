@@ -81,7 +81,7 @@ export function useEnhancedGeofenceManager(
   
   const [globalRadius, setGlobalRadius] = useState(GEOFENCE_CONFIG.DEFAULT_RADIUS);
 
-  const [isUniversalMode, setIsUniversalMode] = useState(false);
+ 
 
 
   
@@ -191,54 +191,6 @@ export function useEnhancedGeofenceManager(
     });
   }, [stabilityDuration, stabilityThreshold]);
 
-//****************** */ Check if Universal Mode should be activated
-    const checkUniversalMode = useCallback((): boolean => {
-    // Development/Testing environment
-    if (process.env.NODE_ENV === 'development' || (window as any).arTestingOverride) {
-        return true;
-    }
-
-    // Desktop/Non-mobile devices (no GPS hardware)
-    if (!('geolocation' in navigator)) {
-        return true;
-    }
-
-    // Location permissions denied
-    if (!isPermissionGranted(PermissionType.LOCATION)) {
-        return true;
-    }
-
-    // GPS quality unacceptable
-    if (positionQuality === PositionQuality.UNACCEPTABLE) {
-        return true;
-    }
-
-    // Location services unavailable (no tracking after reasonable time)
-    if (!isTracking && isMountedRef.current) {
-        return true;
-    }
-
-    // User not inside Kenilworth Gardens (simplified check)
-    if (userPosition) {
-        const [lon, lat] = userPosition;
-        const kenilworthBounds = {
-        minLon: -76.950, maxLon: -76.935,
-        minLat: 38.910, maxLat: 38.916
-        };
-        
-        const outsideKenilworth = lon < kenilworthBounds.minLon || 
-                                lon > kenilworthBounds.maxLon ||
-                                lat < kenilworthBounds.minLat || 
-                                lat > kenilworthBounds.maxLat;
-        
-        if (outsideKenilworth) {
-        return true;
-        }
-    }
-
-    return false;
-    }, [positionQuality, isTracking, userPosition, isPermissionGranted]);
-  
   // Process new GPS position with enhanced precision handling
   const processNewPosition = useCallback((position: GeolocationPosition) => {
     const { coords } = position;
@@ -388,14 +340,6 @@ export function useEnhancedGeofenceManager(
     }
   }, [userPosition, processGeofences]);
 
-//************* */ Monitor Universal Mode conditions
-    useEffect(() => {
-    const shouldBeUniversal = checkUniversalMode();
-    if (shouldBeUniversal !== isUniversalMode) {
-        setIsUniversalMode(shouldBeUniversal);
-        debugLog(`Universal Mode ${shouldBeUniversal ? 'ACTIVATED' : 'DEACTIVATED'}`);
-    }
-    }, [checkUniversalMode, isUniversalMode, debugLog]);
   
   // Enhanced start tracking with precision monitoring
   const startTracking = useCallback(async () => {
@@ -509,7 +453,6 @@ export function useEnhancedGeofenceManager(
         resetGlobalRadius,
         currentRadius: globalRadius,
 
-        isUniversalMode,
         
         // Enhanced utilities
         simulatePosition: (position: [number, number]) => {

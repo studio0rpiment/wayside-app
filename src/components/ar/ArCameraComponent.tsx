@@ -11,6 +11,7 @@ import { ARRenderingEngine } from '../engines/ARRenderingEngine';
 import { useARInteractions } from '../../hooks/useARInteractions';
 import ModelPositioningPanel from '../debug/ModelPositioningPanel';
 import { arPositioningManager } from '../../utils/coordinate-system/PositioningSystemSingleton';
+import { debugModeManager } from '../../utils/DebugModeManager';
 
 
 
@@ -116,11 +117,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   });
   const [debugCollapsed, setDebugCollapsed] = useState(true);
   const [isBottomDebugCollapsed, setIsBottomDebugCollapsed] = useState(true);
-  const [arTestingOverride, setArTestingOverride] = useState<boolean>(() => {
-    return typeof (window as any).arTestingOverride === 'boolean'
-      ? (window as any).arTestingOverride
-      : false;
-  });
+  const [arTestingOverride, setArTestingOverride] = useState(false);
 
 
 
@@ -135,7 +132,20 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       console.log('🔽 Debug panel collapsed');
     }, []);
 
-
+        useEffect(() => {
+      debugModeManager.initialize();
+      
+      const handleDebugModeChange = (event: CustomEvent) => {
+        setArTestingOverride(event.detail.enabled);
+      };
+      
+      debugModeManager.addEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+      setArTestingOverride(debugModeManager.debugMode); // Initialize from manager
+      
+      return () => {
+        debugModeManager.removeEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+      };
+    }, []);
 
 
   //******** HOOKS **********
@@ -844,15 +854,10 @@ const mlInfoForExperience = arPositioningManager.getMLInfo(experienceType || 'ma
           
           <div style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
             <div 
-              onClick={() => {
-                const newValue = !arTestingOverride;
-                (window as any).arTestingOverride = newValue;
-                setArTestingOverride(newValue);
-                window.dispatchEvent(new CustomEvent('ar-override-changed', { 
-                  detail: { override: newValue } 
-                }));
-              }}
-              style={{ 
+             onClick={() => {
+                  debugModeManager.setDebugMode(!arTestingOverride);
+                }}
+                style={{ 
                 cursor: 'pointer', 
                 userSelect: 'none', 
                 margin: '0rem', 

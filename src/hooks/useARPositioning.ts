@@ -5,6 +5,8 @@ import { ARPositioningManager, ExperiencePositionResult, PositioningOptions } fr
 import { useGeofenceContext } from '../context/GeofenceContext';
 // Import the singleton instance
 import { arPositioningManager } from '../utils/coordinate-system/PositioningSystemSingleton';
+import { debugModeManager } from '../utils/DebugModeManager';
+
 
 export interface ARPositioningHookResult {
   // Main positioning methods
@@ -61,18 +63,26 @@ export function useARPositioning(): ARPositioningHookResult {
   // Use the singleton instance directly (no more creating new instances!)
   const arPositioningManagerRef = useRef<ARPositioningManager>(arPositioningManager);
   
-  // Track debug mode changes
-  useEffect(() => {
-    const checkDebugMode = () => {
-      const currentDebugMode = (window as any).arTestingOverride ?? false;
-      if (currentDebugMode !== debugMode) {
-        setDebugMode(currentDebugMode);
-      }
-    };
-    
-    const interval = setInterval(checkDebugMode, 100);
-    return () => clearInterval(interval);
-  }, [debugMode]);
+  // Track debug mode changes event driven!
+useEffect(() => {
+  // Initialize debug mode manager
+  debugModeManager.initialize();
+  
+  // Listen for debug mode changes
+  const handleDebugModeChange = (event: CustomEvent) => {
+    const enabled = event.detail.enabled;
+    setDebugMode(enabled);
+  };
+  
+  debugModeManager.addEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+  
+  // Set initial state
+  setDebugMode(debugModeManager.debugMode);
+  
+  return () => {
+    debugModeManager.removeEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+  };
+}, []);
   
   // Simplified initialization - singleton is already created
   useEffect(() => {

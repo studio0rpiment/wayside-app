@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { WorldCoordinateSystem } from './WorldCoordinateSystem';
 import { AnchorManager, WorldAnchor } from './AnchorManager';
 import { mlAnchorCorrections } from '../anchorCorrections';
+import { debugModeManager } from '../DebugModeManager';
 
 
 export interface UserPositionInput {
@@ -411,17 +412,30 @@ resetAnchorPosition(experienceId: string): boolean {
   }
 
   /**
-   * Setup debug mode listener (matches existing pattern)
+   *  Event Driven Debug listening
    */
-  private setupDebugListener(): void {
-    setInterval(() => {
-      const currentDebugMode = (window as any).arTestingOverride ?? false;
-      if (currentDebugMode !== this.debugMode) {
-        this.debugMode = currentDebugMode;
-        console.log(`🎯 ARPositioningManager debug mode: ${currentDebugMode ? 'ON' : 'OFF'}`);
+private setupDebugListener(): void {
+  // Import the debug mode manager
+  import('../DebugModeManager').then(({ debugModeManager }) => {
+    // Initialize if not already done
+    debugModeManager.initialize();
+    
+    // Listen for debug mode changes
+    const handleDebugModeChange = (event: CustomEvent) => {
+      const enabled = event.detail.enabled;
+      if (enabled !== this.debugMode) {
+        this.debugMode = enabled;
+        console.log(`🎯 ARPositioningManager debug mode: ${enabled ? 'ON' : 'OFF'}`);
       }
-    }, 100);
-  }
+    };
+    
+    debugModeManager.addEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+    
+    // Set initial state
+    this.debugMode = debugModeManager.debugMode;
+    console.log(`🎯 ARPositioningManager: Initial debug mode: ${this.debugMode}`);
+  });
+}
 
 
 /**

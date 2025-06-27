@@ -1,58 +1,102 @@
 // src/context/GeofenceContext.tsx
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useGeofenceManager } from '../hooks/useGeofenceManager';
 import { useEnhancedGeofenceManager, PositionQuality } from '../hooks/useEnhancedGeofenceManager';
 import { routePointsData } from '../data/mapRouteData';
+import { universalModeManager, UniversalModeReason } from '../utils/UniversalModeManager';
 
-// OPTION 1: Enhanced manager with precision improvements (RECOMMENDED)
-type EnhancedGeofenceManagerType = ReturnType<typeof useEnhancedGeofenceManager>;
+// Enhanced type with universal mode from manager
+type EnhancedGeofenceManagerType = ReturnType<typeof useEnhancedGeofenceManager> & {
+  isUniversalMode: boolean;
+  universalModeReason: UniversalModeReason | null;
+};
 
-// OPTION 2: Original manager (fallback/comparison)
-type OriginalGeofenceManagerType = ReturnType<typeof useGeofenceManager>;
+type OriginalGeofenceManagerType = ReturnType<typeof useGeofenceManager> & {
+  isUniversalMode: boolean;
+  universalModeReason: UniversalModeReason | null;
+};
 
-// Export the enhanced type as the default
 export type GeofenceManagerType = EnhancedGeofenceManagerType;
 
-// Create the context
 const GeofenceContext = createContext<GeofenceManagerType | null>(null);
 
-// Provider component
 interface GeofenceProviderProps {
   children: ReactNode;
-  // Optional prop to switch between managers for testing
   usePrecisionEnhancements?: boolean;
 }
 
 export const GeofenceProvider: React.FC<GeofenceProviderProps> = ({ 
   children,
-  usePrecisionEnhancements = true  // Default to enhanced version
+  usePrecisionEnhancements = true
 }) => {
   
-  // Enhanced manager with precision improvements
-  const enhancedManager = useEnhancedGeofenceManager(routePointsData, {
-    proximityThreshold: 20,  // Your current setting
-    debugMode: true,         // Your current setting  
-    autoStart: true,         // Your current setting
+  // Universal mode state (from standalone manager)
+  const [isUniversalMode, setIsUniversalMode] = useState(false);
+  const [universalModeReason, setUniversalModeReason] = useState<UniversalModeReason | null>(null);
+  
+  // Initialize universal mode manager
+  useEffect(() => {
+    const initializeUniversalMode = async () => {
+      await universalModeManager.initialize();
+      
+      // Set initial state
+      setIsUniversalMode(universalModeManager.isUniversal);
+      setUniversalModeReason(universalModeManager.reason);
+      
+      // Listen for changes
+      const handleUniversalModeChange = (event: CustomEvent) => {
+        const { enabled, reason } = event.detail;
+        setIsUniversalMode(enabled);
+        setUniversalModeReason(reason);
+      };
+      
+      universalModeManager.addEventListener('universalModeChanged', handleUniversalModeChange as EventListener);
+      
+      return () => {
+        universalModeManager.removeEventListener('universalModeChanged', handleUniversalModeChange as EventListener);
+      };
+    };
     
-    // NEW precision settings optimized for AR
-    maxAcceptableAccuracy: 10,      // Only use readings better than 10m
-    minAcceptableAccuracy: 50,      // Stop functioning if worse than 30m
-    positionAveragingWindow: 12,     // Average last 5 positions
-    requireStablePosition: true,    // Wait for stable positioning
-    stabilityThreshold: 3,          // Must stay within 3m
-    stabilityDuration: 8000,        // For 5 seconds
-    qualityUpdateInterval: 2000     // Check quality every 2 seconds
+    initializeUniversalMode();
+  }, []);
+  
+  // Enhanced manager with precision improvements (NO UNIVERSAL MODE LOGIC)
+  const enhancedManager = useEnhancedGeofenceManager(routePointsData, {
+    proximityThreshold: 20,
+    debugMode: true,
+    autoStart: true,
+    
+    // Precision settings (unchanged)
+    maxAcceptableAccuracy: 10,
+    minAcceptableAccuracy: 50,
+    positionAveragingWindow: 12,
+    requireStablePosition: true,
+    stabilityThreshold: 3,
+    stabilityDuration: 8000,
+    qualityUpdateInterval: 2000
   });
   
-  // Original manager (for comparison/fallback)
+  // Original manager (NO UNIVERSAL MODE LOGIC)
   const originalManager = useGeofenceManager(routePointsData, {
     debugMode: true,
     autoStart: true
   });
   
-  // Choose which manager to use
-  // During development, you can switch this to test differences
-  const activeManager = usePrecisionEnhancements ? enhancedManager : originalManager as any;
+  // Choose base manager
+  const baseManager = usePrecisionEnhancements ? enhancedManager : originalManager;
+  
+  // Combine base manager with universal mode from standalone manager
+  const activeManager: GeofenceManagerType = {
+    ...baseManager,
+    isUniversalMode,
+    universalModeReason
+  } as GeofenceManagerType;
+  
+  // Handle permission-based universal mode changes
+  useEffect(() => {
+    // This could be enhanced to detect actual permission changes
+    // For now, we rely on the manager's initialization
+  }, []);
   
   return (
     <GeofenceContext.Provider value={activeManager}>
@@ -61,7 +105,7 @@ export const GeofenceProvider: React.FC<GeofenceProviderProps> = ({
   );
 };
 
-// Custom hook to use the context
+// Rest of the exports remain the same
 export const useGeofenceContext = (): GeofenceManagerType => {
   const context = useContext(GeofenceContext);
   if (!context) {
@@ -70,10 +114,8 @@ export const useGeofenceContext = (): GeofenceManagerType => {
   return context;
 };
 
-// Export position quality enum for use in components
 export { PositionQuality };
 
-// Helper hook for components that only need precision data
 export const useGeofencePrecision = () => {
   const context = useGeofenceContext();
   
@@ -87,7 +129,6 @@ export const useGeofencePrecision = () => {
   };
 };
 
-// Helper hook for backward compatibility
 export const useGeofenceBasics = () => {
   const context = useGeofenceContext();
   
@@ -101,6 +142,7 @@ export const useGeofenceBasics = () => {
     getDistanceTo: context.getDistanceTo,
     getDistanceToPoint: context.getDistanceToPoint,
     getCurrentRadius: context.getCurrentRadius,
-     isUniversalMode: context.isUniversalMode
+    isUniversalMode: context.isUniversalMode, // Now from standalone manager
+    universalModeReason: context.universalModeReason // NEW: expose the reason
   };
 };

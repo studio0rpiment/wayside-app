@@ -1,4 +1,4 @@
-// StaticPointCloudEngine.tsx - Direct positioning integration
+
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
@@ -145,6 +145,18 @@ class StaticModelCache {
         refCount: model.refCount
       }))
     };
+  }
+  
+  /**
+   * Get model corrections for external use
+   */
+  getModelCorrections(modelName: string): {
+    centerOffset: THREE.Vector3;
+    rotationCorrection: THREE.Euler;
+    finalScale: number;
+  } | null {
+    const cached = this.cache.get(modelName);
+    return cached?.modelCorrections || null;
   }
   
   /**
@@ -384,10 +396,24 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
   const pointCloudRef = useRef<THREE.Points | null>(null);
   const initializationStartedRef = useRef(false);
   const componentIdRef = useRef(Math.random().toString(36).substr(2, 9));
-  const positionLockedRef = useRef(false);  // NEW: Track if position is locked
+  const positionLockedRef = useRef(false);  // Track if position is locked
+  
+  // NEW: Capture universal mode ONCE on first render
+  const capturedUniversalModeRef = useRef<boolean | null>(null);
+  const capturedUserPositionRef = useRef<[number, number] | null>(null);
 
   // Get geofence context for user position and universal mode detection
   const { userPosition, isUniversalMode: contextUniversalMode } = useGeofenceBasics();
+  
+  // Capture values ONCE on first render
+  if (capturedUniversalModeRef.current === null) {
+    capturedUniversalModeRef.current = isUniversalMode || contextUniversalMode;
+    capturedUserPositionRef.current = userPosition;
+    console.log(`📸 ${config.modelName}: Captured initial state:`, {
+      universalMode: capturedUniversalModeRef.current,
+      userPosition: capturedUserPositionRef.current
+    });
+  }
 
   console.log(`🎯 StaticPointCloudEngine: Component created for ${config.modelName} (ID: ${componentIdRef.current})`);
 
@@ -428,18 +454,19 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
           rotationCorrection: [corrections.rotationCorrection.x, corrections.rotationCorrection.y, corrections.rotationCorrection.z]
         });
 
-        // DIRECT POSITIONING: Get position from positioning system
-        const finalUniversalMode = isUniversalMode || contextUniversalMode;
+        // DIRECT POSITIONING: Get position from positioning system using CAPTURED values
+        const finalUniversalMode = capturedUniversalModeRef.current;
+        const finalUserPosition = capturedUserPositionRef.current;
         
-        console.log(`🎯 Getting position for ${experienceId}:`, {
+        console.log(`🎯 Getting position for ${experienceId} using CAPTURED values:`, {
           universalMode: finalUniversalMode,
-          userPosition: userPosition?.slice() || 'none'
+          userPosition: finalUserPosition
         });
 
         const positionResult = PositioningSystemSingleton.getExperiencePosition(
           experienceId,
           {
-            gpsPosition: userPosition,
+            gpsPosition: finalUserPosition,
             isUniversalMode: finalUniversalMode
           }
         );
@@ -525,7 +552,7 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
     if (!lockPosition) {
       console.log(`🔄 ${config.modelName}: Updating position (lock disabled)`);
       
-      const finalUniversalMode = isUniversalMode || contextUniversalMode;
+      const finalUniversalMode = capturedUniversalModeRef.current || capturedUserPositionRef.current;
       const positionResult = PositioningSystemSingleton.getExperiencePosition(
         experienceId,
         {
@@ -536,7 +563,7 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
 
       if (positionResult && pointCloudRef.current) {
         // Reset to model corrections first
-        const corrections = globalModelCache.cache?.get(config.modelName)?.modelCorrections;
+        const corrections = globalModelCache.getModelCorrections(config.modelName);
         if (corrections) {
           pointCloudRef.current.position.copy(corrections.centerOffset);
           pointCloudRef.current.rotation.copy(corrections.rotationCorrection);

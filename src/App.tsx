@@ -14,10 +14,10 @@ import GeofenceNotificationSystem from './components/common/GeofenceNotification
 import { registerServiceWorker } from './utils/serviceWorkerRegistration';
  // Adjust path as needed
 
-
-
 import './App.css';
 import { GeofenceProvider } from './context/GeofenceContext.tsx';
+import { universalModeManager } from './utils/UniversalModeManager.ts';
+import { debugModeManager } from './utils/DebugModeManager.ts';
 
 // registerServiceWorker();
 
@@ -51,6 +51,11 @@ function App() {
     console.log("App mounted - initializing permissions");
     // This will force a log to appear even if nothing else is working
   }, []);
+
+  useEffect(() => {
+  universalModeManager.initialize();
+   debugModeManager.initialize();
+}, []);
   
   return (
     <div className="App">
