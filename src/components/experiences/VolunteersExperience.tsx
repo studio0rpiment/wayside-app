@@ -40,10 +40,6 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   isUniversalMode = false 
 }) => {
 
-
- // =================================================================
-  // RENDER DEBUG IF NEEDED
-  // =================================================================
   const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
   console.log(`🔄 VolunteersExperience: Component render (ID: ${renderIdRef.current})`);
   
@@ -51,6 +47,17 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     isUniversalMode,
     sharedARPositioning: !!sharedARPositioning,
     arPosition: arPosition.toArray()
+  });
+
+  // =================================================================
+  // USER TRANSFORM TRACKING
+  // =================================================================
+  
+  // Track user-applied transforms separately from AR positioning
+  const userTransformsRef = useRef({
+    rotation: new THREE.Euler(0, 0, 0), // User's rotation deltas
+    scale: 1.0,                         // User's scale multiplier
+    hasUserChanges: false               // Flag to know if user made changes
   });
 
   // =================================================================
@@ -86,39 +93,64 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     fallbackColor: 0x4a90e2, // Blue for volunteers
     rotationCorrection: new THREE.Euler(-Math.PI / 2, 0, 0),
     centerModel: true,
-    maxVertices: 45000 // Volunteers can handle more vertices
+    maxVertices: 100000 // Volunteers can handle more vertices
   }), []); // Config never changes
 
   // =================================================================
-  // POSITIONING FUNCTIONS (MEMOIZED)
+  // POSITIONING WITH TRANSFORM PRESERVATION
   // =================================================================
   
-  const positionModel = useCallback((model: THREE.Points) => {
+  const positionModelWithTransformPreservation = useCallback((model: THREE.Points) => {
     if (!newSystemReady) {
       console.log('🧪 VOLUNTEERS: Positioning system not ready yet');
       return false;
     }
     
+    // Apply AR positioning (this resets transforms)
+    let success;
     if (isUniversalMode) {
       console.log('🌐 VOLUNTEERS: Universal Mode - using debug position');
-      return newPositionObject(model, 'volunteers', { useDebugOverride: true });
+      success = newPositionObject(model, 'volunteers', { useDebugOverride: true });
+    } else {
+      success = newPositionObject(model, 'volunteers');
     }
     
-    return newPositionObject(model, 'volunteers');
+    // Reapply user transforms if they exist
+    if (userTransformsRef.current.hasUserChanges && success) {
+      console.log('🔄 VOLUNTEERS: Reapplying user transforms after positioning', {
+        userRotation: userTransformsRef.current.rotation.toArray(),
+        userScale: userTransformsRef.current.scale
+      });
+      
+      // Reapply user rotation on top of AR positioning
+      model.rotation.x += userTransformsRef.current.rotation.x;
+      model.rotation.y += userTransformsRef.current.rotation.y;
+      model.rotation.z += userTransformsRef.current.rotation.z;
+      
+      // Reapply user scale
+      const currentScale = model.scale.x;
+      model.scale.setScalar(currentScale * userTransformsRef.current.scale);
+    }
+    
+    return success;
   }, [newSystemReady, isUniversalMode, newPositionObject]);
 
   const handleModelReset = useCallback((model: THREE.Points) => {
-    console.log('🔄 VOLUNTEERS: Resetting model position');
+    console.log('🔄 VOLUNTEERS: Resetting model (clearing user transforms)');
     
-    if (isUniversalMode) {
-      newPositionObject(model, 'volunteers', { useDebugOverride: true });
-    } else {
-      newPositionObject(model, 'volunteers');
-    }
+    // Clear user transforms
+    userTransformsRef.current = {
+      rotation: new THREE.Euler(0, 0, 0),
+      scale: 1.0,
+      hasUserChanges: false
+    };
+    
+    // Reposition with fresh state
+    positionModelWithTransformPreservation(model);
     
     activeScaleRef.current = model.scale.x;
-    console.log('🔄 VOLUNTEERS: Reset completed with scale:', model.scale.x);
-  }, [isUniversalMode, newPositionObject]);
+    console.log('🔄 VOLUNTEERS: Reset completed');
+  }, [positionModelWithTransformPreservation]);
 
   // =================================================================
   // ENGINE CALLBACKS (MEMOIZED)
@@ -129,13 +161,13 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     modelRef.current = pointCloud;
     activeScaleRef.current = pointCloud.scale.x;
     
-    // Position the model using AR positioning system
+    // Position the model (no user transforms yet)
     if (newSystemReady) {
-      positionModel(pointCloud);
+      positionModelWithTransformPreservation(pointCloud);
     }
     
     setIsEngineReady(true);
-  }, [newSystemReady, positionModel]);
+  }, [newSystemReady, positionModelWithTransformPreservation]);
 
   const handleEngineReady = useCallback(() => {
     console.log('🎉 VolunteersExperience: Engine ready');
@@ -174,7 +206,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   ]); // Only recreate if these actually change
 
   // =================================================================
-  // GESTURE HANDLERS
+  // GESTURE HANDLERS WITH TRANSFORM TRACKING
   // =================================================================
 
   useEffect(() => {
@@ -182,14 +214,23 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     if (onModelRotate) {
       onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
         if (modelRef.current) {
+          // Apply rotation to model
           modelRef.current.rotation.y += deltaX;
           modelRef.current.rotation.x += deltaY;
           if (deltaZ !== 0) {
             modelRef.current.rotation.z += deltaZ;
           }
-          console.log(`🎮 VOLUNTEERS: Rotation applied`, {
+          
+          // Track user changes
+          userTransformsRef.current.rotation.y += deltaX;
+          userTransformsRef.current.rotation.x += deltaY;
+          userTransformsRef.current.rotation.z += deltaZ;
+          userTransformsRef.current.hasUserChanges = true;
+          
+          console.log(`🎮 VOLUNTEERS: Rotation applied and tracked`, {
             deltaX, deltaY, deltaZ,
-            currentRotation: modelRef.current.rotation.toArray()
+            currentRotation: modelRef.current.rotation.toArray(),
+            userRotation: userTransformsRef.current.rotation.toArray()
           });
         }
       });
@@ -202,10 +243,17 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
           const currentScale = modelRef.current.scale.x;
           const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
           modelRef.current.scale.setScalar(newScale);
-          console.log(`🔍 VOLUNTEERS: Scale applied`, {
+          
+          // Track user scale changes
+          userTransformsRef.current.scale *= scaleFactor;
+          userTransformsRef.current.scale = Math.max(0.1, Math.min(10, userTransformsRef.current.scale));
+          userTransformsRef.current.hasUserChanges = true;
+          
+          console.log(`🔍 VOLUNTEERS: Scale applied and tracked`, {
             scaleFactor,
             currentScale: currentScale.toFixed(3),
-            newScale: newScale.toFixed(3)
+            newScale: newScale.toFixed(3),
+            userScale: userTransformsRef.current.scale.toFixed(3)
           });
         }
       });
@@ -239,18 +287,12 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
 
   // Handle elevation changes (memoized)
   const handleElevationChanged = useCallback(() => {
-    console.log('🧪 VolunteersExperience: Elevation changed');
+    console.log('🧪 VolunteersExperience: Elevation changed - repositioning with preserved transforms');
     
     if (modelRef.current) {
-      if (isUniversalMode) {
-        const success = newPositionObject(modelRef.current, 'volunteers', { useDebugOverride: true });
-        console.log('🧪 VOLUNTEERS: UNIVERSAL MODE - Model repositioned:', success);
-      } else {
-        const success = newPositionObject(modelRef.current, 'volunteers');
-        console.log('🧪 VOLUNTEERS: NORMAL MODE - Model repositioned:', success);
-      }
+      positionModelWithTransformPreservation(modelRef.current);
     }
-  }, [isUniversalMode, newPositionObject]);
+  }, [positionModelWithTransformPreservation]);
 
   useEffect(() => {
     if (onElevationChanged) {
@@ -261,27 +303,25 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   // Monitor debug mode changes
   useEffect(() => {
     if (newDebugMode !== undefined) {
-      console.log('🔗 VOLUNTEERS: Debug mode changed to:', newDebugMode);
+      console.log('🔗 VOLUNTEERS: Debug mode changed - repositioning with preserved transforms');
       
       (window as any).arTestingOverride = newDebugMode;
       
       setTimeout(() => {
         if (modelRef.current && newSystemReady) {
-          console.log('🔗 VOLUNTEERS: Repositioning after debug mode change...');
-          const success = newPositionObject(modelRef.current, 'volunteers');
-          console.log('🔗 VOLUNTEERS: Positioning result:', success);
+          positionModelWithTransformPreservation(modelRef.current);
         }
       }, 100);
     }
-  }, [newDebugMode, newSystemReady, newPositionObject]);
+  }, [newDebugMode, newSystemReady, positionModelWithTransformPreservation]);
 
   // Wait for positioning system to be ready
   useEffect(() => {
     if (newSystemReady && modelRef.current && isEngineReady) {
       console.log('🧪 VOLUNTEERS: Positioning system ready, positioning model...');
-      positionModel(modelRef.current);
+      positionModelWithTransformPreservation(modelRef.current);
     }
-  }, [newSystemReady, isEngineReady, positionModel]);
+  }, [newSystemReady, isEngineReady, positionModelWithTransformPreservation]);
 
   // =================================================================
   // RENDER

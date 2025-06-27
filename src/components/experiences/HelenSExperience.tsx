@@ -50,6 +50,17 @@ const HelenExperience: React.FC<HelenExperienceProps> = ({
   });
 
   // =================================================================
+  // USER TRANSFORM TRACKING
+  // =================================================================
+  
+  // Track user-applied transforms separately from AR positioning
+  const userTransformsRef = useRef({
+    rotation: new THREE.Euler(0, 0, 0), // User's rotation deltas
+    scale: 1.0,                         // User's scale multiplier
+    hasUserChanges: false               // Flag to know if user made changes
+  });
+
+  // =================================================================
   // AR POSITIONING SYSTEM
   // =================================================================
   const newPositioningSystem = sharedARPositioning || useARPositioning();
@@ -86,35 +97,60 @@ const HelenExperience: React.FC<HelenExperienceProps> = ({
   }), []); // Config never changes
 
   // =================================================================
-  // POSITIONING FUNCTIONS (MEMOIZED)
+  // POSITIONING WITH TRANSFORM PRESERVATION
   // =================================================================
   
-  const positionModel = useCallback((model: THREE.Points) => {
+  const positionModelWithTransformPreservation = useCallback((model: THREE.Points) => {
     if (!newSystemReady) {
       console.log('🧪 HELEN: Positioning system not ready yet');
       return false;
     }
     
+    // Apply AR positioning (this resets transforms)
+    let success;
     if (isUniversalMode) {
       console.log('🌐 HELEN: Universal Mode - using debug position');
-      return newPositionObject(model, 'helen_s', { useDebugOverride: true });
+      success = newPositionObject(model, 'helen_s', { useDebugOverride: true });
+    } else {
+      success = newPositionObject(model, 'helen_s');
     }
     
-    return newPositionObject(model, 'helen_s');
+    // Reapply user transforms if they exist
+    if (userTransformsRef.current.hasUserChanges && success) {
+      console.log('🔄 HELEN: Reapplying user transforms after positioning', {
+        userRotation: userTransformsRef.current.rotation.toArray(),
+        userScale: userTransformsRef.current.scale
+      });
+      
+      // Reapply user rotation on top of AR positioning
+      model.rotation.x += userTransformsRef.current.rotation.x;
+      model.rotation.y += userTransformsRef.current.rotation.y;
+      model.rotation.z += userTransformsRef.current.rotation.z;
+      
+      // Reapply user scale
+      const currentScale = model.scale.x;
+      model.scale.setScalar(currentScale * userTransformsRef.current.scale);
+    }
+    
+    return success;
   }, [newSystemReady, isUniversalMode, newPositionObject]);
 
   const handleModelReset = useCallback((model: THREE.Points) => {
-    console.log('🔄 HELEN: Resetting model position');
+    console.log('🔄 HELEN: Resetting model (clearing user transforms)');
     
-    if (isUniversalMode) {
-      newPositionObject(model, 'helen_s', { useDebugOverride: true });
-    } else {
-      newPositionObject(model, 'helen_s');
-    }
+    // Clear user transforms
+    userTransformsRef.current = {
+      rotation: new THREE.Euler(0, 0, 0),
+      scale: 1.0,
+      hasUserChanges: false
+    };
+    
+    // Reposition with fresh state
+    positionModelWithTransformPreservation(model);
     
     activeScaleRef.current = model.scale.x;
-    console.log('🔄 HELEN: Reset completed with scale:', model.scale.x);
-  }, [isUniversalMode, newPositionObject]);
+    console.log('🔄 HELEN: Reset completed');
+  }, [positionModelWithTransformPreservation]);
 
   // =================================================================
   // ENGINE CALLBACKS (MEMOIZED)
@@ -122,37 +158,16 @@ const HelenExperience: React.FC<HelenExperienceProps> = ({
 
   const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
     console.log('🎯 HelenExperience: Model loaded from engine');
-
-      // ADD THIS DEBUG INFO:
-  console.log('🔍 HELEN Model Debug:', {
-    vertices: pointCloud.geometry.attributes.position.count,
-    hasColors: !!pointCloud.geometry.attributes.color,
-    material: pointCloud.material,
-    scale: pointCloud.scale.toArray(),
-    boundingBox: pointCloud.geometry.boundingBox,
-    visible: pointCloud.visible
-  });
-  
-  // Compute bounding box if not already computed
-  if (!pointCloud.geometry.boundingBox) {
-    pointCloud.geometry.computeBoundingBox();
-    console.log('🔍 HELEN Computed bounding box:', pointCloud.geometry.boundingBox);
-  }
-
-
-
-
-
     modelRef.current = pointCloud;
     activeScaleRef.current = pointCloud.scale.x;
     
-    // Position the model using AR positioning system
+    // Position the model (no user transforms yet)
     if (newSystemReady) {
-      positionModel(pointCloud);
+      positionModelWithTransformPreservation(pointCloud);
     }
     
     setIsEngineReady(true);
-  }, [newSystemReady, positionModel]);
+  }, [newSystemReady, positionModelWithTransformPreservation]);
 
   const handleEngineReady = useCallback(() => {
     console.log('🎉 HelenExperience: Engine ready');
@@ -191,7 +206,7 @@ const HelenExperience: React.FC<HelenExperienceProps> = ({
   ]); // Only recreate if these actually change
 
   // =================================================================
-  // GESTURE HANDLERS
+  // GESTURE HANDLERS WITH TRANSFORM TRACKING
   // =================================================================
 
   useEffect(() => {
@@ -199,14 +214,23 @@ const HelenExperience: React.FC<HelenExperienceProps> = ({
     if (onModelRotate) {
       onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
         if (modelRef.current) {
+          // Apply rotation to model
           modelRef.current.rotation.y += deltaX;
           modelRef.current.rotation.x += deltaY;
           if (deltaZ !== 0) {
             modelRef.current.rotation.z += deltaZ;
           }
-          console.log(`🎮 HELEN: Rotation applied`, {
+          
+          // Track user changes
+          userTransformsRef.current.rotation.y += deltaX;
+          userTransformsRef.current.rotation.x += deltaY;
+          userTransformsRef.current.rotation.z += deltaZ;
+          userTransformsRef.current.hasUserChanges = true;
+          
+          console.log(`🎮 HELEN: Rotation applied and tracked`, {
             deltaX, deltaY, deltaZ,
-            currentRotation: modelRef.current.rotation.toArray()
+            currentRotation: modelRef.current.rotation.toArray(),
+            userRotation: userTransformsRef.current.rotation.toArray()
           });
         }
       });
@@ -219,10 +243,17 @@ const HelenExperience: React.FC<HelenExperienceProps> = ({
           const currentScale = modelRef.current.scale.x;
           const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
           modelRef.current.scale.setScalar(newScale);
-          console.log(`🔍 HELEN: Scale applied`, {
+          
+          // Track user scale changes
+          userTransformsRef.current.scale *= scaleFactor;
+          userTransformsRef.current.scale = Math.max(0.1, Math.min(10, userTransformsRef.current.scale));
+          userTransformsRef.current.hasUserChanges = true;
+          
+          console.log(`🔍 HELEN: Scale applied and tracked`, {
             scaleFactor,
             currentScale: currentScale.toFixed(3),
-            newScale: newScale.toFixed(3)
+            newScale: newScale.toFixed(3),
+            userScale: userTransformsRef.current.scale.toFixed(3)
           });
         }
       });
@@ -256,18 +287,12 @@ const HelenExperience: React.FC<HelenExperienceProps> = ({
 
   // Handle elevation changes (memoized)
   const handleElevationChanged = useCallback(() => {
-    console.log('🧪 HelenExperience: Elevation changed');
+    console.log('🧪 HelenExperience: Elevation changed - repositioning with preserved transforms');
     
     if (modelRef.current) {
-      if (isUniversalMode) {
-        const success = newPositionObject(modelRef.current, 'helen_s', { useDebugOverride: true });
-        console.log('🧪 HELEN: UNIVERSAL MODE - Model repositioned:', success);
-      } else {
-        const success = newPositionObject(modelRef.current, 'helen_s');
-        console.log('🧪 HELEN: NORMAL MODE - Model repositioned:', success);
-      }
+      positionModelWithTransformPreservation(modelRef.current);
     }
-  }, [isUniversalMode, newPositionObject]);
+  }, [positionModelWithTransformPreservation]);
 
   useEffect(() => {
     if (onElevationChanged) {
@@ -278,27 +303,25 @@ const HelenExperience: React.FC<HelenExperienceProps> = ({
   // Monitor debug mode changes
   useEffect(() => {
     if (newDebugMode !== undefined) {
-      console.log('🔗 HELEN: Debug mode changed to:', newDebugMode);
+      console.log('🔗 HELEN: Debug mode changed - repositioning with preserved transforms');
       
       (window as any).arTestingOverride = newDebugMode;
       
       setTimeout(() => {
         if (modelRef.current && newSystemReady) {
-          console.log('🔗 HELEN: Repositioning after debug mode change...');
-          const success = newPositionObject(modelRef.current, 'helen_s');
-          console.log('🔗 HELEN: Positioning result:', success);
+          positionModelWithTransformPreservation(modelRef.current);
         }
       }, 100);
     }
-  }, [newDebugMode, newSystemReady, newPositionObject]);
+  }, [newDebugMode, newSystemReady, positionModelWithTransformPreservation]);
 
   // Wait for positioning system to be ready
   useEffect(() => {
     if (newSystemReady && modelRef.current && isEngineReady) {
       console.log('🧪 HELEN: Positioning system ready, positioning model...');
-      positionModel(modelRef.current);
+      positionModelWithTransformPreservation(modelRef.current);
     }
-  }, [newSystemReady, isEngineReady, positionModel]);
+  }, [newSystemReady, isEngineReady, positionModelWithTransformPreservation]);
 
   // =================================================================
   // RENDER

@@ -92,7 +92,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     fallbackColor: 0xff6b6b,
     rotationCorrection: new THREE.Euler(-Math.PI / 2, 0, 0),
     centerModel: true,
-    maxVertices: 60000
+    maxVertices: 100000
   }), []);
 
   // =================================================================
