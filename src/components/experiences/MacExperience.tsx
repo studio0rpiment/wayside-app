@@ -188,9 +188,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     console.log('🔧 MacExperience: Creating memoized StaticPointCloudEngine');
     
     return (
-      <StaticPointCloudEngine
+        <StaticPointCloudEngine
         config={macConfig}
         scene={arScene}
+        experienceId="mac"        // ✅ ADD: Tell engine which experience this is
+        isUniversalMode={isUniversalMode}  // ✅ ADD: Pass universal mode
         enabled={true}
         onModelLoaded={handleModelLoaded}
         onLoadingProgress={setLoadingProgress}

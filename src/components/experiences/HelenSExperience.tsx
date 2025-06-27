@@ -190,6 +190,8 @@ const HelenExperience: React.FC<HelenExperienceProps> = ({
       <StaticPointCloudEngine
         config={helenConfig}
         scene={arScene}
+        experienceId="helen_s"        // ✅ ADD: Tell engine which experience this is
+        isUniversalMode={isUniversalMode}  // ✅ ADD: Pass universal mode
         enabled={true}
         onModelLoaded={handleModelLoaded}
         onLoadingProgress={setLoadingProgress}

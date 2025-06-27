@@ -190,6 +190,8 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
       <StaticPointCloudEngine
         config={volunteersConfig}
         scene={arScene}
+        experienceId="volunteers"        
+        isUniversalMode={isUniversalMode} 
         enabled={true}
         onModelLoaded={handleModelLoaded}
         onLoadingProgress={setLoadingProgress}

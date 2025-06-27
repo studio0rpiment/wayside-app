@@ -1,9 +1,11 @@
-// StaticPointCloudEngine.tsx - Fixed version with proper positioning separation
+// StaticPointCloudEngine.tsx - Direct positioning integration
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 import { getAssetPath } from '../../utils/assetPaths';
 import { getDeviceCapabilities } from '../../utils/deviceOptimization';
+import { PositioningSystemSingleton } from '../../utils/coordinate-system/PositioningSystemSingleton';
+import { useGeofenceBasics } from '../../context/GeofenceContext';
 
 export interface StaticPointCloudConfig {
   modelName: 'mac' | 'volunteers' | 'helen_s' | '2200_bc';
@@ -18,7 +20,7 @@ export interface StaticPointCloudConfig {
   pointDensity: number;         // 0-1, sampling density
   fallbackColor: number;        // Hex color if no vertex colors
   
-  // Coordinate system corrections - MOVED TO CACHED MODEL
+  // Coordinate system corrections
   rotationCorrection: THREE.Euler;  // Model-specific rotation fixes
   centerModel: boolean;         // Whether to center the geometry
   
@@ -29,11 +31,8 @@ export interface StaticPointCloudConfig {
 interface StaticPointCloudEngineProps {
   config: StaticPointCloudConfig;
   scene: THREE.Scene;
-  
-  // Positioning (handled externally by experience) - THESE NOW UPDATE DYNAMICALLY
-  position?: THREE.Vector3;
-  rotation?: THREE.Euler;
-  scale?: number;
+  experienceId: string;         // Which experience this model belongs to
+  isUniversalMode?: boolean;    // Universal mode override
   
   // State management
   enabled?: boolean;
@@ -46,16 +45,15 @@ interface StaticPointCloudEngineProps {
 }
 
 // =================================================================
-// GLOBAL MODEL CACHE - Now stores CLEAN models without positioning
+// GLOBAL MODEL CACHE - Clean models without positioning
 // =================================================================
 
 interface CachedModel {
-  // CHANGED: Store clean geometry/material, not positioned pointCloud
   geometry: THREE.BufferGeometry;
   material: THREE.PointsMaterial;
   refCount: number;
   
-  // NEW: Store model-specific corrections for instances to apply
+  // Model-specific corrections for instances to apply
   modelCorrections: {
     centerOffset: THREE.Vector3;
     rotationCorrection: THREE.Euler;
@@ -164,7 +162,7 @@ class StaticModelCache {
   }
   
   /**
-   * UPDATED: Internal model loading logic - creates CLEAN models
+   * Internal model loading logic - creates CLEAN models
    */
   private async loadModel(config: StaticPointCloudConfig, onProgress?: (progress: number) => void): Promise<CachedModel> {
     // Get device capabilities
@@ -234,7 +232,7 @@ class StaticModelCache {
 
     if (onProgress) onProgress(80);
 
-    // CHANGED: Apply scaling and centering to GEOMETRY, not point cloud
+    // Apply scaling and centering to GEOMETRY
     // Compute bounding box for normalization
     processedGeometry.computeBoundingBox();
     const boundingBox = processedGeometry.boundingBox!;
@@ -281,7 +279,7 @@ class StaticModelCache {
       finalScale: finalScale
     });
 
-    // CHANGED: Return clean model data + correction info
+    // Return clean model data + correction info
     return {
       geometry: processedGeometry,
       material,
@@ -302,10 +300,9 @@ const globalModelCache = new StaticModelCache();
 (window as any).staticModelCache = globalModelCache;
 
 // =================================================================
-// COMPONENT IMPLEMENTATION - Now handles dynamic positioning
+// GEOMETRY SAMPLING UTILITY
 // =================================================================
 
-// Move sampleGeometry outside component to avoid React stability issues
 function sampleGeometry(geometry: THREE.BufferGeometry, density: number, targetVertexCount?: number): THREE.BufferGeometry {
   const positions = geometry.attributes.position;
   const colors = geometry.attributes.color;
@@ -366,12 +363,15 @@ function sampleGeometry(geometry: THREE.BufferGeometry, density: number, targetV
   return sampledGeometry;
 }
 
+// =================================================================
+// MAIN ENGINE COMPONENT - Direct positioning integration
+// =================================================================
+
 const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
   config,
   scene,
-  position = new THREE.Vector3(0, 0, 0),
-  rotation = new THREE.Euler(0, 0, 0),
-  scale = 1,
+  experienceId,
+  isUniversalMode = false,
   enabled = true,
   onModelLoaded,
   onLoadingProgress,
@@ -383,9 +383,12 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
   const initializationStartedRef = useRef(false);
   const componentIdRef = useRef(Math.random().toString(36).substr(2, 9));
 
+  // Get geofence context for user position and universal mode detection
+  const { userPosition, isUniversalMode: contextUniversalMode } = useGeofenceBasics();
+
   console.log(`🎯 StaticPointCloudEngine: Component created for ${config.modelName} (ID: ${componentIdRef.current})`);
 
-  // CHANGED: Model loading effect - creates instance from cached model
+  // Model loading effect - loads model and applies positioning directly
   useEffect(() => {
     if (initializationStartedRef.current) {
       console.log(`⏭️ ${config.modelName}: Already initialized in this component instance`);
@@ -397,7 +400,7 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
 
     const loadModel = async () => {
       try {
-        console.log(`🚀 ${config.modelName}: Starting model acquisition (Component ID: ${componentIdRef.current})`);
+        console.log(`🚀 ${config.modelName}: Starting model acquisition with direct positioning (Component ID: ${componentIdRef.current})`);
         
         // Get CLEAN model from global cache
         const cachedModel = await globalModelCache.getModel(config, onLoadingProgress);
@@ -408,42 +411,64 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
           return;
         }
 
-        // CHANGED: Create NEW point cloud instance from cached geometry/material
+        // Create NEW point cloud instance from cached geometry/material
         const pointCloud = new THREE.Points(cachedModel.geometry, cachedModel.material);
         pointCloud.name = `${config.modelName}-point-cloud-instance`;
 
-        // CHANGED: Apply model-specific corrections to THIS instance
+        // Apply model-specific corrections first
         const corrections = cachedModel.modelCorrections;
-        
-        // Apply center offset
         pointCloud.position.copy(corrections.centerOffset);
-        
-        // Apply rotation correction
         pointCloud.rotation.copy(corrections.rotationCorrection);
 
-        // Apply experience positioning (once during load)
-        if (position) {
-          pointCloud.position.add(position); // Add to model corrections
-        }
-        if (rotation) {
-          pointCloud.rotation.x += rotation.x;
-          pointCloud.rotation.y += rotation.y;
-          pointCloud.rotation.z += rotation.z;
-        }
-        if (scale !== undefined) {
-          pointCloud.scale.setScalar(scale);
+        console.log(`🔧 Applied model corrections:`, {
+          centerOffset: corrections.centerOffset.toArray(),
+          rotationCorrection: [corrections.rotationCorrection.x, corrections.rotationCorrection.y, corrections.rotationCorrection.z]
+        });
+
+        // DIRECT POSITIONING: Get position from positioning system
+        const finalUniversalMode = isUniversalMode || contextUniversalMode;
+        
+        console.log(`🎯 Getting position for ${experienceId}:`, {
+          universalMode: finalUniversalMode,
+          userPosition: userPosition?.slice() || 'none'
+        });
+
+        const positionResult = PositioningSystemSingleton.getExperiencePosition(
+          experienceId,
+          {
+            gpsPosition: userPosition,
+            isUniversalMode: finalUniversalMode
+          }
+        );
+
+        if (positionResult) {
+          // Apply final positioning
+          pointCloud.position.add(positionResult.relativeToUser);
+          
+          // Apply rotation adjustments (add to existing rotation)
+          pointCloud.rotation.x += positionResult.rotation.x;
+          pointCloud.rotation.y += positionResult.rotation.y;
+          pointCloud.rotation.z += positionResult.rotation.z;
+          
+          // Apply scale
+          pointCloud.scale.setScalar(positionResult.scale);
+
+          console.log(`✅ ${config.modelName}: Direct positioning applied:`, {
+            relativePosition: positionResult.relativeToUser.toArray(),
+            rotation: [positionResult.rotation.x, positionResult.rotation.y, positionResult.rotation.z],
+            scale: positionResult.scale,
+            universalMode: positionResult.isUsingDebugMode,
+            distance: positionResult.distanceFromUser?.toFixed(1) + 'm'
+          });
+        } else {
+          console.warn(`⚠️ ${config.modelName}: No position result from positioning system`);
         }
 
         // Store reference and add to scene
         pointCloudRef.current = pointCloud;
         scene.add(pointCloud);
 
-        console.log(`✅ ${config.modelName}: Instance ready in scene (Component ID: ${componentIdRef.current})`);
-        console.log(`🔧 Applied corrections:`, {
-          centerOffset: corrections.centerOffset.toArray(),
-          rotationCorrection: [corrections.rotationCorrection.x, corrections.rotationCorrection.y, corrections.rotationCorrection.z],
-          finalScale: corrections.finalScale
-        });
+        console.log(`✅ ${config.modelName}: Instance ready in scene with direct positioning (Component ID: ${componentIdRef.current})`);
 
         // Notify callbacks
         if (onModelLoaded) onModelLoaded(pointCloud);
