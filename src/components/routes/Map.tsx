@@ -433,7 +433,6 @@ const handleMapRemoved = useCallback(() => {
                 isOpen={modalState.isOpen}
                 pointData={modalState.pointData}
                 onClose={closeModal}
-                currentRadius={currentRadius}
                 mapRef={mapRef as React.RefObject<mapboxgl.Map>}
               />
               )}

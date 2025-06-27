@@ -31,16 +31,10 @@ interface PointData {
 }
 
 interface ExperienceModalProps {
-  userPosition?: [number, number];
+  
   isOpen: boolean;
   pointData: PointData | null;
   onClose: () => void;
-  isNotification?: boolean;
-
-  isInsideGeofence?: boolean;
-  distanceToGeofence?: number | null;
-  directionToGeofence?: number | null;
-  currentRadius?: number;
 
   mapRef?: React.RefObject<mapboxgl.Map>
 }
@@ -202,7 +196,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   isOpen,
   pointData,
   onClose,
-  isNotification = false,
+
   mapRef
 }) => {
   
@@ -246,6 +240,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       return () => clearTimeout(timeout);
     }
   }, [averagedPosition]);
+
+  
 
   // ✅ ENHANCED: Calculate geofence info using enhanced context and precision data
   const enhancedGeofenceInfo = React.useMemo((): EnhancedGeofenceInfo => {
@@ -292,6 +288,10 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     }
     
     const pointId = pointData.iconName;
+
+
+  
+
     
     // ✅ ENHANCED: Use enhanced geofence checking with hexagonal support
     const geofenceResult = checkGeofenceWithDirection(
@@ -368,6 +368,8 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     };
   }, [pointData?.iconName, averagedPosition, previousPosition, positionQuality, currentAccuracy, isPositionStable, isInsideGeofence, getDistanceToPoint, currentRadius, isUniversalMode]);
 
+
+  
   // Handle experience start
   const handleExperienceStart = useCallback(() => {
     if (pointData && pointData.modalContent) {
@@ -445,6 +447,29 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     arReadyPosition !== null && currentAccuracy !== null && 
     currentAccuracy <= 30 && positionQuality !== PositionQuality.UNACCEPTABLE;
 
+const miniMapStyle = React.useMemo(() => ({ 
+  marginBottom: '10px' 
+}), []);
+
+const shouldShowMiniMap = averagedPosition && mapRef?.current;
+
+const stableMiniMapProps = React.useMemo(() => {
+  if (!shouldShowMiniMap || !mapRef) return null;
+  
+  return {
+    experienceId: pointData.iconName,
+    userPosition: averagedPosition,
+    mainMapRef: mapRef,
+    width: "auto" as const,
+    height: "150px" as const,
+    className: "mini-map",
+    style: miniMapStyle,
+    zoomOffset: -3,
+    showAnchors: true
+  };
+}, [pointData.iconName, averagedPosition, mapRef, miniMapStyle, shouldShowMiniMap]);
+
+
   // Show regular modal
   return (
     <>
@@ -464,9 +489,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
           maxWidth: '400px',
           zIndex: 1050,
           boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5)',
-          ...(isNotification && {
-            borderLeft: '4px solid var(--color-blue)',
-          })
+         
         }}
       >
     {/*  Universal Mode Banner */}
@@ -490,7 +513,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 style={{ margin: 0, fontSize: '24px' }}>
-            {isNotification ? '🔔 ' : ''}{pointData.title}
+          
           </h2>
           <button 
             onClick={onClose}
@@ -543,21 +566,10 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
               return null;
             })()}
             
-            {averagedPosition && mapRef && (
-              <SynchronizedMiniMap
-                experienceId={pointData.iconName}
-                userPosition={averagedPosition}
-                mainMapRef={mapRef}
-                width="auto"
-                height="150px"
-                className="mini-map"
-                style={{ marginBottom: '10px' }}
-                
-                zoomOffset={-3} // Show wider area than main map
-                showAnchors={true} // Include AR anchor markers
-              />
-            )}
-         
+            {stableMiniMapProps && (
+                  <SynchronizedMiniMap {...stableMiniMapProps} />
+                )}
+                        
 
             {/* Normal GPS Mode - Position Quality Warning */}
             {/* {averagedPosition && !isPositionGoodEnoughForArStartup && (
@@ -686,30 +698,32 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         )}
         
         {/*  Experience Launch Button - Always visible, different logic */}
-        <button
-          onClick={handleExperienceStart}
-          disabled={isUniversalMode ? false : !isPositionGoodEnoughForArStartup}
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: (isUniversalMode || isPositionGoodEnoughForArStartup) ? 'var(--color-blue)' : 'rgba(128, 128, 128, 0.5)',
-            color: 'var(--color-light)',
-            border: 'none',
-            borderRadius: '8px',
-            fontFamily: 'var(--font-rigby)',
-            fontWeight: '700',
-            cursor: (isUniversalMode || isPositionGoodEnoughForArStartup) ? 'pointer' : 'not-allowed',
-            fontSize: '1.5rem',
-            opacity: (isUniversalMode || isPositionGoodEnoughForArStartup) ? 1 : 0.6
-          }}
-        >
-          {isUniversalMode 
-            ? `Launch ${pointData.title}` // Universal Mode button
-            : isPositionGoodEnoughForArStartup 
-              ? (pointData.modalContent.buttonText || `Launch ${pointData.title}`)
-              : '⚠️ Get Closer to Launch Experience'
-          }
-        </button>
+            <button
+              onClick={handleExperienceStart}
+              disabled={!isUniversalMode && !enhancedGeofenceInfo.isInside}
+              style={{
+                width: '100%',
+                padding: '12px',
+                backgroundColor: (isUniversalMode || enhancedGeofenceInfo.isInside) 
+                  ? 'var(--color-blue)' 
+                  : 'rgba(128, 128, 128, 0.5)',
+                color: 'var(--color-light)',
+                border: 'none',
+                borderRadius: '8px',
+                fontFamily: 'var(--font-rigby)',
+                fontWeight: '700',
+                cursor: (isUniversalMode || enhancedGeofenceInfo.isInside) ? 'pointer' : 'not-allowed',
+                fontSize: '1.5rem',
+                opacity: (isUniversalMode || enhancedGeofenceInfo.isInside) ? 1 : 0.6
+              }}
+            >
+              {isUniversalMode 
+                ? `Launch ${pointData.title}`
+                : enhancedGeofenceInfo.isInside 
+                  ? (pointData.modalContent.buttonText || `Launch ${pointData.title}`)
+                  : ' Move closer to launch experience'
+              }
+            </button>
         
         {/* ✅ SEPARATE: Enhanced Debug info (always available in development, separate from Universal Mode) */}
         {/* {(process.env.NODE_ENV === 'development' && showDebug) && (

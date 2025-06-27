@@ -36,10 +36,7 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
   const previousActiveGeofencesRef = useRef<string[]>([]);
   
   // Modal state for notification popups
-  const [modalState, setModalState] = useState<ModalState>({
-    isOpen: false,
-    pointData: null
-  });
+
 
     // Track zoom state
   const [isZoomedIn, setIsZoomedIn] = useState(false);
@@ -101,11 +98,7 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
             console.log(`🔍 Zoomed to level 19, centered on: ${pointFeature.properties.title}`);
           }
           
-          // EXISTING: Show modal with notification styling
-          setModalState({
-            isOpen: true,
-            pointData: pointFeature.properties
-          });
+      
           
           // Mark this geofence as notified
           setNotifiedGeofences(prev => [...prev, newGeofenceId]);
@@ -176,13 +169,7 @@ useEffect(() => {
     }
   };
   
-  // Handle closing the modal
-  const handleCloseModal = () => {
-    setModalState({
-      isOpen: false,
-      pointData: null
-    });
-  };
+
   
   // Clear notified geofences when user moves away from all geofences
   useEffect(() => {
@@ -193,55 +180,14 @@ useEffect(() => {
   }, [activeGeofences.length, notifiedGeofences.length]);
   
   // Helper function to get geofence info for modal
-  const getModalGeofenceInfo = () => {
-    if (!modalState.pointData || !userPosition) {
-      return { isInside: false, distance: null, direction: null };
-    }
-    
-    const pointId = modalState.pointData.iconName;
-    
-    // Check if this geofence is currently active
-    const activeGeofence = activeGeofences.find(g => g.id === pointId);
-    const isInside = !!activeGeofence;
-    const distance = activeGeofence?.distance || null;
-    
-    // Calculate direction if not inside
-    let direction = null;
-    if (userPosition && !isInside) {
-      const pointFeature = routePointsData.features.find(
-        feature => feature.properties.iconName === pointId
-      );
-      
-      if (pointFeature) {
-        const pointCoords = pointFeature.geometry.coordinates;
-        const dx = pointCoords[0] - userPosition[0];
-        const dy = pointCoords[1] - userPosition[1];
-        direction = Math.atan2(dy, dx) * (180 / Math.PI);
-      }
-    }
-    
-    return { isInside, distance, direction };
-  };
+
   
-  const modalGeofenceInfo = getModalGeofenceInfo();
+
   
   return (
     <>
       {/* Render the children directly - no prop passing */}
       {children}
-      
-      {/* Experience Modal for notifications */}
-      <ExperienceModal
-        isOpen={modalState.isOpen}
-        pointData={modalState.pointData}
-        onClose={handleCloseModal}
-        isNotification={true}
-        isInsideGeofence={modalGeofenceInfo.isInside}
-        distanceToGeofence={modalGeofenceInfo.distance}
-        directionToGeofence={modalGeofenceInfo.direction}
-        currentRadius={getCurrentRadius()}
-        
-      />
       
       {/* Optional: Debug info for development */}
       {/* {process.env.NODE_ENV === 'development' && (
