@@ -29,11 +29,7 @@ export interface StaticPointCloudConfig {
 interface StaticPointCloudEngineProps {
   config: StaticPointCloudConfig;
   scene: THREE.Scene;
-  
-  // Positioning (handled externally by experience) - THESE NOW UPDATE DYNAMICALLY
-  position?: THREE.Vector3;
-  rotation?: THREE.Euler;
-  scale?: number;
+
   
   // State management
   enabled?: boolean;
@@ -369,9 +365,7 @@ function sampleGeometry(geometry: THREE.BufferGeometry, density: number, targetV
 const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
   config,
   scene,
-  position = new THREE.Vector3(0, 0, 0),
-  rotation = new THREE.Euler(0, 0, 0),
-  scale = 1,
+
   enabled = true,
   onModelLoaded,
   onLoadingProgress,
@@ -461,39 +455,6 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
     };
   }, []); // No dependencies - run once per component lifecycle
 
-  // NEW: Handle positioning prop changes dynamically
-//   useEffect(() => {
-//     if (pointCloudRef.current && position) {
-//       // Apply experience positioning ON TOP OF model corrections
-//       const correctedPosition = pointCloudRef.current.position.clone().add(position);
-//       pointCloudRef.current.position.copy(correctedPosition);
-      
-//       console.log(`📍 ${config.modelName}: Updated position to`, correctedPosition.toArray());
-//     }
-//   }, [position, config.modelName]);
-
-//   // NEW: Handle rotation prop changes dynamically  
-//   useEffect(() => {
-//     if (pointCloudRef.current && rotation) {
-//       // Apply experience rotation ON TOP OF model corrections
-//       const combinedRotation = new THREE.Euler(
-//         pointCloudRef.current.rotation.x + rotation.x,
-//         pointCloudRef.current.rotation.y + rotation.y, 
-//         pointCloudRef.current.rotation.z + rotation.z
-//       );
-//       pointCloudRef.current.rotation.copy(combinedRotation);
-      
-//       console.log(`🔄 ${config.modelName}: Updated rotation to`, [combinedRotation.x, combinedRotation.y, combinedRotation.z]);
-//     }
-//   }, [rotation, config.modelName]);
-
-//   // NEW: Handle scale prop changes dynamically
-//   useEffect(() => {
-//     if (pointCloudRef.current && scale !== undefined) {
-//       pointCloudRef.current.scale.setScalar(scale);
-//       console.log(`📏 ${config.modelName}: Updated scale to`, scale);
-//     }
-//   }, [scale, config.modelName]);
 
   // Handle enabled state changes
   useEffect(() => {
