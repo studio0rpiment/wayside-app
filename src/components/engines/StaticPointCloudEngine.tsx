@@ -1,4 +1,4 @@
-// StaticPointCloudEngine.tsx - Engine for static PLY point cloud models with global caching
+// StaticPointCloudEngine.tsx - Fixed version with proper positioning separation
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
@@ -18,7 +18,7 @@ export interface StaticPointCloudConfig {
   pointDensity: number;         // 0-1, sampling density
   fallbackColor: number;        // Hex color if no vertex colors
   
-  // Coordinate system corrections
+  // Coordinate system corrections - MOVED TO CACHED MODEL
   rotationCorrection: THREE.Euler;  // Model-specific rotation fixes
   centerModel: boolean;         // Whether to center the geometry
   
@@ -30,7 +30,7 @@ interface StaticPointCloudEngineProps {
   config: StaticPointCloudConfig;
   scene: THREE.Scene;
   
-  // Positioning (handled externally by experience)
+  // Positioning (handled externally by experience) - THESE NOW UPDATE DYNAMICALLY
   position?: THREE.Vector3;
   rotation?: THREE.Euler;
   scale?: number;
@@ -46,14 +46,21 @@ interface StaticPointCloudEngineProps {
 }
 
 // =================================================================
-// GLOBAL MODEL CACHE - Singleton pattern for model management
+// GLOBAL MODEL CACHE - Now stores CLEAN models without positioning
 // =================================================================
 
 interface CachedModel {
-  pointCloud: THREE.Points;
-  material: THREE.PointsMaterial;
+  // CHANGED: Store clean geometry/material, not positioned pointCloud
   geometry: THREE.BufferGeometry;
-  refCount: number; // Track how many components are using this model
+  material: THREE.PointsMaterial;
+  refCount: number;
+  
+  // NEW: Store model-specific corrections for instances to apply
+  modelCorrections: {
+    centerOffset: THREE.Vector3;
+    rotationCorrection: THREE.Euler;
+    finalScale: number;
+  };
 }
 
 class StaticModelCache {
@@ -61,7 +68,7 @@ class StaticModelCache {
   private loadingPromises = new Map<string, Promise<CachedModel>>();
   
   /**
-   * Get or load a model - returns existing cached model or starts loading
+   * Get or load a model - returns CLEAN geometry/material for instancing
    */
   async getModel(config: StaticPointCloudConfig, onProgress?: (progress: number) => void): Promise<CachedModel> {
     const modelKey = config.modelName;
@@ -157,7 +164,7 @@ class StaticModelCache {
   }
   
   /**
-   * Internal model loading logic
+   * UPDATED: Internal model loading logic - creates CLEAN models
    */
   private async loadModel(config: StaticPointCloudConfig, onProgress?: (progress: number) => void): Promise<CachedModel> {
     // Get device capabilities
@@ -193,10 +200,6 @@ class StaticModelCache {
         modelPath,
         (loadedGeometry) => {
           console.log(`✅ ${config.modelName}.ply file loaded successfully!`);
-
-   
-
-
           resolve(loadedGeometry);
         },
         (xhr) => {
@@ -229,10 +232,32 @@ class StaticModelCache {
       processedGeometry = sampleGeometry(geometry, config.pointDensity);
     }
 
-    // Apply scaling
-    
-
     if (onProgress) onProgress(80);
+
+    // CHANGED: Apply scaling and centering to GEOMETRY, not point cloud
+    // Compute bounding box for normalization
+    processedGeometry.computeBoundingBox();
+    const boundingBox = processedGeometry.boundingBox!;
+
+    // Calculate actual max dimension
+    const size = new THREE.Vector3();
+    boundingBox.getSize(size);
+    const actualMaxDim = Math.max(size.x, size.y, size.z);
+
+    console.log(`📐 ${config.modelName}: Actual max dimension: ${actualMaxDim.toFixed(3)}`);
+    console.log(`📐 ${config.modelName}: Known max dimension: ${config.knownMaxDim}`);
+    console.log(`📐 ${config.modelName}: Target scale: ${config.targetScale}`);
+
+    // Apply normalization scaling to geometry
+    const normalizationScale = config.knownMaxDim / actualMaxDim;
+    const finalScale = config.targetScale * normalizationScale;
+    processedGeometry.scale(finalScale, finalScale, finalScale);
+
+    // Calculate center offset for instances to apply
+    const centerOffset = new THREE.Vector3();
+    if (config.centerModel && config.knownCenter.length() > 0) {
+      centerOffset.copy(config.knownCenter).multiplyScalar(-finalScale);
+    }
 
     // Create material
     const material = new THREE.PointsMaterial({
@@ -248,57 +273,24 @@ class StaticModelCache {
       console.log(`✅ ${config.modelName}: Using embedded vertex colors`);
     }
 
-    // Create point cloud
-    const pointCloud = new THREE.Points(processedGeometry, material);
-    pointCloud.name = `${config.modelName}-point-cloud`;
-
-
-// Compute bounding box for normalization
-processedGeometry.computeBoundingBox();
-const boundingBox = processedGeometry.boundingBox!;
-
-// Calculate actual max dimension
-const size = new THREE.Vector3();
-boundingBox.getSize(size);
-const actualMaxDim = Math.max(size.x, size.y, size.z);
-
-console.log(`📐 ${config.modelName}: Actual max dimension: ${actualMaxDim.toFixed(3)}`);
-console.log(`📐 ${config.modelName}: Known max dimension: ${config.knownMaxDim}`);
-console.log(`📐 ${config.modelName}: Target scale: ${config.targetScale}`);
-
-// Apply normalization scaling based on actual vs known dimensions
-const normalizationScale = config.knownMaxDim / actualMaxDim;
-const finalScale = config.targetScale * normalizationScale;
-
-// pointCloud.scale.setScalar(finalScale);
-// console.log(`📏 ${config.modelName}: Applied normalization scale: ${finalScale.toFixed(4)}`);
-processedGeometry.scale(finalScale, finalScale, finalScale);
-
-    // Apply model-specific transforms
-    if (config.centerModel && config.knownCenter.length() > 0) {
-      pointCloud.position.set(-config.knownCenter.x, -config.knownCenter.y, -config.knownCenter.z);
-    }
-    // pointCloud.scale.set(config.targetScale, config.targetScale, config.targetScale);
-    pointCloud.rotation.set(config.rotationCorrection.x, config.rotationCorrection.y, config.rotationCorrection.z);
-
     if (onProgress) onProgress(100);
 
     console.log(`✅ ${config.modelName} processed successfully:`, {
       vertices: processedGeometry.attributes.position.count,
       hasColors: !!processedGeometry.attributes.color,
-      finalScale: config.targetScale
+      finalScale: finalScale
     });
 
-    console.log(`🔍 HELEN Original PLY data:`, {
-  originalVertices: geometry.attributes.position.count,
-  beforeSampling: !!geometry.attributes.position
-});
-
+    // CHANGED: Return clean model data + correction info
     return {
-      pointCloud,
-      material,
       geometry: processedGeometry,
-      refCount: 0 // Will be set to 1 by caller
+      material,
+      refCount: 0, // Will be set to 1 by caller
+      modelCorrections: {
+        centerOffset,
+        rotationCorrection: config.rotationCorrection,
+        finalScale
+      }
     };
   }
 }
@@ -310,7 +302,7 @@ const globalModelCache = new StaticModelCache();
 (window as any).staticModelCache = globalModelCache;
 
 // =================================================================
-// COMPONENT IMPLEMENTATION
+// COMPONENT IMPLEMENTATION - Now handles dynamic positioning
 // =================================================================
 
 // Move sampleGeometry outside component to avoid React stability issues
@@ -387,15 +379,14 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
   onReady
 }) => {
   // Component-level refs
-  const modelRef = useRef<THREE.Points | null>(null);
+  const pointCloudRef = useRef<THREE.Points | null>(null);
   const initializationStartedRef = useRef(false);
-  const componentIdRef = useRef(Math.random().toString(36).substr(2, 9)); // Unique component ID
+  const componentIdRef = useRef(Math.random().toString(36).substr(2, 9));
 
   console.log(`🎯 StaticPointCloudEngine: Component created for ${config.modelName} (ID: ${componentIdRef.current})`);
 
-  // Model loading effect - runs once per component lifecycle
+  // CHANGED: Model loading effect - creates instance from cached model
   useEffect(() => {
-    // Prevent double initialization within same component
     if (initializationStartedRef.current) {
       console.log(`⏭️ ${config.modelName}: Already initialized in this component instance`);
       return;
@@ -408,24 +399,41 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
       try {
         console.log(`🚀 ${config.modelName}: Starting model acquisition (Component ID: ${componentIdRef.current})`);
         
-        // Get model from global cache (or load if not cached)
+        // Get CLEAN model from global cache
         const cachedModel = await globalModelCache.getModel(config, onLoadingProgress);
         
         if (!isMounted) {
-          // Component was unmounted during loading - release the model
           console.log(`🚫 ${config.modelName}: Component unmounted during load, releasing model`);
           globalModelCache.releaseModel(config.modelName);
           return;
         }
 
-        // Store reference and add to scene
-        modelRef.current = cachedModel.pointCloud;
-        scene.add(cachedModel.pointCloud);
+        // CHANGED: Create NEW point cloud instance from cached geometry/material
+        const pointCloud = new THREE.Points(cachedModel.geometry, cachedModel.material);
+        pointCloud.name = `${config.modelName}-point-cloud-instance`;
 
-        console.log(`✅ ${config.modelName}: Model ready in scene (Component ID: ${componentIdRef.current})`);
+        // CHANGED: Apply model-specific corrections to THIS instance
+        const corrections = cachedModel.modelCorrections;
+        
+        // Apply center offset
+        pointCloud.position.copy(corrections.centerOffset);
+        
+        // Apply rotation correction
+        pointCloud.rotation.copy(corrections.rotationCorrection);
+
+        // Store reference and add to scene
+        pointCloudRef.current = pointCloud;
+        scene.add(pointCloud);
+
+        console.log(`✅ ${config.modelName}: Instance ready in scene (Component ID: ${componentIdRef.current})`);
+        console.log(`🔧 Applied corrections:`, {
+          centerOffset: corrections.centerOffset.toArray(),
+          rotationCorrection: [corrections.rotationCorrection.x, corrections.rotationCorrection.y, corrections.rotationCorrection.z],
+          finalScale: corrections.finalScale
+        });
 
         // Notify callbacks
-        if (onModelLoaded) onModelLoaded(cachedModel.pointCloud);
+        if (onModelLoaded) onModelLoaded(pointCloud);
         if (onReady) onReady();
 
       } catch (error) {
@@ -436,28 +444,61 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
 
     loadModel();
 
-    // Cleanup function - runs when component unmounts
+    // Cleanup function
     return () => {
       console.log(`🧹 ${config.modelName}: Component cleanup (ID: ${componentIdRef.current})`);
       isMounted = false;
       
       // Remove from scene
-      if (modelRef.current) {
-        scene.remove(modelRef.current);
+      if (pointCloudRef.current) {
+        scene.remove(pointCloudRef.current);
         console.log(`📤 ${config.modelName}: Removed from scene`);
       }
       
-      // Release model reference (will dispose if no more references)
+      // Release model reference
       globalModelCache.releaseModel(config.modelName);
-      
-      modelRef.current = null;
+      pointCloudRef.current = null;
     };
   }, []); // No dependencies - run once per component lifecycle
 
+  // NEW: Handle positioning prop changes dynamically
+  useEffect(() => {
+    if (pointCloudRef.current && position) {
+      // Apply experience positioning ON TOP OF model corrections
+      const correctedPosition = pointCloudRef.current.position.clone().add(position);
+      pointCloudRef.current.position.copy(correctedPosition);
+      
+      console.log(`📍 ${config.modelName}: Updated position to`, correctedPosition.toArray());
+    }
+  }, [position, config.modelName]);
+
+  // NEW: Handle rotation prop changes dynamically  
+  useEffect(() => {
+    if (pointCloudRef.current && rotation) {
+      // Apply experience rotation ON TOP OF model corrections
+      const combinedRotation = new THREE.Euler(
+        pointCloudRef.current.rotation.x + rotation.x,
+        pointCloudRef.current.rotation.y + rotation.y, 
+        pointCloudRef.current.rotation.z + rotation.z
+      );
+      pointCloudRef.current.rotation.copy(combinedRotation);
+      
+      console.log(`🔄 ${config.modelName}: Updated rotation to`, [combinedRotation.x, combinedRotation.y, combinedRotation.z]);
+    }
+  }, [rotation, config.modelName]);
+
+  // NEW: Handle scale prop changes dynamically
+  useEffect(() => {
+    if (pointCloudRef.current && scale !== undefined) {
+      pointCloudRef.current.scale.setScalar(scale);
+      console.log(`📏 ${config.modelName}: Updated scale to`, scale);
+    }
+  }, [scale, config.modelName]);
+
   // Handle enabled state changes
   useEffect(() => {
-    if (modelRef.current) {
-      modelRef.current.visible = enabled;
+    if (pointCloudRef.current) {
+      pointCloudRef.current.visible = enabled;
     }
   }, [enabled]);
 
@@ -465,6 +506,4 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
 };
 
 export default StaticPointCloudEngine;
-
-// Export cache for external access (debugging, stats, etc.)
 export { globalModelCache };
