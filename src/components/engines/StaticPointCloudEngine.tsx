@@ -29,7 +29,11 @@ export interface StaticPointCloudConfig {
 interface StaticPointCloudEngineProps {
   config: StaticPointCloudConfig;
   scene: THREE.Scene;
-
+  
+  // Positioning (handled externally by experience) - THESE NOW UPDATE DYNAMICALLY
+  position?: THREE.Vector3;
+  rotation?: THREE.Euler;
+  scale?: number;
   
   // State management
   enabled?: boolean;
@@ -365,7 +369,9 @@ function sampleGeometry(geometry: THREE.BufferGeometry, density: number, targetV
 const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
   config,
   scene,
-
+  position = new THREE.Vector3(0, 0, 0),
+  rotation = new THREE.Euler(0, 0, 0),
+  scale = 1,
   enabled = true,
   onModelLoaded,
   onLoadingProgress,
@@ -415,6 +421,19 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
         // Apply rotation correction
         pointCloud.rotation.copy(corrections.rotationCorrection);
 
+        // Apply experience positioning (once during load)
+        if (position) {
+          pointCloud.position.add(position); // Add to model corrections
+        }
+        if (rotation) {
+          pointCloud.rotation.x += rotation.x;
+          pointCloud.rotation.y += rotation.y;
+          pointCloud.rotation.z += rotation.z;
+        }
+        if (scale !== undefined) {
+          pointCloud.scale.setScalar(scale);
+        }
+
         // Store reference and add to scene
         pointCloudRef.current = pointCloud;
         scene.add(pointCloud);
@@ -454,7 +473,6 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
       pointCloudRef.current = null;
     };
   }, []); // No dependencies - run once per component lifecycle
-
 
   // Handle enabled state changes
   useEffect(() => {
