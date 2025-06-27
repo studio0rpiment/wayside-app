@@ -1,4 +1,4 @@
-// src/components/common/ExperienceModal.tsx - Enhanced with Universal Mode Integration
+// src/components/common/ExperienceModal.tsx - Cleaned up version
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import CompassArrow from './CompassArrow';
@@ -31,11 +31,9 @@ interface PointData {
 }
 
 interface ExperienceModalProps {
-  
   isOpen: boolean;
   pointData: PointData | null;
   onClose: () => void;
-
   mapRef?: React.RefObject<mapboxgl.Map>
 }
 
@@ -50,20 +48,16 @@ interface EnhancedGeofenceInfo {
   shape: 'circle' | 'hexagon';
   entryDirection?: string;
   entryMessage?: string;
-  // ✅ NEW: Position quality info
   positionQuality: PositionQuality;
   positionAccuracy: number | null;
   isPositionStable: boolean;
 }
 
-// ✅ NEW: Desktop debug flag to see outside geofence state
-const FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG = false; // Set to true to see outside geofence UI on desktop
-
-const showDebug = false; // Separate debug flag
+// Debug flag to see outside geofence state
+const FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG = false;
 
 /**
  * Enhanced user position hook that leverages the GeofenceContext
- * More permissive than the manager for navigation purposes
  */
 function useEnhancedUserPosition() {
   const {
@@ -80,21 +74,19 @@ function useEnhancedUserPosition() {
     isUniversalMode: contextUniversalMode 
   } = useGeofenceContext();
 
-  // Override Universal Mode only by actual system detection, not manual flag
- const isUniversalMode = FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG ? false : (
-  contextUniversalMode || 
-  (typeof window !== 'undefined' && !('geolocation' in navigator))
-);
+  const isUniversalMode = FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG ? false : (
+    contextUniversalMode || 
+    (typeof window !== 'undefined' && !('geolocation' in navigator))
+  );
 
   const getBestUserPosition = useCallback((): [number, number] | null => {
-
-       if (isUniversalMode) {
+    if (isUniversalMode) {
       return [-76.943, 38.9125]; // Kenilworth center fallback
     }
 
-     if (FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG) {
-    return [-76.940, 38.910]; // Position outside Kenilworth for testing
-  }
+    if (FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG) {
+      return [-76.940, 38.910]; // Position outside Kenilworth for testing
+    }
 
     // Use averaged position if stable and accurate (≤10m)
     if (preciseUserPosition && isPositionStable && 
@@ -123,21 +115,16 @@ function useEnhancedUserPosition() {
       return latest.coordinates;
     }
 
-       console.warn('❌ No position available - GPS failed and not in Universal Mode');
+    console.warn('❌ No position available - GPS failed and not in Universal Mode');
     return null;
-    
-    return null;
-  }, [isUniversalMode, preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable, positionHistory ]);
+  }, [isUniversalMode, preciseUserPosition, rawUserPosition, currentAccuracy, isPositionStable, positionHistory]);
 
-  // ✅ STRICT function for starting AR (high quality requirements)
   const getArReadyPosition = useCallback((): [number, number] | null => {
-    // Only return position if good enough for AR startup
-
     if (isUniversalMode) {
       return [-76.943, 38.9125]; // Kenilworth center fallback
     }
 
-      if (FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG) {
+    if (FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG) {
       return [-76.940, 38.910];
     }
 
@@ -151,37 +138,20 @@ function useEnhancedUserPosition() {
     }
     
     return null;
-  }, [isUniversalMode,preciseUserPosition, currentAccuracy, isPositionStable]);
-
-  const currentBestPosition = getBestUserPosition();
-  const currentArReadyPosition = getArReadyPosition();
-
-  //  useEffect(() => {
-  //   console.log('🌐 Universal Mode Status:', {
-  //     isUniversalMode,
-  //     contextUniversalMode,
-  //     hasGeolocation: typeof window !== 'undefined' && 'geolocation' in navigator,
-  //     forceDebugOutside: FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG,
-  //     bestPosition: currentBestPosition,
-  //     arReadyPosition: currentArReadyPosition
-  //   });
-  // }, [isUniversalMode, currentBestPosition, currentArReadyPosition]);
+  }, [isUniversalMode, preciseUserPosition, currentAccuracy, isPositionStable]);
 
   return {
     getBestUserPosition,
     getArReadyPosition,
-     averagedPosition: getBestUserPosition(),      // Call the function to get the value
-    arReadyPosition: getArReadyPosition(),  
+    averagedPosition: getBestUserPosition(),
+    arReadyPosition: getArReadyPosition(),
     
     // Expose precision data
-    currentAccuracy: isUniversalMode ? 1.0 : currentAccuracy, // Perfect accuracy in Universal Mode
+    currentAccuracy: isUniversalMode ? 1.0 : currentAccuracy,
     positionQuality: isUniversalMode ? PositionQuality.EXCELLENT : positionQuality,
-    isPositionStable: isUniversalMode ? true : isPositionStable, // Always stable in Universal Mode
+    isPositionStable: isUniversalMode ? true : isPositionStable,
     
-    // Raw GPS data (may be null in Universal Mode - that's fine)
     rawUserPosition,
-    
-    // Return enhanced Universal Mode flag
     isUniversalMode,
     
     // Radius functions from context:
@@ -196,13 +166,12 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
   isOpen,
   pointData,
   onClose,
-
   mapRef
 }) => {
   
   const [showArExperience, setShowArExperience] = useState(false);
   
-  // ✅ ENHANCED: Use enhanced positioning and geofence context
+  // ✅ ALL HOOKS CALLED FIRST - ALWAYS
   const {
     getBestUserPosition,
     getArReadyPosition,
@@ -215,7 +184,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     currentRadius,
     updateGlobalRadius,
     resetGlobalRadius,
-    isUniversalMode // 
+    isUniversalMode
   } = useEnhancedUserPosition();
   
   const { 
@@ -224,30 +193,24 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     isTracking,
   } = useGeofenceContext();
   
-  // Track previous position for hexagonal entry direction detection
   const [previousPosition, setPreviousPosition] = useState<[number, number] | null>(null);
   
   // Update previous position when best position changes
   useEffect(() => {
     if (averagedPosition) {
-      setPreviousPosition(prev => prev || averagedPosition); // Only set if not already set
+      setPreviousPosition(prev => prev || averagedPosition);
       
-      // Update previous position after a delay to track movement
       const timeout = setTimeout(() => {
         setPreviousPosition(averagedPosition);
-      }, 2000); // Update every 2 seconds
+      }, 2000);
       
       return () => clearTimeout(timeout);
     }
   }, [averagedPosition]);
 
-  
-
-  // ✅ ENHANCED: Calculate geofence info using enhanced context and precision data
+  // Calculate geofence info using enhanced context and precision data
   const enhancedGeofenceInfo = React.useMemo((): EnhancedGeofenceInfo => {
-
     if (isUniversalMode) {
-      // console.log('🌐 Universal Mode: Bypassing geofence checks');
       return {
         isInside: true, // Always "inside" in Universal Mode
         distance: 0,
@@ -256,28 +219,18 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         radiusFeet: 49,
         distanceFeet: 0,
         shape: 'circle',
-        positionQuality: positionQuality || PositionQuality.EXCELLENT, // Show as excellent
-        positionAccuracy: 1, // Perfect accuracy in Universal Mode
-        isPositionStable: true // Always stable in Universal Mode
+        positionQuality: positionQuality || PositionQuality.EXCELLENT,
+        positionAccuracy: 1,
+        isPositionStable: true
       };
     }
 
     if (!pointData || !pointData.iconName || !averagedPosition) {
-      // console.log('❌ Missing required data for ExperienceModal:', { 
-      //   hasPointData: !!pointData, 
-      //   pointId: pointData?.iconName, 
-      //   hasPosition: !!averagedPosition,
-      //   isTracking,
-      //   currentAccuracy,
-      //   positionQuality,
-      //   isPositionStable
-      // });
-      
       return {
         isInside: false,
         distance: null,
         direction: null,
-        radius: 15, // Default radius
+        radius: 15,
         radiusFeet: 49,
         distanceFeet: null,
         shape: 'circle',
@@ -288,20 +241,15 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     }
     
     const pointId = pointData.iconName;
-
-
-  
-
     
-    // ✅ ENHANCED: Use enhanced geofence checking with hexagonal support
+    // Use enhanced geofence checking with hexagonal support
     const geofenceResult = checkGeofenceWithDirection(
       averagedPosition,
       pointId,
-      previousPosition || undefined, // For directional entry detection
+      previousPosition || undefined,
     );
     
-    // ✅ Get the actual radius and anchor data for this experience
-    const anchorData = getArAnchorForPoint(pointId, averagedPosition);
+    // Get the actual radius and anchor data for this experience
     const radiusMeters = currentRadius || 15;
     const radiusFeet = Math.round(radiusMeters * 3.28084);
     
@@ -310,7 +258,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     let fallbackDistanceFeet = null;
     let fallbackIsInside = false;
     
-    // Try context functions first (these use your enhanced geofence manager)
+    // Try context functions first
     const contextDistance = getDistanceToPoint(pointId);
     const contextInside = isInsideGeofence(pointId);
     
@@ -323,7 +271,6 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       const pointFeature = getPointByName(pointId);
       if (pointFeature && averagedPosition) {
         const pointCoords = pointFeature.geometry.coordinates;
-        // Simple distance calculation in meters
         const dx = (pointCoords[0] - averagedPosition[0]) * 111320 * Math.cos(averagedPosition[1] * Math.PI / 180);
         const dy = (pointCoords[1] - averagedPosition[1]) * 110540;
         fallbackDistance = Math.sqrt(dx * dx + dy * dy);
@@ -361,15 +308,12 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       shape: geofenceResult.shape || 'circle',
       entryDirection: geofenceResult.entryDirection,
       entryMessage: geofenceResult.entryMessage,
-      // ✅ NEW: Include position quality info
       positionQuality: positionQuality || PositionQuality.UNACCEPTABLE,
       positionAccuracy: currentAccuracy,
       isPositionStable: isPositionStable || false
     };
   }, [pointData?.iconName, averagedPosition, previousPosition, positionQuality, currentAccuracy, isPositionStable, isInsideGeofence, getDistanceToPoint, currentRadius, isUniversalMode]);
 
-
-  
   // Handle experience start
   const handleExperienceStart = useCallback(() => {
     if (pointData && pointData.modalContent) {
@@ -402,7 +346,6 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
 
   // Map experience iconName to experience type
   const getExperienceType = useCallback((iconName: string) => {
-    // Direct mapping from iconName to experience type
     const typeMap: Record<string, string> = {
       'mac': 'mac',
       'lotus': 'lotus', 
@@ -418,14 +361,37 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
     return typeMap[iconName] || 'cube';
   }, []);
 
-  // Don't render if not open or no point data
+  // Memoize minimap style to prevent re-renders
+  const miniMapStyle = React.useMemo(() => ({ 
+    marginBottom: '10px' 
+  }), []);
+
+  const shouldShowMiniMap = averagedPosition && mapRef?.current;
+
+  const stableMiniMapProps = React.useMemo(() => {
+    if (!shouldShowMiniMap || !mapRef || !pointData) return null;
+    
+    return {
+      experienceId: pointData.iconName,
+      userPosition: averagedPosition,
+      mainMapRef: mapRef,
+      width: "auto" as const,
+      height: "150px" as const,
+      className: "mini-map",
+      style: miniMapStyle,
+      zoomOffset: -3,
+      showAnchors: true
+    };
+  }, [pointData?.iconName, averagedPosition, mapRef, miniMapStyle, shouldShowMiniMap]);
+
+  // ✅ NOW SAFE TO DO EARLY RETURNS - ALL HOOKS CALLED ABOVE
   if (!isOpen || !pointData) return null;
 
   const anchorData = getAnchorData();
 
-  // ✅ FIXED: Show AR Experience Manager if active - use ANY available position once started
+  // Show AR Experience Manager if active
   if (showArExperience && (averagedPosition || isUniversalMode) && anchorData) {
-    const positionToUse = averagedPosition || [-76.943, 38.9125]; // Kenilworth center as fallback
+    const positionToUse = averagedPosition || [-76.943, 38.9125];
 
     return (
       <ExperienceManager
@@ -441,34 +407,6 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       />
     );
   }
-
-  // ✅ Check if position quality is good enough for AR STARTUP (not maintenance)
-  const isPositionGoodEnoughForArStartup = isUniversalMode ||
-    arReadyPosition !== null && currentAccuracy !== null && 
-    currentAccuracy <= 30 && positionQuality !== PositionQuality.UNACCEPTABLE;
-
-const miniMapStyle = React.useMemo(() => ({ 
-  marginBottom: '10px' 
-}), []);
-
-const shouldShowMiniMap = averagedPosition && mapRef?.current;
-
-const stableMiniMapProps = React.useMemo(() => {
-  if (!shouldShowMiniMap || !mapRef) return null;
-  
-  return {
-    experienceId: pointData.iconName,
-    userPosition: averagedPosition,
-    mainMapRef: mapRef,
-    width: "auto" as const,
-    height: "150px" as const,
-    className: "mini-map",
-    style: miniMapStyle,
-    zoomOffset: -3,
-    showAnchors: true
-  };
-}, [pointData.iconName, averagedPosition, mapRef, miniMapStyle, shouldShowMiniMap]);
-
 
   // Show regular modal
   return (
@@ -488,32 +426,31 @@ const stableMiniMapProps = React.useMemo(() => {
           width: '80%',
           maxWidth: '400px',
           zIndex: 1050,
-          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5)',
-         
+          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5)'
         }}
       >
-    {/*  Universal Mode Banner */}
-      {isUniversalMode && (
-        <div style={{
-          backgroundColor: 'var(--color-green)',
-          color: 'var(--color-light)',
-          padding: '8px 12px',
-          margin: '-20px -20px 15px -20px', // Negative margins to extend to modal edges
-          borderRadius: '12px 12px 0 0', // Rounded top corners only
-          textAlign: 'center',
-          fontSize: '12px',
-          fontWeight: 'bold',
-          letterSpacing: '0.5px',
-          textTransform: 'uppercase'
-        }}>
-          Universal Access
-        </div>
-      )}
+        {/* Universal Mode Banner */}
+        {isUniversalMode && (
+          <div style={{
+            backgroundColor: 'var(--color-green)',
+            color: 'var(--color-light)',
+            padding: '8px 12px',
+            margin: '-20px -20px 15px -20px',
+            borderRadius: '12px 12px 0 0',
+            textAlign: 'center',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase'
+          }}>
+            Universal Access
+          </div>
+        )}
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 style={{ margin: 0, fontSize: '24px' }}>
-          
+            {pointData.title}
           </h2>
           <button 
             onClick={onClose}
@@ -547,219 +484,105 @@ const stableMiniMapProps = React.useMemo(() => {
           </p>
         </div>
         
-        {/* ✅ NEW: Conditional sections based on Universal Mode */}
-        
-        {/* Universal Mode - No UI, just direct button */}
-        {isUniversalMode ? null : (
+        {/* Conditional sections based on Universal Mode */}
+        {!isUniversalMode && (
           <>
-            {/* ✅ Mini-map - show whenever not in Universal Mode */}
-            {(() => {
-              console.log('🗺️ Mini-map render check:', {
-                hasAveragedPosition: !!averagedPosition,
-                averagedPosition,
-                hasMapRef: !!mapRef,
-                hasMapRefCurrent: !!mapRef?.current,
-                isUniversalMode,
-                pointDataIconName: pointData.iconName,
-                willRender: !isUniversalMode && averagedPosition && mapRef
-              });
-              return null;
-            })()}
-            
+            {/* Mini-map - show whenever not in Universal Mode */}
             {stableMiniMapProps && (
-                  <SynchronizedMiniMap {...stableMiniMapProps} />
-                )}
-                        
-
-            {/* Normal GPS Mode - Position Quality Warning */}
-            {/* {averagedPosition && !isPositionGoodEnoughForArStartup && (
-              <div style={{
-                backgroundColor: 'rgba(255, 165, 0, 0.1)',
-                border: '1px solid rgba(255, 165, 0, 0.3)',
-                borderRadius: '8px',
-                padding: '10px',
-                marginBottom: '15px'
-              }}>
-                <div style={{ fontSize: '14px', color: '#FFA500', marginBottom: '5px' }}>
-                  ⚠️ GPS Precision Notice
-                </div>
-                <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                  GPS accuracy: {currentAccuracy?.toFixed(1)}m ({positionQuality})
-                </div>
-                <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '5px' }}>
-                  For best AR experience, move to an area with clearer sky view
-                </div>
-              </div>
-            )} */}
+              <SynchronizedMiniMap {...stableMiniMapProps} />
+            )}
             
-            {/* Normal GPS Mode - Geofence Status */}
+            {/* Geofence Status */}
             {enhancedGeofenceInfo.isInside ? (
-              <div>
-                {/* Inside geofence - enhanced success state */}
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '12px',
+                backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                borderRadius: '8px',
+                marginBottom: '15px',
+                border: '1px solid rgba(0, 255, 0, 0.3)'
+              }}>
                 <div style={{ 
-                  textAlign: 'center', 
-                  padding: '12px',
-                  backgroundColor: 'rgba(0, 255, 0, 0.1)',
-                  borderRadius: '8px',
-                  marginBottom: '15px',
-                  border: '1px solid rgba(0, 255, 0, 0.3)'
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
                 }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    alignItems: 'center', 
-                    justifyContent: 'center' 
-                  }}>
-                    {/* Distance and status info */}
-                    <div style={{ fontSize: '14px', marginBottom: '8px' }}>
-                      <strong style={{ color: '#90EE90' }}>✓ In Range</strong>
-                      {enhancedGeofenceInfo.distanceFeet !== null && (
-                        <div style={{ opacity: 0.9, marginTop: '4px' }}>
-                          {enhancedGeofenceInfo.distanceFeet}ft from center
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Enhanced geofence info */}
-                    <div style={{ fontSize: '12px', opacity: 0.7 }}>
-                      {enhancedGeofenceInfo.radiusFeet}ft range
-                    </div>
-                    
-                    {/* Custom entry message for hexagonal geofences */}
-                    {enhancedGeofenceInfo.entryMessage && (
-                      <div style={{ 
-                        fontSize: '11px', 
-                        opacity: 0.8, 
-                        marginTop: '6px',
-                        padding: '4px 8px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        borderRadius: '4px',
-                        fontStyle: 'italic'
-                      }}>
-                        {enhancedGeofenceInfo.entryMessage}
+                  <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                    <strong style={{ color: '#90EE90' }}>✓ In Range</strong>
+                    {enhancedGeofenceInfo.distanceFeet !== null && (
+                      <div style={{ opacity: 0.9, marginTop: '4px' }}>
+                        {enhancedGeofenceInfo.distanceFeet}ft from center
                       </div>
                     )}
                   </div>
+                  
+                  <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                    {enhancedGeofenceInfo.radiusFeet}ft range
+                  </div>
+                  
+                  {enhancedGeofenceInfo.entryMessage && (
+                    <div style={{ 
+                      fontSize: '11px', 
+                      opacity: 0.8, 
+                      marginTop: '6px',
+                      padding: '4px 8px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: '4px',
+                      fontStyle: 'italic'
+                    }}>
+                      {enhancedGeofenceInfo.entryMessage}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
-              // Outside geofence - show direction and distance with enhanced info
               <div style={{ 
                 textAlign: 'center', 
                 padding: '15px',
                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
                 borderRadius: '8px' 
               }}>
-
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  marginBottom: '12px' 
-                }}>
-                  {/* Compass arrow pointing toward experience */}
-                  {/* <UserLocationTracker
-                    map={null}
-                    widgetMode={true}
-                    showDirectionBeam={true}
-                    userPosition={averagedPosition}
-                    size={40}
-                    debugId="MODAL"
-                    minimalMode={false}
-                  />
-                   */}
-               
-                  
-                  {/* Navigation instruction */}
-                  {/* <div style={{ 
-                    fontSize: '12px', 
-                    opacity: 0.7,
-                    padding: '6px 10px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '6px',
-                    marginTop: '4px'
-                  }}>
-                    Follow the compass arrow to find the experience
-                  </div> */}
-                </div>
-                
-                {/* <p style={{ 
+                <p style={{ 
                   margin: '0', 
                   color: 'var(--color-light)', 
                   opacity: 0.8,
                   fontSize: '14px' 
                 }}>
-                  You need to be at the location to start this experience
-                </p> */}
+                  You need to be closer to the location to start this experience
+                </p>
               </div>
             )}
           </>
         )}
         
-        {/*  Experience Launch Button - Always visible, different logic */}
-            <button
-              onClick={handleExperienceStart}
-              disabled={!isUniversalMode && !enhancedGeofenceInfo.isInside}
-              style={{
-                width: '100%',
-                padding: '12px',
-                backgroundColor: (isUniversalMode || enhancedGeofenceInfo.isInside) 
-                  ? 'var(--color-blue)' 
-                  : 'rgba(128, 128, 128, 0.5)',
-                color: 'var(--color-light)',
-                border: 'none',
-                borderRadius: '8px',
-                fontFamily: 'var(--font-rigby)',
-                fontWeight: '700',
-                cursor: (isUniversalMode || enhancedGeofenceInfo.isInside) ? 'pointer' : 'not-allowed',
-                fontSize: '1.5rem',
-                opacity: (isUniversalMode || enhancedGeofenceInfo.isInside) ? 1 : 0.6
-              }}
-            >
-              {isUniversalMode 
-                ? `Launch ${pointData.title}`
-                : enhancedGeofenceInfo.isInside 
-                  ? (pointData.modalContent.buttonText || `Launch ${pointData.title}`)
-                  : ' Move closer to launch experience'
-              }
-            </button>
-        
-        {/* ✅ SEPARATE: Enhanced Debug info (always available in development, separate from Universal Mode) */}
-        {/* {(process.env.NODE_ENV === 'development' && showDebug) && (
-          <div style={{
-            marginTop: '15px',
-            padding: '8px',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '4px',
-            fontSize: '10px',
-            fontFamily: 'monospace'
-          }}>
-            <div><strong>🔧 Debug Info (Dev Mode):</strong></div>
-            <div>Universal Mode: {isUniversalMode ? 'YES' : 'NO'}</div>
-            <div>Force Outside Geofence: {FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG ? 'YES' : 'NO'}</div>
-            <div>Shape: {enhancedGeofenceInfo.shape || 'undefined'}</div>
-            <div>Radius: {enhancedGeofenceInfo.radius || 'undefined'}m ({enhancedGeofenceInfo.radiusFeet || 'undefined'}ft)</div>
-            <div>Distance: {enhancedGeofenceInfo.distance?.toFixed(1) || 'undefined'}m ({enhancedGeofenceInfo.distanceFeet || 'undefined'}ft)</div>
-            <div>Direction: {enhancedGeofenceInfo.direction?.toFixed(1) || 'undefined'}°</div>
-            <div>Entry Dir: {enhancedGeofenceInfo.entryDirection || 'None'}</div>
-            <div>Inside: {enhancedGeofenceInfo.isInside ? 'Yes' : 'No'}</div>
-            <div>Show AR: {showArExperience ? 'Yes' : 'No'}</div>
-            
-        
-            <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-              <div><strong>Position Debug:</strong></div>
-              <div>Current: {averagedPosition ? `${averagedPosition[0].toFixed(6)}, ${averagedPosition[1].toFixed(6)}` : 'undefined'}</div>
-              <div>AR Ready: {arReadyPosition ? `${arReadyPosition[0].toFixed(6)}, ${arReadyPosition[1].toFixed(6)}` : 'undefined'}</div>
-              <div>Accuracy: {enhancedGeofenceInfo.positionAccuracy?.toFixed(1) || 'unknown'}m</div>
-              <div>Quality: {enhancedGeofenceInfo.positionQuality || 'unknown'}</div>
-              <div>Stable: {enhancedGeofenceInfo.isPositionStable ? 'Yes' : 'No'}</div>
-              <div>Point ID: {pointData?.iconName || 'undefined'}</div>
-              <div>Is Tracking: {isTracking ? 'Yes' : 'No'}</div>
-              <div>Startup Ready: {isPositionGoodEnoughForArStartup ? 'Yes' : 'No'}</div>
-            </div>
-          </div>
-        )} */}
+        {/* Experience Launch Button */}
+        <button
+          onClick={handleExperienceStart}
+          disabled={!isUniversalMode && !enhancedGeofenceInfo.isInside}
+          style={{
+            width: '100%',
+            padding: '12px',
+            backgroundColor: (isUniversalMode || enhancedGeofenceInfo.isInside) 
+              ? 'var(--color-blue)' 
+              : 'rgba(128, 128, 128, 0.5)',
+            color: 'var(--color-light)',
+            border: 'none',
+            borderRadius: '8px',
+            fontFamily: 'var(--font-rigby)',
+            fontWeight: '700',
+            cursor: (isUniversalMode || enhancedGeofenceInfo.isInside) ? 'pointer' : 'not-allowed',
+            fontSize: '1.5rem',
+            opacity: (isUniversalMode || enhancedGeofenceInfo.isInside) ? 1 : 0.6
+          }}
+        >
+          {isUniversalMode 
+            ? `Launch ${pointData.title}`
+            : enhancedGeofenceInfo.isInside 
+              ? (pointData.modalContent.buttonText || `Launch ${pointData.title}`)
+              : '📍 Move closer to launch experience'
+          }
+        </button>
       </div>
 
       {/* Backdrop overlay */}
