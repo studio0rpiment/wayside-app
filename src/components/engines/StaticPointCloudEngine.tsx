@@ -48,10 +48,6 @@ interface StaticPointCloudEngineProps {
 }
 
 
-//*** STATE STAET STATE */
-const [debugMode, setDebugMode] = useState(false);
-
-
 // =================================================================
 // GLOBAL MODEL CACHE - Clean models without positioning
 // =================================================================
@@ -406,6 +402,9 @@ const StaticPointCloudEngine: React.FC<StaticPointCloudEngineProps> = ({
   const initializationStartedRef = useRef(false);
   const componentIdRef = useRef(Math.random().toString(36).substr(2, 9));
   const positionLockedRef = useRef(false);  // Track if position is locked
+
+  //*** STATE STAET STATE */
+const [debugMode, setDebugMode] = useState(false);
   
   // NEW: Capture universal mode ONCE on first render
   const capturedUniversalModeRef = useRef<boolean | null>(null);
