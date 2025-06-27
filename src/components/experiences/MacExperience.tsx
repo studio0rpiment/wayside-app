@@ -1,12 +1,14 @@
+// Example for MacExperience - apply same pattern to Volunteers and Helen
+
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import * as THREE from 'three';
 import StaticPointCloudEngine, { StaticPointCloudConfig } from '../engines/StaticPointCloudEngine';
 import { useARPositioning } from '../../hooks/useARPositioning';
 
 interface MacExperienceProps {
+  // ... your existing props
   onClose: () => void;
   onNext?: () => void;
-  // REQUIRED: AR Scene and Camera
   arScene: THREE.Scene;
   arCamera: THREE.PerspectiveCamera;
   arPosition: THREE.Vector3;
@@ -40,21 +42,22 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   isUniversalMode = false 
 }) => {
 
-  // =================================================================
-  // RENDER DEBUG IF NEEDED
-  // =================================================================
+  const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
+  console.log(`🔄 MacExperience: Component render (ID: ${renderIdRef.current})`);
 
-  // const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
-  // console.log(`🔄 MacExperience: Component render (ID: ${renderIdRef.current})`);
+  // =================================================================
+  // USER TRANSFORM TRACKING
+  // =================================================================
   
-  // console.log('🔍 MacExperience props:', {
-  //   isUniversalMode,
-  //   sharedARPositioning: !!sharedARPositioning,
-  //   arPosition: arPosition.toArray()
-  // });
+  // Track user-applied transforms separately from AR positioning
+  const userTransformsRef = useRef({
+    rotation: new THREE.Euler(0, 0, 0), // User's rotation deltas
+    scale: 1.0,                         // User's scale multiplier
+    hasUserChanges: false               // Flag to know if user made changes
+  });
 
   // =================================================================
-  // NEW WORLD COORDINATE POSITIONING SYSTEM
+  // AR POSITIONING SYSTEM
   // =================================================================
   const newPositioningSystem = sharedARPositioning || useARPositioning();
   const {
@@ -71,16 +74,14 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   // STATE AND REFS
   // =================================================================
   
-  // Point cloud reference (from engine)
   const modelRef = useRef<THREE.Points | null>(null);
   const activeScaleRef = useRef<number>(1);
   
-  // Loading state
   const [isEngineReady, setIsEngineReady] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Mac-specific configuration for the engine (matches original MacExperience)
+  // Mac-specific configuration (memoized)
   const macConfig: StaticPointCloudConfig = useMemo(() => ({
     modelName: 'mac' as const,
     knownMaxDim: 13.2659,
@@ -89,48 +90,66 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     pointSize: 2.0,
     pointDensity: 0.7,
     fallbackColor: 0xff6b6b,
-    rotationCorrection: new THREE.Euler(-Math.PI / 2, 0, 0), // Z-up to Y-up (matches original)
+    rotationCorrection: new THREE.Euler(-Math.PI / 2, 0, 0),
     centerModel: true,
     maxVertices: 60000
-  }), []); // Config never changes
+  }), []);
 
   // =================================================================
-  // POSITIONING SYSTEM INTERFACE
+  // POSITIONING WITH TRANSFORM PRESERVATION
   // =================================================================
   
-  const positionModel = useCallback((model: THREE.Points) => {
+  const positionModelWithTransformPreservation = useCallback((model: THREE.Points) => {
     if (!newSystemReady) {
-      console.log('🧪 NEW: Hook not ready yet, skipping positioning');
+      console.log('🧪 MAC: Positioning system not ready yet');
       return false;
     }
     
+    // Apply AR positioning (this resets transforms)
+    let success;
     if (isUniversalMode) {
-      console.log('🌐 Universal Mode: Forcing debug position for Mac');
-      const success = newPositionObject(model, 'mac', { useDebugOverride: true });
-      return success;
+      console.log('🌐 MAC: Universal Mode - using debug position');
+      success = newPositionObject(model, 'mac', { useDebugOverride: true });
+    } else {
+      success = newPositionObject(model, 'mac');
     }
     
-    const success = newPositionObject(model, 'mac');
+    // Reapply user transforms if they exist
+    if (userTransformsRef.current.hasUserChanges && success) {
+      console.log('🔄 MAC: Reapplying user transforms after positioning', {
+        userRotation: userTransformsRef.current.rotation.toArray(),
+        userScale: userTransformsRef.current.scale
+      });
+      
+      // Reapply user rotation on top of AR positioning
+      model.rotation.x += userTransformsRef.current.rotation.x;
+      model.rotation.y += userTransformsRef.current.rotation.y;
+      model.rotation.z += userTransformsRef.current.rotation.z;
+      
+      // Reapply user scale
+      const currentScale = model.scale.x;
+      model.scale.setScalar(currentScale * userTransformsRef.current.scale);
+    }
+    
     return success;
   }, [newSystemReady, isUniversalMode, newPositionObject]);
 
   const handleModelReset = useCallback((model: THREE.Points) => {
-    console.log('🔄 NEW SYSTEM: Resetting model');
+    console.log('🔄 MAC: Resetting model (clearing user transforms)');
     
-    if (isUniversalMode) {
-      newPositionObject(model, 'mac', { useDebugOverride: true });
-    } else {
-      newPositionObject(model, 'mac');
-    }
+    // Clear user transforms
+    userTransformsRef.current = {
+      rotation: new THREE.Euler(0, 0, 0),
+      scale: 1.0,
+      hasUserChanges: false
+    };
     
-    // Store the final scale after positioning system applies its changes
+    // Reposition with fresh state
+    positionModelWithTransformPreservation(model);
+    
     activeScaleRef.current = model.scale.x;
-    console.log('🔄 NEW: Reset completed with scale:', model.scale.x);
-  }, [isUniversalMode, newPositionObject]);
-
-  const getPositionInfo = useCallback(() => {
-    return newGetPosition('mac');
-  }, [newGetPosition]);
+    console.log('🔄 MAC: Reset completed');
+  }, [positionModelWithTransformPreservation]);
 
   // =================================================================
   // ENGINE CALLBACKS (MEMOIZED)
@@ -143,13 +162,13 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     // Store initial scale
     activeScaleRef.current = pointCloud.scale.x;
     
-    // Position the model using AR positioning system
+    // Position the model (no user transforms yet)
     if (newSystemReady) {
-      positionModel(pointCloud);
+      positionModelWithTransformPreservation(pointCloud);
     }
     
     setIsEngineReady(true);
-  }, [newSystemReady, positionModel]);
+  }, [newSystemReady, positionModelWithTransformPreservation]);
 
   const handleEngineReady = useCallback(() => {
     console.log('🎉 MacExperience: Engine ready');
@@ -185,26 +204,34 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     handleModelLoaded,
     handleEngineError,
     handleEngineReady
-  ]); // Only recreate if these actually change
+  ]);
 
   // =================================================================
-  // GESTURE HANDLERS
+  // GESTURE HANDLERS WITH TRANSFORM TRACKING
   // =================================================================
 
-  // Register gesture handlers on mount
   useEffect(() => {
     // Register rotation handler
     if (onModelRotate) {
       onModelRotate((deltaX: number, deltaY: number, deltaZ: number = 0) => {
         if (modelRef.current) {
+          // Apply rotation to model
           modelRef.current.rotation.y += deltaX;
           modelRef.current.rotation.x += deltaY;
           if (deltaZ !== 0) {
             modelRef.current.rotation.z += deltaZ;
           }
-          console.log(`🎮 Rotation applied:`, {
+          
+          // Track user changes
+          userTransformsRef.current.rotation.y += deltaX;
+          userTransformsRef.current.rotation.x += deltaY;
+          userTransformsRef.current.rotation.z += deltaZ;
+          userTransformsRef.current.hasUserChanges = true;
+          
+          console.log(`🎮 MAC: Rotation applied and tracked`, {
             deltaX, deltaY, deltaZ,
-            currentRotation: modelRef.current.rotation.toArray()
+            currentRotation: modelRef.current.rotation.toArray(),
+            userRotation: userTransformsRef.current.rotation.toArray()
           });
         }
       });
@@ -217,10 +244,17 @@ const MacExperience: React.FC<MacExperienceProps> = ({
           const currentScale = modelRef.current.scale.x;
           const newScale = Math.max(0.1, Math.min(10, currentScale * scaleFactor));
           modelRef.current.scale.setScalar(newScale);
-          console.log(`🔍 Scale applied:`, {
+          
+          // Track user scale changes
+          userTransformsRef.current.scale *= scaleFactor;
+          userTransformsRef.current.scale = Math.max(0.1, Math.min(10, userTransformsRef.current.scale));
+          userTransformsRef.current.hasUserChanges = true;
+          
+          console.log(`🔍 MAC: Scale applied and tracked`, {
             scaleFactor,
             currentScale: currentScale.toFixed(3),
-            newScale: newScale.toFixed(3)
+            newScale: newScale.toFixed(3),
+            userScale: userTransformsRef.current.scale.toFixed(3)
           });
         }
       });
@@ -229,7 +263,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     // Register reset handler
     if (onModelReset) {
       onModelReset(() => {
-        console.log(`🔄 RESET triggered`);
+        console.log(`🔄 MAC: Reset triggered`);
         if (modelRef.current) {
           handleModelReset(modelRef.current);
         }
@@ -239,66 +273,54 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     // Register swipe handlers
     if (onSwipeUp) {
       onSwipeUp(() => {
-        console.log(`👆 Swipe up`);
+        console.log(`👆 MAC: Swipe up`);
       });
     }
 
     if (onSwipeDown) {
       onSwipeDown(() => {
-        console.log(`👇 Swipe down`);
+        console.log(`👇 MAC: Swipe down`);
       });
     }
   }, []); // No dependencies - register once
 
-  // Register elevation change handler
+  // Handle elevation changes (memoized)
+  const handleElevationChanged = useCallback(() => {
+    console.log('🧪 MacExperience: Elevation changed - repositioning with preserved transforms');
+    
+    if (modelRef.current) {
+      positionModelWithTransformPreservation(modelRef.current);
+    }
+  }, [positionModelWithTransformPreservation]);
+
   useEffect(() => {
     if (onElevationChanged) {
       onElevationChanged(handleElevationChanged);
     }
-  }, [onElevationChanged]);
+  }, [onElevationChanged, handleElevationChanged]);
 
-  // Handle elevation changes from ArCameraComponent debug panel
-  const handleElevationChanged = useCallback(() => {
-    console.log('🧪 MacExperience: handleElevationChanged called!');
-    
-    if (modelRef.current) {
-      if (isUniversalMode) {
-        const success = newPositionObject(modelRef.current, 'mac', { useDebugOverride: true });
-        console.log('🧪 MacExperience: UNIVERSAL MODE - Model repositioned:', success);
-      } else {
-        const success = newPositionObject(modelRef.current, 'mac');
-        console.log('🧪 MacExperience: NORMAL MODE - Model repositioned:', success);
-      }
-    } else {
-      console.warn('🧪 MacExperience: modelRef.current is null, cannot reposition');
-    }
-  }, [isUniversalMode, newPositionObject]);
-
-  // Monitor debug mode changes and reposition accordingly
+  // Monitor debug mode changes
   useEffect(() => {
     if (newDebugMode !== undefined) {
-      console.log('🔗 newDebugMode changed to:', newDebugMode);
+      console.log('🔗 MAC: Debug mode changed - repositioning with preserved transforms');
       
       (window as any).arTestingOverride = newDebugMode;
       
-      // Add a small delay to ensure the anchor manager picks up the change
       setTimeout(() => {
         if (modelRef.current && newSystemReady) {
-          console.log('🔗 Calling newPositionObject after debug mode change...');
-          const success = newPositionObject(modelRef.current, 'mac');
-          console.log('🔗 Positioning result:', success);
+          positionModelWithTransformPreservation(modelRef.current);
         }
       }, 100);
     }
-  }, [newDebugMode]);
+  }, [newDebugMode, newSystemReady, positionModelWithTransformPreservation]);
 
-  // Wait for the positioning system to be ready and position the model
+  // Wait for positioning system to be ready
   useEffect(() => {
     if (newSystemReady && modelRef.current && isEngineReady) {
-      console.log('🧪 NEW: Hook became ready, positioning model now...');
-      positionModel(modelRef.current);
+      console.log('🧪 MAC: Positioning system ready, positioning model...');
+      positionModelWithTransformPreservation(modelRef.current);
     }
-  }, [newSystemReady, isEngineReady, positionModel]);
+  }, [newSystemReady, isEngineReady, positionModelWithTransformPreservation]);
 
   // =================================================================
   // RENDER

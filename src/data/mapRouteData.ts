@@ -128,7 +128,7 @@ export const routePointsData: RoutePointCollection = {
           // NEW: Future flooding experience - hexagon for precise area detection
           'geofenceShape': 'hexagon',
           'radius': GEOFENCE_CONFIG.DEFAULT_RADIUS,
-          'directionSensitive': true,
+          'directionSensitive': false,
           'entryMsgs': {
             'north': 'Approaching from the gardens - water levels rising...',
             'northeast': 'Coming from the upper gardens...',
@@ -176,7 +176,7 @@ export const routePointsData: RoutePointCollection = {
           // NEW: Mac's story - hexagon for path-based approach detection
           'geofenceShape': 'hexagon',
           'radius': GEOFENCE_CONFIG.DEFAULT_RADIUS,
-          'directionSensitive': true,
+          'directionSensitive': false,
           'entryMsgs': {
             'north': 'Walking from the main path - discover Mac\'s legacy...',
             'northeast': 'Approaching from the upper gardens...',
@@ -224,7 +224,7 @@ export const routePointsData: RoutePointCollection = {
           // NEW: Lotus experience - hexagon for precise viewing position  
           'geofenceShape': 'hexagon',
           'radius': GEOFENCE_CONFIG.DEFAULT_RADIUS,
-          'directionSensitive': true,
+          'directionSensitive': false,
           'entryMsgs': {
             'north': 'Approaching the lotus garden from the main path...',
             'northeast': 'Coming from the upper gardens...',
@@ -272,7 +272,7 @@ export const routePointsData: RoutePointCollection = {
           // NEW: Volunteers story - hexagon for community gathering area
           'geofenceShape': 'hexagon',
           'radius': GEOFENCE_CONFIG.DEFAULT_RADIUS,
-          'directionSensitive': true,
+          'directionSensitive': false,
           'entryMsgs': {
             'north': 'Entering the volunteer gathering area...',
             'south': 'Coming from the gardens they tend...',
@@ -316,7 +316,7 @@ export const routePointsData: RoutePointCollection = {
           // NEW: Helen's garden legacy - hexagon for precise botanical area
           'geofenceShape': 'hexagon',
           'radius': GEOFENCE_CONFIG.DEFAULT_RADIUS,
-          'directionSensitive': true,
+          'directionSensitive': false,
           'entryMsgs': {
             'north': 'Entering Helen\'s botanical legacy area...',
             'south': 'Walking among the plants she cultivated...',
@@ -360,7 +360,7 @@ export const routePointsData: RoutePointCollection = {
           // NEW: Water lily experience - hexagon for water surface precision
           'geofenceShape': 'hexagon',
           'radius': GEOFENCE_CONFIG.DEFAULT_RADIUS,
-          'directionSensitive': true,
+          'directionSensitive': false,
           'entryMsgs': {
             'north': 'Approaching the lily pads from the shore...',
             'south': 'Walking along the water lily habitat...',
@@ -443,7 +443,7 @@ export const routePointsData: RoutePointCollection = {
           // NEW: Cattail marsh experience - hexagon for marsh edge precision
           'geofenceShape': 'hexagon',
           'radius': GEOFENCE_CONFIG.DEFAULT_RADIUS,    
-          'directionSensitive': true,
+          'directionSensitive': false,
           'entryMsgs': {
             'north': 'Entering the cattail marsh from the upland...',
             'south': 'Approaching from the water\'s edge...',
@@ -488,7 +488,7 @@ export const routePointsData: RoutePointCollection = {
           // NEW: Ancient canoe experience - hexagon with strong directional awareness
           'geofenceShape': 'hexagon',
           'radius': GEOFENCE_CONFIG.DEFAULT_RADIUS,
-          'directionSensitive': true,
+          'directionSensitive': false,
           'entryMsgs': {
             'north': 'Approaching the ancient shoreline from inland...',
             'northeast': 'Following the old river path...',

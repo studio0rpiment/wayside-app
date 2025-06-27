@@ -379,14 +379,14 @@ export function gpsToThreeJsPositionWithEntryOffset(
   // Apply entry-side offset in local space
   if (entrySide) {
     const localOffsets = {
-      'north': { x: 0, z: -8 },      // 8m toward north (negative Z)
-      'south': { x: 0, z: 8 },       // 8m toward south (positive Z)
-      'east': { x: 8, z: 0 },        // 8m toward east (positive X)
-      'west': { x: -8, z: 0 },       // 8m toward west (negative X)
-      'northeast': { x: 6, z: -6 },  // Diagonal
-      'southeast': { x: 6, z: 6 },
-      'southwest': { x: -6, z: 6 },
-      'northwest': { x: -6, z: -6 }
+      'north': { x: 0, z: 0 },      // 8m toward north (negative Z)
+      'south': { x: 0, z: 0 },       // 8m toward south (positive Z)
+      'east': { x: 0, z: 0 },        // 8m toward east (positive X)
+      'west': { x: 0, z: 0 },       // 8m toward west (negative X)
+      'northeast': { x: 0, z: 0 },  // Diagonal
+      'southeast': { x: 0, z: 0 },
+      'southwest': { x: 0, z: 0 },
+      'northwest': { x: 0, z: 0 }
     };
     
     const offset = localOffsets[entrySide as keyof typeof localOffsets];
