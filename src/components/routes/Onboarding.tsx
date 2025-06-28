@@ -150,8 +150,22 @@ const goToNextCard = useCallback(() => {
     fontAnimatesOnScroll: false,
 
   };
-  const arCam = {
-    ...ContentConfigHelper.getTemplateById('arCam') as ContentContainerProps,
+  const instruct = {
+    ...ContentConfigHelper.getTemplateById('instruct') as ContentContainerProps,
+    animateIn: false,
+    scrollTrigger: false,
+    scrollParallax: false,
+    fontAnimatesOnScroll: false,
+  };
+  const explain = {
+    ...ContentConfigHelper.getTemplateById('explain') as ContentContainerProps,
+    animateIn: false,
+    scrollTrigger: false,
+    scrollParallax: false,
+    fontAnimatesOnScroll: false,
+  };
+  const experienceMap = {
+    ...ContentConfigHelper.getTemplateById('experienceMap') as ContentContainerProps,
     animateIn: false,
     scrollTrigger: false,
     scrollParallax: false,
@@ -198,9 +212,11 @@ const goToNextCard = useCallback(() => {
           onCardChange={handleCardChange}
         >
           {/* Card 0: Welcome */}
-          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={0} height="80%">
+          <SnappingCard title="" subtitle="" color="var(--color-dark)" index={0} height="80%"  >
+            <div style={{ }}>
             <SimpleContentContainer {...permConfig1} />
-            
+            </div>
+
             <button 
               className="primary-button continue-button" 
               style={buttonStyle}
@@ -287,9 +303,11 @@ const goToNextCard = useCallback(() => {
         WebkitOverflowScrolling: 'touch', // iOS smooth scrolling
       }}
     >
-      <h2 style={{ color: 'var(--color-light)', marginBottom: '1rem' }}>How to Find HotSpots</h2>
+      {/* <h2 style={{ color: 'var(--color-light)', marginBottom: '1rem' }}>How to Find HotSpots</h2> */}
 
-      <SimpleContentContainer {...arCam} />
+      {/* <SimpleContentContainer {...instruct} /> */}
+      {/* <SimpleContentContainer {...explain} /> */}
+      <SimpleContentContainer {...experienceMap} />
 
       <p style={{ 
         color: 'var(--color-light)', 

@@ -182,6 +182,16 @@ const ContentContainer: React.FC<ContentContainerProps> = ({
   
   // State for dynamic properties (like variable font values)
   const [fontSettings, setFontSettings] = useState(variableFontSettings);
+//for escaped content in text
+  const processEscapedContent = (content: string): string => {
+  return content
+    .replace(/\\n/g, '\n')      // Convert \n to actual newlines
+    .replace(/\\r/g, '\r')      // Convert \r to carriage returns
+    .replace(/\\t/g, '\t')      // Convert \t to tabs
+    .replace(/\\'/g, "'")       // Convert \' to single quotes
+    .replace(/\\"/g, '"')       // Convert \" to double quotes
+    .replace(/\\\\/g, '\\');    // Convert \\ to single backslash (do this last)
+};
   
   // Handle scroll-based effects
   useEffect(() => {
@@ -553,20 +563,29 @@ const contentWrapperStyle: React.CSSProperties = {
             </h3>
           )}
           
-          {subtitle && (
-            <h4 className={classNames('!text-center text-xl md:text-2xl font-light mb-0 opacity-80', subtitleClassName || 'text-lg')}>
-              {subtitle}
-            </h4>
-          )}
+       {subtitle && (
+  <h4 className={classNames('!text-center text-xl md:text-2xl font-light mb-0 opacity-80', subtitleClassName || 'text-lg')}>
+    {typeof subtitle === 'string' && subtitle.includes('<') ? 
+      <span dangerouslySetInnerHTML={{ __html: processEscapedContent(subtitle) }} /> :
+      subtitle
+    }
+  </h4>
+)}
 
 
 
           
-          {content && (
-            <div className={classNames('content-text', textClassName)}>
-              {typeof content === 'string' ? <p>{content}</p> : content}
-            </div>
-          )}
+              {content && (
+          <div className={classNames('content-text', textClassName)}>
+            {typeof content === 'string' ? 
+              <div 
+                style={{ whiteSpace: 'pre-line' }}
+                dangerouslySetInnerHTML={{ __html: processEscapedContent(content) }}
+              /> : 
+              content
+            }
+          </div>
+        )}
           
           {children}
         </div>

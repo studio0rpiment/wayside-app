@@ -116,7 +116,7 @@ const SwipeableCarousel: React.FC<SwipeableCarouselProps> = ({
             </div>
 
       {/* Debug info */}
-      <div style={{
+      {/* <div style={{
         position: 'absolute',
         bottom: '60px',
         left: '20px',
@@ -128,7 +128,7 @@ const SwipeableCarousel: React.FC<SwipeableCarouselProps> = ({
         borderRadius: '5px',
       }}>
         Current Card: {currentCard} / {cardCount - 1}
-      </div>
+      </div> */}
 
       {/* Navigation hint */}
       {/* <div style={{

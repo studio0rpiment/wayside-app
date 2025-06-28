@@ -205,7 +205,7 @@ div[class*="button-component"] .subtitle {
 .hero-container,
 *[class ="subtitle"] {
   font-size: 1rem;
-  text-align: center !important;
+  text-align: left !important;
   width: 100% !important;
 }
 

@@ -48,28 +48,47 @@ const Home: React.FC = () => {
           color='transparent'
           // color='gradient(var(--color-dark), var(--color-pink), var(--color-blue))'
         >
-          <div style={{ textDecoration: 'none', margin: '1rem 1rem 1rem 1rem', height: '100%', overflow: 'visible',  overflowY: 'scroll',WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ textDecoration: 'none', margin: '1rem 1rem 1rem 1rem', height: '100%', overflow: 'visible',  overflowY: 'scroll',WebkitOverflowScrolling: 'touch', textAlign: "center"}}>
             <ContentContainer {...headerConfig} />
           </div>
-          <ContentContainer {...heroConfig} />
-          
 
-          <div style={{ display: 'flex', flexDirection: 'row'}}>
+          <div style={{ textAlign: "left"}}>
+          <ContentContainer {...heroConfig} />
+          </div>
+
+          {/* <div style={{ display: 'flex', flexDirection: 'row'}}>
           <ContentContainer {...camMap} />
           <ContentContainer {...arCam} />
-          </div>
+          </div> */}
 
           
           {/* <div style={{ fontSize: '0.9rem', fontWeight: 'bold'}}>
           <ContentContainer {...kenConfig} />
           </div> */}
-          <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--color-dark)', margin: '1rem', borderRadius: '1rem', fontWeight:'bold'}}
+          <div style={{ display: 'flex', flexDirection: 'column', background: 'transparent', margin: '0rem', borderRadius: '1rem', fontWeight:'bold'}}
             >
-          <ContentContainer  {...infoConfig} />
+          {/* <ContentContainer  {...infoConfig} /> */}
           
-          <Link to="/onboarding" style={{ textDecoration: 'none', border:'1px solid var(--color-light)', borderRadius: '1rem',  "margin": "1rem 1rem 1rem 1rem",  }}>
+        <div style={{
+            background: 'linear-gradient(45deg, var(--color-blue), var(--color-pink), var(--color-green))',
+            padding: '2px',
+            borderRadius: '1rem',
+            margin: "1rem 1rem 1rem 1rem"
+          }}>
+            <Link 
+              to="/onboarding" 
+              style={{ 
+                textDecoration: 'none',
+                display: 'block',
+                background: 'var(--color-dark)', // or whatever your background color is
+                borderRadius: 'calc(1rem - 2px)', // slightly smaller to show the gradient border
+                padding: '1rem' // your content padding
+              }}
+            >
+
             <Button {...buttonConfig} />
           </Link>
+          </div>
           </div>
 
           {/* Development-only coordinate system test button */}

@@ -5,15 +5,16 @@
       "name": "Header Section",
       "description": "Simple header with logo",
       "configuration": {
-        
+        "subtitle": "Ponds and wetlands support wildlife and inspire creativity" ,
         "backgroundColor": "transparent",
-        "textColor": "var(--color-blue)",
+        "textColor": "var(--color-light)",
+        "fontSize": "0.8rem",
         "padding": "0rem",
         "fullWidth": true,
         "fullHeight": true,
-        "textAlign": "center",
+        "alignment": "center",
         "verticalAlignment": "top",
-        "backgroundImage": "",
+        "backgroundImage": "",  
         "hasShadow": true,
         "borderRadius": "0",
         "glassmorphism": true,
@@ -24,7 +25,7 @@
           "height": "auto",
           "position": "above"
         },
-        "titleClassName": "text-5xl md:text-7xl font-black tracking-tight mb-6",
+        "titleClassName": "",
         "position": "fixed",
         "zIndex": 50,
         "className": "header-container"
@@ -37,16 +38,17 @@
       "description": "",
       "configuration": {
         "title": "",
-        "subtitle": "A Geo-Landscape AR experience. " ,        
-        "content": "Move through real places. Seeing, feeling, and connecting to place.",
+        "subtitle": "" ,        
+        "content": "Along the path are 9 AR points each in the theme of Time, Seasons, or Moments, highlighting the park’s rich history. \n <span style='color: var(--color-blue); font-weight: bold;'>Time:</span> tracing 4,000 years of park history and its climate-driven future. \n <span style='color: var(--color-green);font-weight: bold;'>Seasons:</span> highlighting biodiversity and plant transformations.\n <span style='color: var(--color-pink);font-weight: bold;'>Moments:</span> showcasing figures who shaped Kenilworth’s legacy.",
         "backgroundColor": "transparent",
         "textColor": "var(--color-light)",
+        "fontSize": "1rem",
         "width": "100vw",
-        "height": "flex",
-        "padding": "0rem 1rem 0rem 1rem",
+        "height": "auto",
+        "padding": "1rem",
         "fullWidth": true,
         "fullHeight": false,
-        "alignment": "center",
+        "textAlign": "left",
         "verticalAlignment": "top",
         "backgroundImage": "",
         "hasShadow": true,
@@ -64,7 +66,7 @@
         "fontAnimatesOnScroll": true,
         "fontAnimationRange": [0.1, 0.6],
         "subtitleClassName": "",
-        "className": "hero-container relative z-10 text-center opacity-0"
+        "className": "hero-container relative z-10 opacity-0"
       }
     },
     {
@@ -131,10 +133,10 @@
       "name": "Button",
       "description": "Button that goes to onboarding",
       "configuration": {
-        "subtitle": "ONBOARDING",
+        "subtitle": "Start Here",
         "backgroundColor": "transparent",
         "textColor": "gradient(var(--color-blue), var(--color-pink), var(--color-green))",
-        "textSize": "2.5rem",
+        "textSize": "2rem",
         "height": "auto",
         "width": "auto",
          
@@ -219,6 +221,96 @@
         "contentImage": {
           "src": "/picto/ar-camera.png",
           "alt": "ar-camera",
+          "position": "above",
+          "width": "100%",
+          "className": "ar-camera-pict shadow-lg transform transition duration-100 ease-in-out"
+        },
+        
+        "className": "split-section py-16"
+      }
+    },
+       {
+      "id": "instruct",
+      "name": "instructions",
+      "description": "a list of instruction on how to use the AR App",
+      "configuration": {
+        "backgroundColor": "transparent",
+        "textColor": "",
+        "width": "auto",
+        "height": "auto",
+        "margin": "0rem 0rem 0rem 0rem",
+        "padding": "0rem",
+        "textAlign": "center",
+        "borderRadius": "0rem",
+        "fullWidth": false,
+        "alignment": "center",
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/img/onboardingInstructions.png",
+          "alt": "instructions",
+          "position": "above",
+          "width": "100%",
+          "className": "ar-camera-pict shadow-lg transform transition duration-100 ease-in-out"
+        },
+        
+        "className": "split-section py-16"
+      }
+    },
+       {
+      "id": "explain",
+      "name": "Explanation",
+      "description": "Explaining the concepts of the AR Application",
+      "configuration": {
+        "backgroundColor": "transparent",
+        "textColor": "",
+        "width": "auto",
+        "height": "auto",
+        "margin": "0rem 0rem 0rem 0rem",
+        "padding": "0rem",
+        "textAlign": "center",
+        "borderRadius": "0rem",
+        "fullWidth": false,
+        "alignment": "center",
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/img/onboardingExplain.png",
+          "alt": "explanations",
+          "position": "above",
+          "width": "100%",
+          "className": "ar-camera-pict shadow-lg transform transition duration-100 ease-in-out"
+        },
+        
+        "className": "split-section py-16"
+      }
+    },
+       {
+      "id": "experienceMap",
+      "name": "Experience Map",
+      "description": "A map of where the expereinces are in the park",
+      "configuration": {
+        "backgroundColor": "transparent",
+        "textColor": "",
+        "width": "auto",
+        "height": "auto",
+        "margin": "0rem 0rem 0rem 0rem",
+        "padding": "0rem",
+        "textAlign": "center",
+        "borderRadius": "0rem",
+        "fullWidth": false,
+        "alignment": "center",
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/img/onboardingMap.jpg",
+          "alt": "Onboarding Map",
           "position": "above",
           "width": "100%",
           "className": "ar-camera-pict shadow-lg transform transition duration-100 ease-in-out"
