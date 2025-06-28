@@ -470,15 +470,24 @@ const placeArObject = useCallback(() => {
     return;
   }
   
-  // 🔒 NEW: Capture and freeze model position just before placement
- if (!frozenExpectedModelPositionRef.current) {
+   if (!frozenExpectedModelPositionRef.current) {
     console.log('🔒 ArCamera: Capturing model position for freezing...');
-    const modelPosition = getCurrentExpectedModelPosition();
-    if (modelPosition) {
-      frozenExpectedModelPositionRef.current = modelPosition.clone();
-      setDebugFrozenModelPosition(modelPosition.clone()); // 🔒 Update debug state
-      console.log('🔒 ArCamera: Model position frozen at placement:', modelPosition.toArray());
+    
+    // Calculate model position using current positioning system
+    if (newPositioningSystem && newSystemReady) {
+      const experienceId = experienceType || 'mac';
+      const result = newPositioningSystem.getPosition(experienceId);
+      if (result) {
+        frozenExpectedModelPositionRef.current = result.relativeToUser.clone();
+        setDebugFrozenModelPosition(result.relativeToUser.clone());
+        console.log('🔒 ArCamera: Model position frozen (new system):', result.relativeToUser.toArray());
+      }
     }
+  }
+  
+  if (useNewPositioning) {
+    console.log('🧪 NEW: Using ARPositioningManager - experiences handle their own positioning');
+    return;
   }
   
   const entrySide = detectEntrySide(userPosition, anchorPosition);
