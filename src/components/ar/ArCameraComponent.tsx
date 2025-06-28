@@ -35,7 +35,8 @@ interface ArCameraProps {
   // System callbacks
   onElevationChanged?: () => void;
   
-
+  // Shared positioning system
+  sharedARPositioning?: any; // Add proper type definition here based on your ARPositioning hook return type
   
   // Legacy props (deprecated, will be removed)
   anchorPosition?: [number, number]; // Used only for debug display
@@ -106,6 +107,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   });
 
   const [manualScaleOffset, setManualScaleOffset] = useState(1.0);
+  const [initStatus, setInitStatus] = useState<string>('Starting...');
+
 
 
   //******** DEBUG PANEL FUNCTIONS **********
@@ -342,40 +345,42 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   };
 
   //******** MAIN INITIALIZATION **********
-  const initialize = async () => {
-    console.log('🚀 Starting AR Camera initialization...');
-    
-    if (!isPermissionGranted(PermissionType.CAMERA)) {
-      console.log('📸 Camera permission not granted, requesting...');
-      const cameraGranted = await requestPermission(PermissionType.CAMERA);
-      if (!cameraGranted) {
-        setCameraError('Camera permission required for AR experience. Please allow camera access when prompted.');
-        return;
-      }
+const initialize = async () => {
+  setInitStatus('Starting AR Camera...');
+  
+  if (!isPermissionGranted(PermissionType.CAMERA)) {
+    setInitStatus('Requesting camera permission...');
+    const cameraGranted = await requestPermission(PermissionType.CAMERA);
+    if (!cameraGranted) {
+      setCameraError('Camera permission required for AR experience. Please allow camera access when prompted.');
+      return;
     }
-    
-    if (!isPermissionGranted(PermissionType.ORIENTATION)) {
-      console.log('📱 Orientation permission not granted, requesting...');
-      await requestPermission(PermissionType.ORIENTATION);
-    }
-    
-    const cameraInitialized = await initializeCamera();
-    if (!cameraInitialized) return;
-    
-    const engineInitialized = await initializeRenderingEngine();
-    if (!engineInitialized) return;
-    
-    // Trigger AR object placement using positioning system
-    triggerArObjectPlacement();
-    
-    if (canvasRef.current && !isListening) {
-      attachListeners();
-      console.log('✅ AR interactions attached');
-    }
-              
-    setIsInitialized(true);
-    console.log('✅ AR Camera fully initialized');
-  };
+  }
+  
+  if (!isPermissionGranted(PermissionType.ORIENTATION)) {
+    setInitStatus('Requesting motion permission...');
+    await requestPermission(PermissionType.ORIENTATION);
+  }
+  
+  setInitStatus('Accessing camera...');
+  const cameraInitialized = await initializeCamera();
+  if (!cameraInitialized) return;
+  
+  setInitStatus('Initializing 3D engine...');
+  const engineInitialized = await initializeRenderingEngine();
+  if (!engineInitialized) return;
+  
+  setInitStatus('Positioning AR objects...');
+  triggerArObjectPlacement();
+  
+  if (canvasRef.current && !isListening) {
+    setInitStatus('Setting up interactions...');
+    attachListeners();
+  }
+  
+  setInitStatus('AR Ready!');
+  setIsInitialized(true);
+};
 
   //******** REINITIALIZATION (FIXES PERMISSION BUG) **********
   const reinitializeAR = async (): Promise<void> => {
@@ -400,32 +405,34 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 
   //******** NEW SIMPLIFIED AR OBJECT PLACEMENT **********
   const triggerArObjectPlacement = useCallback(() => {
-    console.log('🎯 Triggering AR object placement with shared positioning system');
+  setInitStatus('Checking positioning system...');
+  
+  if (!positioningSystem || !positioningSystemReady) {
+    setInitStatus('❌ Positioning system not ready');
+    return;
+  }
+  
+  if (!frozenUserPosition) {
+    setInitStatus('❌ No user position available');
+    return;
+  }
+  
+  setInitStatus('Getting model position...');
+  
+  try {
+    const result = positioningSystem.getPosition(experienceType);
     
-    if (!positioningSystem || !positioningSystemReady) {
-      console.log('❌ Positioning system not ready');
-      return;
+    if (result && onArObjectPlaced) {
+      setInitStatus('✅ AR positioned successfully');
+      onArObjectPlaced(result.relativeToUser);
+    } else {
+      setInitStatus('❌ Failed to get model position');
     }
-    
-    if (!frozenUserPosition) {
-      console.log('❌ No frozen user position available');
-      return;
-    }
-    
-    try {
-      // Get position from shared positioning system
-      const result = positioningSystem.getPosition(experienceType);
-      
-      if (result && onArObjectPlaced) {
-        console.log('✅ AR object positioned at:', result.relativeToUser.toArray());
-        onArObjectPlaced(result.relativeToUser);
-      } else {
-        console.warn('❌ Failed to get position from positioning system');
-      }
-    } catch (error) {
-      console.error('❌ Error in AR object placement:', error);
-    }
-  }, [positioningSystem, positioningSystemReady, frozenUserPosition, experienceType, onArObjectPlaced]);
+  } catch (error) {
+    // setInitStatus(`❌ Error: ${error.message}`);
+  }
+}, [positioningSystem, positioningSystemReady, frozenUserPosition, experienceType, onArObjectPlaced]);
+
 
   //******** CAMERA DIRECTION UPDATES **********
   const updateCameraDirection = useCallback(() => {
@@ -700,27 +707,29 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       )}
 
       {/* Loading indicator */}
-      {!isInitialized && !cameraError && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
-          padding: '20px',
-          borderRadius: '8px',
-          textAlign: 'center',
-          zIndex: 1030
-        }}>
-          <div>🎥 Starting AR Camera...</div>
-          <div style={{ fontSize: '14px', marginTop: '10px', opacity: 0.8 }}>
-            {!isPermissionGranted(PermissionType.CAMERA) && 'Please allow camera access when prompted'}
-            {isPermissionGranted(PermissionType.CAMERA) && !isPermissionGranted(PermissionType.ORIENTATION) && 'Please allow motion sensors for best experience'}
-            {isPermissionGranted(PermissionType.CAMERA) && isPermissionGranted(PermissionType.ORIENTATION) && 'Initializing AR positioning...'}
-          </div>
-        </div>
-      )}
+    {!isInitialized && !cameraError && (
+  <div style={{
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    color: 'white',
+    padding: '20px',
+    borderRadius: '8px',
+    textAlign: 'center',
+    zIndex: 1030
+  }}>
+    <div style={{ fontSize: '18px', marginBottom: '10px' }}>🎥 {initStatus}</div>
+    
+    {/* Show positioning system status */}
+    <div style={{ fontSize: '12px', opacity: 0.8 }}>
+      Positioning Ready: {positioningSystemReady ? '✅' : '❌'}<br/>
+      User Position: {frozenUserPosition ? '✅' : '❌'}<br/>
+      Experience: {experienceType}
+    </div>
+  </div>
+)}
       
       {/* SIMPLIFIED Debug Panel */}
       {SHOW_DEBUG_PANEL && (
