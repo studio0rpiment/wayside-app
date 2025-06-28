@@ -912,6 +912,43 @@ const currentUserPosition = getBestUserPosition();
           '❌ NOT FROZEN'
         }
       </div>
+
+
+
+       <div style={{ fontSize: '8px', marginTop: '3px', paddingTop: '3px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+    <strong>Position Source:</strong>
+  </div>
+  <div style={{ fontSize: '7px' }}>
+    getBestUserPosition(): {currentUserPosition ? 
+      `[${currentUserPosition[0].toFixed(8)}, ${currentUserPosition[1].toFixed(8)}]` : 
+      'NULL'
+    }
+  </div>
+  <div style={{ fontSize: '7px' }}>
+    Using: {(() => {
+      if (propUserPosition) return '🔒 PROP (frozen)';
+      if (preciseUserPosition && isPositionStable && currentAccuracy && currentAccuracy <= 10) return '📍 PRECISE+STABLE';
+      if (preciseUserPosition && currentAccuracy && currentAccuracy <= 15) return '📍 PRECISE';
+      if (rawUserPosition) return '📡 RAW GPS';
+      return '❌ NONE';
+    })()}
+  </div>
+  
+  {/* 🔒 NEW: Show live GPS for comparison */}
+  <div style={{ fontSize: '7px' }}>
+    Live GPS: {rawUserPosition ? 
+      `[${rawUserPosition[0].toFixed(8)}, ${rawUserPosition[1].toFixed(8)}]` : 
+      'NULL'
+    }
+  </div>
+  <div style={{ fontSize: '7px' }}>
+    Live Precise: {preciseUserPosition ? 
+      `[${preciseUserPosition[0].toFixed(8)}, ${preciseUserPosition[1].toFixed(8)}]` : 
+      'NULL'
+    }
+  </div>
+
+
       <div style={{ fontSize: '8px' }}>
         Live Model: {(() => {
           // Calculate what the live model position would be
