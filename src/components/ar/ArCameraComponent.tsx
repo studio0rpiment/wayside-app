@@ -9,6 +9,7 @@ import { useARPositioning } from '../../hooks/useARPositioning';
 import { ARRenderingEngine } from '../engines/ARRenderingEngine';
 import { useARInteractions } from '../../hooks/useARInteractions';
 import { debugModeManager } from '../../utils/DebugModeManager';
+import ReformedModelPositioningPanel from '../debug/ModelPositioningPanel';
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -111,6 +112,12 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     setIsBottomDebugCollapsed(true);
     console.log('🔽 Debug panel collapsed');
   }, []);
+
+  const handleMLCorrectionToggle = useCallback((enabled: boolean) => {
+  console.log(`🧠 ML Corrections ${enabled ? 'ENABLED' : 'DISABLED'}`);
+  (window as any).mlAnchorCorrectionsEnabled = enabled;
+  // You can add more ML integration logic here if needed
+}, []);
 
   // Debug mode management
   useEffect(() => {
@@ -974,6 +981,32 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
           </div>
         </div>
       )}
+
+      <ReformedModelPositioningPanel
+  isCollapsed={isBottomDebugCollapsed}
+  isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
+  data={{
+    cameraLookDirection,
+    frozenUserPosition: frozenUserPosition || null,
+    debugFrozenModelPosition,
+    experienceType,
+    positioningSystemReady,
+    arTestingOverride,
+    globalElevationOffset: getCurrentElevationOffset() || 0
+  }}
+  callbacks={{
+    onElevationAdjust: adjustGlobalElevation,
+    onAnchorAdjust: (direction) => {
+      // Handle anchor adjustments through positioning system
+      console.log(`Anchor adjust: ${direction}`);
+      if (onElevationChanged) onElevationChanged();
+    },
+    onElevationChanged,
+    onMLCorrectionToggle: handleMLCorrectionToggle
+  }}
+  onClose={() => setIsBottomDebugCollapsed(true)}
+/>
+
 
       {/* Child components (AR objects will be added here) */}
       {children}

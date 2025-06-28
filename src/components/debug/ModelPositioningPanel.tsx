@@ -1,12 +1,10 @@
-// src/components/debug/ModelPositioningPanel.tsx
+// src/components/debug/ReformedModelPositioningPanel.tsx
 import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 
-export interface ModelPositioningData {
-  accumulatedTransforms: {
-    rotation: { x: number; y: number; z: number };
-    scale: number;
-  };
+// Simplified data interface for the reformed system
+export interface ReformedPositioningData {
+  // Camera and model info
   cameraLookDirection: {
     vector: THREE.Vector3 | null;
     bearing: number | null;
@@ -14,66 +12,45 @@ export interface ModelPositioningData {
     aimError: number | null;
     modelDistance: number | null;
   };
-  userPosition: [number, number] | null;
-  activeAnchorPosition: [number, number];
-  coordinateScale: number;
-  newSystemReady: boolean;
-  experienceType?: string;
-  experienceOffsets: Record<string, number>;
-  manualElevationOffset: number;
-  manualScaleOffset: number;
-  adjustedAnchorPosition: [number, number] | null;
-  anchorPosition: [number, number];
-  gpsOffset: { lon: number; lat: number };
-  globalElevationOffset: number;
   
-  // NEW: ML correction data
-  mlSummary?: {
-    enabled: boolean;
-    totalExperiences: number;
-    trainedExperiences: number;
-    availableExperiences: string[];
-    appliedCount: number;
-  };
-  mlInfoForExperience?: {
-    available: boolean;
-    enabled: boolean;
-    valid: boolean;
-    applied: boolean;
-    correction?: any;
-    positionComparison?: any;
-  };
+  // Position info
+  frozenUserPosition: [number, number] | null;
+  debugFrozenModelPosition: THREE.Vector3 | null;
+  
+  // System status
+  experienceType: string;
+  positioningSystemReady: boolean;
+  arTestingOverride: boolean;
+  globalElevationOffset: number;
 }
 
-export interface ModelPositioningCallbacks {
+// Simplified callbacks interface
+export interface ReformedPositioningCallbacks {
   onElevationAdjust: (delta: number) => void;
-  onAnchorAdjust: (deltaLon: number, deltaLat: number) => void;
-  onScaleAdjust: (delta: number) => void;
-  onModelScale?: (scaleFactor: number) => void;
-  onModelReset?: () => void;
+  onAnchorAdjust: (direction: 'WEST' | 'EAST' | 'NORTH' | 'SOUTH') => void;
   onElevationChanged?: () => void;
-  
-  // NEW: ML correction callback
   onMLCorrectionToggle?: (enabled: boolean) => void;
 }
 
-interface ModelPositioningPanelProps {
+interface ReformedModelPositioningPanelProps {
   isCollapsed: boolean;
-  data: ModelPositioningData;
-  callbacks: ModelPositioningCallbacks;
-  isVisible?: boolean;
+  isVisible: boolean;
+  data: ReformedPositioningData;
+  callbacks: ReformedPositioningCallbacks;
+  onClose: () => void;
 }
 
-const ModelPositioningPanel: React.FC<ModelPositioningPanelProps> = ({
+const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps> = ({
   isCollapsed,
+  isVisible,
   data,
   callbacks,
-  isVisible = true
+  onClose
 }) => {
   
-  if (!isVisible) return null;
+  if (!isVisible || isCollapsed) return null;
 
-  // ML Correction state - tracks current toggle state
+  // ML Correction state
   const [mlEnabled, setMLEnabled] = useState(() => {
     return (window as any).mlAnchorCorrectionsEnabled ?? false;
   });
@@ -100,66 +77,30 @@ const ModelPositioningPanel: React.FC<ModelPositioningPanelProps> = ({
     }
   };
 
-  // Helper function for formatting numbers with signs
-  const formatWithSign = (num: number, decimals: number = 1, totalWidth: number = 10) => {
-    const sign = num >= 0 ? '+' : '';
-    return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
-  };
-
-  // Helper function to convert GPS to local coordinates for display
-  const getUserLocalPosition = () => {
-    if (!data.userPosition) return 'No GPS';
-    
-    // Simple local coordinate calculation
-    const deltaLon = data.userPosition[0] - data.activeAnchorPosition[0];
-    const deltaLat = data.userPosition[1] - data.activeAnchorPosition[1];
-    
-    // Approximate conversion to meters (simplified)
-    const x = deltaLon * 111320 * Math.cos(data.userPosition[1] * Math.PI / 180);
-    const z = deltaLat * 110540;
-    const y = 0; // User at ground level
-    
-    return `[${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}]`;
-  };
-
   const getTurnDirectionText = () => {
-    if (data.cameraLookDirection.aimError === null || !data.userPosition) {
-      return 'No GPS position';
+    if (data.cameraLookDirection.aimError === null || !data.frozenUserPosition) {
+      return 'No position available';
     }
 
     if (data.cameraLookDirection.aimError < 20) {
       return '⮕⮕ ON TARGET ⬅⬅';
     }
 
-    // Calculate bearing from user to anchor
-    const deltaLon = data.activeAnchorPosition[0] - data.userPosition[0];
-    const deltaLat = data.activeAnchorPosition[1] - data.userPosition[1];
-    const gpsToAnchor = Math.atan2(deltaLat, deltaLon) * (180 / Math.PI);
-    const normalizedGpsToAnchor = (gpsToAnchor + 360) % 360;
+    // Simple turn direction based on aim error
+    const aimError = data.cameraLookDirection.aimError;
     
-    const currentLooking = data.cameraLookDirection.bearing || 0;
-    
-    let turnDirection = normalizedGpsToAnchor - currentLooking;
-    
-    // Handle wraparound
-    if (turnDirection > 180) turnDirection -= 360;
-    if (turnDirection < -180) turnDirection += 360;
-    
-    const turnAmount = Math.abs(turnDirection).toFixed(0);
-    
-    if (data.cameraLookDirection.aimError < 40) {
-      return turnDirection > 0 
-        ? `→  Close - turn RIGHT ${turnAmount}° →` 
-        : `← Close - turn LEFT ${turnAmount}° ←`;
-    } else if (data.cameraLookDirection.aimError < 60) {
-      return turnDirection > 0 
-        ? `⮕ TURN RIGHT ${turnAmount}° ⮕` 
-        : `⬅ TURN LEFT ${turnAmount}° ⬅`;
+    if (aimError < 40) {
+      return `Close - aim error ${aimError.toFixed(1)}°`;
+    } else if (aimError < 60) {
+      return `⮕ TURN TO FIND MODEL ⬅ (${aimError.toFixed(1)}°)`;
     } else {
-      return turnDirection > 0 
-        ? `⮕⮕ TURN RIGHT ${turnAmount}° ⮕⮕` 
-        : `⬅⬅ TURN LEFT ${turnAmount}° ⬅⬅`;
+      return `⮕⮕ LOOK AROUND FOR MODEL ⬅⬅ (${aimError.toFixed(1)}°)`;
     }
+  };
+
+  const handleAnchorAdjust = (direction: 'WEST' | 'EAST' | 'NORTH' | 'SOUTH') => {
+    console.log(`🎯 Reformed Panel: Anchor adjustment - ${direction}`);
+    callbacks.onAnchorAdjust(direction);
   };
 
   return (
@@ -170,10 +111,10 @@ const ModelPositioningPanel: React.FC<ModelPositioningPanelProps> = ({
         left: '50%',
         width: '90vw',
         transform: 'translateX(-50%)',
-        backgroundColor: 'rgba(0, 0, 0, 0)',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
         backdropFilter: 'blur(20px)',
         color: 'white',
-        padding: '0',
+        padding: '15px',
         borderRadius: '1rem',
         fontSize: '0.8rem',
         fontFamily: 'monospace',
@@ -181,324 +122,262 @@ const ModelPositioningPanel: React.FC<ModelPositioningPanelProps> = ({
         textAlign: 'center'
       }}
     >
-      {/* Always visible: Title */}
-      <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
-      
-      {/* Always visible: Rotation values */}
-      <div>
-        Rot: X:{formatWithSign(data.accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(data.accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(data.accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)
-      </div>
-
-      {/* NEW: ML Correction Toggle - Always visible, minimal */}
+      {/* Header */}
       <div style={{ 
-        marginTop: '3px', 
-        borderTop: '1px solid rgba(255,255,255,0.3)', 
-        paddingTop: '3px',
-        display: 'flex',
-        justifyContent: 'center',
+        display: 'flex', 
+        justifyContent: 'space-between', 
         alignItems: 'center',
-        gap: '8px'
+        marginBottom: '10px'
       }}>
-        <span style={{ fontSize: '10px', color: 'cyan' }}>ML:</span>
+        <span style={{ color: 'yellow', fontSize: '12px', fontWeight: 'bold' }}>
+          🎯 REFORMED POSITIONING PANEL
+        </span>
         <button
-          onClick={handleMLToggle}
+          onClick={onClose}
           style={{
-            fontSize: '10px',
-            padding: '2px 8px',
-            backgroundColor: mlEnabled ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)',
-            border: '1px solid rgba(255,255,255,0.3)',
-            borderRadius: '4px',
+            background: 'none',
+            border: 'none',
             color: 'white',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            fontSize: '16px',
+            opacity: 0.7
           }}
         >
-          {mlEnabled ? '✅' : '❌'}
+          ✕
         </button>
-        
-        {/* Show training info if available */}
-        {data.mlSummary && data.mlSummary.trainedExperiences > 0 && (
-          <span style={{ fontSize: '8px', color: 'yellow' }}>
-            {data.mlSummary.appliedCount}/{data.mlSummary.trainedExperiences}
-          </span>
+      </div>
+
+      {/* Camera Look Direction */}
+      {data.cameraLookDirection.bearing !== null && (
+        <div style={{ marginBottom: '15px' }}>
+          <div style={{ fontSize: '12px', color: 'cyan', marginBottom: '5px' }}>
+            📷 Camera Direction: {data.cameraLookDirection.bearing.toFixed(1)}°
+          </div>
+          {data.cameraLookDirection.aimError !== null && (
+            <div style={{ fontSize: '10px', color: 'yellow' }}>
+              {getTurnDirectionText()}
+            </div>
+          )}
+          {data.cameraLookDirection.modelDistance !== null && (
+            <div style={{ fontSize: '10px', color: 'white' }}>
+              Model Distance: {(data.cameraLookDirection.modelDistance * 3.28084).toFixed(1)}ft
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Position Status */}
+      <div style={{ marginBottom: '15px' }}>
+        <div style={{ fontSize: '11px', color: 'lightgreen', marginBottom: '5px' }}>
+          🔒 Position Status:
+        </div>
+        <div style={{ fontSize: '9px', color: 'white' }}>
+          User: {data.frozenUserPosition ? 'FROZEN' : 'LIVE GPS'}
+        </div>
+        <div style={{ fontSize: '9px', color: 'white' }}>
+          Model: {data.debugFrozenModelPosition ? 'CALCULATED' : 'PENDING'}
+        </div>
+        {data.debugFrozenModelPosition && (
+          <div style={{ fontSize: '8px', color: 'lightblue' }}>
+            [{data.debugFrozenModelPosition.x.toFixed(1)}, {data.debugFrozenModelPosition.y.toFixed(1)}, {data.debugFrozenModelPosition.z.toFixed(1)}]
+          </div>
         )}
       </div>
 
-      {/* Collapsible content */}
-      {!isCollapsed && (
-        <>
-          {/* ML Details when expanded and enabled */}
-          {mlEnabled && data.mlInfoForExperience?.available && (
-            <div style={{ 
-              marginTop: '5px', 
-              borderTop: '1px solid rgba(255,255,255,0.3)', 
-              paddingTop: '3px',
-              backgroundColor: data.mlInfoForExperience.applied ? 'rgba(0,255,0,0.1)' : 'rgba(255,255,0,0.1)',
-              borderRadius: '4px',
-              padding: '4px'
-            }}>
-              <div style={{ fontSize: '9px', color: 'lightgreen' }}>
-                🧠 ML CORRECTION: {data.mlInfoForExperience.applied ? 'ACTIVE' : 'AVAILABLE'}
-              </div>
-              
-              {data.mlInfoForExperience.correction && (
-                <>
-                  <div style={{ fontSize: '8px', color: 'white' }}>
-                    Δ: [{(data.mlInfoForExperience.correction.deltaLon * 1e6).toFixed(1)}μ°, {(data.mlInfoForExperience.correction.deltaLat * 1e6).toFixed(1)}μ°]
-                  </div>
-                  <div style={{ fontSize: '8px', color: 'white' }}>
-                    Conf: {(data.mlInfoForExperience.correction.confidence * 100).toFixed(1)}% 
-                    | Samples: {data.mlInfoForExperience.correction.sampleCount}
-                  </div>
-                </>
-              )}
-              
-              {data.mlInfoForExperience.positionComparison && (
-                <div style={{ fontSize: '8px', color: 'white' }}>
-                  Shift: {data.mlInfoForExperience.positionComparison.deltaMeters.toFixed(2)}m
-                </div>
-              )}
-            </div>
-          )}
-
-          <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
-          
-          {/* User Position in Local Coordinates */}
-          <div style={{ fontSize: '0.5rem', marginBottom: '5px' }}>
-            <span style={{ color: 'cyan' }}>User Local Position: </span>
-            <span>{getUserLocalPosition()}</span>
-          </div>
-
-          {/* Camera direction section */}
-          <div style={{ fontSize: '0.5rem' }}>
-            <span style={{ color: 'yellow' }}>Camera Lookat: {data.cameraLookDirection.bearing?.toFixed(1) ?? 'N/A'}°</span>
-            <span> Aim Error: </span>
-            <span style={{ color: 'yellow' }}>
-              {data.cameraLookDirection.aimError !== null ? `${data.cameraLookDirection.aimError.toFixed(1)}°` : 'N/A'}
-            </span>
-          </div>
-
-          {/* Model position section */}
-          {data.cameraLookDirection.expectedModelPosition ? (
-            <>
-              <div style={{ fontSize: '0.5rem' }}>
-                Model Position: [
-                  {data.cameraLookDirection.expectedModelPosition.x.toFixed(1)},
-                 {data.cameraLookDirection.expectedModelPosition.y.toFixed(1)}, 
-                 {data.cameraLookDirection.expectedModelPosition.z.toFixed(1)}] 
-                 | Distance: 
-                 {data.cameraLookDirection.modelDistance !== null && data.cameraLookDirection.modelDistance !== undefined ? (data.cameraLookDirection.modelDistance * 3.28084).toFixed(1) : 'N/A'}ft
-              </div>
-
-              {/* Turn indicators */}
-              {data.cameraLookDirection.aimError !== null && (
-                <div style={{ fontSize: '0.8rem', opacity: 1, color: 'yellow' }}>
-                  {getTurnDirectionText()}
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ fontSize: '9px', opacity: 0.6 }}>No position calculated</div>
-          )}
-
-          {/* GPS calibration section */}
-          <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
-            <div style={{ color: 'yellow', fontSize: '0.7rem' }}>
-              {data.newSystemReady ? 
-                'NEW SYSTEM - ANCHOR ADJUSTMENTS:' : 
-                `USE BUTTONS TO MOVE ANCHOR: [${(data.adjustedAnchorPosition || data.anchorPosition)[0].toFixed(6)}, ${(data.adjustedAnchorPosition || data.anchorPosition)[1].toFixed(6)}]`
-              }
-            </div>
-
-            {(() => {
-              const buttonStyle = {
-                fontSize: '20px',
-                padding: '4px 12px',
-                backgroundColor: data.newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
-                border: 'none',
-                borderRadius: '0.5rem',
-                color: 'white',
-                cursor: 'pointer'
-              };
-              
-              if (data.newSystemReady) {
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                    <button onClick={() => {
-                      console.log('🧪 NEW: Anchor adjustment - WEST');
-                      if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-                    }} style={buttonStyle}>WEST</button>
-                    
-                    <button onClick={() => {
-                      console.log('🧪 NEW: Anchor adjustment - EAST');
-                      if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-                    }} style={buttonStyle}>EAST</button>
-                    
-                    <button onClick={() => {
-                      console.log('🧪 NEW: Anchor adjustment - NORTH');
-                      if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-                    }} style={buttonStyle}>NORTH</button>
-                    
-                    <button onClick={() => {
-                      console.log('🧪 NEW: Anchor adjustment - SOUTH');
-                      if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-                    }} style={buttonStyle}>SOUTH</button>
-                  </div>
-                );
-              } else {
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                    <button onClick={() => callbacks.onAnchorAdjust(-0.00001, 0)} style={buttonStyle}>WEST</button>
-                    <button onClick={() => callbacks.onAnchorAdjust(0.00001, 0)} style={buttonStyle}>EAST</button>
-                    <button onClick={() => callbacks.onAnchorAdjust(0, 0.00001)} style={buttonStyle}>NORTH</button>
-                    <button onClick={() => callbacks.onAnchorAdjust(0, -0.00001)} style={buttonStyle}>SOUTH</button>
-                  </div>
-                );
-              }
-            })()}
-          </div>
-
-          {/* Elevation section */}
-          <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
-            <div style={{ color: 'yellow', fontSize: '10px' }}>
-              {data.newSystemReady ? 
-                `NEW SYSTEM ELEVATION: Global Offset ${data.globalElevationOffset.toFixed(3)}m`
-                     :
-                `ELEVATION: ${((data.experienceOffsets[data.experienceType ?? 'default'] || data.experienceOffsets['default']) + data.manualElevationOffset).toFixed(3)}m, offset: ${data.manualElevationOffset.toFixed(3)}m`
-              }
-            </div>
-            
-            {(() => {
-              const elevButtonStyle = {
-                fontSize: '20px',
-                padding: '4px 12px',
-                backgroundColor: data.newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
-                border: 'none',
-                borderRadius: '0.5rem',
-                color: 'white',
-                cursor: 'pointer'
-              };
-              
-              if (data.newSystemReady) {
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                    <button onClick={() => {
-                      console.log('🧪 Adjusting global elevation -0.1m');
-                      callbacks.onElevationAdjust(-0.1);
-                      if (callbacks.onElevationChanged) {
-                        callbacks.onElevationChanged();
-                      }
-                    }} style={elevButtonStyle}>-0.1m</button>
-                    
-                    <button onClick={() => {
-                      callbacks.onElevationAdjust(-0.01);
-                      if (callbacks.onElevationChanged) {
-                        callbacks.onElevationChanged();
-                      }
-                    }} style={elevButtonStyle}>-1cm</button>
-                    
-                    <button onClick={() => {
-                      callbacks.onElevationAdjust(0.01);
-                      if (callbacks.onElevationChanged) {
-                        callbacks.onElevationChanged();
-                      }
-                    }} style={elevButtonStyle}>+1cm</button>
-                    
-                    <button onClick={() => {
-                      callbacks.onElevationAdjust(0.1);
-                      if (callbacks.onElevationChanged) {
-                        callbacks.onElevationChanged();
-                      }
-                    }} style={elevButtonStyle}>+0.1m</button>
-                  </div>
-                );
-              } else {
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                    <button onClick={() => callbacks.onElevationAdjust(-0.1)} style={elevButtonStyle}>-0.1m</button>
-                    <button onClick={() => callbacks.onElevationAdjust(-0.01)} style={elevButtonStyle}>-1cm</button>
-                    <button onClick={() => callbacks.onElevationAdjust(0.01)} style={elevButtonStyle}>+1cm</button>
-                    <button onClick={() => callbacks.onElevationAdjust(0.1)} style={elevButtonStyle}>+0.1m</button>
-                  </div>
-                );
-              }
-            })()}
-          </div>
-
-          {/* Scale section */}
-          <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px', paddingRight: '5px' }}>
-            <div style={{ color: 'yellow', fontSize: '10px' }}>
-              {data.newSystemReady ? 'NEW SYSTEM SCALE:' : 'SCALE:'} {data.manualScaleOffset.toFixed(1)}x
-            </div>
-            
-            {(() => {
-              const scaleButtonStyle = {
-                fontSize: '12px',
-                padding: '4px 12px',
-                backgroundColor: data.newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
-                border: 'none',
-                borderRadius: '0.5rem',
-                color: 'white',
-                cursor: 'pointer'
-              };
-              
-              if (data.newSystemReady) {
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                    <button onClick={() => {
-                      callbacks.onScaleAdjust(-0.2);
-                      if (callbacks.onModelScale) callbacks.onModelScale(data.manualScaleOffset - 0.2);
-                    }} style={scaleButtonStyle}>-0.2</button>
-                    <button onClick={() => {
-                      callbacks.onScaleAdjust(-0.05);
-                      if (callbacks.onModelScale) callbacks.onModelScale(data.manualScaleOffset - 0.05);
-                    }} style={scaleButtonStyle}>-0.05</button>
-                    <button onClick={() => {
-                      callbacks.onScaleAdjust(1.0 - data.manualScaleOffset); // Reset to 1.0
-                      if (callbacks.onModelReset) callbacks.onModelReset();
-                    }} style={scaleButtonStyle}>1.0</button>
-                    <button onClick={() => {
-                      callbacks.onScaleAdjust(0.05);
-                      if (callbacks.onModelScale) callbacks.onModelScale(data.manualScaleOffset + 0.05);
-                    }} style={scaleButtonStyle}>+0.05</button>
-                    <button onClick={() => {
-                      callbacks.onScaleAdjust(0.2);
-                      if (callbacks.onModelScale) callbacks.onModelScale(data.manualScaleOffset + 0.2);
-                    }} style={scaleButtonStyle}>+0.2</button>
-                  </div>
-                );
-              } else {
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                    <button onClick={() => callbacks.onScaleAdjust(-0.2)} style={scaleButtonStyle}>-0.2</button>
-                    <button onClick={() => callbacks.onScaleAdjust(-0.05)} style={scaleButtonStyle}>-0.05</button>
-                    <button onClick={() => {
-                      callbacks.onScaleAdjust(1.0 - data.manualScaleOffset); // Reset to 1.0
-                      if (callbacks.onModelScale) callbacks.onModelScale(1.0);
-                      if (callbacks.onModelReset) callbacks.onModelReset();
-                    }} style={scaleButtonStyle}>1.0</button>
-                    <button onClick={() => callbacks.onScaleAdjust(0.05)} style={scaleButtonStyle}>+0.05</button>
-                    <button onClick={() => callbacks.onScaleAdjust(0.2)} style={scaleButtonStyle}>+0.2</button>
-                  </div>
-                );
-              }
-            })()}
-          </div>
-        </>
-      )}
-      
-      {/* Collapsed state indicator */}
-      {isCollapsed && (
+      {/* ML Correction Toggle */}
+      <div style={{ 
+        marginBottom: '15px',
+        padding: '8px',
+        borderTop: '1px solid rgba(255,255,255,0.3)',
+        borderBottom: '1px solid rgba(255,255,255,0.3)'
+      }}>
         <div style={{ 
-          fontSize: '8px', 
-          opacity: 0.7, 
-          marginTop: '2px',
-          color: 'cyan'
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '10px'
         }}>
-          ⬆ swipe up to expand
+          <span style={{ fontSize: '11px', color: 'cyan' }}>🧠 ML Corrections:</span>
+          <button
+            onClick={handleMLToggle}
+            style={{
+              fontSize: '12px',
+              padding: '4px 12px',
+              backgroundColor: mlEnabled ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '4px',
+              color: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            {mlEnabled ? '✅ ENABLED' : '❌ DISABLED'}
+          </button>
         </div>
-      )}
+      </div>
+
+      {/* Anchor Adjustments */}
+      <div style={{ marginBottom: '15px' }}>
+        <div style={{ color: 'yellow', fontSize: '11px', marginBottom: '8px' }}>
+          🎯 ANCHOR ADJUSTMENTS (Shared System)
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '5px' }}>
+          <button 
+            onClick={() => handleAnchorAdjust('WEST')}
+            style={{
+              fontSize: '14px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(0,255,0,0.3)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer',
+              flex: 1
+            }}
+          >
+            WEST
+          </button>
+          <button 
+            onClick={() => handleAnchorAdjust('EAST')}
+            style={{
+              fontSize: '14px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(0,255,0,0.3)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer',
+              flex: 1
+            }}
+          >
+            EAST
+          </button>
+          <button 
+            onClick={() => handleAnchorAdjust('NORTH')}
+            style={{
+              fontSize: '14px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(0,255,0,0.3)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer',
+              flex: 1
+            }}
+          >
+            NORTH
+          </button>
+          <button 
+            onClick={() => handleAnchorAdjust('SOUTH')}
+            style={{
+              fontSize: '14px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(0,255,0,0.3)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer',
+              flex: 1
+            }}
+          >
+            SOUTH
+          </button>
+        </div>
+      </div>
+
+      {/* Elevation Control */}
+      <div style={{ marginBottom: '15px' }}>
+        <div style={{ color: 'yellow', fontSize: '11px', marginBottom: '8px' }}>
+          📏 ELEVATION: Global Offset {data.globalElevationOffset.toFixed(3)}m
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '5px' }}>
+          <button
+            onClick={() => {
+              callbacks.onElevationAdjust(-0.1);
+              if (callbacks.onElevationChanged) callbacks.onElevationChanged();
+            }}
+            style={{
+              fontSize: '14px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(255,0,0,0.3)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer',
+              flex: 1
+            }}
+          >
+            -0.1m
+          </button>
+          <button
+            onClick={() => {
+              callbacks.onElevationAdjust(-0.01);
+              if (callbacks.onElevationChanged) callbacks.onElevationChanged();
+            }}
+            style={{
+              fontSize: '14px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(255,100,100,0.3)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer',
+              flex: 1
+            }}
+          >
+            -1cm
+          </button>
+          <button
+            onClick={() => {
+              callbacks.onElevationAdjust(0.01);
+              if (callbacks.onElevationChanged) callbacks.onElevationChanged();
+            }}
+            style={{
+              fontSize: '14px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(100,255,100,0.3)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer',
+              flex: 1
+            }}
+          >
+            +1cm
+          </button>
+          <button
+            onClick={() => {
+              callbacks.onElevationAdjust(0.1);
+              if (callbacks.onElevationChanged) callbacks.onElevationChanged();
+            }}
+            style={{
+              fontSize: '14px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(0,255,0,0.3)',
+              border: 'none',
+              borderRadius: '0.5rem',
+              color: 'white',
+              cursor: 'pointer',
+              flex: 1
+            }}
+          >
+            +0.1m
+          </button>
+        </div>
+      </div>
+
+      {/* System Status */}
+      <div style={{ 
+        fontSize: '9px', 
+        opacity: 0.8,
+        borderTop: '1px solid rgba(255,255,255,0.2)',
+        paddingTop: '8px'
+      }}>
+        <div>Experience: {data.experienceType}</div>
+        <div>Positioning: {data.positioningSystemReady ? '✅ Ready' : '❌ Not Ready'}</div>
+        <div>AR Testing: {data.arTestingOverride ? '✅ Override ON' : '❌ Override OFF'}</div>
+      </div>
     </div>
   );
 };
 
-export default ModelPositioningPanel;
+export default ReformedModelPositioningPanel;
