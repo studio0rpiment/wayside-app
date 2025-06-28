@@ -299,6 +299,20 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
         </div>
       </div>
 
+           {/* Scale Controls */}
+      
+<div style={{ marginTop: '15px' }}>
+  <div style={{ color: 'yellow', fontSize: '11px', marginBottom: '8px' }}>
+    📏 SCALE: {data.manualScaleOffset.toFixed(1)}x
+  </div>
+  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '5px' }}>
+    <button onClick={() => callbacks.onScaleAdjust(0.5)} style={scaleButtonStyle}>0.5x</button>
+    <button onClick={() => callbacks.onScaleAdjust(1.0)} style={scaleButtonStyle}>1.0x</button>
+    <button onClick={() => callbacks.onScaleAdjust(1.5)} style={scaleButtonStyle}>1.5x</button>
+    <button onClick={() => callbacks.onScaleAdjust(2.0)} style={scaleButtonStyle}>2.0x</button>
+  </div>
+</div>
+
       {/* Elevation Control */}
       <div style={{ marginBottom: '15px' }}>
         <div style={{ color: 'yellow', fontSize: '11px', marginBottom: '8px' }}>
@@ -380,19 +394,7 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
         </div>
       </div>
 
-      {/* Scale Controls */}
-      
-<div style={{ marginTop: '15px' }}>
-  <div style={{ color: 'yellow', fontSize: '11px', marginBottom: '8px' }}>
-    📏 SCALE: {data.manualScaleOffset.toFixed(1)}x
-  </div>
-  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '5px' }}>
-    <button onClick={() => callbacks.onScaleAdjust(0.5)} style={scaleButtonStyle}>0.5x</button>
-    <button onClick={() => callbacks.onScaleAdjust(1.0)} style={scaleButtonStyle}>1.0x</button>
-    <button onClick={() => callbacks.onScaleAdjust(1.5)} style={scaleButtonStyle}>1.5x</button>
-    <button onClick={() => callbacks.onScaleAdjust(2.0)} style={scaleButtonStyle}>2.0x</button>
-  </div>
-</div>
+ 
 
       {/* System Status */}
       <div style={{ 
