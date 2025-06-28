@@ -1,25 +1,27 @@
-// src/components/ar/ArCameraComponent.tsx - Updated for single source pattern
+// src/components/ar/ArCameraComponent.tsx - Reformed to use only shared positioning system
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 import { useGeofenceContext } from '../../context/GeofenceContext';
+import { useARPositioning } from '../../hooks/useARPositioning';
 import { ARRenderingEngine } from '../engines/ARRenderingEngine';
 import { useARInteractions } from '../../hooks/useARInteractions';
 import { debugModeManager } from '../../utils/DebugModeManager';
+import ReformedModelPositioningPanel from '../debug/ModelPositioningPanel';
 
 const SHOW_DEBUG_PANEL = true;
 
 interface ArCameraProps {
-  // Core info (for reference/debug only - not used for positioning)
+  // Core positioning (simplified)
   userPosition?: [number, number]; // Frozen position from ExperienceManager
   experienceType?: string;
-  isUniversalMode?: boolean; // 🆕 NEW: Universal mode flag
   
   // Camera and scene callbacks
+  onArObjectPlaced?: (position: THREE.Vector3) => void;
   onOrientationUpdate?: (orientation: { alpha: number; beta: number; gamma: number }) => void;
-  onSceneReady?: (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => void; // 🆕 CHANGED: Just notifies scene ready
+  onSceneReady?: (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => void; 
   
   // Gesture callbacks (passed through to experiences)
   onModelRotate?: (deltaX: number, deltaY: number, deltaZ?: number) => void;
@@ -27,17 +29,19 @@ interface ArCameraProps {
   onModelReset?: () => void;
   onSwipeUp?: () => void;
   onSwipeDown?: () => void;
+
+  isUniversalMode?: boolean
   
   // System callbacks
   onElevationChanged?: () => void;
   
-  // Legacy props (for debug display only)
+  // Shared positioning system
+  sharedARPositioning?: ReturnType<typeof useARPositioning>;
+  
+  // Legacy props (deprecated, will be removed)
   anchorPosition?: [number, number]; // Used only for debug display
   anchorElevation?: number; // Deprecated
   coordinateScale?: number; // Deprecated
-  
-  // 🚫 REMOVED: onArObjectPlaced - no longer calculates position
-  // 🚫 REMOVED: sharedARPositioning - no longer needs it
   
   children?: React.ReactNode;
 }
@@ -45,17 +49,20 @@ interface ArCameraProps {
 const ArCameraComponent: React.FC<ArCameraProps> = ({
   userPosition: frozenUserPosition, // This is the frozen position from ExperienceManager
   experienceType = 'default',
-  isUniversalMode = false, // 🆕 NEW: Universal mode flag
+  onArObjectPlaced,
   onOrientationUpdate,
-  onSceneReady, // 🆕 CHANGED: Just notifies scene ready
+  onSceneReady,
   onModelRotate,
   onModelScale,
   onModelReset,
   onSwipeUp,
   onSwipeDown,
   onElevationChanged,
+  sharedARPositioning,
   anchorPosition, // Legacy - only for debug
+  isUniversalMode,
   children
+  
 }) => {
   
   // Get live GPS context for comparison/debugging
@@ -82,23 +89,42 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [debugHeading, setDebugHeading] = useState<number | null>(null);
   const [debugCollapsed, setDebugCollapsed] = useState(true);
+  const [isBottomDebugCollapsed, setIsBottomDebugCollapsed] = useState(true);
   const [arTestingOverride, setArTestingOverride] = useState(false);
+  const [debugFrozenModelPosition, setDebugFrozenModelPosition] = useState<THREE.Vector3 | null>(null);
   const [cameraLookDirection, setCameraLookDirection] = useState<{
     vector: THREE.Vector3 | null;
     bearing: number | null;
+    expectedModelPosition: THREE.Vector3 | null;
+    aimError: number | null;
+    modelDistance: number | null;
   }>({
     vector: null,
     bearing: null,
+    expectedModelPosition: null,
+    aimError: null,
+    modelDistance: null
   });
+
+  const [manualScaleOffset, setManualScaleOffset] = useState(1.0);
+
 
   //******** DEBUG PANEL FUNCTIONS **********
   const handleDebugSwipeUp = useCallback(() => {
-    console.log('🔼 Debug panel interaction');
+    setIsBottomDebugCollapsed(false);
+    console.log('🔼 Debug panel expanded');
   }, []);
 
   const handleDebugSwipeDown = useCallback(() => {
-    console.log('🔽 Debug panel interaction');
+    setIsBottomDebugCollapsed(true);
+    console.log('🔽 Debug panel collapsed');
   }, []);
+
+  const handleMLCorrectionToggle = useCallback((enabled: boolean) => {
+  console.log(`🧠 ML Corrections ${enabled ? 'ENABLED' : 'DISABLED'}`);
+  (window as any).mlAnchorCorrectionsEnabled = enabled;
+  // You can add more ML integration logic here if needed
+}, []);
 
   // Debug mode management
   useEffect(() => {
@@ -115,6 +141,35 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       debugModeManager.removeEventListener('debugModeChanged', handleDebugModeChange as EventListener);
     };
   }, []);
+
+  const updateScaleOffset = useCallback((newScale: number) => {
+  setManualScaleOffset(newScale);
+  
+  if (onModelScale) {
+    onModelScale(newScale);
+  }
+}, [onModelScale]);
+
+  //******* camera lookat Directions */
+  const getTurnDirectionText = useCallback(() => {
+  if (cameraLookDirection.aimError === null || !frozenUserPosition) {
+    return 'No position available';
+  }
+
+  const aimError = cameraLookDirection.aimError;
+
+  if (cameraLookDirection.aimError < 30) {
+    return '⮕⮕ ON TARGET ⬅⬅';
+  }
+  
+  if (aimError < 40) {
+    return `Close - aim error ${aimError.toFixed(1)}°`;
+  } else if (aimError < 60) {
+    return `⮕ TURN TO FIND MODEL ⬅ (${aimError.toFixed(1)}°)`;
+  } else {
+    return `⮕⮕ LOOK AROUND FOR MODEL ⬅⬅ (${aimError.toFixed(1)}°)`;
+  }
+}, [cameraLookDirection.aimError, frozenUserPosition]);
 
   //******** HOOKS **********
   const { attachListeners, detachListeners, isListening } = useARInteractions({
@@ -141,6 +196,22 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     debugMode: SHOW_DEBUG_PANEL 
   });
 
+  // Shared positioning system
+  const positioningSystem = sharedARPositioning;
+  if (!positioningSystem) {
+    console.error('❌ ArCameraComponent: No shared AR positioning provided!');
+    return null;
+  }
+
+  const { 
+    adjustGlobalElevation,
+    positionObject,
+    isReady: positioningSystemReady,
+    debugMode: positioningDebugMode,
+    getCurrentElevationOffset,
+    resetAllAdjustments
+  } = positioningSystem;
+
   const { isPermissionGranted, requestPermission } = usePermissions();
 
   //******** HELPER FUNCTIONS **********
@@ -155,6 +226,25 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     
     return -screenOrientation * (Math.PI / 180);
   };
+
+  // Get current expected model position from positioning system
+  const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
+    if (!positioningSystem || !positioningSystemReady || !frozenUserPosition) {
+      return null;
+    }
+    
+    try {
+      const result = positioningSystem.getPosition(experienceType);
+      if (result) {
+        setDebugFrozenModelPosition(result.relativeToUser.clone());
+        return result.relativeToUser;
+      }
+    } catch (error) {
+      console.warn('Error getting model position:', error);
+    }
+    
+    return null;
+  }, [positioningSystem, positioningSystemReady, experienceType, frozenUserPosition]);
 
   //******** CAMERA INITIALIZATION **********
   const initializeCamera = async (): Promise<boolean> => {
@@ -276,15 +366,8 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     const engineInitialized = await initializeRenderingEngine();
     if (!engineInitialized) return;
     
-    // 🆕 CHANGED: Just notify scene is ready, don't calculate position
-    if (onSceneReady && renderingEngineRef.current) {
-      const scene = renderingEngineRef.current.getScene();
-      const camera = renderingEngineRef.current.getCamera();
-      if (scene && camera) {
-        console.log('📡 AR Camera: Scene ready, notifying ExperienceManager');
-        onSceneReady(scene, camera);
-      }
-    }
+    // Trigger AR object placement using positioning system
+    triggerArObjectPlacement();
     
     if (canvasRef.current && !isListening) {
       attachListeners();
@@ -292,7 +375,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     }
               
     setIsInitialized(true);
-    console.log('✅ AR Camera initialized (display only)');
+    console.log('✅ AR Camera fully initialized');
   };
 
   //******** REINITIALIZATION (FIXES PERMISSION BUG) **********
@@ -316,6 +399,35 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     }
   };
 
+  //******** NEW SIMPLIFIED AR OBJECT PLACEMENT **********
+  const triggerArObjectPlacement = useCallback(() => {
+    console.log('🎯 Triggering AR object placement with shared positioning system');
+    
+    if (!positioningSystem || !positioningSystemReady) {
+      console.log('❌ Positioning system not ready');
+      return;
+    }
+    
+    if (!frozenUserPosition) {
+      console.log('❌ No frozen user position available');
+      return;
+    }
+    
+    try {
+      // Get position from shared positioning system
+      const result = positioningSystem.getPosition(experienceType);
+      
+      if (result && onArObjectPlaced) {
+        console.log('✅ AR object positioned at:', result.relativeToUser.toArray());
+        onArObjectPlaced(result.relativeToUser);
+      } else {
+        console.warn('❌ Failed to get position from positioning system');
+      }
+    } catch (error) {
+      console.error('❌ Error in AR object placement:', error);
+    }
+  }, [positioningSystem, positioningSystemReady, frozenUserPosition, experienceType, onArObjectPlaced]);
+
   //******** CAMERA DIRECTION UPDATES **********
   const updateCameraDirection = useCallback(() => {
     const camera = renderingEngineRef.current?.getCamera();
@@ -329,12 +441,30 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     ) * (180 / Math.PI);
 
     const normalizedBearing = (bearing + 360) % 360;
+    const expectedModelPosition = getCurrentExpectedModelPosition();
+    
+    let aimError = null;
+    let modelDistance = null;
+    
+    if (expectedModelPosition && camera) {
+      const cameraPosition = camera.position;
+      const expectedDirection = expectedModelPosition.clone().sub(cameraPosition).normalize();
+      
+      const dotProduct = cameraDirectionVector.current.dot(expectedDirection);
+      const angleDifference = Math.acos(Math.max(-1, Math.min(1, dotProduct))) * (180 / Math.PI);
+      aimError = angleDifference;
+      
+      modelDistance = cameraPosition.distanceTo(expectedModelPosition);
+    }
     
     setCameraLookDirection({
       vector: cameraDirectionVector.current.clone(),
       bearing: normalizedBearing,
+      expectedModelPosition,
+      aimError,
+      modelDistance
     });
-  }, []);
+  }, [getCurrentExpectedModelPosition]);
 
   //******** WINDOW RESIZE **********
   const handleResize = useCallback(() => {
@@ -414,12 +544,12 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     }
   }, [deviceOrientation, onOrientationUpdate]);
 
-  // 🚫 REMOVED: AR object placement when system becomes ready
-  // useEffect(() => {
-  //   if (isInitialized && positioningSystemReady && frozenUserPosition) {
-  //     triggerArObjectPlacement();
-  //   }
-  // }, [isInitialized, positioningSystemReady, frozenUserPosition, triggerArObjectPlacement]);
+  // AR object placement when system becomes ready
+  useEffect(() => {
+    if (isInitialized && positioningSystemReady && frozenUserPosition) {
+      triggerArObjectPlacement();
+    }
+  }, [isInitialized, positioningSystemReady, frozenUserPosition, triggerArObjectPlacement]);
 
   // Main initialization
   useEffect(() => {
@@ -585,20 +715,15 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
           zIndex: 1030
         }}>
           <div>🎥 Starting AR Camera...</div>
-          {isUniversalMode && (
-            <div style={{ fontSize: '11px', marginTop: '3px', opacity: 0.7, color: '#90EE90' }}>
-              🌐 Universal Mode Active
-            </div>
-          )}
           <div style={{ fontSize: '14px', marginTop: '10px', opacity: 0.8 }}>
             {!isPermissionGranted(PermissionType.CAMERA) && 'Please allow camera access when prompted'}
             {isPermissionGranted(PermissionType.CAMERA) && !isPermissionGranted(PermissionType.ORIENTATION) && 'Please allow motion sensors for best experience'}
-            {isPermissionGranted(PermissionType.CAMERA) && isPermissionGranted(PermissionType.ORIENTATION) && 'Point your camera at your surroundings'}
+            {isPermissionGranted(PermissionType.CAMERA) && isPermissionGranted(PermissionType.ORIENTATION) && 'Initializing AR positioning...'}
           </div>
         </div>
       )}
       
-      {/* UPDATED Debug Panel - Display Only */}
+      {/* SIMPLIFIED Debug Panel */}
       {SHOW_DEBUG_PANEL && (
         <div style={{
           position: 'absolute',
@@ -626,10 +751,10 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
             <span style={{ fontSize: '14px', marginRight: '8px' }}>
               {debugCollapsed ? '▶' : '▼'}
             </span>
-            <span style={{ color: 'yellow' }}>🎥 AR CAMERA (DISPLAY ONLY)</span>
+            <span style={{ color: 'yellow' }}>🎥 AR CAMERA (REFORMED)</span>
           </div>
 
-          {/* Reference Position Status */}
+          {/* Frozen Position Status */}
           <div style={{ 
             marginTop: '5px', 
             paddingTop: '5px', 
@@ -637,16 +762,19 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
             backgroundColor: 'rgba(0,255,0,0.1)' 
           }}>
             <div style={{ color: 'lightgreen', fontSize: '9px' }}>
-              <strong>🔒 REFERENCE POSITION (NOT USED FOR AR):</strong>
+              <strong>🔒 FROZEN POSITION STATUS:</strong>
             </div>
             <div style={{ fontSize: '8px' }}>
               User: {frozenUserPosition ? 
-                `[${frozenUserPosition[0].toFixed(8)}, ${frozenUserPosition[1].toFixed(8)}] 📍` : 
-                '❌ NOT PROVIDED'
+                `[${frozenUserPosition[0].toFixed(8)}, ${frozenUserPosition[1].toFixed(8)}] ✅` : 
+                '❌ NOT FROZEN'
               }
             </div>
             <div style={{ fontSize: '8px' }}>
-              Universal Mode: {isUniversalMode ? '✅ ACTIVE' : '❌ DISABLED'}
+              Model: {debugFrozenModelPosition ? 
+                `[${debugFrozenModelPosition.x.toFixed(2)}, ${debugFrozenModelPosition.y.toFixed(2)}, ${debugFrozenModelPosition.z.toFixed(2)}] ✅` : 
+                '❌ NOT CALCULATED'
+              }
             </div>
           </div>
 
@@ -670,18 +798,19 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
             Accuracy: {currentAccuracy?.toFixed(1)}m | Quality: {positionQuality} | Stable: {isPositionStable ? '✅' : '❌'}
           </div>
 
-          {/* Camera & Scene Status */}
+          {/* Positioning System Status */}
           <div style={{ 
             marginTop: '5px', 
             paddingTop: '5px', 
             borderTop: '1px solid rgba(255,255,255,0.3)' 
           }}>
             <div style={{ color: 'lightblue', fontSize: '9px' }}>
-              <strong>Camera & Scene Status:</strong>
+              <strong>Shared Positioning System:</strong>
             </div>
-            <div style={{ fontSize: '8px' }}>Camera Ready: {isInitialized ? '✅' : '❌'}</div>
-            <div style={{ fontSize: '8px' }}>Engine Ready: {renderingEngineRef.current?.isReady() ? '✅' : '❌'}</div>
-            <div style={{ fontSize: '8px' }}>Render Loop: {renderingEngineRef.current?.isRenderingActive() ? '🔄' : '⏸️'}</div>
+            <div style={{ fontSize: '8px' }}>Ready: {positioningSystemReady ? '✅' : '❌'}</div>
+            <div style={{ fontSize: '8px' }}>Debug Mode: {positioningDebugMode ? '✅' : '❌'}</div>
+            <div style={{ fontSize: '8px' }}>Global Elevation: {getCurrentElevationOffset()?.toFixed(3)}m</div>
+            <div style={{ fontSize: '8px' }}>Experience: {experienceType}</div>
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', marginTop: '8px' }}>
@@ -703,7 +832,12 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
             
             <button
               onClick={() => {
-                console.log('🔄 Camera display refreshed');
+                console.log('🔄 Resetting shared positioning system');
+                resetAllAdjustments();
+                if (onElevationChanged) {
+                  onElevationChanged();
+                }
+                console.log('🔄 Reset complete');
               }}
               style={{
                 fontSize: '10px',
@@ -715,8 +849,13 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
                 width: '50%'
               }}
             >
-              🔄 Refresh
+              🔄 Reset System
             </button>
+          </div>
+
+          <div style={{ marginTop: '5px' }}>
+            <div>Engine Ready: {renderingEngineRef.current?.isReady() ? '✅' : '❌'}</div>
+            <div>Render Loop: {renderingEngineRef.current?.isRenderingActive() ? '🔄' : '⏸️'}</div>
           </div>
 
           {!debugCollapsed && (
@@ -734,6 +873,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
                 Camera Look Direction: {cameraLookDirection.bearing?.toFixed(1)}°
               </div>
 
+              {cameraLookDirection.expectedModelPosition && (
+                <div>
+                  <div>Expected Model: [{cameraLookDirection.expectedModelPosition.x.toFixed(2)}, {cameraLookDirection.expectedModelPosition.y.toFixed(2)}, {cameraLookDirection.expectedModelPosition.z.toFixed(2)}]</div>
+                  <div>Aim Error: {cameraLookDirection.aimError?.toFixed(1)}°</div>
+                  <div>Model Distance: {cameraLookDirection.modelDistance?.toFixed(1)}m</div>
+                </div>
+              )}
+
               {/* Legacy anchor position for reference only */}
               {anchorPosition && (
                 <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,100,100,0.3)', backgroundColor: 'rgba(255,100,100,0.1)' }}>
@@ -750,8 +897,189 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
         </div>
       )}
 
-      {/* 🚫 REMOVED: Bottom debug panel with elevation controls */}
-      {/* Elevation controls moved to ExperienceManager */}
+      {/* Camera Direction Guidance - Always Visible on Main Screen */}
+{isInitialized && cameraLookDirection.bearing !== null && (
+  <div style={{
+    position: 'absolute',
+    bottom: '20px',
+    left: '50%',
+    width: '90svw',
+    transform: 'translateX(-50%)',
+    backgroundColor: 'rgba(0, 0, 0, 0)',
+    backdropFilter: 'blur(4px)',
+    color: 'white',
+    padding: '12px 20px',
+    borderRadius: '8px',
+    textAlign: 'center',
+    zIndex: 1025,
+    fontFamily: 'monospace',
+    fontSize: '1rem'
+  }}>
+    <div style={{ fontSize: '12px', color: 'cyan', marginBottom: '5px' }}>
+      📷 {cameraLookDirection.bearing.toFixed(1)}°
+    </div>
+    {cameraLookDirection.aimError !== null && (
+      <div style={{ fontSize: '14px', color: 'yellow', fontWeight: 'bold' }}>
+        {getTurnDirectionText()}
+      </div>
+    )}
+    {cameraLookDirection.modelDistance !== null && (
+      <div style={{ fontSize: '11px', color: 'lightblue', marginTop: '3px' }}>
+        {(cameraLookDirection.modelDistance * 3.28084).toFixed(1)}ft away
+      </div>
+    )}
+  </div>
+)}
+
+      {/* Simplified Bottom Debug Panel - Only for elevation control */}
+      {/* {SHOW_DEBUG_PANEL && !isBottomDebugCollapsed && positioningSystemReady && (
+        <div style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          right: '20px',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(4px)',
+          color: 'white',
+          padding: '15px',
+          borderRadius: '8px',
+          fontSize: '12px',
+          zIndex: 1030,
+          fontFamily: 'monospace'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '10px'
+          }}>
+            <span style={{ color: 'lightblue', fontWeight: 'bold' }}>
+              🎛️ SHARED POSITIONING CONTROLS
+            </span>
+            <button
+              onClick={() => setIsBottomDebugCollapsed(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+     
+          <div style={{ marginBottom: '15px' }}>
+            <div style={{ marginBottom: '8px', color: 'yellow' }}>
+              Global Elevation Offset: {getCurrentElevationOffset()?.toFixed(3)}m
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  adjustGlobalElevation(-0.1);
+                  if (onElevationChanged) onElevationChanged();
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(255, 0, 0, 0.3)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              >
+                ↓ -0.1m
+              </button>
+              <button
+                onClick={() => {
+                  adjustGlobalElevation(-0.01);
+                  if (onElevationChanged) onElevationChanged();
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(255, 100, 100, 0.3)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              >
+                ↓ -0.01m
+              </button>
+              <button
+                onClick={() => {
+                  adjustGlobalElevation(0.01);
+                  if (onElevationChanged) onElevationChanged();
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(100, 255, 100, 0.3)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              >
+                ↑ +0.01m
+              </button>
+              <button
+                onClick={() => {
+                  adjustGlobalElevation(0.1);
+                  if (onElevationChanged) onElevationChanged();
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(0, 255, 0, 0.3)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              >
+                ↑ +0.1m
+              </button>
+            </div>
+          </div>
+
+
+          <div style={{ fontSize: '10px', opacity: 0.8 }}>
+            <div>Experience: {experienceType}</div>
+            <div>Positioning Debug Mode: {positioningDebugMode ? 'ON' : 'OFF'}</div>
+            <div>Camera AR Testing Override: {arTestingOverride ? 'ON' : 'OFF'}</div>
+          </div>
+        </div>
+      )} */}
+
+      <ReformedModelPositioningPanel
+  isCollapsed={isBottomDebugCollapsed}
+  isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
+  data={{
+    cameraLookDirection,
+    manualScaleOffset,
+    frozenUserPosition: frozenUserPosition || null,
+    debugFrozenModelPosition,
+    experienceType,
+    positioningSystemReady,
+    arTestingOverride,
+    globalElevationOffset: getCurrentElevationOffset() || 0
+  }}
+  callbacks={{
+    onElevationAdjust: adjustGlobalElevation,
+    onScaleAdjust: updateScaleOffset,
+    onAnchorAdjust: (direction) => {
+      // Handle anchor adjustments through positioning system
+      console.log(`Anchor adjust: ${direction}`);
+      if (onElevationChanged) onElevationChanged();
+    },
+    onElevationChanged,
+    onMLCorrectionToggle: handleMLCorrectionToggle
+  }}
+  
+  onClose={() => setIsBottomDebugCollapsed(true)}
+/>
+
 
       {/* Child components (AR objects will be added here) */}
       {children}
