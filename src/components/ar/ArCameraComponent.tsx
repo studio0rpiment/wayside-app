@@ -1059,7 +1059,7 @@ const initialize = async () => {
           </div>
         </div>
       )} */}
-
+{/* 
       <ReformedModelPositioningPanel
   isCollapsed={isBottomDebugCollapsed}
   isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
@@ -1086,7 +1086,7 @@ const initialize = async () => {
   }}
   
   onClose={() => setIsBottomDebugCollapsed(true)}
-/>
+/> */}
 
 
       {/* Child components (AR objects will be added here) */}
