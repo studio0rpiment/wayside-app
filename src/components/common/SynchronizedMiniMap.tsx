@@ -162,15 +162,18 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
     }, 100),
   [isLoaded]);
 
-  // Stable marker creation functions
-  const createMiniMarkers = useCallback((map: mapboxgl.Map) => {
-    // Clean up existing markers
+  // Stable marker creation functions (called only once during initialization)
+  const createStaticMiniMarkers = useCallback((map: mapboxgl.Map) => {
+    // Clean up any existing markers
     miniMarkersRef.current.forEach(marker => marker.remove());
     miniMarkersRef.current = [];
     
-    if (!experienceLocation) return;
+    if (!experienceLocation) {
+      console.warn('🗺️ OptimizedMiniMap: No experience location for marker creation');
+      return;
+    }
     
-    // Create marker element
+    // Create experience marker element
     const el = document.createElement('div');
     el.className = 'map-icon minimap-icon';
     el.style.backgroundImage = `url(${getIconPath(experienceId)})`;
@@ -184,16 +187,17 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
       .addTo(map);
     
     miniMarkersRef.current.push(marker);
-  }, [experienceId, experienceLocation]);
+    console.log('🗺️ OptimizedMiniMap: Created static experience marker');
+  }, [experienceId, experienceLocation]); // Only depend on values that are stable per modal opening
 
-  const createMiniAnchorMarkers = useCallback((map: mapboxgl.Map) => {
+  const createStaticAnchorMarkers = useCallback((map: mapboxgl.Map) => {
     if (!showAnchors || !experienceLocation) return;
     
-    // Clean up existing anchor markers
+    // Clean up any existing anchor markers
     miniAnchorMarkersRef.current.forEach(marker => marker.remove());
     miniAnchorMarkersRef.current = [];
     
-    // Create inverted marker element
+    // Create inverted anchor marker element
     const el = document.createElement('div');
     el.className = 'map-anchor-icon minimap-anchor-icon';
     el.style.backgroundImage = `url(${getInvertedIconPath(experienceId)})`;
@@ -202,7 +206,7 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
     el.style.backgroundSize = 'cover';
     el.style.opacity = '0.6';
     
-    // Get anchor position
+    // Get anchor position (this is static per experience)
     const anchorData = getArAnchorForPoint(experienceId, experienceLocation);
     
     if (anchorData?.position) {
@@ -211,8 +215,9 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
         .addTo(map);
       
       miniAnchorMarkersRef.current.push(anchorMarker);
+      console.log('🗺️ OptimizedMiniMap: Created static anchor marker');
     }
-  }, [showAnchors, experienceId, experienceLocation, getInvertedIconPath]);
+  }, [showAnchors, experienceId, experienceLocation, getInvertedIconPath]); // Only depend on static values
 
   // OPTIMIZATION 7: Single initialization effect with one-time fitBounds
   useEffect(() => {
@@ -238,9 +243,9 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
       miniMap.on('load', () => {
         console.log('🗺️ OptimizedMiniMap: Map loaded');
         
-        // Create markers after map loads
-        createMiniMarkers(miniMap);
-        createMiniAnchorMarkers(miniMap);
+        // Create static markers ONCE - they will never move or update
+        createStaticMiniMarkers(miniMap);
+        createStaticAnchorMarkers(miniMap);
         
         // SINGLE fitBounds call - only when modal opens and map loads
         const initialBounds = calculateInitialBounds();
@@ -293,7 +298,7 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
       console.error('🗺️ OptimizedMiniMap: Error initializing:', error);
       initializationRef.current = false;
     }
-  }, [experienceId, calculateInitialBounds, createMiniMarkers, createMiniAnchorMarkers, experienceLocation, debouncedUserPosition]); // Include necessary dependencies for initial setup
+  }, [experienceId, calculateInitialBounds, createStaticMiniMarkers, createStaticAnchorMarkers, experienceLocation, debouncedUserPosition]); // Include necessary dependencies for initial setup
 
   // OPTIMIZATION 8: Resize handling only (no more bounds updates)
   useEffect(() => {
