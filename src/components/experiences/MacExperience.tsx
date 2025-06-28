@@ -1,7 +1,7 @@
 // Updated MacExperience.tsx - Receives position from ExperienceManager (single source)
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import * as THREE from '../../../node_modules/@types/three';
+import * as THREE from 'three';
 import StaticPointCloudEngine, { StaticPointCloudConfig } from '../engines/StaticPointCloudEngine';
 
 interface MacExperienceProps {
