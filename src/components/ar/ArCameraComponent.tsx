@@ -1,6 +1,6 @@
 // src/components/ar/ArCameraComponent.tsx - Updated for single source pattern
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import * as THREE from '../../../node_modules/@types/three';
+import * as THREE from 'three';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
