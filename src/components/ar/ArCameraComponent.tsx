@@ -35,8 +35,7 @@ interface ArCameraProps {
   // System callbacks
   onElevationChanged?: () => void;
   
-  // Shared positioning system
-  sharedARPositioning?: ReturnType<typeof useARPositioning>;
+
   
   // Legacy props (deprecated, will be removed)
   anchorPosition?: [number, number]; // Used only for debug display
