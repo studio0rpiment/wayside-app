@@ -1,7 +1,6 @@
-// src/components/ar/ArCameraComponent.tsx
+// src/components/ar/ArCameraComponent.tsx - Reformed to use only shared positioning system
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { calculateBearing, gpsToThreeJsPosition, gpsToThreeJsPositionWithEntryOffset } from '../../utils/geoArUtils';
 import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
@@ -9,62 +8,59 @@ import { useGeofenceContext } from '../../context/GeofenceContext';
 import { useARPositioning } from '../../hooks/useARPositioning';
 import { ARRenderingEngine } from '../engines/ARRenderingEngine';
 import { useARInteractions } from '../../hooks/useARInteractions';
-import ModelPositioningPanel from '../debug/ModelPositioningPanel';
-import { arPositioningManager } from '../../utils/coordinate-system/PositioningSystemSingleton';
 import { debugModeManager } from '../../utils/DebugModeManager';
-
-
-
-
 
 const SHOW_DEBUG_PANEL = true;
 
 interface ArCameraProps {
-  userPosition?: [number, number];
-  anchorPosition: [number, number];
-  anchorElevation?: number;
-  coordinateScale?: number;
+  // Core positioning (simplified)
+  userPosition?: [number, number]; // Frozen position from ExperienceManager
   experienceType?: string;
+  
+  // Camera and scene callbacks
   onArObjectPlaced?: (position: THREE.Vector3) => void;
   onOrientationUpdate?: (orientation: { alpha: number; beta: number; gamma: number }) => void;
   onSceneReady?: (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => void; 
+  
+  // Gesture callbacks (passed through to experiences)
   onModelRotate?: (deltaX: number, deltaY: number, deltaZ?: number) => void;
   onModelScale?: (scaleFactor: number) => void;
   onModelReset?: () => void;
   onSwipeUp?: () => void;
   onSwipeDown?: () => void;
-  useNewPositioning?: boolean;
+  
+  // System callbacks
   onElevationChanged?: () => void;
+  
+  // Shared positioning system
   sharedARPositioning?: ReturnType<typeof useARPositioning>;
-  onPositioningReady?: (positioningFunctions: {
-    positionObject: (object: THREE.Object3D, experienceId: string, options?: any) => boolean;
-    adjustGlobalElevation: (delta: number) => void;
-    isReady: boolean;
-  }) => void;
+  
+  // Legacy props (deprecated, will be removed)
+  anchorPosition?: [number, number]; // Used only for debug display
+  anchorElevation?: number; // Deprecated
+  coordinateScale?: number; // Deprecated
+  
   children?: React.ReactNode;
 }
 
 const ArCameraComponent: React.FC<ArCameraProps> = ({
-  userPosition: propUserPosition,
-  anchorPosition,
-  anchorElevation = 2.0,
-  coordinateScale = 1.0,
+  userPosition: frozenUserPosition, // This is the frozen position from ExperienceManager
+  experienceType = 'default',
   onArObjectPlaced,
   onOrientationUpdate,
-  experienceType,
   onSceneReady,
   onModelRotate,
   onModelScale,
   onModelReset,
   onSwipeUp,
   onSwipeDown,
-  useNewPositioning,
   onElevationChanged,
-  onPositioningReady,
   sharedARPositioning,
+  anchorPosition, // Legacy - only for debug
   children
 }) => {
   
+  // Get live GPS context for comparison/debugging
   const {
     userPosition: rawUserPosition,
     averagedPosition: preciseUserPosition,
@@ -73,35 +69,24 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     isPositionStable
   } = useGeofenceContext();
 
-
-
   //********** REFS **********
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const renderingEngineRef = useRef<ARRenderingEngine | null>(null);
-
-  const frozenExpectedModelPositionRef = useRef<THREE.Vector3 | null>(null);
-
-  const cameraDirectionVector = useRef(new THREE.Vector3());
   const lastCameraUpdateRef = useRef(0);
   const cameraUpdateIntervalRef = useRef<number | null>(null);
-  const lastCameraQuaternionRef = useRef<THREE.Quaternion | null>(null);
-  const swipeStartY = useRef(0);
-  const swipeStartTime = useRef(0);
-
-
-
+  const cameraDirectionVector = useRef(new THREE.Vector3());
 
   //******** STATE **********
   const [isInitialized, setIsInitialized] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [manualScaleOffset, setManualScaleOffset] = useState(1.0);
   const [debugHeading, setDebugHeading] = useState<number | null>(null);
-  const [compassCalibration, setCompassCalibration] = useState(0);
-  const [adjustedAnchorPosition, setAdjustedAnchorPosition] = useState<[number, number] | null>(null);
-  const [manualElevationOffset, setManualElevationOffset] = useState(0);
+  const [debugCollapsed, setDebugCollapsed] = useState(true);
+  const [isBottomDebugCollapsed, setIsBottomDebugCollapsed] = useState(true);
+  const [arTestingOverride, setArTestingOverride] = useState(false);
+  const [debugFrozenModelPosition, setDebugFrozenModelPosition] = useState<THREE.Vector3 | null>(null);
   const [cameraLookDirection, setCameraLookDirection] = useState<{
     vector: THREE.Vector3 | null;
     bearing: number | null;
@@ -115,63 +100,47 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     aimError: null,
     modelDistance: null
   });
-  const [gpsOffset, setGpsOffset] = useState({ lon: 0, lat: 0 });
-  const [accumulatedTransforms, setAccumulatedTransforms] = useState({
-    rotation: { x: 0, y: 0, z: 0 },
-    scale: 1.0
-  });
-  const [debugCollapsed, setDebugCollapsed] = useState(true);
-  const [isBottomDebugCollapsed, setIsBottomDebugCollapsed] = useState(true);
-  const [arTestingOverride, setArTestingOverride] = useState(false);
 
-  const [debugFrozenModelPosition, setDebugFrozenModelPosition] = useState<THREE.Vector3 | null>(null);
+  //******** DEBUG PANEL FUNCTIONS **********
+  const handleDebugSwipeUp = useCallback(() => {
+    setIsBottomDebugCollapsed(false);
+    console.log('🔼 Debug panel expanded');
+  }, []);
 
+  const handleDebugSwipeDown = useCallback(() => {
+    setIsBottomDebugCollapsed(true);
+    console.log('🔽 Debug panel collapsed');
+  }, []);
 
-
-
-   //******** DEBUG PANEL FUNCTIONS **********
-   const handleDebugSwipeUp = useCallback(() => {
-      setIsBottomDebugCollapsed(false);
-      console.log('🔼 Debug panel expanded');
-    }, []);
-
-    const handleDebugSwipeDown = useCallback(() => {
-      setIsBottomDebugCollapsed(true);
-      console.log('🔽 Debug panel collapsed');
-    }, []);
-
-        useEffect(() => {
-      debugModeManager.initialize();
-      
-      const handleDebugModeChange = (event: CustomEvent) => {
-        setArTestingOverride(event.detail.enabled);
-      };
-      
-      debugModeManager.addEventListener('debugModeChanged', handleDebugModeChange as EventListener);
-      setArTestingOverride(debugModeManager.debugMode); // Initialize from manager
-      
-      return () => {
-        debugModeManager.removeEventListener('debugModeChanged', handleDebugModeChange as EventListener);
-      };
-    }, []);
-
+  // Debug mode management
+  useEffect(() => {
+    debugModeManager.initialize();
+    
+    const handleDebugModeChange = (event: CustomEvent) => {
+      setArTestingOverride(event.detail.enabled);
+    };
+    
+    debugModeManager.addEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+    setArTestingOverride(debugModeManager.debugMode);
+    
+    return () => {
+      debugModeManager.removeEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+    };
+  }, []);
 
   //******** HOOKS **********
-
-    const { attachListeners, detachListeners, isListening } = useARInteractions({
-        canvasRef,
-        callbacks: {
-          onModelRotate,
-          onModelScale,
-          onModelReset,
-          onDebugSwipeUp: handleDebugSwipeUp,
-          onDebugSwipeDown: handleDebugSwipeDown
-        },
-        enableDebugSwipes: true,
-        debugMode: SHOW_DEBUG_PANEL
-      });
-
-
+  const { attachListeners, detachListeners, isListening } = useARInteractions({
+    canvasRef,
+    callbacks: {
+      onModelRotate,
+      onModelScale,
+      onModelReset,
+      onDebugSwipeUp: handleDebugSwipeUp,
+      onDebugSwipeDown: handleDebugSwipeDown
+    },
+    enableDebugSwipes: true,
+    debugMode: SHOW_DEBUG_PANEL
+  });
 
   const { 
     heading: deviceHeading,
@@ -184,86 +153,25 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     debugMode: SHOW_DEBUG_PANEL 
   });
 
-  const newPositioningSystem = sharedARPositioning;
-// And add a guard:
-if (!newPositioningSystem) {
-  console.error('❌ ArCameraComponent: No shared AR positioning provided!');
-  return null;
-}
+  // Shared positioning system
+  const positioningSystem = sharedARPositioning;
+  if (!positioningSystem) {
+    console.error('❌ ArCameraComponent: No shared AR positioning provided!');
+    return null;
+  }
 
   const { 
-    adjustGlobalElevation: newAdjustElevation,
-    positionObject: newPositionObject,
-    isReady: newSystemReady 
-  } = newPositioningSystem;
+    adjustGlobalElevation,
+    positionObject,
+    isReady: positioningSystemReady,
+    debugMode: positioningDebugMode,
+    getCurrentElevationOffset,
+    resetAllAdjustments
+  } = positioningSystem;
 
   const { isPermissionGranted, requestPermission } = usePermissions();
 
-  //******** CONSTANTS **********
-
-  const activeAnchorPosition = adjustedAnchorPosition || anchorPosition;
-  const CAMERA_UPDATE_INTERVAL = 200;
-  const currentExperienceType = experienceType || 'default';
-  const experienceOffsets: Record<string, number> = {
-    'lotus': -1.8,
-    'lily': -1.8,       
-    'cattail': -1.80,    
-    'mac': -1.8,
-    'helen_s': -1.8,    
-    'volunteers': -1.8, 
-    '2030-2105': -2,
-    '1968': 0,
-    '2200_bc': -1.6, 
-    'default': 0
-  };
-
-  const typeKey = experienceType ?? 'default';
-  const elevationOffset = experienceOffsets[typeKey] || experienceOffsets['default'];
-
-
   //******** HELPER FUNCTIONS **********
-  const formatWithSign = (num: number, decimals: number = 1, totalWidth: number = 10) => {
-    const sign = num >= 0 ? '+' : '';
-    return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
-  };
-
-  const detectEntrySide = useCallback((
-    userPos: [number, number], 
-    anchorPos: [number, number]
-  ): string | null => {
-    const angleToUser = Math.atan2(
-      userPos[1] - anchorPos[1],
-      userPos[0] - anchorPos[0]
-    ) * (180 / Math.PI);
-    
-    const normalizedAngle = (angleToUser + 360) % 360;
-    const directionIndex = Math.round(normalizedAngle / 45) % 8;
-    const directions = ['east', 'northeast', 'north', 'northwest', 'west', 'southwest', 'south', 'southeast'];
-    
-    return directions[directionIndex];
-  }, []);
-
-  const getBestUserPosition = useCallback((): [number, number] | null => {
-    if (propUserPosition) {
-      return propUserPosition;
-    }
-    
-    if (preciseUserPosition && isPositionStable && 
-        currentAccuracy && currentAccuracy <= 10) {
-      return preciseUserPosition;
-    }
-    
-    if (preciseUserPosition && currentAccuracy && currentAccuracy <= 15) {
-      return preciseUserPosition;
-    }
-    
-    if (rawUserPosition) {
-      return rawUserPosition;
-    }
-    
-    return null;
-  }, [propUserPosition, preciseUserPosition, rawUserPosition]);
-
   const getScreenOrientationCompensation = (): number => {
     let screenOrientation = 0;
     
@@ -276,31 +184,24 @@ if (!newPositioningSystem) {
     return -screenOrientation * (Math.PI / 180);
   };
 
-const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
-  // 🔒 Priority 1: Use frozen model position if available (during experience)
-  if (frozenExpectedModelPositionRef.current) {
-    return frozenExpectedModelPositionRef.current;
-  }
-
-  // Priority 2: Calculate fresh position (only during setup)
-  if (!newPositioningSystem || !newSystemReady) return null;
-  
-  const experienceId = experienceType || 'mac';
-  const result = newPositioningSystem.getPosition(experienceId);
-  
-  if (!result) return null;
-  
-  return result.relativeToUser;
-}, [newPositioningSystem, newSystemReady, experienceType]);
-
-const mlSummary = arPositioningManager.getMLSummary();
-const mlInfoForExperience = arPositioningManager.getMLInfo(experienceType || 'mac');
-
-
-  const handleMLCorrectionToggle = useCallback((enabled: boolean) => {
-    console.log(`🧠 ML Corrections ${enabled ? 'ENABLED' : 'DISABLED'}`);
-    arPositioningManager.toggleMLCorrections(enabled);
-  }, []);
+  // Get current expected model position from positioning system
+  const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
+    if (!positioningSystem || !positioningSystemReady || !frozenUserPosition) {
+      return null;
+    }
+    
+    try {
+      const result = positioningSystem.getPosition(experienceType);
+      if (result) {
+        setDebugFrozenModelPosition(result.relativeToUser.clone());
+        return result.relativeToUser;
+      }
+    } catch (error) {
+      console.warn('Error getting model position:', error);
+    }
+    
+    return null;
+  }, [positioningSystem, positioningSystemReady, experienceType, frozenUserPosition]);
 
   //******** CAMERA INITIALIZATION **********
   const initializeCamera = async (): Promise<boolean> => {
@@ -422,7 +323,8 @@ const mlInfoForExperience = arPositioningManager.getMLInfo(experienceType || 'ma
     const engineInitialized = await initializeRenderingEngine();
     if (!engineInitialized) return;
     
-    placeArObject();
+    // Trigger AR object placement using positioning system
+    triggerArObjectPlacement();
     
     if (canvasRef.current && !isListening) {
       attachListeners();
@@ -454,57 +356,34 @@ const mlInfoForExperience = arPositioningManager.getMLInfo(experienceType || 'ma
     }
   };
 
-  //******** AR OBJECT PLACEMENT **********
-const placeArObject = useCallback(() => {
-  console.log('🎯 placeArObject() called');
-  
-  if (useNewPositioning) {
-    console.log('🧪 NEW: Using ARPositioningManager - experiences handle their own positioning');
-    return;
-  }
-  
-  const userPosition = getBestUserPosition();
-  
-  if (!userPosition || !anchorPosition) {
-    console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
-    return;
-  }
-  
-   if (!frozenExpectedModelPositionRef.current) {
-    console.log('🔒 ArCamera: Capturing model position for freezing...');
+  //******** NEW SIMPLIFIED AR OBJECT PLACEMENT **********
+  const triggerArObjectPlacement = useCallback(() => {
+    console.log('🎯 Triggering AR object placement with shared positioning system');
     
-    // Calculate model position using current positioning system
-    if (newPositioningSystem && newSystemReady) {
-      const experienceId = experienceType || 'mac';
-      const result = newPositioningSystem.getPosition(experienceId);
-      if (result) {
-        frozenExpectedModelPositionRef.current = result.relativeToUser.clone();
-        setDebugFrozenModelPosition(result.relativeToUser.clone());
-        console.log('🔒 ArCamera: Model position frozen (new system):', result.relativeToUser.toArray());
-      }
+    if (!positioningSystem || !positioningSystemReady) {
+      console.log('❌ Positioning system not ready');
+      return;
     }
-  }
-  
-  if (useNewPositioning) {
-    console.log('🧪 NEW: Using ARPositioningManager - experiences handle their own positioning');
-    return;
-  }
-  
-  const entrySide = detectEntrySide(userPosition, anchorPosition);
-  const finalElevationOffset = elevationOffset + manualElevationOffset;
-
-  const position = gpsToThreeJsPositionWithEntryOffset(
-    userPosition,
-    activeAnchorPosition,
-    entrySide,
-    finalElevationOffset,
-    coordinateScale
-  );
-
-  if (onArObjectPlaced) {
-    onArObjectPlaced(position);
-  }
-}, [useNewPositioning, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
+    
+    if (!frozenUserPosition) {
+      console.log('❌ No frozen user position available');
+      return;
+    }
+    
+    try {
+      // Get position from shared positioning system
+      const result = positioningSystem.getPosition(experienceType);
+      
+      if (result && onArObjectPlaced) {
+        console.log('✅ AR object positioned at:', result.relativeToUser.toArray());
+        onArObjectPlaced(result.relativeToUser);
+      } else {
+        console.warn('❌ Failed to get position from positioning system');
+      }
+    } catch (error) {
+      console.error('❌ Error in AR object placement:', error);
+    }
+  }, [positioningSystem, positioningSystemReady, frozenUserPosition, experienceType, onArObjectPlaced]);
 
   //******** CAMERA DIRECTION UPDATES **********
   const updateCameraDirection = useCallback(() => {
@@ -551,44 +430,6 @@ const placeArObject = useCallback(() => {
       console.log('📱 Window resized, engine updated');
     }
   }, []);
-
-  const updateElevationOffset = useCallback((deltaElevation: number) => {
-    const newOffset = manualElevationOffset + deltaElevation;
-    setManualElevationOffset(newOffset);
-  }, [manualElevationOffset]);
-
-  const updateAnchorPosition = useCallback((deltaLon: number, deltaLat: number) => {
-    const newOffset = {
-      lon: gpsOffset.lon + deltaLon,
-      lat: gpsOffset.lat + deltaLat
-    };
-    
-    setGpsOffset(newOffset);
-
-    const newAnchorPosition: [number, number] = [
-      anchorPosition[0] + newOffset.lon,
-      anchorPosition[1] + newOffset.lat
-    ];
-    
-    setAdjustedAnchorPosition(newAnchorPosition);
-  }, [anchorPosition, gpsOffset]);
-
-  const updateScaleOffset = useCallback((deltaScale: number) => {
-    const newScale = Math.max(0.1, Math.min(8.0, manualScaleOffset + deltaScale));
-
-    setManualScaleOffset(newScale);
-    
-    setAccumulatedTransforms(prev => ({
-      ...prev,
-      scale: newScale
-    }));
-    
-    if (onModelScale) {
-      onModelScale(newScale);
-    }
-  }, [manualScaleOffset, onModelScale]);
-
- 
 
   //******** EFFECTS **********
   
@@ -660,23 +501,12 @@ const placeArObject = useCallback(() => {
     }
   }, [deviceOrientation, onOrientationUpdate]);
 
-  // Positioning ready callback
+  // AR object placement when system becomes ready
   useEffect(() => {
-    if (newSystemReady && onPositioningReady && renderingEngineRef.current?.isReady()) {
-      onPositioningReady({
-        positionObject: newPositionObject,
-        adjustGlobalElevation: newAdjustElevation,
-        isReady: newSystemReady
-      });
+    if (isInitialized && positioningSystemReady && frozenUserPosition) {
+      triggerArObjectPlacement();
     }
-  }, [newSystemReady, onPositioningReady, newPositionObject, newAdjustElevation, isInitialized]);
-
-  // AR object placement updates
-  useEffect(() => {
-    if (isInitialized) {
-      placeArObject();
-    }
-  }, [anchorPosition, adjustedAnchorPosition, coordinateScale, isInitialized, manualElevationOffset]);
+  }, [isInitialized, positioningSystemReady, frozenUserPosition, triggerArObjectPlacement]);
 
   // Main initialization
   useEffect(() => {
@@ -702,22 +532,6 @@ const placeArObject = useCallback(() => {
       console.log('🧹 AR Camera cleaned up');
     };
   }, []);
-
-useEffect(() => {
-  return () => {
-    if (frozenExpectedModelPositionRef.current) {
-      console.log('🔓 ArCamera: Clearing frozen model position on cleanup');
-      frozenExpectedModelPositionRef.current = null;
-      setDebugFrozenModelPosition(null); // 🔒 Clear debug state
-    }
-  };
-}, []);
-
-  
-
-
-const currentUserPosition = getBestUserPosition();
-
 
   return (
     <div 
@@ -866,7 +680,7 @@ const currentUserPosition = getBestUserPosition();
         </div>
       )}
       
-      {/* TOP Debug Panel */}
+      {/* SIMPLIFIED Debug Panel */}
       {SHOW_DEBUG_PANEL && (
         <div style={{
           position: 'absolute',
@@ -894,108 +708,80 @@ const currentUserPosition = getBestUserPosition();
             <span style={{ fontSize: '14px', marginRight: '8px' }}>
               {debugCollapsed ? '▶' : '▼'}
             </span>
-            <span style={{ color: 'yellow' }}>🎥 AR CAMERA DEBUG</span>
-            <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '8px' }}>
-              {newSystemReady ? '(SHARED POSITIONING)' : '(LEGACY)'}
-            </span>
+            <span style={{ color: 'yellow' }}>🎥 AR CAMERA (REFORMED)</span>
           </div>
 
-            <div style={{ 
-      marginTop: '5px', 
-      paddingTop: '5px', 
-      borderTop: '1px solid rgba(255,255,0,0.3)',
-      backgroundColor: 'rgba(255,255,0,0.1)' 
-    }}>
-      <div style={{ color: 'yellow', fontSize: '9px' }}>
-        <strong>🔒 FROZEN POSITIONS:</strong>
-      </div>
-      <div style={{ fontSize: '8px' }}>
-        User: {propUserPosition ? 
-          `[${propUserPosition[0].toFixed(8)}, ${propUserPosition[1].toFixed(8)}]` : 
-          '❌ NOT FROZEN'
-        }
-      </div>
-      <div style={{ fontSize: '8px' }}>
-        Model: {debugFrozenModelPosition ? 
-          `[${debugFrozenModelPosition.x.toFixed(2)}, ${debugFrozenModelPosition.y.toFixed(2)}, ${debugFrozenModelPosition.z.toFixed(2)}]` : 
-          '❌ NOT FROZEN'
-        }
-      </div>
+          {/* Frozen Position Status */}
+          <div style={{ 
+            marginTop: '5px', 
+            paddingTop: '5px', 
+            borderTop: '1px solid rgba(255,255,0,0.3)',
+            backgroundColor: 'rgba(0,255,0,0.1)' 
+          }}>
+            <div style={{ color: 'lightgreen', fontSize: '9px' }}>
+              <strong>🔒 FROZEN POSITION STATUS:</strong>
+            </div>
+            <div style={{ fontSize: '8px' }}>
+              User: {frozenUserPosition ? 
+                `[${frozenUserPosition[0].toFixed(8)}, ${frozenUserPosition[1].toFixed(8)}] ✅` : 
+                '❌ NOT FROZEN'
+              }
+            </div>
+            <div style={{ fontSize: '8px' }}>
+              Model: {debugFrozenModelPosition ? 
+                `[${debugFrozenModelPosition.x.toFixed(2)}, ${debugFrozenModelPosition.y.toFixed(2)}, ${debugFrozenModelPosition.z.toFixed(2)}] ✅` : 
+                '❌ NOT CALCULATED'
+              }
+            </div>
+          </div>
 
+          {/* Live GPS Comparison */}
+          <div style={{ fontSize: '8px', marginTop: '3px', paddingTop: '3px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+            <strong>Live GPS (for comparison):</strong>
+          </div>
+          <div style={{ fontSize: '7px' }}>
+            Raw: {rawUserPosition ? 
+              `[${rawUserPosition[0].toFixed(8)}, ${rawUserPosition[1].toFixed(8)}]` : 
+              'NULL'
+            }
+          </div>
+          <div style={{ fontSize: '7px' }}>
+            Precise: {preciseUserPosition ? 
+              `[${preciseUserPosition[0].toFixed(8)}, ${preciseUserPosition[1].toFixed(8)}]` : 
+              'NULL'
+            }
+          </div>
+          <div style={{ fontSize: '7px' }}>
+            Accuracy: {currentAccuracy?.toFixed(1)}m | Quality: {positionQuality} | Stable: {isPositionStable ? '✅' : '❌'}
+          </div>
 
-
-       <div style={{ fontSize: '8px', marginTop: '3px', paddingTop: '3px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-    <strong>Position Source:</strong>
-  </div>
-  <div style={{ fontSize: '7px' }}>
-    getBestUserPosition(): {currentUserPosition ? 
-      `[${currentUserPosition[0].toFixed(8)}, ${currentUserPosition[1].toFixed(8)}]` : 
-      'NULL'
-    }
-  </div>
-  <div style={{ fontSize: '7px' }}>
-    Using: {(() => {
-      if (propUserPosition) return '🔒 PROP (frozen)';
-      if (preciseUserPosition && isPositionStable && currentAccuracy && currentAccuracy <= 10) return '📍 PRECISE+STABLE';
-      if (preciseUserPosition && currentAccuracy && currentAccuracy <= 15) return '📍 PRECISE';
-      if (rawUserPosition) return '📡 RAW GPS';
-      return '❌ NONE';
-    })()}
-  </div>
-  
-  {/* 🔒 NEW: Show live GPS for comparison */}
-  <div style={{ fontSize: '7px' }}>
-    Live GPS: {rawUserPosition ? 
-      `[${rawUserPosition[0].toFixed(8)}, ${rawUserPosition[1].toFixed(8)}]` : 
-      'NULL'
-    }
-  </div>
-  <div style={{ fontSize: '7px' }}>
-    Live Precise: {preciseUserPosition ? 
-      `[${preciseUserPosition[0].toFixed(8)}, ${preciseUserPosition[1].toFixed(8)}]` : 
-      'NULL'
-    }
-  </div>
-
-
-      <div style={{ fontSize: '8px' }}>
-        Live Model: {(() => {
-          // Calculate what the live model position would be
-          if (!newPositioningSystem || !newSystemReady) return 'N/A';
-          const experienceId = experienceType || 'mac';
-          const result = newPositioningSystem.getPosition(experienceId);
-          return result ? 
-            `[${result.relativeToUser.x.toFixed(2)}, ${result.relativeToUser.y.toFixed(2)}, ${result.relativeToUser.z.toFixed(2)}]` : 
-            'N/A';
-        })()}
-      </div>
-    </div>
-
-    <div>
-      Anchor GPS: [{(() => {
-        const displayLon = activeAnchorPosition[0] + gpsOffset.lon;
-        const displayLat = activeAnchorPosition[1] + gpsOffset.lat;
-        return `${displayLon.toFixed(10)}, ${displayLat.toFixed(10)}`;
-      })()}]
-      <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px', color: newSystemReady ? 'lightgreen' : 'yellow' }}>
-        {newSystemReady ? '(live)' : '(legacy)'}
-      </span>
-    </div>  
+          {/* Positioning System Status */}
+          <div style={{ 
+            marginTop: '5px', 
+            paddingTop: '5px', 
+            borderTop: '1px solid rgba(255,255,255,0.3)' 
+          }}>
+            <div style={{ color: 'lightblue', fontSize: '9px' }}>
+              <strong>Shared Positioning System:</strong>
+            </div>
+            <div style={{ fontSize: '8px' }}>Ready: {positioningSystemReady ? '✅' : '❌'}</div>
+            <div style={{ fontSize: '8px' }}>Debug Mode: {positioningDebugMode ? '✅' : '❌'}</div>
+            <div style={{ fontSize: '8px' }}>Global Elevation: {getCurrentElevationOffset()?.toFixed(3)}m</div>
+            <div style={{ fontSize: '8px' }}>Experience: {experienceType}</div>
+          </div>
           
-          
-          <div style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', marginTop: '8px' }}>
             <div 
-             onClick={() => {
-                  debugModeManager.setDebugMode(!arTestingOverride);
-                }}
-                style={{ 
+              onClick={() => {
+                debugModeManager.setDebugMode(!arTestingOverride);
+              }}
+              style={{ 
                 cursor: 'pointer', 
                 userSelect: 'none', 
-                margin: '0rem', 
                 padding: '4px 8px',
                 backgroundColor: 'rgba(0,0,255,0.3)',
-                marginTop: '8px',
-                width: '100%' 
+                width: '50%',
+                textAlign: 'center'
               }}
             >
               Override: {arTestingOverride ? '✅' : '❌'}
@@ -1003,76 +789,34 @@ const currentUserPosition = getBestUserPosition();
             
             <button
               onClick={() => {
-                if (newSystemReady) {
-                  console.log('🔄 Resetting shared AR positioning system');
-                  newPositioningSystem.resetAllAdjustments();
-                  
-                  if (onElevationChanged) {
-                    onElevationChanged();
-                  }
-                  
-                  console.log('🔄 Shared positioning system reset complete');
-                } else {
-                  setGpsOffset({ lon: 0, lat: 0 });
-                  setManualElevationOffset(0);
-                  setAdjustedAnchorPosition(null);
-                  console.log('🔄 Legacy GPS and elevation offsets reset');
+                console.log('🔄 Resetting shared positioning system');
+                resetAllAdjustments();
+                if (onElevationChanged) {
+                  onElevationChanged();
                 }
+                console.log('🔄 Reset complete');
               }}
               style={{
                 fontSize: '10px',
                 padding: '4px 8px',
-                backgroundColor: newSystemReady ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)',
+                backgroundColor: 'rgba(0,255,0,0.3)',
                 border: 'none',
                 color: 'white',
                 cursor: 'pointer',
-                width: '100%',
-                marginTop: '8px'
+                width: '50%'
               }}
             >
-              {newSystemReady ? '🔄 Reset Shared System' : '🔄 Reset Legacy'}
+              🔄 Reset System
             </button>
           </div>
 
-          <div>Engine Ready: {renderingEngineRef.current?.isReady() ? '✅' : '❌'}</div>
-          <div>Render Loop: {renderingEngineRef.current?.isRenderingActive() ? '🔄' : '⏸️'}</div>
+          <div style={{ marginTop: '5px' }}>
+            <div>Engine Ready: {renderingEngineRef.current?.isReady() ? '✅' : '❌'}</div>
+            <div>Render Loop: {renderingEngineRef.current?.isRenderingActive() ? '🔄' : '⏸️'}</div>
+          </div>
 
           {!debugCollapsed && (
-            <div>    
-              <div>
-                User: [{currentUserPosition ? `${currentUserPosition[0].toFixed(10)}, ${currentUserPosition[1].toFixed(10)}` : 'No position'}]
-              </div>
-
-              <div>
-                Anchor GPS: [{(() => {
-                  const displayLon = activeAnchorPosition[0] + gpsOffset.lon;
-                  const displayLat = activeAnchorPosition[1] + gpsOffset.lat;
-                  return `${displayLon.toFixed(10)}, ${displayLat.toFixed(10)}`;
-                })()}]
-                <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px', color: newSystemReady ? 'lightgreen' : 'yellow' }}>
-                  {newSystemReady ? '(live)' : '(legacy)'}
-                </span>
-              </div>  
-                                        
-              <div>
-                GPS Bearing: {currentUserPosition ? `${calculateBearing(currentUserPosition, anchorPosition).toFixed(1)}°` : 'N/A'}
-              </div>
-
-              {newSystemReady && (
-                <div style={{ 
-                  marginTop: '5px', 
-                  paddingTop: '5px', 
-                  borderTop: '1px solid rgba(255,255,255,0.3)' 
-                }}>
-                  <div style={{ color: 'lightgreen', fontSize: '9px' }}>
-                    <strong>Shared AR Positioning:</strong>
-                  </div>
-                  <div>Ready: {newSystemReady ? '✅' : '❌'}</div>
-                  <div>Debug Mode: {newPositioningSystem.debugMode ? '✅' : '❌'}</div>
-                  <div>Global Elevation: {newPositioningSystem.getCurrentElevationOffset().toFixed(3)}m</div>
-                </div>
-              )}
-              
+            <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>    
               <div>
                 <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
                 <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
@@ -1081,45 +825,156 @@ const currentUserPosition = getBestUserPosition();
               {orientationError && 
                 <div style={{color: 'red'}}> Orient Error: {orientationError} </div>
               }
+
+              <div>
+                Camera Look Direction: {cameraLookDirection.bearing?.toFixed(1)}°
+              </div>
+
+              {cameraLookDirection.expectedModelPosition && (
+                <div>
+                  <div>Expected Model: [{cameraLookDirection.expectedModelPosition.x.toFixed(2)}, {cameraLookDirection.expectedModelPosition.y.toFixed(2)}, {cameraLookDirection.expectedModelPosition.z.toFixed(2)}]</div>
+                  <div>Aim Error: {cameraLookDirection.aimError?.toFixed(1)}°</div>
+                  <div>Model Distance: {cameraLookDirection.modelDistance?.toFixed(1)}m</div>
+                </div>
+              )}
+
+              {/* Legacy anchor position for reference only */}
+              {anchorPosition && (
+                <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,100,100,0.3)', backgroundColor: 'rgba(255,100,100,0.1)' }}>
+                  <div style={{ color: 'pink', fontSize: '8px' }}>
+                    <strong>LEGACY (Reference Only):</strong>
+                  </div>
+                  <div style={{ fontSize: '7px' }}>
+                    Anchor GPS: [{anchorPosition[0].toFixed(8)}, {anchorPosition[1].toFixed(8)}]
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* LOWER Debug Panel */}
-  
-      <ModelPositioningPanel
-        isCollapsed={isBottomDebugCollapsed}
-        isVisible={SHOW_DEBUG_PANEL && isInitialized}
-        data={{
-          accumulatedTransforms,
-          cameraLookDirection,
-          userPosition: currentUserPosition,
-          activeAnchorPosition,
-          coordinateScale,
-          newSystemReady,
-          experienceType,
-          experienceOffsets,
-          manualElevationOffset,
-          manualScaleOffset,
-          adjustedAnchorPosition,
-          anchorPosition,
-          gpsOffset,
-          mlSummary,              
-           mlInfoForExperience,
-          globalElevationOffset: newPositioningSystem.getCurrentElevationOffset()
-        }}
-        callbacks={{
-          onElevationAdjust: newSystemReady ? newAdjustElevation : updateElevationOffset,
-          onAnchorAdjust: updateAnchorPosition,
-          onScaleAdjust: updateScaleOffset,
-          onModelScale,
-          onModelReset,
-          onMLCorrectionToggle: handleMLCorrectionToggle,  
+      {/* Simplified Bottom Debug Panel - Only for elevation control */}
+      {SHOW_DEBUG_PANEL && !isBottomDebugCollapsed && positioningSystemReady && (
+        <div style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          right: '20px',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(4px)',
+          color: 'white',
+          padding: '15px',
+          borderRadius: '8px',
+          fontSize: '12px',
+          zIndex: 1030,
+          fontFamily: 'monospace'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '10px'
+          }}>
+            <span style={{ color: 'lightblue', fontWeight: 'bold' }}>
+              🎛️ SHARED POSITIONING CONTROLS
+            </span>
+            <button
+              onClick={() => setIsBottomDebugCollapsed(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              ✕
+            </button>
+          </div>
 
-          onElevationChanged
-        }}
-      />
+          {/* Global Elevation Control */}
+          <div style={{ marginBottom: '15px' }}>
+            <div style={{ marginBottom: '8px', color: 'yellow' }}>
+              Global Elevation Offset: {getCurrentElevationOffset()?.toFixed(3)}m
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  adjustGlobalElevation(-0.1);
+                  if (onElevationChanged) onElevationChanged();
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(255, 0, 0, 0.3)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              >
+                ↓ -0.1m
+              </button>
+              <button
+                onClick={() => {
+                  adjustGlobalElevation(-0.01);
+                  if (onElevationChanged) onElevationChanged();
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(255, 100, 100, 0.3)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              >
+                ↓ -0.01m
+              </button>
+              <button
+                onClick={() => {
+                  adjustGlobalElevation(0.01);
+                  if (onElevationChanged) onElevationChanged();
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(100, 255, 100, 0.3)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              >
+                ↑ +0.01m
+              </button>
+              <button
+                onClick={() => {
+                  adjustGlobalElevation(0.1);
+                  if (onElevationChanged) onElevationChanged();
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(0, 255, 0, 0.3)',
+                  border: 'none',
+                  color: 'white',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              >
+                ↑ +0.1m
+              </button>
+            </div>
+          </div>
+
+          {/* Status Info */}
+          <div style={{ fontSize: '10px', opacity: 0.8 }}>
+            <div>Experience: {experienceType}</div>
+            <div>Positioning Debug Mode: {positioningDebugMode ? 'ON' : 'OFF'}</div>
+            <div>Camera AR Testing Override: {arTestingOverride ? 'ON' : 'OFF'}</div>
+          </div>
+        </div>
+      )}
+
       {/* Child components (AR objects will be added here) */}
       {children}
     </div>
