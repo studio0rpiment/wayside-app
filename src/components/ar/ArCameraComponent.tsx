@@ -82,12 +82,17 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const renderingEngineRef = useRef<ARRenderingEngine | null>(null);
 
+  const frozenExpectedModelPositionRef = useRef<THREE.Vector3 | null>(null);
+
   const cameraDirectionVector = useRef(new THREE.Vector3());
   const lastCameraUpdateRef = useRef(0);
   const cameraUpdateIntervalRef = useRef<number | null>(null);
   const lastCameraQuaternionRef = useRef<THREE.Quaternion | null>(null);
   const swipeStartY = useRef(0);
   const swipeStartTime = useRef(0);
+
+
+
 
   //******** STATE **********
   const [isInitialized, setIsInitialized] = useState(false);
@@ -268,16 +273,22 @@ if (!newPositioningSystem) {
     return -screenOrientation * (Math.PI / 180);
   };
 
-  const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
-    if (!newPositioningSystem || !newSystemReady) return null;
-    
-    const experienceId = experienceType || 'mac';
-    const result = newPositioningSystem.getPosition(experienceId);
-    
-    if (!result) return null;
-    
-    return result.relativeToUser;
-  }, [newPositioningSystem, newSystemReady, experienceType]);
+const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
+  // 🔒 Priority 1: Use frozen model position if available (during experience)
+  if (frozenExpectedModelPositionRef.current) {
+    return frozenExpectedModelPositionRef.current;
+  }
+
+  // Priority 2: Calculate fresh position (only during setup)
+  if (!newPositioningSystem || !newSystemReady) return null;
+  
+  const experienceId = experienceType || 'mac';
+  const result = newPositioningSystem.getPosition(experienceId);
+  
+  if (!result) return null;
+  
+  return result.relativeToUser;
+}, [newPositioningSystem, newSystemReady, experienceType]);
 
 const mlSummary = arPositioningManager.getMLSummary();
 const mlInfoForExperience = arPositioningManager.getMLInfo(experienceType || 'mac');
@@ -441,36 +452,46 @@ const mlInfoForExperience = arPositioningManager.getMLInfo(experienceType || 'ma
   };
 
   //******** AR OBJECT PLACEMENT **********
-  const placeArObject = useCallback(() => {
-    console.log('🎯 placeArObject() called');
-    
-    if (useNewPositioning) {
-      console.log('🧪 NEW: Using ARPositioningManager - experiences handle their own positioning');
-      return;
+const placeArObject = useCallback(() => {
+  console.log('🎯 placeArObject() called');
+  
+  if (useNewPositioning) {
+    console.log('🧪 NEW: Using ARPositioningManager - experiences handle their own positioning');
+    return;
+  }
+  
+  const userPosition = getBestUserPosition();
+  
+  if (!userPosition || !anchorPosition) {
+    console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
+    return;
+  }
+  
+  // 🔒 NEW: Capture and freeze model position just before placement
+  if (!frozenExpectedModelPositionRef.current) {
+    console.log('🔒 ArCamera: Capturing model position for freezing...');
+    const modelPosition = getCurrentExpectedModelPosition();
+    if (modelPosition) {
+      frozenExpectedModelPositionRef.current = modelPosition.clone();
+      console.log('🔒 ArCamera: Model position frozen at placement:', modelPosition.toArray());
     }
-    
-    const userPosition = getBestUserPosition();
-    
-    if (!userPosition || !anchorPosition) {
-      console.log('❌ Missing positions - userPosition:', userPosition, 'anchorPosition:', anchorPosition);
-      return;
-    }
-    
-    const entrySide = detectEntrySide(userPosition, anchorPosition);
-    const finalElevationOffset = elevationOffset + manualElevationOffset;
+  }
+  
+  const entrySide = detectEntrySide(userPosition, anchorPosition);
+  const finalElevationOffset = elevationOffset + manualElevationOffset;
 
-    const position = gpsToThreeJsPositionWithEntryOffset(
-      userPosition,
-      activeAnchorPosition,
-      entrySide,
-      finalElevationOffset,
-      coordinateScale
-    );
+  const position = gpsToThreeJsPositionWithEntryOffset(
+    userPosition,
+    activeAnchorPosition,
+    entrySide,
+    finalElevationOffset,
+    coordinateScale
+  );
 
-    if (onArObjectPlaced) {
-      onArObjectPlaced(position);
-    }
-  }, [useNewPositioning, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
+  if (onArObjectPlaced) {
+    onArObjectPlaced(position);
+  }
+}, [useNewPositioning, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
 
   //******** CAMERA DIRECTION UPDATES **********
   const updateCameraDirection = useCallback(() => {
@@ -668,6 +689,15 @@ const mlInfoForExperience = arPositioningManager.getMLInfo(experienceType || 'ma
       console.log('🧹 AR Camera cleaned up');
     };
   }, []);
+
+  useEffect(() => {
+  return () => {
+    if (frozenExpectedModelPositionRef.current) {
+      console.log('🔓 ArCamera: Clearing frozen model position on cleanup');
+      frozenExpectedModelPositionRef.current = null;
+    }
+  };
+}, []);
 
   const currentUserPosition = getBestUserPosition();
 
