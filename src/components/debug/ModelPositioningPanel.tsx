@@ -16,6 +16,7 @@ export interface ReformedPositioningData {
   // Position info
   frozenUserPosition: [number, number] | null;
   debugFrozenModelPosition: THREE.Vector3 | null;
+   manualScaleOffset: number;
   
   // System status
   experienceType: string;
@@ -30,6 +31,8 @@ export interface ReformedPositioningCallbacks {
   onAnchorAdjust: (direction: 'WEST' | 'EAST' | 'NORTH' | 'SOUTH') => void;
   onElevationChanged?: () => void;
   onMLCorrectionToggle?: (enabled: boolean) => void;
+  onScaleAdjust: (newScale: number) => void;
+
 }
 
 interface ReformedModelPositioningPanelProps {
@@ -102,6 +105,18 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
     console.log(`🎯 Reformed Panel: Anchor adjustment - ${direction}`);
     callbacks.onAnchorAdjust(direction);
   };
+
+  const scaleButtonStyle = {
+  fontSize: '14px',
+  padding: '8px 12px',
+  backgroundColor: 'rgba(0,100,255,0.3)',
+  border: 'none',
+  borderRadius: '0.5rem',
+  color: 'white',
+  cursor: 'pointer',
+  flex: 1
+};
+
 
   return (
     <div 
@@ -364,6 +379,20 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
           </button>
         </div>
       </div>
+
+      {/* Scale Controls */}
+      
+<div style={{ marginTop: '15px' }}>
+  <div style={{ color: 'yellow', fontSize: '11px', marginBottom: '8px' }}>
+    📏 SCALE: {data.manualScaleOffset.toFixed(1)}x
+  </div>
+  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '5px' }}>
+    <button onClick={() => callbacks.onScaleAdjust(0.5)} style={scaleButtonStyle}>0.5x</button>
+    <button onClick={() => callbacks.onScaleAdjust(1.0)} style={scaleButtonStyle}>1.0x</button>
+    <button onClick={() => callbacks.onScaleAdjust(1.5)} style={scaleButtonStyle}>1.5x</button>
+    <button onClick={() => callbacks.onScaleAdjust(2.0)} style={scaleButtonStyle}>2.0x</button>
+  </div>
+</div>
 
       {/* System Status */}
       <div style={{ 

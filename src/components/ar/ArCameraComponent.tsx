@@ -102,6 +102,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     modelDistance: null
   });
 
+  const [manualScaleOffset, setManualScaleOffset] = useState(1.0);
+
+
   //******** DEBUG PANEL FUNCTIONS **********
   const handleDebugSwipeUp = useCallback(() => {
     setIsBottomDebugCollapsed(false);
@@ -134,6 +137,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       debugModeManager.removeEventListener('debugModeChanged', handleDebugModeChange as EventListener);
     };
   }, []);
+
+  const updateScaleOffset = useCallback((newScale: number) => {
+  setManualScaleOffset(newScale);
+  
+  if (onModelScale) {
+    onModelScale(newScale);
+  }
+}, [onModelScale]);
 
   //******* camera lookat Directions */
   const getTurnDirectionText = useCallback(() => {
@@ -886,10 +897,11 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 {isInitialized && cameraLookDirection.bearing !== null && (
   <div style={{
     position: 'absolute',
-    top: '20px',
+    bottom: '20px',
     left: '50%',
+    width: '90svw',
     transform: 'translateX(-50%)',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0)',
     backdropFilter: 'blur(4px)',
     color: 'white',
     padding: '12px 20px',
@@ -897,7 +909,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     textAlign: 'center',
     zIndex: 1025,
     fontFamily: 'monospace',
-    fontSize: '14px'
+    fontSize: '1rem'
   }}>
     <div style={{ fontSize: '12px', color: 'cyan', marginBottom: '5px' }}>
       📷 {cameraLookDirection.bearing.toFixed(1)}°
@@ -1041,6 +1053,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
   data={{
     cameraLookDirection,
+    manualScaleOffset,
     frozenUserPosition: frozenUserPosition || null,
     debugFrozenModelPosition,
     experienceType,
@@ -1050,6 +1063,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   }}
   callbacks={{
     onElevationAdjust: adjustGlobalElevation,
+    onScaleAdjust: updateScaleOffset,
     onAnchorAdjust: (direction) => {
       // Handle anchor adjustments through positioning system
       console.log(`Anchor adjust: ${direction}`);
@@ -1058,6 +1072,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     onElevationChanged,
     onMLCorrectionToggle: handleMLCorrectionToggle
   }}
+  
   onClose={() => setIsBottomDebugCollapsed(true)}
 />
 
