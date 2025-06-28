@@ -135,35 +135,13 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
     return getIconPath(iconName).replace('.svg', '_inv.svg');
   }, []);
 
-  // OPTIMIZATION 5: Debounced fitBounds to prevent excessive map updates
-  const debouncedFitBounds = useMemo(() => 
-    debounce((bounds: mapboxgl.LngLatBounds) => {
-      if (miniMapInstance.current && isLoaded) {
-        miniMapInstance.current.fitBounds(bounds, {
-          padding: 60,
-          duration: 300, // Shorter duration for responsiveness
-          maxZoom: 19,
-          minZoom: 16
-        });
-      }
-    }, 200), // 200ms debounce
-  [isLoaded]);
-
-  // OPTIMIZATION 6: Debounced resize handler
-  const debouncedResize = useMemo(() =>
-    debounce(() => {
-      if (miniMapInstance.current && isLoaded) {
-        miniMapInstance.current.resize();
-      }
-    }, 100),
-  [isLoaded]);
-
-  // Calculate bounds with memoization
-  const calculateOptimalBounds = useMemo(() => {
-    if (!debouncedUserPosition || !experienceLocation) return null;
+  // OPTIMIZATION 5: Calculate initial bounds once (for setup only)
+  const calculateInitialBounds = useCallback(() => {
+    const userPos = debouncedUserPosition || userPosition;
+    if (!userPos || !experienceLocation) return null;
 
     const bounds = new mapboxgl.LngLatBounds()
-      .extend(debouncedUserPosition)
+      .extend(userPos)
       .extend(experienceLocation);
 
     // Include anchor if it exists
@@ -173,7 +151,16 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
     }
 
     return bounds;
-  }, [debouncedUserPosition, experienceLocation, experienceId]);
+  }, [debouncedUserPosition, userPosition, experienceLocation, experienceId]);
+
+  // OPTIMIZATION 6: Debounced resize handler only
+  const debouncedResize = useMemo(() =>
+    debounce(() => {
+      if (miniMapInstance.current && isLoaded) {
+        miniMapInstance.current.resize();
+      }
+    }, 100),
+  [isLoaded]);
 
   // Stable marker creation functions
   const createMiniMarkers = useCallback((map: mapboxgl.Map) => {
@@ -227,7 +214,7 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
     }
   }, [showAnchors, experienceId, experienceLocation, getInvertedIconPath]);
 
-  // OPTIMIZATION 7: Single initialization effect (only when experienceId changes)
+  // OPTIMIZATION 7: Single initialization effect with one-time fitBounds
   useEffect(() => {
     if (!miniMapRef.current || !mainMapRef.current || initializationRef.current) return;
 
@@ -254,6 +241,18 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
         // Create markers after map loads
         createMiniMarkers(miniMap);
         createMiniAnchorMarkers(miniMap);
+        
+        // SINGLE fitBounds call - only when modal opens and map loads
+        const initialBounds = calculateInitialBounds();
+        if (initialBounds) {
+          console.log('🗺️ OptimizedMiniMap: Setting initial bounds (one-time only)');
+          miniMap.fitBounds(initialBounds, {
+            padding: 60,
+            duration: 500, // Smooth initial animation
+            maxZoom: 19,
+            minZoom: 16
+          });
+        }
         
         // Trigger initial resize
         setTimeout(() => {
@@ -294,17 +293,9 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
       console.error('🗺️ OptimizedMiniMap: Error initializing:', error);
       initializationRef.current = false;
     }
-  }, [experienceId]); // Only re-initialize when experience changes
+  }, [experienceId, calculateInitialBounds, createMiniMarkers, createMiniAnchorMarkers, experienceLocation, debouncedUserPosition]); // Include necessary dependencies for initial setup
 
-  // OPTIMIZATION 8: Single bounds update effect with debouncing
-  useEffect(() => {
-    if (!isLoaded || !calculateOptimalBounds) return;
-
-    console.log('🗺️ OptimizedMiniMap: Updating bounds for', experienceId);
-    debouncedFitBounds(calculateOptimalBounds);
-  }, [calculateOptimalBounds, isLoaded, debouncedFitBounds, experienceId]);
-
-  // OPTIMIZATION 9: Resize handling with debouncing
+  // OPTIMIZATION 8: Resize handling only (no more bounds updates)
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -437,7 +428,7 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
   );
 };
 
-// OPTIMIZATION 10: React.memo with deep comparison for props
+// OPTIMIZATION 9: React.memo with deep comparison for props
 const OptimizedSynchronizedMiniMap = React.memo(SynchronizedMiniMapComponent, (prevProps, nextProps) => {
   // Deep comparison for user position
   const positionEqual = 
