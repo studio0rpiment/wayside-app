@@ -132,7 +132,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   
   // Enhanced positioning with frozen position capture
   const {
-
+    getBestUserPosition,
     currentUserPosition,
     captureAndFreezePosition,
     resetFrozenPosition,
