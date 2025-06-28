@@ -1,36 +1,43 @@
-// Example for MacExperience - apply same pattern to Volunteers and Helen
+// Updated MacExperience.tsx - Receives position from ExperienceManager (single source)
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import * as THREE from 'three';
+import * as THREE from '../../../node_modules/@types/three';
 import StaticPointCloudEngine, { StaticPointCloudConfig } from '../engines/StaticPointCloudEngine';
-import { useARPositioning } from '../../hooks/useARPositioning';
 
 interface MacExperienceProps {
-  // ... your existing props
-  onClose: () => void;
-  onNext?: () => void;
+  // Core AR props - position comes from ExperienceManager
   arScene: THREE.Scene;
   arCamera: THREE.PerspectiveCamera;
-  arPosition: THREE.Vector3;
-  coordinateScale?: number;
+  arPosition: THREE.Vector3; // ← SINGLE SOURCE: Position from ExperienceManager
+  
+  // Experience control
+  onClose: () => void;
+  onNext?: () => void;
+  onExperienceReady?: () => void;
+  
+  // Gesture handlers
   onModelRotate?: (handler: (deltaX: number, deltaY: number, deltaZ: number) => void) => void;
   onModelScale?: (handler: (scaleFactor: number) => void) => void;
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
-  onExperienceReady?: () => void;
+  
+  // Elevation adjustment (for debug panel)
   onElevationChanged?: (handler: () => void) => void;
-  sharedARPositioning?: ReturnType<typeof useARPositioning>;
+  
+  // Mode flags
   isUniversalMode?: boolean;
+  
+  // ❌ REMOVED: sharedARPositioning - no longer needed
+  // ❌ REMOVED: coordinateScale - handled by positioning system
 }
 
 const MacExperience: React.FC<MacExperienceProps> = ({ 
-  onClose, 
-  onNext,
   arScene,
   arCamera,
-  arPosition,
-  coordinateScale = 1.0,
+  arPosition, // ← SINGLE SOURCE: Position calculated by ExperienceManager
+  onClose, 
+  onNext,
   onModelRotate,
   onModelScale,
   onModelReset,
@@ -38,7 +45,6 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   onSwipeDown,
   onExperienceReady,
   onElevationChanged,
-  sharedARPositioning,
   isUniversalMode = false 
 }) => {
 
@@ -57,24 +63,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   });
 
   // =================================================================
-  // AR POSITIONING SYSTEM
-  // =================================================================
-  const newPositioningSystem = sharedARPositioning || useARPositioning();
-  const {
-    positionObject: newPositionObject,
-    getPosition: newGetPosition,
-    adjustGlobalElevation: newAdjustElevation,
-    isReady: newSystemReady,
-    userPosition: newUserPosition,
-    debugMode: newDebugMode,
-    getDebugInfo: newGetDebugInfo
-  } = newPositioningSystem;
-
-  // =================================================================
   // STATE AND REFS
   // =================================================================
   
   const modelRef = useRef<THREE.Points | null>(null);
+  const [modelPositioned, setModelPositioned] = useState(false); // ← NEW: Track if model is positioned
   const activeScaleRef = useRef<number>(1);
   
   const [isEngineReady, setIsEngineReady] = useState(false);
@@ -96,32 +89,31 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   }), []);
 
   // =================================================================
-  // POSITIONING WITH TRANSFORM PRESERVATION
+  // SIMPLE POSITIONING - USES SINGLE SOURCE
   // =================================================================
   
-  const positionModelWithTransformPreservation = useCallback((model: THREE.Points) => {
-    if (!newSystemReady) {
-      console.log('🧪 MAC: Positioning system not ready yet');
+  const positionModelWithSingleSource = useCallback((model: THREE.Points) => {
+    if (!arPosition) {
+      console.log('🎯 MAC: No AR position available yet');
       return false;
     }
     
-    // Apply AR positioning (this resets transforms)
-    let success;
-    if (isUniversalMode) {
-      console.log('🌐 MAC: Universal Mode - using debug position');
-      success = newPositionObject(model, 'mac', { useDebugOverride: true });
-    } else {
-      success = newPositionObject(model, 'mac');
-    }
+    console.log('🎯 MAC: Positioning model using single source:', arPosition.toArray());
     
-    // Reapply user transforms if they exist
-    if (userTransformsRef.current.hasUserChanges && success) {
+    // Apply the position from ExperienceManager (single source)
+    model.position.copy(arPosition);
+    
+    // Apply Mac-specific rotation correction (built into config, applied by engine)
+    // The engine already applies rotationCorrection from macConfig
+    
+    // Apply any existing user transforms on top
+    if (userTransformsRef.current.hasUserChanges) {
       console.log('🔄 MAC: Reapplying user transforms after positioning', {
         userRotation: userTransformsRef.current.rotation.toArray(),
         userScale: userTransformsRef.current.scale
       });
       
-      // Reapply user rotation on top of AR positioning
+      // Reapply user rotation
       model.rotation.x += userTransformsRef.current.rotation.x;
       model.rotation.y += userTransformsRef.current.rotation.y;
       model.rotation.z += userTransformsRef.current.rotation.z;
@@ -131,8 +123,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       model.scale.setScalar(currentScale * userTransformsRef.current.scale);
     }
     
-    return success;
-  }, [newSystemReady, isUniversalMode, newPositionObject]);
+    model.updateMatrixWorld();
+    console.log('✅ MAC: Model positioned at:', model.position.toArray());
+    
+    return true;
+  }, [arPosition]);
 
   const handleModelReset = useCallback((model: THREE.Points) => {
     console.log('🔄 MAC: Resetting model (clearing user transforms)');
@@ -145,11 +140,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     };
     
     // Reposition with fresh state
-    positionModelWithTransformPreservation(model);
+    positionModelWithSingleSource(model);
     
     activeScaleRef.current = model.scale.x;
     console.log('🔄 MAC: Reset completed');
-  }, [positionModelWithTransformPreservation]);
+  }, [positionModelWithSingleSource]);
 
   // =================================================================
   // ENGINE CALLBACKS (MEMOIZED)
@@ -162,23 +157,43 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     // Store initial scale
     activeScaleRef.current = pointCloud.scale.x;
     
-    // Position the model (no user transforms yet)
-    if (newSystemReady) {
-      positionModelWithTransformPreservation(pointCloud);
+    // Position the model using single source
+    if (arPosition) {
+      const success = positionModelWithSingleSource(pointCloud);
+      if (success) {
+        setModelPositioned(true);
+      }
     }
     
     setIsEngineReady(true);
-  }, [newSystemReady, positionModelWithTransformPreservation]);
+  }, [arPosition, positionModelWithSingleSource]);
 
   const handleEngineReady = useCallback(() => {
     console.log('🎉 MacExperience: Engine ready');
-    onExperienceReady?.();
-  }, [onExperienceReady]);
+    if (modelPositioned) {
+      onExperienceReady?.();
+    }
+  }, [onExperienceReady, modelPositioned]);
 
   const handleEngineError = useCallback((errorMessage: string) => {
     console.error('❌ MacExperience: Engine error:', errorMessage);
     setError(errorMessage);
   }, []);
+
+  // =================================================================
+  // POSITION MODEL WHEN AR POSITION BECOMES AVAILABLE
+  // =================================================================
+  
+  useEffect(() => {
+    if (arPosition && modelRef.current && isEngineReady && !modelPositioned) {
+      console.log('🎯 MAC: AR position available, positioning model...');
+      const success = positionModelWithSingleSource(modelRef.current);
+      if (success) {
+        setModelPositioned(true);
+        onExperienceReady?.();
+      }
+    }
+  }, [arPosition, isEngineReady, modelPositioned, positionModelWithSingleSource, onExperienceReady]);
 
   // =================================================================
   // MEMOIZED ENGINE COMPONENT
@@ -188,11 +203,11 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     console.log('🔧 MacExperience: Creating memoized StaticPointCloudEngine');
     
     return (
-        <StaticPointCloudEngine
+      <StaticPointCloudEngine
         config={macConfig}
         scene={arScene}
-        experienceId="mac"        // ✅ ADD: Tell engine which experience this is
-        isUniversalMode={isUniversalMode}  // ✅ ADD: Pass universal mode
+        experienceId="mac"
+        isUniversalMode={isUniversalMode}
         enabled={true}
         onModelLoaded={handleModelLoaded}
         onLoadingProgress={setLoadingProgress}
@@ -203,6 +218,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   }, [
     macConfig,
     arScene,
+    isUniversalMode,
     handleModelLoaded,
     handleEngineError,
     handleEngineReady
@@ -286,43 +302,25 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     }
   }, []); // No dependencies - register once
 
-  // Handle elevation changes (memoized)
+  // =================================================================
+  // ELEVATION CHANGE HANDLER (for debug panel adjustments)
+  // =================================================================
+  
   const handleElevationChanged = useCallback(() => {
     console.log('🧪 MacExperience: Elevation changed - repositioning with preserved transforms');
     
-    if (modelRef.current) {
-      positionModelWithTransformPreservation(modelRef.current);
+    if (modelRef.current && arPosition) {
+      // Note: The arPosition from ExperienceManager should already include elevation changes
+      // since it comes from the positioning system. But we can reposition to be safe.
+      positionModelWithSingleSource(modelRef.current);
     }
-  }, [positionModelWithTransformPreservation]);
+  }, [arPosition, positionModelWithSingleSource]);
 
   useEffect(() => {
     if (onElevationChanged) {
       onElevationChanged(handleElevationChanged);
     }
   }, [onElevationChanged, handleElevationChanged]);
-
-  // Monitor debug mode changes
-  useEffect(() => {
-    if (newDebugMode !== undefined) {
-      console.log('🔗 MAC: Debug mode changed - repositioning with preserved transforms');
-      
-      (window as any).arTestingOverride = newDebugMode;
-      
-      setTimeout(() => {
-        if (modelRef.current && newSystemReady) {
-          positionModelWithTransformPreservation(modelRef.current);
-        }
-      }, 100);
-    }
-  }, [newDebugMode, newSystemReady, positionModelWithTransformPreservation]);
-
-  // Wait for positioning system to be ready
-  useEffect(() => {
-    if (newSystemReady && modelRef.current && isEngineReady) {
-      console.log('🧪 MAC: Positioning system ready, positioning model...');
-      positionModelWithTransformPreservation(modelRef.current);
-    }
-  }, [newSystemReady, isEngineReady, positionModelWithTransformPreservation]);
 
   // =================================================================
   // RENDER
@@ -349,7 +347,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
         }}>
           Loading MAC Model... {loadingProgress.toFixed(0)}%
           <br />
-          <small>Using StaticPointCloudEngine{isUniversalMode ? ' - Universal Mode' : ''}</small>
+          <small>Using Single Source Position{isUniversalMode ? ' - Universal Mode' : ''}</small>
         </div>
       )}
 
@@ -370,6 +368,28 @@ const MacExperience: React.FC<MacExperienceProps> = ({
           Error loading MAC Model
           <br />
           <small>{error}</small>
+        </div>
+      )}
+
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '100px',
+          right: '10px',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '8px',
+          borderRadius: '4px',
+          fontSize: '10px',
+          zIndex: 1003,
+          fontFamily: 'monospace'
+        }}>
+          <div>🎯 MAC: Single Source Position</div>
+          <div>Position: {arPosition ? `[${arPosition.x.toFixed(2)}, ${arPosition.y.toFixed(2)}, ${arPosition.z.toFixed(2)}]` : 'null'}</div>
+          <div>Model Ready: {isEngineReady ? '✅' : '❌'}</div>
+          <div>Positioned: {modelPositioned ? '✅' : '❌'}</div>
+          <div>User Changes: {userTransformsRef.current.hasUserChanges ? '✅' : '❌'}</div>
         </div>
       )}
     </>

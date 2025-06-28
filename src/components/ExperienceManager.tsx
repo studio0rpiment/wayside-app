@@ -1,9 +1,9 @@
-// ExperienceManager.tsx - Updated with frozen user position
+// ExperienceManager.tsx - Updated to be the single source of position truth
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import * as THREE from 'three';
-import ArCameraComponent from '../components/ar/ArCameraComponent';
+import * as THREE from '../../node_modules/@types/three';
+import ArCameraComponent from './ar/ArCameraComponent';
 import { useSystemOptimization } from '../utils/systemOptimization';
-import { useGeofenceContext, useGeofencePrecision, PositionQuality } from '../context/GeofenceContext';
+import { useGeofenceContext, PositionQuality } from '../context/GeofenceContext';
 import { useARPositioning } from '../hooks/useARPositioning';
 
 // Import all experience components
@@ -20,7 +20,7 @@ import LotusExperience from './experiences/LotusExperience';
 
 import MapOutlined from '@mui/icons-material/MapOutlined';
 
-// Define experience types (same as before)
+// Define experience types
 export type ExperienceType = 'cube' | 'waterRise' | 'lotus' | 'mac' | '2030-2105' | '1968' | '2200_bc' | 'volunteers' | 'helen_s' | 'lily' | 'cattail';
 
 interface ExperienceManagerProps {
@@ -30,17 +30,16 @@ interface ExperienceManagerProps {
   
   // Experience data (passed from ExperienceModal)
   experienceType: ExperienceType;
-  userPosition?: [number, number]; // ✅ NOW OPTIONAL - enhanced context provides better position
-  anchorPosition: [number, number];
-  anchorElevation?: number;
+  userPosition?: [number, number]; // Optional manual override for testing
+  anchorPosition: [number, number]; // Legacy - only for debug display
+  anchorElevation?: number; // Legacy - not used for positioning
   geofenceId?: string;
-  // Optional customization
-  coordinateScale?: number;
-  isUniversalMode?: boolean
+  coordinateScale?: number; // Legacy - not used for positioning
+  isUniversalMode?: boolean; // Optional override - auto-detected if not provided
 }
 
 /**
- * ✅ UPDATED: Enhanced position hook with FROZEN position capture
+ * Enhanced position hook with FROZEN position capture
  * Captures position ONCE when experience starts and freezes it for the session
  */
 function useEnhancedUserPosition(propUserPosition?: [number, number]) {
@@ -52,11 +51,11 @@ function useEnhancedUserPosition(propUserPosition?: [number, number]) {
     isPositionStable
   } = useGeofenceContext();
 
-  // 🔒 NEW: Freeze user position when experience starts
+  // 🔒 Freeze user position when experience starts
   const frozenUserPositionRef = useRef<[number, number] | null>(null);
 
   const getBestUserPosition = useCallback((): [number, number] | null => {
-    // 🔒 Priority 1: Use frozen position if available (during experience)
+    // 🔒 Priority 1: Use frozen position if available
     if (frozenUserPositionRef.current) {
       return frozenUserPositionRef.current;
     }
@@ -66,7 +65,6 @@ function useEnhancedUserPosition(propUserPosition?: [number, number]) {
       return propUserPosition;
     }
     
-    // ✅ SIMPLIFIED: During experience, use best available position regardless of quality
     // Priority 3: Use averaged position if available (preferred)
     if (preciseUserPosition) {
       return preciseUserPosition;
@@ -80,21 +78,18 @@ function useEnhancedUserPosition(propUserPosition?: [number, number]) {
     return null;
   }, [propUserPosition, preciseUserPosition, rawUserPosition]);
 
-  // 🔒 NEW: Capture and freeze position when experience actually starts
+  // 🔒 Capture and freeze position when experience starts
   const captureAndFreezePosition = useCallback(() => {
     const currentBestPosition = getBestUserPosition();
     if (currentBestPosition && !frozenUserPositionRef.current) {
       frozenUserPositionRef.current = currentBestPosition;
       console.log('🔒 ExperienceManager: Frozen user position captured:', currentBestPosition);
-      console.log('🔒 Position source:', propUserPosition ? 'PROP_OVERRIDE' : 
-                 preciseUserPosition ? 'ENHANCED_PRECISE' : 
-                 rawUserPosition ? 'RAW_GPS' : 'UNKNOWN');
       return currentBestPosition;
     }
     return frozenUserPositionRef.current;
-  }, [getBestUserPosition, propUserPosition, preciseUserPosition, rawUserPosition]);
+  }, [getBestUserPosition]);
 
-  // 🔒 NEW: Reset frozen position (when experience closes)
+  // 🔒 Reset frozen position (when experience closes)
   const resetFrozenPosition = useCallback(() => {
     if (frozenUserPositionRef.current) {
       console.log('🔓 ExperienceManager: Resetting frozen position');
@@ -106,13 +101,13 @@ function useEnhancedUserPosition(propUserPosition?: [number, number]) {
     getBestUserPosition,
     currentUserPosition: getBestUserPosition(),
     
-    // 🔒 NEW: Frozen position management
+    // 🔒 Frozen position management
     captureAndFreezePosition,
     resetFrozenPosition,
     frozenPosition: frozenUserPositionRef.current,
     isFrozen: !!frozenUserPositionRef.current,
     
-    // Expose precision data for debugging only
+    // Precision data for debugging
     rawUserPosition,
     preciseUserPosition,
     currentAccuracy,
@@ -125,17 +120,17 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   isOpen,
   onClose,
   experienceType,
-  userPosition: propUserPosition, // Keep as prop for manual override
+  userPosition: propUserPosition,
   anchorPosition,
   anchorElevation = 2.0,
   geofenceId,
   coordinateScale = 1.0,
-  isUniversalMode
+  isUniversalMode: propIsUniversalMode
 }) => {
 
   const { startArExperience, endArExperience } = useSystemOptimization();
   
-  // ✅ UPDATED: Use enhanced positioning with frozen position capture
+  // Enhanced positioning with frozen position capture
   const {
     getBestUserPosition,
     currentUserPosition,
@@ -150,7 +145,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     preciseUserPosition
   } = useEnhancedUserPosition(propUserPosition);
 
-  // ✅ NEW: Shared AR positioning system - single source of truth
+  // 🆕 Shared AR positioning system - THE SINGLE SOURCE
   const sharedARPositioning = useARPositioning();
   const {
     positionObject,
@@ -168,18 +163,38 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     resetPosition
   } = sharedARPositioning;
 
-  // State management (unchanged)
+  // 🆕 Universal Mode Detection (auto-detect if not provided)
+  const isUniversalMode = useMemo(() => {
+    // Use prop override if provided
+    if (propIsUniversalMode !== undefined) {
+      return propIsUniversalMode;
+    }
+    
+    // Auto-detect Universal Mode conditions
+    return (
+      process.env.NODE_ENV === 'development' || 
+      (window as any).arTestingOverride ||
+      !('geolocation' in navigator) ||
+      positionQuality === PositionQuality.UNACCEPTABLE ||
+      !isFrozen
+    );
+  }, [propIsUniversalMode, positionQuality, isFrozen]);
+
+  // State management
   const [arInitialized, setArInitialized] = useState(false);
-  const [arObjectPosition, setArObjectPosition] = useState<THREE.Vector3 | null>(null);
-  const [experienceReady, setExperienceReady] = useState(true);
+  const [arObjectPosition, setArObjectPosition] = useState<THREE.Vector3 | null>(null); // 🆕 SINGLE SOURCE POSITION
+  const [experienceReady, setExperienceReady] = useState(false);
   const [arScene, setArScene] = useState<THREE.Scene | null>(null);
   const [arCamera, setArCamera] = useState<THREE.PerspectiveCamera | null>(null);
+
+  // 🆕 Position calculation state
+  const [positionCalculated, setPositionCalculated] = useState(false);
 
   // Track experience engagement time for completion criteria
   const [experienceStartTime, setExperienceStartTime] = useState<number | null>(null);
   const [hasMetMinimumTime, setHasMetMinimumTime] = useState(false);
 
-  // Use refs to store the current gesture handlers - this prevents recreation
+  // Use refs to store the current gesture handlers
   const gestureHandlersRef = useRef<{
     rotate?: (deltaX: number, deltaY: number, deltaZ: number) => void;  
     scale?: (scaleFactor: number) => void;
@@ -188,10 +203,10 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     swipeDown?: () => void;
   }>({});
 
-  // NEW: Add elevation change handler ref
+  // Elevation change handler ref
   const elevationChangeHandlerRef = useRef<(() => void) | null>(null);
 
-  // 🔒 NEW: Capture position when experience opens
+  // 🔒 Capture position when experience opens
   useEffect(() => {
     if (isOpen && !isFrozen) {
       console.log('🚀 ExperienceManager: Experience opening, capturing position...');
@@ -205,7 +220,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     }
   }, [isOpen, isFrozen, captureAndFreezePosition]);
 
-  // 🔒 NEW: Reset frozen position when experience closes
+  // 🔒 Reset frozen position when experience closes
   useEffect(() => {
     if (!isOpen && isFrozen) {
       console.log('🔓 ExperienceManager: Experience closing, resetting frozen position');
@@ -213,33 +228,44 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     }
   }, [isOpen, isFrozen, resetFrozenPosition]);
 
-  // ✅ SIMPLIFIED: Log position source changes (development only)
+  // 🆕 Calculate model position ONCE when positioning system and frozen position are ready
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const source = isFrozen ? 'FROZEN' :
-                    propUserPosition ? 'PROP_OVERRIDE' : 
-                    (preciseUserPosition && isPositionStable) ? 'ENHANCED_STABLE' :
-                    preciseUserPosition ? 'ENHANCED_AVERAGED' :
-                    rawUserPosition ? 'RAW_GPS' : 'NO_POSITION';
+    if (isOpen && frozenPosition && positioningReady && !positionCalculated) {
+      console.log('🎯 ExperienceManager: Calculating SINGLE SOURCE model position...');
       
-      console.log('🎯 ExperienceManager position source:', {
-        source,
-        position: currentUserPosition,
-        frozen: frozenPosition,
-        accuracy: currentAccuracy?.toFixed(1) + 'm',
-        quality: positionQuality,
-        stable: isPositionStable,
-        positioningReady: positioningReady
-      });
+      try {
+        // Create user input for positioning system
+        const userInput = {
+          gpsPosition: frozenPosition,
+          isUniversalMode: isUniversalMode
+        };
+        
+        // Get position from positioning system
+        const result = sharedARPositioning.getPosition(experienceType);
+        
+        if (result) {
+          const finalModelPosition = result.relativeToUser.clone();
+          setArObjectPosition(finalModelPosition); // 🎯 SINGLE SOURCE SET HERE
+          setPositionCalculated(true);
+          
+          console.log('✅ SINGLE SOURCE: Model position calculated and frozen at:', finalModelPosition.toArray());
+          console.log('🔒 Position source:', isUniversalMode ? 'UNIVERSAL_MODE' : 'GPS_BASED');
+        } else {
+          console.error('❌ Failed to get position from positioning system');
+        }
+      } catch (error) {
+        console.error('❌ Error calculating model position:', error);
+      }
     }
-  }, [currentUserPosition, frozenPosition, isFrozen, currentAccuracy, positionQuality, isPositionStable, propUserPosition, preciseUserPosition, rawUserPosition, positioningReady]);
+  }, [isOpen, frozenPosition, positioningReady, positionCalculated, experienceType, isUniversalMode, sharedARPositioning]);
 
-  // ✅ Reset state when modal opens/closes - keep this unchanged
+  // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setArInitialized(false);
-      setArObjectPosition(null);
+      setArObjectPosition(null); // Reset single source position
       setExperienceReady(false);
+      setPositionCalculated(false); // Reset calculation state
       setExperienceStartTime(null);
       setHasMetMinimumTime(false);
       gestureHandlersRef.current = {}; // Clear handlers
@@ -247,29 +273,43 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     }
   }, [isOpen]);
 
-  // ✅ System optimization - prevent the endless loop
+  // System optimization
   useEffect(() => {
     if (isOpen) {
       console.log('🎯 Starting AR experience with system optimization');
       startArExperience(experienceType);
     }
-  }, [isOpen]); // ✅ Only depend on isOpen, not experienceType
+  }, [isOpen]);
 
-  // ✅ Separate cleanup effect - only runs on component unmount
+  // Cleanup effect
   useEffect(() => {
     return () => {
       console.log('🏁 ExperienceManager unmounting, ending system optimization');
       endArExperience();
     };
-  }, []); // ✅ No dependencies - only cleanup when component truly unmounts
-
-  const handleArObjectPlaced = useCallback((position: THREE.Vector3) => {
-    console.log('🎯 AR object placed at:', position);
-    setArObjectPosition(position);
-    setArInitialized(true);
-    setExperienceReady(true);
   }, []);
-  
+
+  // 🆕 NEW: Handle AR scene ready (ArCameraComponent no longer calculates position)
+  const handleArSceneReady = useCallback((scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
+    console.log('📡 ExperienceManager: AR scene ready');
+    setArScene(scene);
+    setArCamera(camera);
+    setArInitialized(true);
+    
+    // If we already calculated the position, we're ready to show experience
+    if (arObjectPosition) {
+      setExperienceReady(true);
+    }
+  }, [arObjectPosition]);
+
+  // 🆕 NEW: When both scene and position are ready, enable experience
+  useEffect(() => {
+    if (arInitialized && arObjectPosition && !experienceReady) {
+      console.log('✅ ExperienceManager: Both AR scene and position ready');
+      setExperienceReady(true);
+    }
+  }, [arInitialized, arObjectPosition, experienceReady]);
+
   // Handler for orientation updates (for debugging)
   const handleOrientationUpdate = useCallback((orientation: { alpha: number; beta: number; gamma: number }) => {
     if (process.env.NODE_ENV === 'development') {
@@ -290,16 +330,6 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       setHasMetMinimumTime(true);
     }, 5000);
   }, [experienceStartTime]);
-
-  const handleArSceneReady = useCallback((scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
-    // Prevent duplicate calls
-    if (arScene === scene && arCamera === camera) {
-      return;
-    }
-    
-    setArScene(scene);
-    setArCamera(camera);
-  }, [arScene, arCamera]);
 
   // *** Stable gesture handlers using useCallback ***
   const handleModelRotate = useCallback((deltaX: number, deltaY: number, deltaZ: number = 0) => {
@@ -332,12 +362,10 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     }
   }, []);
 
-  // NEW: Handle elevation changes from ArCameraComponent debug panel
+  // Handle elevation changes from ArCameraComponent debug panel
   const handleElevationChanged = useCallback(() => {
     console.log('🧪 ExperienceManager: Elevation changed, triggering experience re-positioning');
-    console.log('🧪 ExperienceManager: Handler available?', !!elevationChangeHandlerRef.current);
     if (elevationChangeHandlerRef.current) {
-      console.log('🧪 ExperienceManager: Calling experience handler');
       elevationChangeHandlerRef.current();
     } else {
       console.warn('🧪 ExperienceManager: No experience handler registered!');
@@ -365,14 +393,13 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     gestureHandlersRef.current.swipeDown = handler;
   }, []);
 
-  // NEW: Register elevation change handler
+  // Register elevation change handler
   const registerElevationChangeHandler = useCallback((handler: () => void) => {
     console.log('🧪 ExperienceManager: Registering elevation change handler');
     elevationChangeHandlerRef.current = handler;
-    console.log('🧪 ExperienceManager: Handler registered successfully');
   }, []);
       
-  // Handle experience completion -- checks minimum engagement time
+  // Handle experience completion
   const handleExperienceComplete = useCallback(() => {
     const engagementTime = experienceStartTime ? Date.now() - experienceStartTime : 0;
     
@@ -394,12 +421,11 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     }, 50);
   }, [experienceStartTime, hasMetMinimumTime, geofenceId, onClose]);
 
-  // ✅ UPDATED: Experience props with shared AR positioning and frozen position
+  // 🆕 Experience props with SINGLE SOURCE position
   const experienceProps = useMemo(() => {
     const baseProps = {
       onClose: handleExperienceComplete,
       onNext: handleExperienceComplete,
-      coordinateScale,
       onModelRotate: registerRotateHandler,
       onModelScale: registerScaleHandler,
       onModelReset: registerResetHandler,
@@ -407,16 +433,14 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       onSwipeDown: registerSwipeDownHandler,
       onExperienceReady: handleExperienceReady,
       onElevationChanged: registerElevationChangeHandler,
-      // ✅ NEW: Pass shared AR positioning to all experiences
-      sharedARPositioning: sharedARPositioning,
       isUniversalMode: isUniversalMode,
     };
 
-    // Only include AR props if they have valid values
+    // 🎯 Only include AR props if we have the SINGLE SOURCE position
     if (arObjectPosition && arScene && arCamera) {
       return {
         ...baseProps,
-        arPosition: arObjectPosition,
+        arPosition: arObjectPosition, // 🎯 SINGLE SOURCE: Position calculated once in ExperienceManager
         arScene: arScene,
         arCamera: arCamera,
       };
@@ -424,10 +448,9 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
     return baseProps;
   }, [
-    arObjectPosition, 
+    arObjectPosition, // 🎯 SINGLE SOURCE
     arScene, 
     arCamera, 
-    coordinateScale,
     handleExperienceComplete,
     handleExperienceReady, 
     registerRotateHandler,
@@ -436,13 +459,12 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     registerSwipeUpHandler,
     registerSwipeDownHandler,
     registerElevationChangeHandler,
-    sharedARPositioning,
     isUniversalMode
   ]);
 
   // Render the appropriate 3D experience
   const renderExperience = useCallback(() => {
-    // Only render experience if AR is ready and we have a position
+    // Only render experience if we have the SINGLE SOURCE position and AR is ready
     if (!experienceReady || !arObjectPosition || !arScene || !arCamera) {
       return null;
     }
@@ -450,7 +472,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     // Ensure we have the required AR props before rendering
     const arProps = {
       ...experienceProps,
-      arPosition: arObjectPosition,
+      arPosition: arObjectPosition, // 🎯 SINGLE SOURCE
       arScene: arScene,
       arCamera: arCamera,
     };
@@ -488,8 +510,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     return null;
   }
 
-  // ✅ UPDATED: Check if we have frozen position OR any position available
-  const canStartAr = frozenPosition !== null || currentUserPosition !== null;
+  // Check if we have frozen position OR are in universal mode
+  const canStartAr = frozenPosition !== null || isUniversalMode;
   
   return (
     <div style={{
@@ -502,7 +524,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       backgroundColor: 'transparent'
     }}>
 
-      {/* ✅ UPDATED: Show loading state when no position available */}
+      {/* Show loading state when no position available and not in universal mode */}
       {!canStartAr && (
         <div style={{
           position: 'absolute',
@@ -529,29 +551,29 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         </div>
       )}
 
-      {/* ✅ UPDATED: AR Camera Component with frozen position */}
+      {/* 🆕 ArCameraComponent - NO LONGER CALCULATES POSITION */}
       {canStartAr && (
         <ArCameraComponent
-          userPosition={frozenPosition || currentUserPosition || undefined} // 🔒 Pass frozen position first
-          anchorPosition={anchorPosition}
-          anchorElevation={anchorElevation}
-          coordinateScale={coordinateScale}
+          userPosition={frozenPosition || undefined} // Pass frozen position for reference
+          anchorPosition={anchorPosition} // Legacy - only for debug display
+          anchorElevation={anchorElevation} // Legacy
+          coordinateScale={coordinateScale} // Legacy
           experienceType={experienceType}
-          onArObjectPlaced={handleArObjectPlaced}
+          isUniversalMode={isUniversalMode} // 🆕 Pass universal mode
+          // 🚫 REMOVED: onArObjectPlaced - ArCamera no longer calculates position
           onOrientationUpdate={handleOrientationUpdate}
-          onSceneReady={handleArSceneReady} 
+          onSceneReady={handleArSceneReady} // 🆕 Just notifies when scene is ready
           onModelRotate={handleModelRotate}
           onModelScale={handleModelScale}
           onModelReset={handleModelReset}
           onSwipeUp={handleSwipeUp}
           onSwipeDown={handleSwipeDown}
           onElevationChanged={handleElevationChanged}
-          // ✅ NEW: Pass shared AR positioning to ArCameraComponent
-          sharedARPositioning={sharedARPositioning}
+          // 🚫 REMOVED: sharedARPositioning - ArCamera doesn't need it
         />
       )}
       
-      {/* Experience Overlay - only render when AR is ready */}
+      {/* Experience Overlay - only render when AR is ready and position calculated */}
       {canStartAr && renderExperience()}
       
       {/* Close Button */}
@@ -584,7 +606,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         />
       </button>
       
-      {/* ✅ UPDATED: Loading/Status Overlay with frozen position awareness */}
+      {/* Loading/Status Overlay with frozen position awareness */}
       {canStartAr && !experienceReady && (
         <div style={{
           position: 'absolute',
@@ -601,14 +623,18 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         }}>
           {!arInitialized ? (
             <>
-              <div>🎯 Positioning AR experience...</div>
+              <div>🎥 Starting AR camera...</div>
               {isFrozen && (
                 <div style={{ fontSize: '11px', marginTop: '3px', opacity: 0.7, color: '#90EE90' }}>
                   🔒 Position locked to launch location
                 </div>
               )}
-              <div style={{ fontSize: '12px', marginTop: '5px', opacity: 0.8 }}>
-                Point your camera at your surroundings
+            </>
+          ) : !arObjectPosition ? (
+            <>
+              <div>🎯 Calculating model position...</div>
+              <div style={{ fontSize: '12px', marginTop: '3px', opacity: 0.8 }}>
+                {isUniversalMode ? 'Universal Mode' : 'GPS-based positioning'}
               </div>
             </>
           ) : (
@@ -616,6 +642,30 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
               <div>✅ AR positioned! Starting experience...</div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '8px',
+          borderRadius: '4px',
+          fontSize: '10px',
+          zIndex: 2010,
+          fontFamily: 'monospace'
+        }}>
+          <div>🎯 ExperienceManager Debug</div>
+          <div>Frozen Position: {frozenPosition ? `[${frozenPosition[0].toFixed(6)}, ${frozenPosition[1].toFixed(6)}]` : 'NULL'}</div>
+          <div>Model Position: {arObjectPosition ? `[${arObjectPosition.x.toFixed(2)}, ${arObjectPosition.y.toFixed(2)}, ${arObjectPosition.z.toFixed(2)}]` : 'NULL'}</div>
+          <div>Universal Mode: {isUniversalMode ? '✅' : '❌'}</div>
+          <div>Positioning Ready: {positioningReady ? '✅' : '❌'}</div>
+          <div>AR Scene Ready: {arInitialized ? '✅' : '❌'}</div>
+          <div>Experience Ready: {experienceReady ? '✅' : '❌'}</div>
         </div>
       )}
     </div>
