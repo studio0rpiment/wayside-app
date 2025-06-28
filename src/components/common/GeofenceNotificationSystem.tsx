@@ -35,10 +35,7 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
   const [notifiedGeofences, setNotifiedGeofences] = useState<string[]>([]);
   const previousActiveGeofencesRef = useRef<string[]>([]);
   
-  // Modal state for notification popups
-
-
-    // Track zoom state
+  // Track zoom state
   const [isZoomedIn, setIsZoomedIn] = useState(false);
   const [originalMapState, setOriginalMapState] = useState<{
     center: [number, number];
@@ -76,7 +73,7 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
         );
         
         if (pointFeature && pointFeature.properties) {
-          // NEW: Handle map zoom BEFORE showing modal
+          // EXISTING: Handle map zoom BEFORE showing instruction
           if (map && !isZoomedIn) {
             // Store original map state for restoration later
             setOriginalMapState({
@@ -98,12 +95,52 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
             console.log(`🔍 Zoomed to level 19, centered on: ${pointFeature.properties.title}`);
           }
           
-      
+          // NEW: Show instruction pointing to this icon
+          if (map) {
+            // Wait a moment for zoom to complete, then show instruction
+            setTimeout(() => {
+              const screenCoords = map.project(pointFeature.geometry.coordinates);
+              
+              // Create instruction element
+              const instructionDiv = document.createElement('div');
+              instructionDiv.innerHTML = `
+                Tap icon to start experience
+                <div style="position: absolute; top: 100%; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid var(--color-dark);"></div>
+              `;
+              instructionDiv.style.cssText = `
+                position: absolute;
+                top: ${screenCoords.y - 70}px;
+                left: ${screenCoords.x}px;
+                transform: translateX(-50%);
+                background-color: var(--color-dark);
+                color: var(--color-light);
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: 500;
+                z-index: 25;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                border: 1px solid var(--color-blue);
+                pointer-events: none;
+                animation: fadeIn 0.3s ease-in;
+                white-space: nowrap;
+              `;
+              
+              document.body.appendChild(instructionDiv);
+              
+              // Remove after 4 seconds
+              setTimeout(() => {
+                if (document.body.contains(instructionDiv)) {
+                  document.body.removeChild(instructionDiv);
+                }
+              }, 4000);
+            }, 1600); // Wait for zoom animation to finish (1500ms + 100ms buffer)
+          }
           
-          // Mark this geofence as notified
+          // EXISTING: Mark this geofence as notified
           setNotifiedGeofences(prev => [...prev, newGeofenceId]);
           
-          // Play notification effects
+          // EXISTING: Play notification effects
           showNotificationEffects(pointFeature.properties.title);
         }
       }
@@ -169,8 +206,6 @@ useEffect(() => {
     }
   };
   
-
-  
   // Clear notified geofences when user moves away from all geofences
   useEffect(() => {
     if (activeGeofences.length === 0 && notifiedGeofences.length > 0) {
@@ -178,11 +213,6 @@ useEffect(() => {
       setNotifiedGeofences([]);
     }
   }, [activeGeofences.length, notifiedGeofences.length]);
-  
-  // Helper function to get geofence info for modal
-
-  
-
   
   return (
     <>

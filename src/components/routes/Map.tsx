@@ -44,6 +44,8 @@ const Map: React.FC = () => {
   });
 
   const [compassCalibration, setCompassCalibration] = useState(0);
+  const [showIconInstruction, setShowIconInstruction] = useState(false);
+
 
   // Context hooks - ENHANCED with precision data
   const {
@@ -214,11 +216,13 @@ const handleMapZoom = useCallback(() => {
     // Zoomed in enough and no anchors showing - create them
     console.log(`🔍 Zoomed to ${currentZoom.toFixed(1)} - showing anchor markers`);
     createAnchorMarkers(mapRef.current);
+    setShowIconInstruction(true); // Show instruction
   } else if (currentZoom < 17 && anchorMarkersRef.current.length > 0) {
     // Zoomed out too far and anchors are showing - hide them
     console.log(`🔍 Zoomed to ${currentZoom.toFixed(1)} - hiding anchor markers`);
     anchorMarkersRef.current.forEach(marker => marker.remove());
     anchorMarkersRef.current = [];
+    setShowIconInstruction(false); // Hide instruction
   }
 }, [createAnchorMarkers]);
 
