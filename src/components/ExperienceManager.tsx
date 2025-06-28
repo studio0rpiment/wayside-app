@@ -1,4 +1,4 @@
-// ExperienceManager.tsx - Updated with shared AR positioning
+// ExperienceManager.tsx - Updated with frozen user position
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import ArCameraComponent from '../components/ar/ArCameraComponent';
@@ -40,8 +40,8 @@ interface ExperienceManagerProps {
 }
 
 /**
- * ✅ SIMPLIFIED: Enhanced position hook with no quality restrictions during experience
- * Once we're in the experience, we trust any available position
+ * ✅ UPDATED: Enhanced position hook with FROZEN position capture
+ * Captures position ONCE when experience starts and freezes it for the session
  */
 function useEnhancedUserPosition(propUserPosition?: [number, number]) {
   const {
@@ -52,19 +52,27 @@ function useEnhancedUserPosition(propUserPosition?: [number, number]) {
     isPositionStable
   } = useGeofenceContext();
 
+  // 🔒 NEW: Freeze user position when experience starts
+  const frozenUserPositionRef = useRef<[number, number] | null>(null);
+
   const getBestUserPosition = useCallback((): [number, number] | null => {
-    // Priority 1: Use prop if provided (manual override for testing)
+    // 🔒 Priority 1: Use frozen position if available (during experience)
+    if (frozenUserPositionRef.current) {
+      return frozenUserPositionRef.current;
+    }
+
+    // Priority 2: Use prop if provided (manual override for testing)
     if (propUserPosition) {
       return propUserPosition;
     }
     
     // ✅ SIMPLIFIED: During experience, use best available position regardless of quality
-    // Priority 2: Use averaged position if available (preferred)
+    // Priority 3: Use averaged position if available (preferred)
     if (preciseUserPosition) {
       return preciseUserPosition;
     }
     
-    // Priority 3: Fall back to raw GPS
+    // Priority 4: Fall back to raw GPS
     if (rawUserPosition) {
       return rawUserPosition;
     }
@@ -72,9 +80,38 @@ function useEnhancedUserPosition(propUserPosition?: [number, number]) {
     return null;
   }, [propUserPosition, preciseUserPosition, rawUserPosition]);
 
+  // 🔒 NEW: Capture and freeze position when experience actually starts
+  const captureAndFreezePosition = useCallback(() => {
+    const currentBestPosition = getBestUserPosition();
+    if (currentBestPosition && !frozenUserPositionRef.current) {
+      frozenUserPositionRef.current = currentBestPosition;
+      console.log('🔒 ExperienceManager: Frozen user position captured:', currentBestPosition);
+      console.log('🔒 Position source:', propUserPosition ? 'PROP_OVERRIDE' : 
+                 preciseUserPosition ? 'ENHANCED_PRECISE' : 
+                 rawUserPosition ? 'RAW_GPS' : 'UNKNOWN');
+      return currentBestPosition;
+    }
+    return frozenUserPositionRef.current;
+  }, [getBestUserPosition, propUserPosition, preciseUserPosition, rawUserPosition]);
+
+  // 🔒 NEW: Reset frozen position (when experience closes)
+  const resetFrozenPosition = useCallback(() => {
+    if (frozenUserPositionRef.current) {
+      console.log('🔓 ExperienceManager: Resetting frozen position');
+      frozenUserPositionRef.current = null;
+    }
+  }, []);
+
   return {
     getBestUserPosition,
     currentUserPosition: getBestUserPosition(),
+    
+    // 🔒 NEW: Frozen position management
+    captureAndFreezePosition,
+    resetFrozenPosition,
+    frozenPosition: frozenUserPositionRef.current,
+    isFrozen: !!frozenUserPositionRef.current,
+    
     // Expose precision data for debugging only
     rawUserPosition,
     preciseUserPosition,
@@ -98,10 +135,14 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
   const { startArExperience, endArExperience } = useSystemOptimization();
   
-  // ✅ SIMPLIFIED: Use enhanced positioning with no quality restrictions
+  // ✅ UPDATED: Use enhanced positioning with frozen position capture
   const {
     getBestUserPosition,
     currentUserPosition,
+    captureAndFreezePosition,
+    resetFrozenPosition,
+    frozenPosition,
+    isFrozen,
     currentAccuracy,
     positionQuality,
     isPositionStable,
@@ -150,24 +191,48 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   // NEW: Add elevation change handler ref
   const elevationChangeHandlerRef = useRef<(() => void) | null>(null);
 
+  // 🔒 NEW: Capture position when experience opens
+  useEffect(() => {
+    if (isOpen && !isFrozen) {
+      console.log('🚀 ExperienceManager: Experience opening, capturing position...');
+      const capturedPosition = captureAndFreezePosition();
+      
+      if (capturedPosition) {
+        console.log('✅ ExperienceManager: Position captured and frozen for experience session');
+      } else {
+        console.warn('⚠️ ExperienceManager: No position available to freeze');
+      }
+    }
+  }, [isOpen, isFrozen, captureAndFreezePosition]);
+
+  // 🔒 NEW: Reset frozen position when experience closes
+  useEffect(() => {
+    if (!isOpen && isFrozen) {
+      console.log('🔓 ExperienceManager: Experience closing, resetting frozen position');
+      resetFrozenPosition();
+    }
+  }, [isOpen, isFrozen, resetFrozenPosition]);
+
   // ✅ SIMPLIFIED: Log position source changes (development only)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      // const source = propUserPosition ? 'PROP_OVERRIDE' : 
-      //               (preciseUserPosition && isPositionStable) ? 'ENHANCED_STABLE' :
-      //               preciseUserPosition ? 'ENHANCED_AVERAGED' :
-      //               rawUserPosition ? 'RAW_GPS' : 'NO_POSITION';
+      const source = isFrozen ? 'FROZEN' :
+                    propUserPosition ? 'PROP_OVERRIDE' : 
+                    (preciseUserPosition && isPositionStable) ? 'ENHANCED_STABLE' :
+                    preciseUserPosition ? 'ENHANCED_AVERAGED' :
+                    rawUserPosition ? 'RAW_GPS' : 'NO_POSITION';
       
-      // console.log('🎯 ExperienceManager position source:', {
-      //   source,
-      //   position: currentUserPosition,
-      //   accuracy: currentAccuracy?.toFixed(1) + 'm',
-      //   quality: positionQuality,
-      //   stable: isPositionStable,
-      //   positioningReady: positioningReady
-      // });
+      console.log('🎯 ExperienceManager position source:', {
+        source,
+        position: currentUserPosition,
+        frozen: frozenPosition,
+        accuracy: currentAccuracy?.toFixed(1) + 'm',
+        quality: positionQuality,
+        stable: isPositionStable,
+        positioningReady: positioningReady
+      });
     }
-  }, [currentUserPosition, currentAccuracy, positionQuality, isPositionStable, propUserPosition, preciseUserPosition, rawUserPosition, positioningReady]);
+  }, [currentUserPosition, frozenPosition, isFrozen, currentAccuracy, positionQuality, isPositionStable, propUserPosition, preciseUserPosition, rawUserPosition, positioningReady]);
 
   // ✅ Reset state when modal opens/closes - keep this unchanged
   useEffect(() => {
@@ -329,7 +394,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     }, 50);
   }, [experienceStartTime, hasMetMinimumTime, geofenceId, onClose]);
 
-  // ✅ UPDATED: Experience props with shared AR positioning
+  // ✅ UPDATED: Experience props with shared AR positioning and frozen position
   const experienceProps = useMemo(() => {
     const baseProps = {
       onClose: handleExperienceComplete,
@@ -423,8 +488,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
     return null;
   }
 
-  // ✅ SIMPLIFIED: Only check if we have ANY position - no quality restrictions
-  const canStartAr = currentUserPosition !== null;
+  // ✅ UPDATED: Check if we have frozen position OR any position available
+  const canStartAr = frozenPosition !== null || currentUserPosition !== null;
   
   return (
     <div style={{
@@ -437,7 +502,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       backgroundColor: 'transparent'
     }}>
 
-      {/* ✅ SIMPLIFIED: Basic loading state - just check for position existence */}
+      {/* ✅ UPDATED: Show loading state when no position available */}
       {!canStartAr && (
         <div style={{
           position: 'absolute',
@@ -464,10 +529,10 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         </div>
       )}
 
-      {/* ✅ AR Camera Component with shared positioning */}
+      {/* ✅ UPDATED: AR Camera Component with frozen position */}
       {canStartAr && (
         <ArCameraComponent
-          userPosition={currentUserPosition}
+          userPosition={frozenPosition || currentUserPosition || undefined} // 🔒 Pass frozen position first
           anchorPosition={anchorPosition}
           anchorElevation={anchorElevation}
           coordinateScale={coordinateScale}
@@ -519,7 +584,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
         />
       </button>
       
-      {/* ✅ SIMPLIFIED: Basic Loading/Status Overlay - no GPS quality checks */}
+      {/* ✅ UPDATED: Loading/Status Overlay with frozen position awareness */}
       {canStartAr && !experienceReady && (
         <div style={{
           position: 'absolute',
@@ -537,6 +602,11 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           {!arInitialized ? (
             <>
               <div>🎯 Positioning AR experience...</div>
+              {isFrozen && (
+                <div style={{ fontSize: '11px', marginTop: '3px', opacity: 0.7, color: '#90EE90' }}>
+                  🔒 Position locked to launch location
+                </div>
+              )}
               <div style={{ fontSize: '12px', marginTop: '5px', opacity: 0.8 }}>
                 Point your camera at your surroundings
               </div>
