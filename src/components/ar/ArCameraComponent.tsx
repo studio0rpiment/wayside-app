@@ -928,7 +928,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 )}
 
       {/* Simplified Bottom Debug Panel - Only for elevation control */}
-      {SHOW_DEBUG_PANEL && !isBottomDebugCollapsed && positioningSystemReady && (
+      {/* {SHOW_DEBUG_PANEL && !isBottomDebugCollapsed && positioningSystemReady && (
         <div style={{
           position: 'absolute',
           bottom: '20px',
@@ -966,7 +966,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
             </button>
           </div>
 
-          {/* Global Elevation Control */}
+     
           <div style={{ marginBottom: '15px' }}>
             <div style={{ marginBottom: '8px', color: 'yellow' }}>
               Global Elevation Offset: {getCurrentElevationOffset()?.toFixed(3)}m
@@ -1039,14 +1039,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
             </div>
           </div>
 
-          {/* Status Info */}
+
           <div style={{ fontSize: '10px', opacity: 0.8 }}>
             <div>Experience: {experienceType}</div>
             <div>Positioning Debug Mode: {positioningDebugMode ? 'ON' : 'OFF'}</div>
             <div>Camera AR Testing Override: {arTestingOverride ? 'ON' : 'OFF'}</div>
           </div>
         </div>
-      )}
+      )} */}
 
       <ReformedModelPositioningPanel
   isCollapsed={isBottomDebugCollapsed}

@@ -145,7 +145,7 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
         marginBottom: '10px'
       }}>
         <span style={{ color: 'yellow', fontSize: '12px', fontWeight: 'bold' }}>
-          🎯 REFORMED POSITIONING PANEL
+          🎯 POSITIONING PANEL
         </span>
         <button
           onClick={onClose}
@@ -163,7 +163,7 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
       </div>
 
       {/* Camera Look Direction */}
-      {data.cameraLookDirection.bearing !== null && (
+      {/* {data.cameraLookDirection.bearing !== null && (
         <div style={{ marginBottom: '15px' }}>
           <div style={{ fontSize: '12px', color: 'cyan', marginBottom: '5px' }}>
             📷 Camera Direction: {data.cameraLookDirection.bearing.toFixed(1)}°
@@ -179,7 +179,7 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
             </div>
           )}
         </div>
-      )}
+      )} */}
 
       {/* Position Status */}
       <div style={{ marginBottom: '15px' }}>
