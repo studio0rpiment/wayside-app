@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { WorldCoordinateSystem } from './WorldCoordinateSystem';
 import { AnchorManager, WorldAnchor } from './AnchorManager';
-import { mlAnchorCorrections } from '../anchorCorrections';
+import { mlAnchorCorrections } from './anchorCorrections';
 import { debugModeManager } from '../DebugModeManager';
 
 

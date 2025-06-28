@@ -243,17 +243,70 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
       miniMap.on('load', () => {
         console.log('🗺️ OptimizedMiniMap: Map loaded');
         
-        // Create static markers ONCE - they will never move or update
-        createStaticMiniMarkers(miniMap);
-        createStaticAnchorMarkers(miniMap);
+        // Create static markers ONCE - inline to avoid function dependencies
+        // Clean up any existing markers
+        miniMarkersRef.current.forEach(marker => marker.remove());
+        miniMarkersRef.current = [];
+        miniAnchorMarkersRef.current.forEach(marker => marker.remove());
+        miniAnchorMarkersRef.current = [];
+        
+        // Create experience marker if location exists
+        if (experienceLocation) {
+          const el = document.createElement('div');
+          el.className = 'map-icon minimap-icon';
+          el.style.backgroundImage = `url(${getIconPath(experienceId)})`;
+          el.style.width = '20px';
+          el.style.height = '20px';
+          el.style.backgroundSize = 'cover';
+          el.style.cursor = 'pointer';
+          
+          const marker = new mapboxgl.Marker(el)
+            .setLngLat(experienceLocation)
+            .addTo(miniMap);
+          
+          miniMarkersRef.current.push(marker);
+          console.log('🗺️ OptimizedMiniMap: Created static experience marker');
+        }
+        
+        // Create anchor marker if enabled and location exists
+        if (showAnchors && experienceLocation) {
+          const anchorData = getArAnchorForPoint(experienceId, experienceLocation);
+          
+          if (anchorData?.position) {
+            const el = document.createElement('div');
+            el.className = 'map-anchor-icon minimap-anchor-icon';
+            el.style.backgroundImage = `url(${getInvertedIconPath(experienceId)})`;
+            el.style.width = '10px';
+            el.style.height = '10px';
+            el.style.backgroundSize = 'cover';
+            el.style.opacity = '0.6';
+            
+            const anchorMarker = new mapboxgl.Marker(el)
+              .setLngLat(anchorData.position)
+              .addTo(miniMap);
+            
+            miniAnchorMarkersRef.current.push(anchorMarker);
+            console.log('🗺️ OptimizedMiniMap: Created static anchor marker');
+          }
+        }
         
         // SINGLE fitBounds call - only when modal opens and map loads
-        const initialBounds = calculateInitialBounds();
-        if (initialBounds) {
+        const userPos = debouncedUserPosition || userPosition;
+        if (userPos && experienceLocation) {
+          const bounds = new mapboxgl.LngLatBounds()
+            .extend(userPos)
+            .extend(experienceLocation);
+
+          // Include anchor if it exists
+          const anchorData = getArAnchorForPoint(experienceId, experienceLocation);
+          if (anchorData?.position) {
+            bounds.extend(anchorData.position);
+          }
+
           console.log('🗺️ OptimizedMiniMap: Setting initial bounds (one-time only)');
-          miniMap.fitBounds(initialBounds, {
+          miniMap.fitBounds(bounds, {
             padding: 60,
-            duration: 500, // Smooth initial animation
+            duration: 500,
             maxZoom: 19,
             minZoom: 16
           });
@@ -298,7 +351,7 @@ const SynchronizedMiniMapComponent: React.FC<SynchronizedMiniMapProps> = ({
       console.error('🗺️ OptimizedMiniMap: Error initializing:', error);
       initializationRef.current = false;
     }
-  }, [experienceId, calculateInitialBounds, createStaticMiniMarkers, createStaticAnchorMarkers, experienceLocation, debouncedUserPosition]); // Include necessary dependencies for initial setup
+  }, [experienceId]); // ONLY experienceId dependency - no functions!
 
   // OPTIMIZATION 8: Resize handling only (no more bounds updates)
   useEffect(() => {

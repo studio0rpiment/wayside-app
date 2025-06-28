@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { WorldCoordinateSystem } from './WorldCoordinateSystem';
 import { routePointsData, ArAnchorPoint } from '../../data/mapRouteData';
-import { mlAnchorCorrections } from '../anchorCorrections';
+import { mlAnchorCorrections } from './anchorCorrections';
 
 export interface WorldAnchor {
   id: string;
