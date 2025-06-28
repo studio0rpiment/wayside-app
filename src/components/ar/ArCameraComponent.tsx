@@ -60,7 +60,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onElevationChanged,
   sharedARPositioning,
   anchorPosition, // Legacy - only for debug
-  isUniversalMode,
+  isUniversalMode = false,
   children
   
 }) => {
