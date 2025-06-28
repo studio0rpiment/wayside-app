@@ -135,6 +135,27 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     };
   }, []);
 
+  //******* camera lookat Directions */
+  const getTurnDirectionText = useCallback(() => {
+  if (cameraLookDirection.aimError === null || !frozenUserPosition) {
+    return 'No position available';
+  }
+
+  const aimError = cameraLookDirection.aimError;
+
+  if (cameraLookDirection.aimError < 30) {
+    return '⮕⮕ ON TARGET ⬅⬅';
+  }
+  
+  if (aimError < 40) {
+    return `Close - aim error ${aimError.toFixed(1)}°`;
+  } else if (aimError < 60) {
+    return `⮕ TURN TO FIND MODEL ⬅ (${aimError.toFixed(1)}°)`;
+  } else {
+    return `⮕⮕ LOOK AROUND FOR MODEL ⬅⬅ (${aimError.toFixed(1)}°)`;
+  }
+}, [cameraLookDirection.aimError, frozenUserPosition]);
+
   //******** HOOKS **********
   const { attachListeners, detachListeners, isListening } = useARInteractions({
     canvasRef,
@@ -860,6 +881,39 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
           )}
         </div>
       )}
+
+      {/* Camera Direction Guidance - Always Visible on Main Screen */}
+{isInitialized && cameraLookDirection.bearing !== null && (
+  <div style={{
+    position: 'absolute',
+    top: '20px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backdropFilter: 'blur(4px)',
+    color: 'white',
+    padding: '12px 20px',
+    borderRadius: '8px',
+    textAlign: 'center',
+    zIndex: 1025,
+    fontFamily: 'monospace',
+    fontSize: '14px'
+  }}>
+    <div style={{ fontSize: '12px', color: 'cyan', marginBottom: '5px' }}>
+      📷 {cameraLookDirection.bearing.toFixed(1)}°
+    </div>
+    {cameraLookDirection.aimError !== null && (
+      <div style={{ fontSize: '14px', color: 'yellow', fontWeight: 'bold' }}>
+        {getTurnDirectionText()}
+      </div>
+    )}
+    {cameraLookDirection.modelDistance !== null && (
+      <div style={{ fontSize: '11px', color: 'lightblue', marginTop: '3px' }}>
+        {(cameraLookDirection.modelDistance * 3.28084).toFixed(1)}ft away
+      </div>
+    )}
+  </div>
+)}
 
       {/* Simplified Bottom Debug Panel - Only for elevation control */}
       {SHOW_DEBUG_PANEL && !isBottomDebugCollapsed && positioningSystemReady && (
