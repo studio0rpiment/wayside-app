@@ -124,6 +124,9 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const [isBottomDebugCollapsed, setIsBottomDebugCollapsed] = useState(true);
   const [arTestingOverride, setArTestingOverride] = useState(false);
 
+  const [debugFrozenModelPosition, setDebugFrozenModelPosition] = useState<THREE.Vector3 | null>(null);
+
+
 
 
    //******** DEBUG PANEL FUNCTIONS **********
@@ -468,11 +471,12 @@ const placeArObject = useCallback(() => {
   }
   
   // 🔒 NEW: Capture and freeze model position just before placement
-  if (!frozenExpectedModelPositionRef.current) {
+ if (!frozenExpectedModelPositionRef.current) {
     console.log('🔒 ArCamera: Capturing model position for freezing...');
     const modelPosition = getCurrentExpectedModelPosition();
     if (modelPosition) {
       frozenExpectedModelPositionRef.current = modelPosition.clone();
+      setDebugFrozenModelPosition(modelPosition.clone()); // 🔒 Update debug state
       console.log('🔒 ArCamera: Model position frozen at placement:', modelPosition.toArray());
     }
   }
@@ -690,16 +694,21 @@ const placeArObject = useCallback(() => {
     };
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
   return () => {
     if (frozenExpectedModelPositionRef.current) {
       console.log('🔓 ArCamera: Clearing frozen model position on cleanup');
       frozenExpectedModelPositionRef.current = null;
+      setDebugFrozenModelPosition(null); // 🔒 Clear debug state
     }
   };
 }, []);
 
-  const currentUserPosition = getBestUserPosition();
+  
+
+
+const currentUserPosition = getBestUserPosition();
+
 
   return (
     <div 
@@ -881,6 +890,52 @@ const placeArObject = useCallback(() => {
               {newSystemReady ? '(SHARED POSITIONING)' : '(LEGACY)'}
             </span>
           </div>
+
+            <div style={{ 
+      marginTop: '5px', 
+      paddingTop: '5px', 
+      borderTop: '1px solid rgba(255,255,0,0.3)',
+      backgroundColor: 'rgba(255,255,0,0.1)' 
+    }}>
+      <div style={{ color: 'yellow', fontSize: '9px' }}>
+        <strong>🔒 FROZEN POSITIONS:</strong>
+      </div>
+      <div style={{ fontSize: '8px' }}>
+        User: {propUserPosition ? 
+          `[${propUserPosition[0].toFixed(8)}, ${propUserPosition[1].toFixed(8)}]` : 
+          '❌ NOT FROZEN'
+        }
+      </div>
+      <div style={{ fontSize: '8px' }}>
+        Model: {debugFrozenModelPosition ? 
+          `[${debugFrozenModelPosition.x.toFixed(2)}, ${debugFrozenModelPosition.y.toFixed(2)}, ${debugFrozenModelPosition.z.toFixed(2)}]` : 
+          '❌ NOT FROZEN'
+        }
+      </div>
+      <div style={{ fontSize: '8px' }}>
+        Live Model: {(() => {
+          // Calculate what the live model position would be
+          if (!newPositioningSystem || !newSystemReady) return 'N/A';
+          const experienceId = experienceType || 'mac';
+          const result = newPositioningSystem.getPosition(experienceId);
+          return result ? 
+            `[${result.relativeToUser.x.toFixed(2)}, ${result.relativeToUser.y.toFixed(2)}, ${result.relativeToUser.z.toFixed(2)}]` : 
+            'N/A';
+        })()}
+      </div>
+    </div>
+
+    <div>
+      Anchor GPS: [{(() => {
+        const displayLon = activeAnchorPosition[0] + gpsOffset.lon;
+        const displayLat = activeAnchorPosition[1] + gpsOffset.lat;
+        return `${displayLon.toFixed(10)}, ${displayLat.toFixed(10)}`;
+      })()}]
+      <span style={{ fontSize: '8px', opacity: 0.7, marginLeft: '4px', color: newSystemReady ? 'lightgreen' : 'yellow' }}>
+        {newSystemReady ? '(live)' : '(legacy)'}
+      </span>
+    </div>  
+          
           
           <div style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
             <div 
