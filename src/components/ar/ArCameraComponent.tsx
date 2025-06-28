@@ -470,7 +470,7 @@ const mlInfoForExperience = arPositioningManager.getMLInfo(experienceType || 'ma
     if (onArObjectPlaced) {
       onArObjectPlaced(position);
     }
-  }, [useNewPositioning, getBestUserPosition, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
+  }, [useNewPositioning, anchorPosition, adjustedAnchorPosition, coordinateScale, manualElevationOffset, elevationOffset, experienceType]);
 
   //******** CAMERA DIRECTION UPDATES **********
   const updateCameraDirection = useCallback(() => {
