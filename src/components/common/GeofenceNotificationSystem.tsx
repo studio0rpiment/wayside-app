@@ -112,12 +112,13 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
                 top: ${screenCoords.y - 70}px;
                 left: ${screenCoords.x}px;
                 transform: translateX(-50%);
-                background-color: var(--color-dark);
-                color: var(--color-light);
+                background-color: transparent;
+                backdrop-filter: blur(5px);
+                color: var(--color-dark);
                 padding: 8px 16px;
                 border-radius: 20px;
-                font-size: 14px;
-                font-weight: 500;
+                font-size: 16px;
+                font-weight: 700;
                 z-index: 25;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
                 border: 1px solid var(--color-blue);
