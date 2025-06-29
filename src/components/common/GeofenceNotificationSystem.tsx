@@ -134,7 +134,7 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
                 if (document.body.contains(instructionDiv)) {
                   document.body.removeChild(instructionDiv);
                 }
-              }, 4000);
+              }, 10000);
             }, 1600); // Wait for zoom animation to finish (1500ms + 100ms buffer)
           }
           
