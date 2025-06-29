@@ -112,7 +112,7 @@ export class WorldCoordinateSystem {
     const z_original  = -dLat * EARTH_RADIUS; 
     const y = elevation - this.originElevation;
 
-    const testRotationDegrees = 45; // or 45, or whatever you want to test
+    const testRotationDegrees = 70; // or 45, or whatever you want to test
     const testRotationRadians = testRotationDegrees * (Math.PI / 180);
 
 
