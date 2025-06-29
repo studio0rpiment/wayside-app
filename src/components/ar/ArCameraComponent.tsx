@@ -14,7 +14,6 @@ import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import TurnLeftIcon from '@mui/icons-material/TurnLeft';
 import TurnRightIcon from '@mui/icons-material/TurnRight';
-import { worldSystem } from '../../utils/coordinate-system/PositioningSystemSingleton';
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -156,53 +155,6 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     onModelScale(newScale);
   }
 }, [onModelScale]);
-
-
-// Add to ArCameraComponent debug section
-const createTestMarkers = useCallback(() => {
-  if (!renderingEngineRef.current || !frozenUserPosition) return;
-  
-  const scene = renderingEngineRef.current.getScene();
-  const [userLon, userLat] = frozenUserPosition;
-  
-  // Clear old markers
- if (scene && scene.children) {
-  scene.children.filter(child => child.name?.startsWith('test-marker')).forEach(marker => {
-    scene.remove(marker);
-  });
-}
-  
-  // Create test points around user
-  const testDistance = 0.0005; // ~55 meters
-  const testPoints = [
-    { name: 'NORTH', gps: [userLon, userLat + testDistance], color: 0xff0000 },
-    { name: 'SOUTH', gps: [userLon, userLat - testDistance], color: 0x00ff00 },
-    { name: 'EAST', gps: [userLon + testDistance, userLat], color: 0x0000ff },
-    { name: 'WEST', gps: [userLon - testDistance, userLat], color: 0xffff00 }
-  ];
-  
-  testPoints.forEach(point => {
-    // Convert GPS to world coordinates
-    const worldPos = worldSystem.gpsToWorld(point.gps as [number, number], 2); // 2m high
-    
-    // Create visible marker
-    const geometry = new THREE.SphereGeometry(0.5, 8, 6);
-    const material = new THREE.MeshBasicMaterial({ color: point.color });
-    const marker = new THREE.Mesh(geometry, material);
-    
-    marker.position.copy(worldPos);
-    marker.name = `test-marker-${point.name}`;
-    if (scene) {
-      scene.add(marker);
-    }
-    
-    console.log(`🎯 Test marker ${point.name}:`, {
-      gps: point.gps,
-      worldPos: worldPos.toArray(),
-      bearing: Math.atan2(worldPos.x, -worldPos.z) * (180/Math.PI)
-    });
-  });
-}, [frozenUserPosition]);
 
   //******* camera lookat Directions */
  const getTurnDirectionText = useCallback(() => {
@@ -939,21 +891,6 @@ const initialize = async () => {
           </div>
 
           <div style={{ marginTop: '5px', display: 'flex', justifyContent: 'space-between' }}>
-            <button
-              onClick={createTestMarkers}
-              style={{
-                fontSize: '10px',
-                padding: '4px 8px',
-                backgroundColor: 'rgba(255,255,0,0.3)',
-                border: 'none',
-                color: 'white',
-                cursor: 'pointer',
-                width: '100%',
-                marginTop: '5px'
-              }}
-            >
-              🎯 Show Cardinal Markers
-            </button>
             <div>Engine Ready: {renderingEngineRef.current?.isReady() ? '✅' : '❌'}</div>
             <div>Render Loop: {renderingEngineRef.current?.isRenderingActive() ? '🔄' : '⏸️'}</div>
           </div>
@@ -1062,7 +999,8 @@ const initialize = async () => {
         fontSize: '14px', 
         color: 'yellow', 
         fontWeight: 'bold' ,
-
+        display: 'flex',
+        flexDirection: 'column',
       }}
       >
         {getTurnDirectionText()}
