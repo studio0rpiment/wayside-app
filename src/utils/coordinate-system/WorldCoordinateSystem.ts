@@ -121,8 +121,8 @@ export class WorldCoordinateSystem {
     // const z = x_original * Math.sin(testRotationRadians) + z_original * Math.cos(testRotationRadians);
 
 // tst flipping hte x+z
-    const x = z_original;
-    const z = -x_original;
+    const x = -x_original;
+    const z = z_original
     
     return new THREE.Vector3(x, y, z);
   }
