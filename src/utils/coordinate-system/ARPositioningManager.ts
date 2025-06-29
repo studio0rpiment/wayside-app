@@ -162,7 +162,7 @@ export class ARPositioningManager {
     const result: ExperiencePositionResult = {
       worldPosition: anchorWorldPosition,
       relativeToUser,
-      rotation: new THREE.Euler(anchor.rotation.x, anchor.rotation.y, anchor.rotation.z),
+      rotation: new THREE.Euler(anchor.rotation.x, anchor.rotation.y + Math.PI, anchor.rotation.z),
       scale: finalScale,
       isUsingDebugMode: this.debugMode || !!options.useDebugOverride || isUniversalMode,
       distanceFromUser,

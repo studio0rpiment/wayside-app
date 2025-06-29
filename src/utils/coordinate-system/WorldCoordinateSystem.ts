@@ -109,7 +109,7 @@ export class WorldCoordinateSystem {
     const cosLat = Math.cos(originLatRad);
     
     const x = dLon * EARTH_RADIUS * cosLat;
-    const z = -dLat * EARTH_RADIUS; 
+    const z = dLat * EARTH_RADIUS; 
     const y = elevation - this.originElevation;
     
     return new THREE.Vector3(x, y, z);
