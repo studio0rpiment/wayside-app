@@ -396,4 +396,4 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   );
 };
 
-export default MacExperience;
+export default React.memo(MacExperience);

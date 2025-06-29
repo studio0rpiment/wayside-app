@@ -200,10 +200,29 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 
   // Shared positioning system
   const positioningSystem = sharedARPositioning;
-  if (!positioningSystem) {
-    console.error('❌ ArCameraComponent: No shared AR positioning provided!');
-    return null;
-  }
+ if (!positioningSystem) {
+  console.error('❌ ArCameraComponent: No shared AR positioning provided!');
+  
+  // Instead of returning null, show loading:
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      zIndex: 1000,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      color: 'white',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '18px'
+    }}>
+      🎯 Waiting for positioning system...
+    </div>
+  );
+}
 
   const { 
     adjustGlobalElevation,
@@ -1059,7 +1078,7 @@ const initialize = async () => {
           </div>
         </div>
       )} */}
-{/* 
+
       <ReformedModelPositioningPanel
   isCollapsed={isBottomDebugCollapsed}
   isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
@@ -1086,7 +1105,7 @@ const initialize = async () => {
   }}
   
   onClose={() => setIsBottomDebugCollapsed(true)}
-/> */}
+/>
 
 
       {/* Child components (AR objects will be added here) */}

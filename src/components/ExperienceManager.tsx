@@ -147,21 +147,8 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
 
   // 🆕 Shared AR positioning system - THE SINGLE SOURCE
   const sharedARPositioning = useARPositioning();
-  const {
-    positionObject,
-    adjustGlobalElevation,
-    setGlobalElevation,
-    getCurrentElevationOffset,
-    isReady: positioningReady,
-    userPosition: positioningUserPosition,
-    debugMode: positioningDebugMode,
-    getDebugInfo,
-    resetAllAdjustments,
-    getPosition,
-    getWorldPosition,
-    getRelativePosition,
-    resetPosition
-  } = sharedARPositioning;
+const { isReady: positioningReady } = sharedARPositioning || {};
+
 
   // 🆕 Universal Mode Detection (auto-detect if not provided)
   const isUniversalMode = useMemo(() => {
@@ -552,7 +539,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
       )}
 
       {/* 🆕 ArCameraComponent - NO LONGER CALCULATES POSITION */}
-      {canStartAr && (
+      {canStartAr && positioningReady && (
         <ArCameraComponent
           userPosition={frozenPosition || undefined} // Pass frozen position for reference
           anchorPosition={anchorPosition} // Legacy - only for debug display
@@ -569,7 +556,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
           onSwipeUp={handleSwipeUp}
           onSwipeDown={handleSwipeDown}
           onElevationChanged={handleElevationChanged}
-          // 🚫 REMOVED: sharedARPositioning - ArCamera doesn't need it
+          sharedARPositioning={sharedARPositioning}//- ArCamera doesn't need it
         />
       )}
       
