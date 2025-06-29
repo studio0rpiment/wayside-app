@@ -17,7 +17,7 @@ export interface StaticPointCloudConfig {
   knownCenter: THREE.Vector3;   // Model center for centering
   targetScale: number;          // Final scale multiplier
   
-  // Point cloud settings
+  // Point cloud setting
   pointSize: number;
   pointDensity: number;         // 0-1, sampling density
   fallbackColor: number;        // Hex color if no vertex colors

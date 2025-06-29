@@ -83,7 +83,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     pointSize: 2.0,
     pointDensity: 0.7,
     fallbackColor: 0xff6b6b,
-    rotationCorrection: new THREE.Euler(-Math.PI / 2, 0, 0),
+    rotationCorrection: new THREE.Euler(0, 0, 0),
     centerModel: true,
     maxVertices: 100000
   }), []);
@@ -372,7 +372,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       )}
 
       {/* Debug info */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div style={{
           position: 'absolute',
           bottom: '100px',
@@ -391,7 +391,7 @@ const MacExperience: React.FC<MacExperienceProps> = ({
           <div>Positioned: {modelPositioned ? '✅' : '❌'}</div>
           <div>User Changes: {userTransformsRef.current.hasUserChanges ? '✅' : '❌'}</div>
         </div>
-      )}
+      )} */}
     </>
   );
 };

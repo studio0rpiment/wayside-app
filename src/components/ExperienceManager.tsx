@@ -633,7 +633,7 @@ const { isReady: positioningReady } = sharedARPositioning || {};
       )}
 
       {/* Debug info */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div style={{
           position: 'absolute',
           top: '10px',
@@ -654,7 +654,7 @@ const { isReady: positioningReady } = sharedARPositioning || {};
           <div>AR Scene Ready: {arInitialized ? '✅' : '❌'}</div>
           <div>Experience Ready: {experienceReady ? '✅' : '❌'}</div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

@@ -10,6 +10,10 @@ import { ARRenderingEngine } from '../engines/ARRenderingEngine';
 import { useARInteractions } from '../../hooks/useARInteractions';
 import { debugModeManager } from '../../utils/DebugModeManager';
 import ReformedModelPositioningPanel from '../debug/ModelPositioningPanel';
+import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
+import ArrowRightIcon from '@mui/icons-material/ArrowRight';
+import TurnLeftIcon from '@mui/icons-material/TurnLeft';
+import TurnRightIcon from '@mui/icons-material/TurnRight';
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -153,25 +157,65 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 }, [onModelScale]);
 
   //******* camera lookat Directions */
-  const getTurnDirectionText = useCallback(() => {
+ const getTurnDirectionText = useCallback(() => {
   if (cameraLookDirection.aimError === null || !frozenUserPosition) {
     return 'No position available';
   }
 
   const aimError = cameraLookDirection.aimError;
 
-  if (cameraLookDirection.aimError < 30) {
-    return '⮕⮕ ON TARGET ⬅⬅';
+  if (cameraLookDirection.aimError < 25) {
+    return (
+      <span>
+        <ArrowRightIcon fontSize="small"  style={{ verticalAlign: 'middle', marginRight: '-10px', padding:'0px' }} />
+        <ArrowRightIcon fontSize="small"  style={{ verticalAlign: 'middle', marginRight: '2rem' , padding:'0px'}} />
+      
+        {' ON TARGET '}
+        <ArrowLeftIcon fontSize="small" style={{ verticalAlign: 'middle', marginRight: '-10px', marginLeft: '2rem' }}/>
+        <ArrowLeftIcon fontSize="small" style={{ verticalAlign: 'middle', marginRight: '0px' }}/>
+      </span>
+    );
   }
+
+  // Calculate turn direction (you'll need model bearing for this)
+  const cameraBearing = cameraLookDirection.bearing || 0;
+  // TODO: Calculate modelBearing from your positioning system
+  const modelBearing = 0; // Replace with actual calculation
+  const bearingDiff = ((modelBearing - cameraBearing + 540) % 360) - 180;
+  const turnLeft = bearingDiff > 0;
   
   if (aimError < 40) {
     return `Close - aim error ${aimError.toFixed(1)}°`;
   } else if (aimError < 60) {
-    return `⮕ TURN TO FIND MODEL ⬅ (${aimError.toFixed(1)}°)`;
+    return turnLeft ? (
+      <span>
+        <TurnLeftIcon fontSize="small" />
+        {` TURN LEFT TO FIND MODEL (${aimError.toFixed(1)}°)`}
+      </span>
+    ) : (
+      <span>
+        {`TURN RIGHT TO FIND MODEL `}
+        <TurnRightIcon fontSize="small" />
+        {` (${aimError.toFixed(1)}°)`}
+      </span>
+    );
   } else {
-    return `⮕⮕ LOOK AROUND FOR MODEL ⬅⬅ (${aimError.toFixed(1)}°)`;
+    return turnLeft ? (
+      <span>
+        <TurnLeftIcon fontSize="small" />
+        <TurnLeftIcon fontSize="small" />
+        {` LOOK AROUND LEFT (${aimError.toFixed(1)}°)`}
+      </span>
+    ) : (
+      <span>
+        {`LOOK AROUND RIGHT `}
+        <TurnRightIcon fontSize="small" />
+        <TurnRightIcon fontSize="small" />
+        {` (${aimError.toFixed(1)}°)`}
+      </span>
+    );
   }
-}, [cameraLookDirection.aimError, frozenUserPosition]);
+}, [cameraLookDirection.aimError, cameraLookDirection.bearing, frozenUserPosition]);
 
   //******** HOOKS **********
   const { attachListeners, detachListeners, isListening } = useARInteractions({
@@ -804,41 +848,7 @@ const initialize = async () => {
               }
             </div>
           </div>
-
-          {/* Live GPS Comparison */}
-          <div style={{ fontSize: '8px', marginTop: '3px', paddingTop: '3px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-            <strong>Live GPS (for comparison):</strong>
-          </div>
-          <div style={{ fontSize: '7px' }}>
-            Raw: {rawUserPosition ? 
-              `[${rawUserPosition[0].toFixed(8)}, ${rawUserPosition[1].toFixed(8)}]` : 
-              'NULL'
-            }
-          </div>
-          <div style={{ fontSize: '7px' }}>
-            Precise: {preciseUserPosition ? 
-              `[${preciseUserPosition[0].toFixed(8)}, ${preciseUserPosition[1].toFixed(8)}]` : 
-              'NULL'
-            }
-          </div>
-          <div style={{ fontSize: '7px' }}>
-            Accuracy: {currentAccuracy?.toFixed(1)}m | Quality: {positionQuality} | Stable: {isPositionStable ? '✅' : '❌'}
-          </div>
-
-          {/* Positioning System Status */}
-          <div style={{ 
-            marginTop: '5px', 
-            paddingTop: '5px', 
-            borderTop: '1px solid rgba(255,255,255,0.3)' 
-          }}>
-            <div style={{ color: 'lightblue', fontSize: '9px' }}>
-              <strong>Shared Positioning System:</strong>
-            </div>
-            <div style={{ fontSize: '8px' }}>Ready: {positioningSystemReady ? '✅' : '❌'}</div>
-            <div style={{ fontSize: '8px' }}>Debug Mode: {positioningDebugMode ? '✅' : '❌'}</div>
-            <div style={{ fontSize: '8px' }}>Global Elevation: {getCurrentElevationOffset()?.toFixed(3)}m</div>
-            <div style={{ fontSize: '8px' }}>Experience: {experienceType}</div>
-          </div>
+        
           
           <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', marginTop: '8px' }}>
             <div 
@@ -880,13 +890,50 @@ const initialize = async () => {
             </button>
           </div>
 
-          <div style={{ marginTop: '5px' }}>
+          <div style={{ marginTop: '5px', display: 'flex', justifyContent: 'space-between' }}>
             <div>Engine Ready: {renderingEngineRef.current?.isReady() ? '✅' : '❌'}</div>
             <div>Render Loop: {renderingEngineRef.current?.isRenderingActive() ? '🔄' : '⏸️'}</div>
           </div>
 
           {!debugCollapsed && (
             <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>    
+
+            
+          {/* Live GPS Comparison */}
+          <div style={{ fontSize: '8px', marginTop: '3px', paddingTop: '3px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+            <strong>Live GPS (for comparison):</strong>
+          </div>
+          <div style={{ fontSize: '7px' }}>
+            Raw: {rawUserPosition ? 
+              `[${rawUserPosition[0].toFixed(8)}, ${rawUserPosition[1].toFixed(8)}]` : 
+              'NULL'
+            }
+          </div>
+          <div style={{ fontSize: '7px' }}>
+            Precise: {preciseUserPosition ? 
+              `[${preciseUserPosition[0].toFixed(8)}, ${preciseUserPosition[1].toFixed(8)}]` : 
+              'NULL'
+            }
+          </div>
+          <div style={{ fontSize: '7px' }}>
+            Accuracy: {currentAccuracy?.toFixed(1)}m | Quality: {positionQuality} | Stable: {isPositionStable ? '✅' : '❌'}
+          </div>
+
+          {/* Positioning System Status */}
+          <div style={{ 
+            marginTop: '5px', 
+            paddingTop: '5px', 
+            borderTop: '1px solid rgba(255,255,255,0.3)' 
+          }}>
+            <div style={{ color: 'lightblue', fontSize: '9px' }}>
+              <strong>Shared Positioning System:</strong>
+            </div>
+            <div style={{ fontSize: '8px' }}>Ready: {positioningSystemReady ? '✅' : '❌'}</div>
+            <div style={{ fontSize: '8px' }}>Debug Mode: {positioningDebugMode ? '✅' : '❌'}</div>
+            <div style={{ fontSize: '8px' }}>Global Elevation: {getCurrentElevationOffset()?.toFixed(3)}m</div>
+            <div style={{ fontSize: '8px' }}>Experience: {experienceType}</div>
+          </div>
+
               <div>
                 <span style={{ color: 'cyan' }}>Device Heading: {deviceHeading?.toFixed(1) ?? 'N/A'}°</span>
                 <span style={{ color: 'white' }}> | Available: {orientationAvailable ? '✅' : '❌'}</span>
@@ -931,6 +978,7 @@ const initialize = async () => {
     bottom: '20px',
     left: '50%',
     width: '90svw',
+    
     transform: 'translateX(-50%)',
     backgroundColor: 'rgba(0, 0, 0, 0)',
     backdropFilter: 'blur(4px)',
@@ -942,11 +990,18 @@ const initialize = async () => {
     fontFamily: 'monospace',
     fontSize: '1rem'
   }}>
-    <div style={{ fontSize: '12px', color: 'cyan', marginBottom: '5px' }}>
+    {/* <div style={{ fontSize: '12px', color: 'cyan', marginBottom: '5px' }}>
       📷 {cameraLookDirection.bearing.toFixed(1)}°
-    </div>
+    </div> */}
     {cameraLookDirection.aimError !== null && (
-      <div style={{ fontSize: '14px', color: 'yellow', fontWeight: 'bold' }}>
+      <div 
+      style={{ 
+        fontSize: '14px', 
+        color: 'yellow', 
+        fontWeight: 'bold' ,
+
+      }}
+      >
         {getTurnDirectionText()}
       </div>
     )}
@@ -958,126 +1013,6 @@ const initialize = async () => {
   </div>
 )}
 
-      {/* Simplified Bottom Debug Panel - Only for elevation control */}
-      {/* {SHOW_DEBUG_PANEL && !isBottomDebugCollapsed && positioningSystemReady && (
-        <div style={{
-          position: 'absolute',
-          bottom: '20px',
-          left: '20px',
-          right: '20px',
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          backdropFilter: 'blur(4px)',
-          color: 'white',
-          padding: '15px',
-          borderRadius: '8px',
-          fontSize: '12px',
-          zIndex: 1030,
-          fontFamily: 'monospace'
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            marginBottom: '10px'
-          }}>
-            <span style={{ color: 'lightblue', fontWeight: 'bold' }}>
-              🎛️ SHARED POSITIONING CONTROLS
-            </span>
-            <button
-              onClick={() => setIsBottomDebugCollapsed(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              ✕
-            </button>
-          </div>
-
-     
-          <div style={{ marginBottom: '15px' }}>
-            <div style={{ marginBottom: '8px', color: 'yellow' }}>
-              Global Elevation Offset: {getCurrentElevationOffset()?.toFixed(3)}m
-            </div>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => {
-                  adjustGlobalElevation(-0.1);
-                  if (onElevationChanged) onElevationChanged();
-                }}
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: 'rgba(255, 0, 0, 0.3)',
-                  border: 'none',
-                  color: 'white',
-                  cursor: 'pointer',
-                  borderRadius: '4px'
-                }}
-              >
-                ↓ -0.1m
-              </button>
-              <button
-                onClick={() => {
-                  adjustGlobalElevation(-0.01);
-                  if (onElevationChanged) onElevationChanged();
-                }}
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: 'rgba(255, 100, 100, 0.3)',
-                  border: 'none',
-                  color: 'white',
-                  cursor: 'pointer',
-                  borderRadius: '4px'
-                }}
-              >
-                ↓ -0.01m
-              </button>
-              <button
-                onClick={() => {
-                  adjustGlobalElevation(0.01);
-                  if (onElevationChanged) onElevationChanged();
-                }}
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: 'rgba(100, 255, 100, 0.3)',
-                  border: 'none',
-                  color: 'white',
-                  cursor: 'pointer',
-                  borderRadius: '4px'
-                }}
-              >
-                ↑ +0.01m
-              </button>
-              <button
-                onClick={() => {
-                  adjustGlobalElevation(0.1);
-                  if (onElevationChanged) onElevationChanged();
-                }}
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: 'rgba(0, 255, 0, 0.3)',
-                  border: 'none',
-                  color: 'white',
-                  cursor: 'pointer',
-                  borderRadius: '4px'
-                }}
-              >
-                ↑ +0.1m
-              </button>
-            </div>
-          </div>
-
-
-          <div style={{ fontSize: '10px', opacity: 0.8 }}>
-            <div>Experience: {experienceType}</div>
-            <div>Positioning Debug Mode: {positioningDebugMode ? 'ON' : 'OFF'}</div>
-            <div>Camera AR Testing Override: {arTestingOverride ? 'ON' : 'OFF'}</div>
-          </div>
-        </div>
-      )} */}
 
       <ReformedModelPositioningPanel
   isCollapsed={isBottomDebugCollapsed}
