@@ -112,12 +112,17 @@ export class WorldCoordinateSystem {
     const z_original  = -dLat * EARTH_RADIUS; 
     const y = elevation - this.originElevation;
 
-    const testRotationDegrees = -45; // or 45, or whatever you want to test
+    const testRotationDegrees = 0; // or 45, or whatever you want to test
     const testRotationRadians = testRotationDegrees * (Math.PI / 180);
 
+
     // Apply rotation around Y-axis (vertical)
-    const x = x_original * Math.cos(testRotationRadians) - z_original * Math.sin(testRotationRadians);
-    const z = x_original * Math.sin(testRotationRadians) + z_original * Math.cos(testRotationRadians);
+    // const x = x_original * Math.cos(testRotationRadians) - z_original * Math.sin(testRotationRadians);
+    // const z = x_original * Math.sin(testRotationRadians) + z_original * Math.cos(testRotationRadians);
+
+// tst flipping hte x+z
+    const x = z_original;
+    const z = -x_original;
     
     return new THREE.Vector3(x, y, z);
   }
