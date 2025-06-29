@@ -377,4 +377,4 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   );
 };
 
-export default VolunteersExperience;
+export default React.memo(VolunteersExperience);
