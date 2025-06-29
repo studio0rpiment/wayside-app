@@ -108,9 +108,16 @@ export class WorldCoordinateSystem {
     // Convert to meters using local approximation
     const cosLat = Math.cos(originLatRad);
     
-    const x = dLon * EARTH_RADIUS * cosLat;
-    const z = dLat * EARTH_RADIUS; 
+    const x_original = dLon * EARTH_RADIUS * cosLat;
+    const z_original  = -dLat * EARTH_RADIUS; 
     const y = elevation - this.originElevation;
+
+    const testRotationDegrees = -45; // or 45, or whatever you want to test
+    const testRotationRadians = testRotationDegrees * (Math.PI / 180);
+
+    // Apply rotation around Y-axis (vertical)
+    const x = x_original * Math.cos(testRotationRadians) - z_original * Math.sin(testRotationRadians);
+    const z = x_original * Math.sin(testRotationRadians) + z_original * Math.cos(testRotationRadians);
     
     return new THREE.Vector3(x, y, z);
   }
