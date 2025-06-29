@@ -114,14 +114,14 @@ const GeofenceNotificationSystem: React.FC<GeofenceNotificationSystemProps> = ({
                 transform: translateX(-50%);
                 background-color: transparent;
                 backdrop-filter: blur(5px);
-                color: var(--color-dark);
+                color: var(--color-light);
                 padding: 8px 16px;
                 border-radius: 20px;
                 font-size: 16px;
                 font-weight: 700;
                 z-index: 25;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-                border: 1px solid var(--color-blue);
+                box-shadow: 8px rgba(0, 0, 0, 0.8);
+                border: 0px solid var(--color-blue);
                 pointer-events: none;
                 animation: fadeIn 0.3s ease-in;
                 white-space: nowrap;
