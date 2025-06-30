@@ -409,6 +409,7 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
       // Create particle system
       const particleSystem = new THREE.Points(geometry, material);
       particleSystemRef.current = particleSystem;
+      particleSystem.frustumCulled = false;
       smokeGroup.add(particleSystem);
       
       // Apply transforms

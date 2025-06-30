@@ -169,7 +169,8 @@ export class ARPositioningManager {
       distanceFromUser,
       anchor,
       userWorldPosition,
-      userGpsPosition
+      userGpsPosition,
+      clone: () => anchorWorldPosition.clone()
     };
 
     // ✅ NEW: Cache the result
