@@ -162,18 +162,17 @@ const MacExperience: React.FC<MacExperienceProps> = ({
       const success = positionModelWithSingleSource(pointCloud);
       if (success) {
         setModelPositioned(true);
+         onExperienceReady?.();
       }
     }
     
     setIsEngineReady(true);
   }, [arPosition, positionModelWithSingleSource]);
 
-  const handleEngineReady = useCallback(() => {
-    console.log('🎉 MacExperience: Engine ready');
-    if (modelPositioned) {
-      onExperienceReady?.();
-    }
-  }, [onExperienceReady, modelPositioned]);
+const handleEngineReady = useCallback(() => {
+  console.log('🎉 MacExperience: Engine ready');
+  
+}, []);
 
   const handleEngineError = useCallback((errorMessage: string) => {
     console.error('❌ MacExperience: Engine error:', errorMessage);

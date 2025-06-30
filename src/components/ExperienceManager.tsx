@@ -307,16 +307,19 @@ const { isReady: positioningReady } = sharedARPositioning || {};
   }, []);
 
   const handleExperienceReady = useCallback(() => {
-    if (!experienceStartTime) {
-      const startTime = Date.now();
-      setExperienceStartTime(startTime);
+  setExperienceStartTime(prevStartTime => {
+    if (prevStartTime === null) {
       console.log('⏱️ Experience ready timer started');
+      
+      setTimeout(() => {
+        setHasMetMinimumTime(true);
+      }, 5000);
+      
+      return Date.now();
     }
-
-    const timer = setTimeout(() => {
-      setHasMetMinimumTime(true);
-    }, 5000);
-  }, [experienceStartTime]);
+    return prevStartTime;
+  });
+}, []); 
 
   // *** Stable gesture handlers using useCallback ***
   const handleModelRotate = useCallback((deltaX: number, deltaY: number, deltaZ: number = 0) => {

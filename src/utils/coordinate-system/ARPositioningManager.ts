@@ -13,6 +13,7 @@ export interface UserPositionInput {
 }
 
 export interface ExperiencePositionResult {
+  clone(): import("react").SetStateAction<THREE.Vector3>;
   // Core positioning
   worldPosition: THREE.Vector3;
   relativeToUser: THREE.Vector3; // Position relative to user (for AR placement)

@@ -1,34 +1,43 @@
+// Updated VolunteersExperience.tsx - Receives position from ExperienceManager (single source)
+
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import * as THREE from 'three';
 import StaticPointCloudEngine, { StaticPointCloudConfig } from '../engines/StaticPointCloudEngine';
-import { useARPositioning } from '../../hooks/useARPositioning';
 
 interface VolunteersExperienceProps {
-  onClose: () => void;
-  onNext?: () => void;
-  // REQUIRED: AR Scene and Camera
+  // Core AR props - position comes from ExperienceManager
   arScene: THREE.Scene;
   arCamera: THREE.PerspectiveCamera;
-  arPosition: THREE.Vector3;
-  coordinateScale?: number;
+  arPosition: THREE.Vector3; // ← SINGLE SOURCE: Position from ExperienceManager
+  
+  // Experience control
+  onClose: () => void;
+  onNext?: () => void;
+  onExperienceReady?: () => void;
+  
+  // Gesture handlers
   onModelRotate?: (handler: (deltaX: number, deltaY: number, deltaZ: number) => void) => void;
   onModelScale?: (handler: (scaleFactor: number) => void) => void;
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
-  onExperienceReady?: () => void;
+  
+  // Elevation adjustment (for debug panel)
   onElevationChanged?: (handler: () => void) => void;
-  sharedARPositioning?: ReturnType<typeof useARPositioning>;
+  
+  // Mode flags
   isUniversalMode?: boolean;
+  
+  // ❌ REMOVED: sharedARPositioning - no longer needed
+  // ❌ REMOVED: coordinateScale - handled by positioning system
 }
 
 const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({ 
-  onClose, 
-  onNext,
   arScene,
   arCamera,
-  arPosition,
-  coordinateScale = 1.0,
+  arPosition, // ← SINGLE SOURCE: Position calculated by ExperienceManager
+  onClose, 
+  onNext,
   onModelRotate,
   onModelScale,
   onModelReset,
@@ -36,18 +45,11 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   onSwipeDown,
   onExperienceReady,
   onElevationChanged,
-  sharedARPositioning,
   isUniversalMode = false 
 }) => {
 
   const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
   console.log(`🔄 VolunteersExperience: Component render (ID: ${renderIdRef.current})`);
-  
-  console.log('🔍 VolunteersExperience props:', {
-    isUniversalMode,
-    sharedARPositioning: !!sharedARPositioning,
-    arPosition: arPosition.toArray()
-  });
 
   // =================================================================
   // USER TRANSFORM TRACKING
@@ -61,21 +63,11 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   });
 
   // =================================================================
-  // AR POSITIONING SYSTEM
-  // =================================================================
-  const newPositioningSystem = sharedARPositioning || useARPositioning();
-  const {
-    positionObject: newPositionObject,
-    getPosition: newGetPosition,
-    isReady: newSystemReady,
-    debugMode: newDebugMode
-  } = newPositioningSystem;
-
-  // =================================================================
   // STATE AND REFS
   // =================================================================
   
   const modelRef = useRef<THREE.Points | null>(null);
+  const [modelPositioned, setModelPositioned] = useState(false); // ← NEW: Track if model is positioned
   const activeScaleRef = useRef<number>(1);
   
   const [isEngineReady, setIsEngineReady] = useState(false);
@@ -94,35 +86,34 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     rotationCorrection: new THREE.Euler(-Math.PI / 2, 0, 0),
     centerModel: true,
     maxVertices: 100000 // Volunteers can handle more vertices
-  }), []); // Config never changes
+  }), []);
 
   // =================================================================
-  // POSITIONING WITH TRANSFORM PRESERVATION
+  // SIMPLE POSITIONING - USES SINGLE SOURCE
   // =================================================================
   
-  const positionModelWithTransformPreservation = useCallback((model: THREE.Points) => {
-    if (!newSystemReady) {
-      console.log('🧪 VOLUNTEERS: Positioning system not ready yet');
+  const positionModelWithSingleSource = useCallback((model: THREE.Points) => {
+    if (!arPosition) {
+      console.log('🎯 Volunteers: No AR position available yet');
       return false;
     }
     
-    // Apply AR positioning (this resets transforms)
-    let success;
-    if (isUniversalMode) {
-      console.log('🌐 VOLUNTEERS: Universal Mode - using debug position');
-      success = newPositionObject(model, 'volunteers', { useDebugOverride: true });
-    } else {
-      success = newPositionObject(model, 'volunteers');
-    }
+    console.log('🎯 Volunteers: Positioning model using single source:', arPosition.toArray());
     
-    // Reapply user transforms if they exist
-    if (userTransformsRef.current.hasUserChanges && success) {
-      console.log('🔄 VOLUNTEERS: Reapplying user transforms after positioning', {
+    // Apply the position from ExperienceManager (single source)
+    model.position.copy(arPosition);
+    
+    // Apply Volunteers-specific rotation correction (built into config, applied by engine)
+    // The engine already applies rotationCorrection from VolunteersConfig
+    
+    // Apply any existing user transforms on top
+    if (userTransformsRef.current.hasUserChanges) {
+      console.log('🔄 Volunteers: Reapplying user transforms after positioning', {
         userRotation: userTransformsRef.current.rotation.toArray(),
         userScale: userTransformsRef.current.scale
       });
       
-      // Reapply user rotation on top of AR positioning
+      // Reapply user rotation
       model.rotation.x += userTransformsRef.current.rotation.x;
       model.rotation.y += userTransformsRef.current.rotation.y;
       model.rotation.z += userTransformsRef.current.rotation.z;
@@ -132,11 +123,14 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
       model.scale.setScalar(currentScale * userTransformsRef.current.scale);
     }
     
-    return success;
-  }, [newSystemReady, isUniversalMode, newPositionObject]);
+    model.updateMatrixWorld();
+    console.log('✅ Volunteers: Model positioned at:', model.position.toArray());
+    
+    return true;
+  }, [arPosition]);
 
   const handleModelReset = useCallback((model: THREE.Points) => {
-    console.log('🔄 VOLUNTEERS: Resetting model (clearing user transforms)');
+    console.log('🔄 Volunteers: Resetting model (clearing user transforms)');
     
     // Clear user transforms
     userTransformsRef.current = {
@@ -146,11 +140,11 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     };
     
     // Reposition with fresh state
-    positionModelWithTransformPreservation(model);
+    positionModelWithSingleSource(model);
     
     activeScaleRef.current = model.scale.x;
-    console.log('🔄 VOLUNTEERS: Reset completed');
-  }, [positionModelWithTransformPreservation]);
+    console.log('🔄 Volunteers: Reset completed');
+  }, [positionModelWithSingleSource]);
 
   // =================================================================
   // ENGINE CALLBACKS (MEMOIZED)
@@ -159,25 +153,46 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
     console.log('🎯 VolunteersExperience: Model loaded from engine');
     modelRef.current = pointCloud;
+    
+    // Store initial scale
     activeScaleRef.current = pointCloud.scale.x;
     
-    // Position the model (no user transforms yet)
-    if (newSystemReady) {
-      positionModelWithTransformPreservation(pointCloud);
+    // Position the model using single source
+    if (arPosition) {
+      const success = positionModelWithSingleSource(pointCloud);
+      if (success) {
+        setModelPositioned(true);
+         onExperienceReady?.();
+      }
     }
     
     setIsEngineReady(true);
-  }, [newSystemReady, positionModelWithTransformPreservation]);
+  }, [arPosition, positionModelWithSingleSource]);
 
-  const handleEngineReady = useCallback(() => {
-    console.log('🎉 VolunteersExperience: Engine ready');
-    onExperienceReady?.();
-  }, [onExperienceReady]);
+const handleEngineReady = useCallback(() => {
+  console.log('🎉 VolunteersExperience: Engine ready');
+  
+}, []);
 
   const handleEngineError = useCallback((errorMessage: string) => {
     console.error('❌ VolunteersExperience: Engine error:', errorMessage);
     setError(errorMessage);
   }, []);
+
+  // =================================================================
+  // POSITION MODEL WHEN AR POSITION BECOMES AVAILABLE
+  // =================================================================
+  
+  useEffect(() => {
+    if (arPosition && modelRef.current && isEngineReady && !modelPositioned) {
+      console.log('🎯 Volunteers: AR position available, positioning model...');
+      const success = positionModelWithSingleSource(modelRef.current);
+      if (success) {
+        setModelPositioned(true);
+        onExperienceReady?.();
+      }
+    }
+  }, [arPosition, isEngineReady, modelPositioned, positionModelWithSingleSource, onExperienceReady]);
 
   // =================================================================
   // MEMOIZED ENGINE COMPONENT
@@ -190,8 +205,8 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
       <StaticPointCloudEngine
         config={volunteersConfig}
         scene={arScene}
-        experienceId="volunteers"        
-        isUniversalMode={isUniversalMode} 
+        experienceId="Volunteers"
+        isUniversalMode={isUniversalMode}
         enabled={true}
         onModelLoaded={handleModelLoaded}
         onLoadingProgress={setLoadingProgress}
@@ -202,10 +217,11 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   }, [
     volunteersConfig,
     arScene,
+    isUniversalMode,
     handleModelLoaded,
     handleEngineError,
     handleEngineReady
-  ]); // Only recreate if these actually change
+  ]);
 
   // =================================================================
   // GESTURE HANDLERS WITH TRANSFORM TRACKING
@@ -229,7 +245,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
           userTransformsRef.current.rotation.z += deltaZ;
           userTransformsRef.current.hasUserChanges = true;
           
-          console.log(`🎮 VOLUNTEERS: Rotation applied and tracked`, {
+          console.log(`🎮 Volunteers: Rotation applied and tracked`, {
             deltaX, deltaY, deltaZ,
             currentRotation: modelRef.current.rotation.toArray(),
             userRotation: userTransformsRef.current.rotation.toArray()
@@ -251,7 +267,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
           userTransformsRef.current.scale = Math.max(0.1, Math.min(10, userTransformsRef.current.scale));
           userTransformsRef.current.hasUserChanges = true;
           
-          console.log(`🔍 VOLUNTEERS: Scale applied and tracked`, {
+          console.log(`🔍 Volunteers: Scale applied and tracked`, {
             scaleFactor,
             currentScale: currentScale.toFixed(3),
             newScale: newScale.toFixed(3),
@@ -264,7 +280,7 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     // Register reset handler
     if (onModelReset) {
       onModelReset(() => {
-        console.log(`🔄 VOLUNTEERS: Reset triggered`);
+        console.log(`🔄 Volunteers: Reset triggered`);
         if (modelRef.current) {
           handleModelReset(modelRef.current);
         }
@@ -274,56 +290,36 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     // Register swipe handlers
     if (onSwipeUp) {
       onSwipeUp(() => {
-        console.log(`👆 VOLUNTEERS: Swipe up`);
-        // Add volunteers-specific swipe behavior here
+        console.log(`👆 Volunteers: Swipe up`);
       });
     }
 
     if (onSwipeDown) {
       onSwipeDown(() => {
-        console.log(`👇 VOLUNTEERS: Swipe down`);
-        // Add volunteers-specific swipe behavior here
+        console.log(`👇 Volunteers: Swipe down`);
       });
     }
   }, []); // No dependencies - register once
 
-  // Handle elevation changes (memoized)
+  // =================================================================
+  // ELEVATION CHANGE HANDLER (for debug panel adjustments)
+  // =================================================================
+  
   const handleElevationChanged = useCallback(() => {
     console.log('🧪 VolunteersExperience: Elevation changed - repositioning with preserved transforms');
     
-    if (modelRef.current) {
-      positionModelWithTransformPreservation(modelRef.current);
+    if (modelRef.current && arPosition) {
+      // Note: The arPosition from ExperienceManager should already include elevation changes
+      // since it comes from the positioning system. But we can reposition to be safe.
+      positionModelWithSingleSource(modelRef.current);
     }
-  }, [positionModelWithTransformPreservation]);
+  }, [arPosition, positionModelWithSingleSource]);
 
   useEffect(() => {
     if (onElevationChanged) {
       onElevationChanged(handleElevationChanged);
     }
   }, [onElevationChanged, handleElevationChanged]);
-
-  // Monitor debug mode changes
-  useEffect(() => {
-    if (newDebugMode !== undefined) {
-      console.log('🔗 VOLUNTEERS: Debug mode changed - repositioning with preserved transforms');
-      
-      (window as any).arTestingOverride = newDebugMode;
-      
-      setTimeout(() => {
-        if (modelRef.current && newSystemReady) {
-          positionModelWithTransformPreservation(modelRef.current);
-        }
-      }, 100);
-    }
-  }, [newDebugMode, newSystemReady, positionModelWithTransformPreservation]);
-
-  // Wait for positioning system to be ready
-  useEffect(() => {
-    if (newSystemReady && modelRef.current && isEngineReady) {
-      console.log('🧪 VOLUNTEERS: Positioning system ready, positioning model...');
-      positionModelWithTransformPreservation(modelRef.current);
-    }
-  }, [newSystemReady, isEngineReady, positionModelWithTransformPreservation]);
 
   // =================================================================
   // RENDER
@@ -348,9 +344,9 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
           zIndex: 1003,
           textAlign: 'center'
         }}>
-          Loading VOLUNTEERS Model... {loadingProgress.toFixed(0)}%
+          Loading Volunteers Model... {loadingProgress.toFixed(0)}%
           <br />
-          <small>Using StaticPointCloudEngine{isUniversalMode ? ' - Universal Mode' : ''}</small>
+          <small>Using Single Source Position{isUniversalMode ? ' - Universal Mode' : ''}</small>
         </div>
       )}
 
@@ -368,11 +364,33 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
           zIndex: 1003,
           textAlign: 'center'
         }}>
-          Error loading VOLUNTEERS Model
+          Error loading Volunteers Model
           <br />
           <small>{error}</small>
         </div>
       )}
+
+      {/* Debug info */}
+      {/* {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '100px',
+          right: '10px',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '8px',
+          borderRadius: '4px',
+          fontSize: '10px',
+          zIndex: 1003,
+          fontFamily: 'monospace'
+        }}>
+          <div>🎯 Volunteers: Single Source Position</div>
+          <div>Position: {arPosition ? `[${arPosition.x.toFixed(2)}, ${arPosition.y.toFixed(2)}, ${arPosition.z.toFixed(2)}]` : 'null'}</div>
+          <div>Model Ready: {isEngineReady ? '✅' : '❌'}</div>
+          <div>Positioned: {modelPositioned ? '✅' : '❌'}</div>
+          <div>User Changes: {userTransformsRef.current.hasUserChanges ? '✅' : '❌'}</div>
+        </div>
+      )} */}
     </>
   );
 };
