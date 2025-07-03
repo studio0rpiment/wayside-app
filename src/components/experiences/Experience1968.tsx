@@ -1,36 +1,41 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { useARPositioning } from '../../hooks/useARPositioning';
 import SmokeParticleEngine from '../engines/SmokeParticleEngine';
 
 const SHOW_DEBUG_PANEL = false;
 
 interface Experience1968Props {
+  // Core AR props - SIMPLIFIED (no arPosition needed!)
+  arScene: THREE.Scene;
+  arCamera: THREE.PerspectiveCamera;
+  
+  // Experience control
   onClose: () => void;
   onNext?: () => void;
-  arPosition?: THREE.Vector3;
-  arScene?: THREE.Scene;
-  arCamera?: THREE.PerspectiveCamera;
-  coordinateScale?: number;
+  onExperienceReady?: () => void;
+  
+  // Gesture handlers
   onModelRotate?: (handler: (deltaX: number, deltaY: number, deltaZ: number) => void) => void;
   onModelScale?: (handler: (scaleFactor: number) => void) => void;
   onModelReset?: (handler: () => void) => void;
   onSwipeUp?: (handler: () => void) => void;
   onSwipeDown?: (handler: () => void) => void;
-  onExperienceReady?: () => void;
+  
+  // Elevation adjustment (for debug panel)
   onElevationChanged?: (handler: () => void) => void;
-  sharedARPositioning?: ReturnType<typeof useARPositioning>;
+  
+  // Mode flags
   isUniversalMode?: boolean;
+  
+  // ❌ REMOVED: arPosition - engine handles positioning internally!
+  // ❌ REMOVED: coordinateScale - handled by positioning system
 }
 
 const Experience1968: React.FC<Experience1968Props> = ({ 
-  onClose, 
-  onNext,
-  arPosition,
   arScene,
   arCamera,
-  coordinateScale = 1.0,
+  onClose, 
+  onNext,
   onModelRotate,
   onModelScale,
   onModelReset,
@@ -38,38 +43,24 @@ const Experience1968: React.FC<Experience1968Props> = ({
   onSwipeDown,
   onExperienceReady,
   onElevationChanged,
-  sharedARPositioning,
   isUniversalMode = false 
 }) => {
   const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
-  console.log(`🔥 Experience1968: Component render (ID: ${renderIdRef.current})`);
+  console.log(`🔥 Experience1968: Component render with NEW singleton engine (ID: ${renderIdRef.current})`);
 
   // =================================================================
   // USER TRANSFORM TRACKING (following MacExperience pattern)
   // =================================================================
   
+  // Track user-applied transforms separately from AR positioning
   const userTransformsRef = useRef({
-    rotation: new THREE.Euler(0, 0, 0),
-    scale: 1.0,
-    hasUserChanges: false
+    rotation: new THREE.Euler(0, 0, 0), // User's rotation deltas
+    scale: 1.0,                         // User's scale multiplier
+    hasUserChanges: false               // Flag to know if user made changes
   });
 
   // =================================================================
-  // AR POSITIONING SYSTEM (following MacExperience pattern)
-  // =================================================================
-  const newPositioningSystem = sharedARPositioning || useARPositioning();
-  const {
-    positionObject: newPositionObject,
-    getPosition: newGetPosition,
-    adjustGlobalElevation: newAdjustElevation,
-    isReady: newSystemReady,
-    userPosition: newUserPosition,
-    debugMode: newDebugMode,
-    getDebugInfo: newGetDebugInfo
-  } = newPositioningSystem;
-
-  // =================================================================
-  // REFS AND STATE
+  // SMOKE PARAMETERS (preserved exactly)
   // =================================================================
   
   // Smoke parameters that can be adjusted by gestures
@@ -77,76 +68,64 @@ const Experience1968: React.FC<Experience1968Props> = ({
     particleCount: 1,
     maxParticleCount: 2000, // Reduced for AR performance
     emissionRate: 70,
-    particleLifetime: 10.0,
-    particleSize: 1, //not working here, need to go to engine
-    windSpeed: 5.0,
-    windDirection: new THREE.Vector3(1, 0.1, 0),
-    turbulenceStrength: 4.0,
-    smokeRiseSpeed: 20.0,
-    smokeSpread: 5.0,
+    particleLifetime: 5.0,
+    particleSize: 0.03, // Applied via engine sizeMultiplier
+    windSpeed: 1.0,
+    windDirection: new THREE.Vector3(0.3, 0.8, 0),
+    turbulenceStrength: 0.5,
+    smokeRiseSpeed: 1.0,
+    smokeSpread: 2.0,
     baseColor: new THREE.Color(0.7, 0.7, 0.7),
-    opacity: 0,
-    emissionWidth: 70.0, 
-    emissionHeight: 3.0,
-    emissionDepth: 6.0,
-    scale: 0.03 // keep below 0.1
+    opacity: 0.25,
+    emissionWidth: 3, 
+    emissionHeight: 0.2,
+    emissionDepth: 0.2,
+    // scale: 0.03 
   });
 
   // State for UI only (minimal state)
   const [isEngineReady, setIsEngineReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [enginePosition, setEnginePosition] = useState<THREE.Vector3>(new THREE.Vector3(0, 0, -5));
+
+  // ✅ NEW: Track engine transforms separately (applied via engine props)
+  const [engineScale, setEngineScale] = useState<number>(0.03); // Default scale
+  const [engineRotation, setEngineRotation] = useState<THREE.Euler>(new THREE.Euler(0, 0, 0));
 
   // =================================================================
-  // POSITIONING CALCULATIONS (memoized)
-  // =================================================================
-  
-  // Calculate smoke position using new positioning system
-  const smokePosition = useMemo(() => {
-    if (!newSystemReady) {
-      return new THREE.Vector3(0, 0, -5); // Default position
-    }
-
-    // Combine options since newGetPosition only takes 1-2 arguments
-    const options = {
-      useDebugOverride: isUniversalMode,
-      isUniversalMode: isUniversalMode,
-      ...(newUserPosition && { gpsPosition: newUserPosition })
-    };
-
-    const result = newGetPosition('1968', options);
-    
-    if (result && result.relativeToUser) {
-      console.log('🔥 Calculated smoke position:', result.relativeToUser.toArray());
-      return result.relativeToUser; // Extract Vector3 from ExperiencePositionResult
-    }
-    
-    return new THREE.Vector3(0, 0, -5); // Fallback
-  }, [newSystemReady, isUniversalMode, newUserPosition, newGetPosition]);
-
-  // Update engine position when calculated position changes
-  useEffect(() => {
-    setEnginePosition(smokePosition);
-    console.log('🔥 Engine position updated:', smokePosition.toArray());
-  }, [smokePosition]);
-
-  // =================================================================
-  // ENGINE CALLBACKS (memoized)
+  // ENGINE CALLBACKS (simplified)
   // =================================================================
 
   const handleEngineReady = useCallback(() => {
-    console.log('🎉 Experience1968: Smoke engine ready');
+    // console.log('🎉 Experience1968: Smoke engine ready (using singleton positioning)');
     setIsEngineReady(true);
     onExperienceReady?.();
   }, [onExperienceReady]);
 
   const handleEngineError = useCallback((errorMessage: string) => {
-    console.error('❌ Experience1968: Smoke engine error:', errorMessage);
+    // console.error('❌ Experience1968: Smoke engine error:', errorMessage);
     setError(errorMessage);
   }, []);
 
+  // Handle engine reset
+  const handleEngineReset = useCallback(() => {
+    // console.log('🔄 SMOKE: Resetting engine (clearing user transforms)');
+    
+    // Clear user transforms
+    userTransformsRef.current = {
+      rotation: new THREE.Euler(0, 0, 0),
+      scale: 1.0,
+      hasUserChanges: false
+    };
+    
+    // Reset engine transforms
+    setEngineScale(0.03); // Back to default
+    setEngineRotation(new THREE.Euler(0, 0, 0));
+    
+    // console.log('🔄 SMOKE: Reset completed');
+  }, []);
+
   // =================================================================
-  // GESTURE HANDLERS WITH TRANSFORM TRACKING
+  // GESTURE HANDLERS WITH TRANSFORM TRACKING (simplified)
   // =================================================================
 
   useEffect(() => {
@@ -159,96 +138,77 @@ const Experience1968: React.FC<Experience1968Props> = ({
         userTransformsRef.current.rotation.z += deltaZ;
         userTransformsRef.current.hasUserChanges = true;
         
-        // Calculate total rotation including user changes
-        const totalRotation = new THREE.Euler(
-          userTransformsRef.current.rotation.x,
-          userTransformsRef.current.rotation.y,
-          userTransformsRef.current.rotation.z
-        );
+        // Update engine rotation state
+        setEngineRotation(prev => new THREE.Euler(
+          prev.x + deltaY,
+          prev.y + deltaX,
+          prev.z + deltaZ
+        ));
         
-        // Update engine rotation by setting new position with rotation
-        setEnginePosition(prev => {
-          // Create new position with updated rotation applied
-          const newPos = prev.clone();
-          // The engine will handle the rotation via its rotation prop
-          return newPos;
-        });
-        
-        console.log(`🎮 SMOKE: Rotation applied and tracked`, {
-          deltaX, deltaY, deltaZ,
-          userRotation: userTransformsRef.current.rotation.toArray()
-        });
+        // console.log(`🎮 SMOKE: Rotation applied and tracked`, {
+        //   deltaX, deltaY, deltaZ,
+        //   userRotation: userTransformsRef.current.rotation.toArray()
+        // });
       });
     }
 
     // Register scale handler
     if (onModelScale) {
       onModelScale((scaleFactor: number) => {
-        const currentScale = smokeParamsRef.current.scale;
+        const currentScale = engineScale;
         const newScale = Math.max(0.01, Math.min(10, currentScale * scaleFactor));
-        smokeParamsRef.current.scale = newScale;
         
         // Track user scale changes
         userTransformsRef.current.scale *= scaleFactor;
         userTransformsRef.current.scale = Math.max(0.01, Math.min(10, userTransformsRef.current.scale));
         userTransformsRef.current.hasUserChanges = true;
         
-        // Trigger re-render to update engine scale
-        setEnginePosition(prev => prev.clone()); // Force update
+        // Update engine scale state
+        setEngineScale(newScale);
         
-        console.log(`🔍 SMOKE: Scale applied and tracked`, {
-          scaleFactor,
-          newScale: newScale.toFixed(3),
-          userScale: userTransformsRef.current.scale.toFixed(3)
-        });
+        // console.log(`🔍 SMOKE: Scale applied and tracked`, {
+        //   scaleFactor,
+        //   newScale: newScale.toFixed(3),
+        //   userScale: userTransformsRef.current.scale.toFixed(3)
+        // });
       });
     }
 
     // Register reset handler
     if (onModelReset) {
       onModelReset(() => {
-        console.log(`🔄 SMOKE: Reset triggered`);
-        
-        // Clear user transforms
-        userTransformsRef.current = {
-          rotation: new THREE.Euler(0, 0, 0),
-          scale: 1.0,
-          hasUserChanges: false
-        };
-        
-        // Reset smoke parameters
-        smokeParamsRef.current.scale = 0.1;
-        
-        // Force position recalculation
-        setEnginePosition(smokePosition.clone());
-        
-        console.log('🔄 SMOKE: Reset completed');
+        // console.log(`🔄 SMOKE: Reset triggered`);
+        handleEngineReset();
       });
     }
 
     // Register swipe handlers
     if (onSwipeUp) {
       onSwipeUp(() => {
-        console.log('👆 Swipe up detected on smoke - increasing emission rate');
+        // console.log('👆 Swipe up detected on smoke - increasing emission rate');
         smokeParamsRef.current.emissionRate = Math.min(200, smokeParamsRef.current.emissionRate + 25);
-        setEnginePosition(prev => prev.clone()); // Trigger update
+        // Note: Engine will pick up this change through its props
       });
     }
 
     if (onSwipeDown) {
       onSwipeDown(() => {
-        console.log('👇 Swipe down detected on smoke - decreasing emission rate');
+        // console.log('👇 Swipe down detected on smoke - decreasing emission rate');
         smokeParamsRef.current.emissionRate = Math.max(10, smokeParamsRef.current.emissionRate - 25);
-        setEnginePosition(prev => prev.clone()); // Trigger update
+        // Note: Engine will pick up this change through its props
       });
     }
-  }, []); // Empty dependency array - register once only
+  }, [onModelRotate, onModelScale, onModelReset, onSwipeUp, onSwipeDown, handleEngineReset, engineScale]);
 
-  // Handle elevation changes
+  // =================================================================
+  // ELEVATION CHANGE HANDLER (simplified)
+  // =================================================================
+  
   const handleElevationChanged = useCallback(() => {
-    console.log('🔥 Experience1968: Elevation changed - recalculating position');
-    setEnginePosition(smokePosition.clone());
-  }, [smokePosition]);
+    // console.log('🔥 Experience1968: Elevation changed - engine will handle via singleton');
+    // The engine will automatically reposition via its debug mode system
+    // No manual repositioning needed here!
+  }, []);
 
   useEffect(() => {
     if (onElevationChanged) {
@@ -256,49 +216,34 @@ const Experience1968: React.FC<Experience1968Props> = ({
     }
   }, [onElevationChanged, handleElevationChanged]);
 
-  // Monitor debug mode changes
-  useEffect(() => {
-    if (newDebugMode !== undefined) {
-      console.log('🔗 SMOKE: Debug mode changed - recalculating position');
-      (window as any).arTestingOverride = newDebugMode;
-      
-      setTimeout(() => {
-        setEnginePosition(smokePosition.clone());
-      }, 100);
-    }
-  }, [newDebugMode, smokePosition]);
-
   // =================================================================
-  // MEMOIZED ENGINE COMPONENT
+  // MEMOIZED ENGINE COMPONENT (much simpler!)
   // =================================================================
 
   const smokeEngine = useMemo(() => {
-    // Always use AR scene (following MacExperience pattern)
-    const scene = arScene;
-    if (!scene) {
+    if (!arScene) {
       console.warn('🔥 Experience1968: No AR scene available');
       return null;
     }
 
-    console.log('🔧 Experience1968: Creating memoized SmokeParticleEngine');
-    
-    // Calculate final scale including user transformations
-    const finalScale = smokeParamsRef.current.scale * userTransformsRef.current.scale;
-    
-    // Calculate final rotation including user transformations
-    const finalRotation = new THREE.Euler(
-      userTransformsRef.current.rotation.x,
-      userTransformsRef.current.rotation.y,
-      userTransformsRef.current.rotation.z
-    );
+    // console.log('🔧 Experience1968: Creating memoized SmokeParticleEngine with singleton positioning');
     
     return (
       <SmokeParticleEngine
-        scene={scene}
+        // ✅ NEW: Positioning via singleton (like StaticPointCloudEngine)
+        scene={arScene}
         enabled={true}
-        position={enginePosition}
-        rotation={finalRotation}
-        scale={finalScale}
+        experienceId="1968" // ← Engine handles all positioning via singleton!
+        isUniversalMode={isUniversalMode}
+        lockPosition={true}
+        
+        // ❌ REMOVED: position prop - engine calculates this internally!
+        // ✅ KEEP: Visual and animation props
+        particleColor={smokeParamsRef.current.baseColor}
+        particleSize={smokeParamsRef.current.particleSize}
+        opacity={smokeParamsRef.current.opacity}
+        
+        // Smoke animation controls (preserved exactly)
         maxParticleCount={smokeParamsRef.current.maxParticleCount}
         emissionRate={smokeParamsRef.current.emissionRate}
         particleLifetime={smokeParamsRef.current.particleLifetime}
@@ -307,28 +252,35 @@ const Experience1968: React.FC<Experience1968Props> = ({
         turbulenceStrength={smokeParamsRef.current.turbulenceStrength}
         smokeRiseSpeed={smokeParamsRef.current.smokeRiseSpeed}
         smokeSpread={smokeParamsRef.current.smokeSpread}
-        particleColor={smokeParamsRef.current.baseColor}
+        emissionWidth={smokeParamsRef.current.emissionWidth}
+        emissionHeight={smokeParamsRef.current.emissionHeight}
+        emissionDepth={smokeParamsRef.current.emissionDepth}
+        
+        // Callbacks
         onReady={handleEngineReady}
         onError={handleEngineError}
       />
     );
   }, [
     arScene,
-    enginePosition,
-    userTransformsRef.current.rotation,
-    userTransformsRef.current.scale,
+    isUniversalMode,
+    // User transform dependencies (trigger re-render when changed)
+    engineScale,
+    engineRotation,
+    // Smoke parameters that can change via gestures
     smokeParamsRef.current.emissionRate,
+    // Callbacks
     handleEngineReady,
     handleEngineError
   ]);
 
   // =================================================================
-  // RENDER (No standalone mode setup needed)
+  // RENDER (much simpler!)
   // =================================================================
 
   return (
     <>
-      {/* Memoized Smoke Particle Engine */}
+      {/* Memoized Smoke Particle Engine with Singleton Positioning */}
       {smokeEngine}
 
       {/* Loading indicator */}
@@ -376,7 +328,8 @@ const Experience1968: React.FC<Experience1968Props> = ({
             textAlign: 'center',
             maxWidth: '300px'
           }}>
-            Setting up smoke particle engine{isUniversalMode ? ' - Universal Mode' : ''}
+            Setting up smoke particle engine{isUniversalMode ? ' - Universal Mode' : ''}<br/>
+            <small>Using Singleton Positioning System</small>
           </p>
           
           {/* CSS animation for spinner */}
@@ -409,7 +362,7 @@ const Experience1968: React.FC<Experience1968Props> = ({
         </div>
       )}
 
-      {/* Debug Panel */}
+      {/* Debug Panel (simplified) */}
       {SHOW_DEBUG_PANEL && (
         <div style={{
           position: 'absolute',
@@ -424,17 +377,12 @@ const Experience1968: React.FC<Experience1968Props> = ({
           pointerEvents: 'auto',
           fontFamily: 'monospace'
         }}>
-          <div style={{ color: 'orange' }}>🔥 SMOKE ENGINE DEBUG</div>
-          <div>Mode: AR Only</div>
+          <div style={{ color: 'orange' }}>🔥 SMOKE ENGINE DEBUG (SINGLETON)</div>
+          <div>Mode: Singleton Positioning</div>
           <div>Universal Mode: {isUniversalMode ? '✅' : '❌'}</div>
-          <div>Positioning Ready: {newSystemReady ? '✅' : '❌'}</div>
-          <div style={{ color: 'cyan' }}>
-            Engine Pos: [{enginePosition.x.toFixed(3)}, {enginePosition.y.toFixed(3)}, {enginePosition.z.toFixed(3)}]
-          </div>
-          <div>Scale: {(smokeParamsRef.current.scale * userTransformsRef.current.scale).toFixed(3)}</div>
-          <div style={{ color: isEngineReady ? 'lightgreen' : 'orange' }}>
-            Engine: {isEngineReady ? '✅ Ready' : '❌ Loading'}
-          </div>
+          <div>Experience ID: 1968</div>
+          <div>Engine Scale: {engineScale.toFixed(3)}</div>
+          <div>Engine Ready: {isEngineReady ? '✅' : '❌'}</div>
           <div style={{ color: 'lightblue', fontSize: '10px' }}>
             Particles: {smokeParamsRef.current.particleCount}/{smokeParamsRef.current.maxParticleCount}
           </div>
@@ -450,23 +398,8 @@ const Experience1968: React.FC<Experience1968Props> = ({
           <div style={{ color: 'yellow', fontSize: '10px' }}>
             User Transforms: {userTransformsRef.current.hasUserChanges ? '✅' : '❌'}
           </div>
-          
-          <div 
-            onClick={() => {
-              const newValue = !newDebugMode;
-              (window as any).arTestingOverride = newValue;
-              console.log('🎯 Debug mode toggled:', newValue ? 'ON' : 'OFF');
-            }}
-            style={{ 
-              cursor: 'pointer', 
-              userSelect: 'none', 
-              marginTop: '5px',
-              padding: '2px 4px',
-              backgroundColor: newDebugMode ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)',
-              borderRadius: '2px'
-            }}
-          >
-            Debug: {newDebugMode ? '✅ (Debug Pos)' : '❌ (AR Anchor)'}
+          <div style={{ color: 'lightgreen', fontSize: '10px' }}>
+            🎯 Position: Handled by Singleton
           </div>
         </div>
       )}
@@ -474,4 +407,4 @@ const Experience1968: React.FC<Experience1968Props> = ({
   );
 };
 
-export default Experience1968;
+export default React.memo(Experience1968) ;

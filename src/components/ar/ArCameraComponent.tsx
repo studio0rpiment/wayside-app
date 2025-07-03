@@ -5,15 +5,19 @@ import { usePermissions } from '../../context/PermissionsContext';
 import { PermissionType } from '../../utils/permissions';
 import { useDeviceOrientation } from '../../hooks/useDeviceOrientation';
 import { useGeofenceContext } from '../../context/GeofenceContext';
-import { useARPositioning } from '../../hooks/useARPositioning';
 import { ARRenderingEngine } from '../engines/ARRenderingEngine';
 import { useARInteractions } from '../../hooks/useARInteractions';
 import { debugModeManager } from '../../utils/DebugModeManager';
+
+import { PositioningSystemSingleton } from '../../utils/coordinate-system/PositioningSystemSingleton';
+
+
 import ReformedModelPositioningPanel from '../debug/ModelPositioningPanel';
 import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import TurnLeftIcon from '@mui/icons-material/TurnLeft';
 import TurnRightIcon from '@mui/icons-material/TurnRight';
+
 
 const SHOW_DEBUG_PANEL = true;
 
@@ -21,6 +25,8 @@ interface ArCameraProps {
   // Core positioning (simplified)
   userPosition?: [number, number]; // Frozen position from ExperienceManager
   experienceType?: string;
+  positioningSystemReady?: boolean;
+  arObjectPosition?: THREE.Vector3
   
   // Camera and scene callbacks
   onArObjectPlaced?: (position: THREE.Vector3) => void;
@@ -39,8 +45,7 @@ interface ArCameraProps {
   // System callbacks
   onElevationChanged?: () => void;
   
-  // Shared positioning system
-  sharedARPositioning?: any; // Add proper type definition here based on your ARPositioning hook return type
+
   
   // Legacy props (deprecated, will be removed)
   anchorPosition?: [number, number]; // Used only for debug display
@@ -62,9 +67,10 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   onSwipeUp,
   onSwipeDown,
   onElevationChanged,
-  sharedARPositioning,
   anchorPosition, // Legacy - only for debug
   isUniversalMode = false,
+  arObjectPosition,
+  positioningSystemReady,
   children
   
 }) => {
@@ -242,9 +248,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
     debugMode: SHOW_DEBUG_PANEL 
   });
 
+const adjustGlobalElevation = PositioningSystemSingleton.setGlobalElevationOffset;
+const getCurrentElevationOffset = () => PositioningSystemSingleton.positioning.getGlobalElevationOffset();
+const resetAllAdjustments = PositioningSystemSingleton.resetAllAdjustments;
+const positioningDebugMode = (window as any).arTestingOverride ?? false; // Debug mode from window
+
   // Shared positioning system
-  const positioningSystem = sharedARPositioning;
- if (!positioningSystem) {
+  const positioningSystem = positioningSystemReady;
+ if (!positioningSystemReady) {
   console.error('❌ ArCameraComponent: No shared AR positioning provided!');
   
   // Instead of returning null, show loading:
@@ -268,14 +279,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   );
 }
 
-  const { 
-    adjustGlobalElevation,
-    positionObject,
-    isReady: positioningSystemReady,
-    debugMode: positioningDebugMode,
-    getCurrentElevationOffset,
-    resetAllAdjustments
-  } = positioningSystem;
+
 
   const { isPermissionGranted, requestPermission } = usePermissions();
 
@@ -293,23 +297,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   };
 
   // Get current expected model position from positioning system
-  const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
-    if (!positioningSystem || !positioningSystemReady || !frozenUserPosition) {
-      return null;
-    }
-    
-    try {
-      const result = positioningSystem.getPosition(experienceType);
-      if (result) {
-        setDebugFrozenModelPosition(result.relativeToUser.clone());
-        return result.relativeToUser;
-      }
-    } catch (error) {
-      console.warn('Error getting model position:', error);
-    }
-    
+ const getCurrentExpectedModelPosition = useCallback((): THREE.Vector3 | null => {
+  if (!arObjectPosition) {
     return null;
-  }, [positioningSystem, positioningSystemReady, experienceType, frozenUserPosition]);
+  }
+  
+  setDebugFrozenModelPosition(arObjectPosition.clone());
+  return arObjectPosition; // Use frozen model position
+}, [arObjectPosition]); // Depend on frozen prop
 
   //******** CAMERA INITIALIZATION **********
   const initializeCamera = async (): Promise<boolean> => {
@@ -483,11 +478,12 @@ const initialize = async () => {
   setInitStatus('Getting model position...');
   
   try {
-    const result = positioningSystem.getPosition(experienceType);
+
+      const result = arObjectPosition
     
     if (result && onArObjectPlaced) {
       setInitStatus('✅ AR positioned successfully');
-      onArObjectPlaced(result.relativeToUser);
+      onArObjectPlaced(result);
     } else {
       setInitStatus('❌ Failed to get model position');
     }
@@ -1004,11 +1000,6 @@ const initialize = async () => {
       }}
       >
         {getTurnDirectionText()}
-      </div>
-    )}
-    {cameraLookDirection.modelDistance !== null && (
-      <div style={{ fontSize: '11px', color: 'lightblue', marginTop: '3px' }}>
-        {(cameraLookDirection.modelDistance * 3.28084).toFixed(1)}ft away
       </div>
     )}
   </div>

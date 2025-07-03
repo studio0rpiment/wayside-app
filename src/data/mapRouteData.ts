@@ -12,7 +12,7 @@ import { getAssetPath } from '../utils/assetPaths';
 
 // CENTRAL GEOFENCING CONFIGURATION
 export const GEOFENCE_CONFIG = {
-  DEFAULT_RADIUS: 15 // Default radius in meters
+  DEFAULT_RADIUS: 20 // Default radius in meters
 };
 
 export function setGlobalRadius(newRadius: number): void {

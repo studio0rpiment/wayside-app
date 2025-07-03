@@ -158,7 +158,7 @@ export function useEnhancedGeofenceManager(
   
   // Function to reset radius
   const resetGlobalRadius = useCallback(() => {
-    const defaultRadius = 15; // Your original default
+    const defaultRadius = 20; //  original default
     GEOFENCE_CONFIG.DEFAULT_RADIUS = defaultRadius;
     setGlobalRadius(defaultRadius);
     

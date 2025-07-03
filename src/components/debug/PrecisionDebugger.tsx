@@ -34,7 +34,7 @@ const PrecisionDebugger: React.FC<PrecisionDebuggerProps> = ({
   startTracking,
   stopTracking,
   getPositionStats,
-  currentRadius = 10,
+  currentRadius = 20,
 }) => {
 
   // ✅ NEW: Three-level progressive disclosure state

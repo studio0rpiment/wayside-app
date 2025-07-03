@@ -4,7 +4,7 @@ import * as THREE from '../../node_modules/@types/three';
 import ArCameraComponent from './ar/ArCameraComponent';
 import { useSystemOptimization } from '../utils/systemOptimization';
 import { useGeofenceContext, PositionQuality } from '../context/GeofenceContext';
-import { useARPositioning } from '../hooks/useARPositioning';
+import { PositioningSystemSingleton } from '../utils/coordinate-system/PositioningSystemSingleton';
 
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
@@ -146,8 +146,9 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   } = useEnhancedUserPosition(propUserPosition);
 
   // 🆕 Shared AR positioning system - THE SINGLE SOURCE
-  const sharedARPositioning = useARPositioning();
-const { isReady: positioningReady } = sharedARPositioning || {};
+
+  const positioningReady = PositioningSystemSingleton.getSystemStatus().positioningManagerReady;
+
 
 
   // 🆕 Universal Mode Detection (auto-detect if not provided)
@@ -216,19 +217,22 @@ const { isReady: positioningReady } = sharedARPositioning || {};
   }, [isOpen, isFrozen, resetFrozenPosition]);
 
   // 🆕 Calculate model position ONCE when positioning system and frozen position are ready
-  useEffect(() => {
-    if (isOpen && frozenPosition && positioningReady && !positionCalculated) {
+    useEffect(() => {
+    // Get singleton ready state
+    const singletonReady = PositioningSystemSingleton.getSystemStatus().positioningManagerReady;
+    
+    if (isOpen && frozenPosition && singletonReady && !positionCalculated) {
       console.log('🎯 ExperienceManager: Calculating SINGLE SOURCE model position...');
       
       try {
-        // Create user input for positioning system
-        const userInput = {
-          gpsPosition: frozenPosition,
-          isUniversalMode: isUniversalMode
-        };
-        
         // Get position from positioning system
-        const result = sharedARPositioning.getPosition(experienceType);
+        const result = PositioningSystemSingleton.getExperiencePosition(
+          experienceType,
+          {
+            gpsPosition: frozenPosition,
+            isUniversalMode: isUniversalMode
+          }
+        );
         
         if (result) {
           const finalModelPosition = result.relativeToUser.clone();
@@ -244,7 +248,7 @@ const { isReady: positioningReady } = sharedARPositioning || {};
         console.error('❌ Error calculating model position:', error);
       }
     }
-  }, [isOpen, frozenPosition, positioningReady, positionCalculated, experienceType, isUniversalMode, sharedARPositioning]);
+  }, [isOpen, frozenPosition, positionCalculated, experienceType, isUniversalMode]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -550,7 +554,7 @@ const { isReady: positioningReady } = sharedARPositioning || {};
           coordinateScale={coordinateScale} // Legacy
           experienceType={experienceType}
           isUniversalMode={isUniversalMode} // 🆕 Pass universal mode
-          // 🚫 REMOVED: onArObjectPlaced - ArCamera no longer calculates position
+          arObjectPosition={arObjectPosition || undefined}
           onOrientationUpdate={handleOrientationUpdate}
           onSceneReady={handleArSceneReady} // 🆕 Just notifies when scene is ready
           onModelRotate={handleModelRotate}
@@ -559,7 +563,7 @@ const { isReady: positioningReady } = sharedARPositioning || {};
           onSwipeUp={handleSwipeUp}
           onSwipeDown={handleSwipeDown}
           onElevationChanged={handleElevationChanged}
-          sharedARPositioning={sharedARPositioning}//- ArCamera doesn't need it
+          positioningSystemReady={positioningReady}//- ArCamera doesn't need it
         />
       )}
       

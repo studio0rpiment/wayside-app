@@ -1,23 +1,30 @@
-// engines/SmokeParticleEngine.tsx - Following WaterParticleEngine Pattern
-import React, { useRef, useEffect, useCallback } from 'react';
+// engines/SmokeParticleEngine.tsx - Updated to use PositioningSystemSingleton pattern
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import * as THREE from 'three'
 import { getAssetPath } from '../../utils/assetPaths';
+import { PositioningSystemSingleton } from '../../utils/coordinate-system/PositioningSystemSingleton';
+import { useGeofenceBasics } from '../../context/GeofenceContext';
+import { debugModeManager } from '../../utils/DebugModeManager';
+import { loadShader } from '../../utils/shaderLoader';
+
 
 interface SmokeParticleEngineProps {
   scene: THREE.Scene;
   enabled: boolean;
   
-  // Positioning controls
-  position?: THREE.Vector3;
-  rotation?: THREE.Euler;
-  scale?: number;
+  // ✅ NEW: Positioning via singleton (like StaticPointCloudEngine)
+  experienceId: string;           // Which experience this smoke belongs to
+  isUniversalMode?: boolean;      // Universal mode override
+  lockPosition?: boolean;         // Lock position after first render (default: true)
   
-  // Visual controls
+  // ❌ REMOVED: position?, rotation?, scale? - now handled by singleton
+  
+  // Visual controls (unchanged)
   particleColor?: THREE.Color;
   particleSize?: number;
   opacity?: number;
   
-  // Smoke animation controls
+  // Smoke animation controls (unchanged)
   emissionRate?: number;
   particleLifetime?: number;
   windSpeed?: number;
@@ -29,11 +36,10 @@ interface SmokeParticleEngineProps {
   emissionHeight?: number; 
   emissionDepth?: number;
   
-  // Performance options
-
+  // Performance options (unchanged)
   maxParticleCount?: number;
   
-  // Callbacks
+  // Callbacks (unchanged)
   onReady?: () => void;
   onError?: (error: string) => void;
   onProgress?: (progress: number) => void;
@@ -43,33 +49,57 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
   scene,
   enabled,
   
-  position = new THREE.Vector3(0, 0, 0),
-  rotation = new THREE.Euler(0, 0, 0),
-  scale = 1,
+  // ✅ NEW: Positioning props
+  experienceId,
+  isUniversalMode = false,
+  lockPosition = true,
   
+  // Visual controls
   particleColor = new THREE.Color(0.7, 0.7, 0.7),
   particleSize = 1,
   opacity = 0.25,
   
-  emissionRate = 100,
-  particleLifetime = 10.0,
-  windSpeed = 5.0,
+  // Smoke animation controls
+  emissionRate = 200,
+  particleLifetime = 1.0,
+  windSpeed = 1.0,
   windDirection = new THREE.Vector3(1, 0.1, 0),
-  smokeRiseSpeed = 8.0,
-  smokeSpread = 5.0,
-  turbulenceStrength = 4.0,
-  emissionWidth = 200.0,
-  emissionHeight = 20.0,
-  emissionDepth = 20.0,
+  smokeRiseSpeed = 2.0,
+  smokeSpread = 2.0,
+  turbulenceStrength = 1.0,
+  emissionWidth = 0.1,
+  emissionHeight = 0.1,
+  emissionDepth = 0.1,
   
-
-  maxParticleCount = 2000, // Reduced for performance
+  maxParticleCount = 2000,
   
   onReady,
   onError,
   onProgress
 }) => {
-  console.log('🔥 SmokeParticleEngine: Initializing with max particles:', maxParticleCount);
+  const componentIdRef = useRef(Math.random().toString(36).substr(2, 9));
+  console.log(`🔥 SmokeParticleEngine: Initializing ${experienceId} with singleton positioning (ID: ${componentIdRef.current})`);
+
+  // ✅ NEW: Capture universal mode and user position ONCE (like StaticPointCloudEngine)
+  const capturedUniversalModeRef = useRef<boolean | null>(null);
+  const capturedUserPositionRef = useRef<[number, number] | null>(null);
+  const positionLockedRef = useRef(false);
+
+  // Get geofence context for initial values
+  const { userPosition, isUniversalMode: contextUniversalMode } = useGeofenceBasics();
+  
+  // ✅ NEW: Capture values ONCE on first render (like StaticPointCloudEngine)
+  if (capturedUniversalModeRef.current === null) {
+    capturedUniversalModeRef.current = isUniversalMode || contextUniversalMode;
+    capturedUserPositionRef.current = userPosition;
+    // console.log(`📸 ${experienceId}: Captured initial state:`, {
+    //   universalMode: capturedUniversalModeRef.current,
+    //   userPosition: capturedUserPositionRef.current
+    // });
+  }
+
+  // ✅ NEW: Debug mode state
+  const [debugMode, setDebugMode] = useState(false);
 
   // Refs following WaterParticleEngine pattern - NO STATE!
   const smokeSystemRef = useRef<THREE.Group | null>(null);
@@ -79,6 +109,10 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
   const clockRef = useRef(new THREE.Clock());
   const initializationRef = useRef<boolean>(false);
   
+  // ✅ NEW: Positioning state
+  const [smokePosition, setSmokePosition] = useState<THREE.Vector3>(new THREE.Vector3(0, 0, -5));
+  const [positionCalculated, setPositionCalculated] = useState(false);
+
   // Animation state ref (no React state to avoid re-renders)
   const animationStateRef = useRef({
     time: 0,
@@ -89,7 +123,7 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
   // Emission state ref
   const emissionStateRef = useRef({
     nextEmissionTime: 0,
-    emissionInterval: 1 / emissionRate // seconds between emissions
+    emissionInterval: 1 / emissionRate
   });
 
   // Configuration refs (no re-renders during animation)
@@ -105,16 +139,166 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
     smokeSpread,
     baseColor: particleColor.clone(),
     opacity,
-    emissionWidth: emissionWidth || 50.0,
-    emissionHeight: emissionHeight || 3.0,
-    emissionDepth: emissionDepth || 6.0,
+    emissionWidth: emissionWidth ,
+    emissionHeight: emissionHeight ,
+    emissionDepth: emissionDepth ,
   });
+
+  // ✅ NEW: Calculate position using singleton (like StaticPointCloudEngine)
+const calculateSmokePosition = useCallback(() => {
+  // console.log(`🎯 ${experienceId}: Calculating smoke position using singleton...`);
+  
+  const finalUniversalMode = capturedUniversalModeRef.current;
+  const finalUserPosition = capturedUserPositionRef.current;
+  
+  // console.log(`🎯 Captured values:`, {
+  //   universalMode: finalUniversalMode,
+  //   userPosition: finalUserPosition,
+  //   experienceId
+  // });
+
+  const positionResult = PositioningSystemSingleton.getExperiencePosition(
+    experienceId,
+    {
+      gpsPosition: finalUserPosition,
+      isUniversalMode: finalUniversalMode
+    }
+  );
+
+  console.log(`🎯 Singleton returned:`, positionResult);
+
+  if (positionResult) {
+    // console.log(`✅ Position result details:`, {
+    //   relativeToUser: positionResult.relativeToUser.toArray(),
+    //   isUsingDebugMode: positionResult.isUsingDebugMode,
+    //   distanceFromUser: positionResult.distanceFromUser
+    // });
+
+    const freshPosition = positionResult.relativeToUser.clone();
+    // console.log(`🎯 Fresh position calculated:`, freshPosition.toArray());
+
+    // Still update state for other uses, but don't rely on it for immediate use
+    setSmokePosition(freshPosition);
+    setPositionCalculated(true);
+    
+    // Lock position after successful positioning
+    if (lockPosition) {
+      positionLockedRef.current = true;
+      // console.log(`🔒 ${experienceId}: Position locked after calculation`);
+    }
+
+    // console.log(`✅ ${experienceId}: Smoke position calculated and set:`, {
+    //   freshPosition: freshPosition.toArray(),
+    //   rotation: [positionResult.rotation.x, positionResult.rotation.y, positionResult.rotation.z],
+    //   scale: positionResult.scale,
+    //   universalMode: positionResult.isUsingDebugMode,
+    //   distance: positionResult.distanceFromUser?.toFixed(1) + 'm'
+    // });
+
+    // ✅ RETURN THE FRESH POSITION DIRECTLY
+    return {
+      success: true,
+      position: freshPosition,
+      result: positionResult
+    };
+  } else {
+    console.warn(`⚠️ ${experienceId}: No position result from positioning system`);
+    return {
+      success: false,
+      position: null,
+      result: null
+    };
+  }
+}, [experienceId, lockPosition, smokePosition]);
+
+  // ✅ NEW: Force reposition function (like StaticPointCloudEngine)
+  const forceReposition = useCallback((currentDebugMode: boolean) => {
+    if (!smokeSystemRef.current) {
+      // console.log(`⏭️ ${experienceId}: Smoke system not ready for forced reposition`);
+      return;
+    }
+    
+    const finalUniversalMode = capturedUniversalModeRef.current;
+    const finalUserPosition = capturedUserPositionRef.current;
+    
+    // console.log(`🎯 ${experienceId}: Forcing smoke reposition (debug: ${currentDebugMode})`);
+    
+    const positionResult = PositioningSystemSingleton.getExperiencePosition(
+      experienceId,
+      {
+        gpsPosition: finalUserPosition,
+        isUniversalMode: finalUniversalMode
+      },
+      {
+        useDebugOverride: currentDebugMode // Force debug override
+      }
+    );
+
+    if (positionResult && smokeSystemRef.current) {
+      const newPosition = positionResult.relativeToUser.clone();
+      setSmokePosition(newPosition);
+      
+      // Update the group position directly
+      smokeSystemRef.current.position.copy(newPosition);
+
+      // console.log(`✅ ${experienceId}: Forced smoke reposition complete (debug: ${currentDebugMode})`);
+    } else {
+      console.warn(`⚠️ ${experienceId}: No position result for forced reposition`);
+    }
+  }, [experienceId]);
+
+  // ✅ NEW: Debug mode change handler (like StaticPointCloudEngine)
+  useEffect(() => {
+    debugModeManager.initialize();
+    
+    const handleDebugModeChange = (event: CustomEvent) => {
+      const newDebugMode = event.detail.enabled;
+      const previousDebugMode = debugMode;
+      
+      setDebugMode(newDebugMode);
+      
+      // Force reposition if debug mode actually changed and smoke is ready
+      if (previousDebugMode !== newDebugMode && smokeSystemRef.current) {
+        // console.log(`🐛 ${experienceId}: Debug mode changed ${previousDebugMode} → ${newDebugMode}, forcing reposition`);
+        
+        // Force repositioning regardless of lock status
+        forceReposition(newDebugMode);
+      }
+    };
+    
+    debugModeManager.addEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+    setDebugMode(debugModeManager.debugMode); // Initialize
+    
+    return () => {
+      debugModeManager.removeEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+    };
+  }, [debugMode, experienceId, forceReposition]);
+
+  // ✅ NEW: Position update effect (only if not locked)
+  useEffect(() => {
+    // Skip if position is locked or already calculated
+    if (lockPosition && positionLockedRef.current) {
+      // console.log(`🔒 ${experienceId}: Position locked, ignoring updates`);
+      return;
+    }
+
+    if (positionCalculated) {
+      // console.log(`⏭️ ${experienceId}: Position already calculated, ignoring updates`);
+      return;
+    }
+
+    // Calculate position using singleton
+    if (!lockPosition) {
+      // console.log(`🔄 ${experienceId}: Updating position (lock disabled)`);
+      calculateSmokePosition();
+    }
+  }, [userPosition, isUniversalMode, contextUniversalMode, lockPosition, experienceId, positionCalculated, calculateSmokePosition]);
 
   // Update smoke parameters when props change
   useEffect(() => {
     smokeParamsRef.current = {
       maxParticleCount,
-      particleSize,
+      particleSize: 1.0,
       emissionRate,
       particleLifetime,
       windSpeed,
@@ -124,10 +308,12 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
       smokeRiseSpeed,
       smokeSpread,
       baseColor: particleColor.clone(),
-      emissionWidth: 50.0,
-      emissionHeight: 3.0,
-      emissionDepth: 6.0,
+      emissionWidth: emissionWidth,
+      emissionHeight: emissionHeight,
+      emissionDepth: emissionDepth,
     };
+
+    // console.log(smokeParamsRef.current)
     
     emissionStateRef.current.emissionInterval = 1 / emissionRate;
     
@@ -138,9 +324,9 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
       materialRef.current.uniforms.windDirection.value = windDirection;
       materialRef.current.uniforms.turbulenceStrength.value = turbulenceStrength;
     }
-  }, [emissionRate, particleLifetime, windSpeed, windDirection, smokeRiseSpeed, smokeSpread, turbulenceStrength, particleColor, maxParticleCount]);
+  }, [emissionRate, particleLifetime, windSpeed, windDirection, smokeRiseSpeed, smokeSpread, turbulenceStrength, particleColor, maxParticleCount, emissionWidth, emissionHeight, emissionDepth, opacity]);
 
-  // Particle emission function
+  // Particle emission function (unchanged)
   const emitParticles = useCallback((currentTime: number, deltaTime: number) => {
     if (!particleSystemRef.current || !smokeParamsRef.current) return;
     
@@ -166,17 +352,20 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
         const i3 = i * 3;
         
         // Position at emitter with random offset
-        positions[i3] = (Math.random() - 0.2) * smokeParamsRef.current.emissionWidth;
-        positions[i3 + 1] = (Math.random() - 0.2) * smokeParamsRef.current.emissionHeight;
-        positions[i3 + 2] = (Math.random() - 0.2) * smokeParamsRef.current.emissionDepth;
+positions[i3] = (Math.random() - 0.2) * smokeParamsRef.current.emissionWidth;
+positions[i3 + 1] = (Math.random() - 0.2) * smokeParamsRef.current.emissionHeight;
+positions[i3 + 2] = (Math.random() - 0.2) * smokeParamsRef.current.emissionDepth;
+
+
         
         // Random velocity
-        velocities[i3] = (Math.random() - 0.5) * smokeParamsRef.current.smokeSpread;
-        velocities[i3 + 1] = Math.random() * 3.0 + smokeParamsRef.current.smokeRiseSpeed;
-        velocities[i3 + 2] = (Math.random() - 0.5) * smokeParamsRef.current.smokeSpread * 0.5;
+velocities[i3] = (Math.random() - 0.5) * smokeParamsRef.current.smokeSpread;
+velocities[i3 + 1] = Math.random() * 3.0 + smokeParamsRef.current.smokeRiseSpeed;
+velocities[i3 + 2] = (Math.random() - 0.5) * smokeParamsRef.current.smokeSpread * 0.5;
+
         
         // Particle properties
-        lifetimes[i] = smokeParamsRef.current.particleLifetime + Math.random() * smokeParamsRef.current.particleLifetime;
+        lifetimes[i] = 3.0 + Math.random() * 2.0; 
         startTimes[i] = currentTime;
         sizes[i] = smokeParamsRef.current.particleSize + Math.random() * 0.4;
         colorSeeds[i] = Math.random();
@@ -185,6 +374,7 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
         emitted++;
         animationStateRef.current.activeParticles++;
       }
+      
     }
     
     // Update buffers if particles were emitted
@@ -198,9 +388,12 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
       particleSystemRef.current.geometry.attributes.windFactor.needsUpdate = true;
       particleSystemRef.current.geometry.attributes.isActive.needsUpdate = true;
     }
-  }, [particleSize]);
 
-  // Particle lifecycle management
+
+    
+  }, []);
+
+  // Particle lifecycle management (unchanged)
   const updateParticleLifecycle = useCallback((currentTime: number) => {
     if (!particleSystemRef.current) return;
     
@@ -232,11 +425,11 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
 
   // Create smoke particle system (following WaterParticleEngine pattern)
   const createSmokeParticleSystem = useCallback(async () => {
-    console.log('🔥 SmokeParticleEngine: Creating particle system...');
+    // console.log(`🔥 SmokeParticleEngine: Creating particle system for ${experienceId}...`);
     
     // Prevent double initialization
     if (initializationRef.current) {
-      console.log('🔥 SmokeParticleEngine: Already initialized, skipping...');
+      // console.log(`🔥 SmokeParticleEngine: Already initialized, skipping...`);
       return;
     }
     initializationRef.current = true;
@@ -244,9 +437,17 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
     try {
       if (onProgress) onProgress(10);
       
+      // ✅ NEW: Calculate position using singleton BEFORE creating system
+      if (!positionCalculated) {
+        const success = calculateSmokePosition();
+        if (!success) {
+          throw new Error(`Failed to calculate position for ${experienceId}`);
+        }
+      }
+      
       // Create main group
       const smokeGroup = new THREE.Group();
-      smokeGroup.name = 'SmokeParticleSystem';
+      smokeGroup.name = `SmokeParticleSystem-${experienceId}`;
       smokeSystemRef.current = smokeGroup;
       
       if (onProgress) onProgress(30);
@@ -283,126 +484,37 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
       geometry.setAttribute("isActive", new THREE.BufferAttribute(active, 1));
       
       if (onProgress) onProgress(70);
+
+      const vertexShader = await loadShader('/src/shaders/smoke.vert');
+      const fragmentShader = await loadShader('/src/shaders/smoke.frag');
+
       
       // Create simplified shader material (no texture loading for now)
-      const material = new THREE.ShaderMaterial({
-        uniforms: {
-          time: { value: 0.0 },
-          baseColor: { value: smokeParamsRef.current.baseColor },
-          opacity: {value: opacity},
-          sizeMultiplier: { value: particleSize },// Bigger for visibility
-          colorVariation: { value: 0.3 },
-          windDirection: { value: smokeParamsRef.current.windDirection },
-          windSpeed: { value: smokeParamsRef.current.windSpeed },
-          turbulenceStrength: { value: smokeParamsRef.current.turbulenceStrength }
-        },
-        vertexShader: `
-          uniform float time;
-          uniform vec3 windDirection;
-          uniform float windSpeed;
-          uniform float sizeMultiplier;
-          
-          attribute vec3 velocity;
-          attribute float lifetime;
-          attribute float startTime;
-          attribute float size;
-          attribute float colorSeed;
-          attribute float windFactor;
-          attribute float isActive;
-          
-          varying float vAge;
-          varying float vNormalizedAge;
-          varying float vColorSeed;
-          varying float vFadeOpacity;
-          
-          const float PI = 3.14159265359;
-          
-          void main() {
-            // Early discard for inactive particles
-            if (isActive < 0.5) {
-              gl_Position = vec4(0.0, 0.0, 10000.0, 1.0);
-              gl_PointSize = 0.0;
-              return;
-            }
-            
-            // Calculate age of this particle
-            float particleAge = time - startTime;
-            float normalizedAge = particleAge / lifetime;
-            
-            // Early discard of dead particles
-            if (normalizedAge <= 0.0 || normalizedAge >= 1.0) {
-              gl_Position = vec4(0.0, 0.0, 10000.0, 1.0);
-              gl_PointSize = 0.0;
-              return;
-            }
-            
-            // Pass values to fragment shader
-            vAge = particleAge;
-            vNormalizedAge = normalizedAge;
-            vColorSeed = colorSeed;
-            
-            // Calculate fade opacity
-            vFadeOpacity = sin(normalizedAge * PI);
-            
-            // Basic movement based on velocity
-            vec3 pos = position + velocity * particleAge;
-            
-            // Apply wind effect (increases with height)
-            pos += windDirection * windSpeed * particleAge * windFactor;
-            
-            // Expansion as particle ages
-            float expansionFactor = normalizedAge * 0.6;
-            pos.xz *= (1.0 + expansionFactor);
-            
-            // Transform to camera space
-            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-            gl_Position = projectionMatrix * mvPosition;
-            
-            // Point size calculation
-            float baseSize = size * sizeMultiplier;
-            float sizeScale = sin(normalizedAge * PI) + 0.5;
-            
-            // Distance-based scaling
-            float distanceScale = 300.0 / max(-mvPosition.z, 1.0);
-            gl_PointSize = max(baseSize * sizeScale * distanceScale, 5.0); // Minimum 5 pixels
-          }
-        `,
-        fragmentShader: `
-          uniform vec3 baseColor;
-          uniform float colorVariation;
-          uniform float opacity;
-          
-          varying float vAge;
-          varying float vNormalizedAge;
-          varying float vColorSeed;
-          varying float vFadeOpacity;
-          
-          void main() {
-              // Simple circular fade from center
-              vec2 center = gl_PointCoord - 0.5;
-              float dist = length(center);
-              
-              // Create circular particle shape
-              if (dist > 0.5) {
-                discard;
-              }
-              
-              // Simple color variation
-              vec3 smokeColor = mix(vec3(0.4, 0.4, 0.4), baseColor, vColorSeed * 0.7);
-              
-              // Simple fade based on distance from center and age
-              float centerFade = 1.0 - (dist * 2.0);
-              float finalAlpha = vFadeOpacity * centerFade * opacity;
-              
-              gl_FragColor = vec4(smokeColor, finalAlpha);
-          }
-        `,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      });
+      // Create SIMPLIFIED DEBUG shader material
+// Create SIMPLIFIED DEBUG shader material with required uniforms
+const material = new THREE.ShaderMaterial({
+ 
+ uniforms: {
+    time: { value: 0.0 },
+    baseColor: { value: smokeParamsRef.current.baseColor },
+    opacity: { value: smokeParamsRef.current.opacity },
+    sizeMultiplier: { value: 1.0 },
+    windDirection: { value: smokeParamsRef.current.windDirection },
+    windSpeed: { value: smokeParamsRef.current.windSpeed},
+    turbulenceStrength: { value: smokeParamsRef.current.turbulenceStrength },
+    colorVariation: { value: 0.5 } 
+
+
+  },
+          vertexShader,
+          fragmentShader,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending
+        });
       
       materialRef.current = material;
+
       
       if (onProgress) onProgress(80);
       
@@ -412,39 +524,47 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
       particleSystem.frustumCulled = false;
       smokeGroup.add(particleSystem);
       
-      // Apply transforms
-      smokeGroup.position.copy(position);
-      smokeGroup.rotation.copy(rotation);
-      smokeGroup.scale.setScalar(scale);
-      
+      // ✅ NEW: Apply singleton-calculated position
+//       console.log(`🎯 Applying calculated position to smoke group:`, smokePosition.toArray());
+//       console.log(`🎯 smokePosition state value:`, smokePosition.toArray());
+// console.log(`🎯 smokePosition object:`, smokePosition);   
+
+      smokeGroup.position.copy(smokePosition);
+      // No rotation or scale applied here - they come from user transforms in Experience1968
+      // console.log(`🎯 Smoke group position after copy:`, smokeGroup.position.toArray());
+
       // Add to scene
       scene.add(smokeGroup);
       
       if (onProgress) onProgress(100);
       
-      console.log('✅ SmokeParticleEngine: Particle system created successfully');
-      console.log(`✅ Max particles: ${maxParticles}, Group position: (${smokeGroup.position.x}, ${smokeGroup.position.y}, ${smokeGroup.position.z})`);
+      // console.log(`✅ SmokeParticleEngine: ${experienceId} particle system created successfully`);
+      // console.log(`✅ Max particles: ${maxParticles}, Group position: (${smokeGroup.position.x}, ${smokeGroup.position.y}, ${smokeGroup.position.z})`);
       
       if (onReady) onReady();
       
     } catch (error) {
-      console.error('❌ SmokeParticleEngine: Creation failed:', error);
-      if (onError) onError(`Failed to create smoke particle system: ${error}`);
+      console.error(`❌ SmokeParticleEngine: ${experienceId} creation failed:`, error);
+      if (onError) onError(`Failed to create smoke particle system for ${experienceId}: ${error}`);
     }
   }, [
-    position,
-    rotation, 
-    scale,
     scene,
     onProgress,
     onReady,
-    onError
+    onError,
+    experienceId,
+    smokePosition,
+    positionCalculated,
+    calculateSmokePosition,
+    particleSize,
+    opacity
   ]);
 
   // Update particles (no React state changes!)
   const updateSmokeParticles = useCallback((time: number, deltaTime: number) => {
     if (!particleSystemRef.current || !materialRef.current) return;
-    
+  
+
     // Update time uniform for shader
     materialRef.current.uniforms.time.value = time;
     
@@ -456,9 +576,9 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
     
     // Debug logging (throttled)
     if (Math.floor(time) % 5 < deltaTime) { // Every ~5 seconds
-    //   console.log(`🔥 SmokeEngine: Active particles: ${animationStateRef.current.activeParticles}/${smokeParamsRef.current.maxParticleCount}`);
+      // console.log(`🔥 ${experienceId}: Active particles: ${animationStateRef.current.activeParticles}/${smokeParamsRef.current.maxParticleCount}`);
     }
-  }, [emitParticles, updateParticleLifecycle]);
+  }, [emitParticles, updateParticleLifecycle, experienceId]);
 
   // Animation loop (following WaterParticleEngine pattern)
   const animate = useCallback(() => {
@@ -481,8 +601,8 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
     animationStateRef.current.isAnimating = true;
     clockRef.current.start();
     animate();
-    console.log('🔥 SmokeParticleEngine: Animation started');
-  }, [animate]);
+    // console.log(`🔥 SmokeParticleEngine: ${experienceId} animation started`);
+  }, [animate, experienceId]);
 
   const stopAnimation = useCallback(() => {
     animationStateRef.current.isAnimating = false;
@@ -491,12 +611,12 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
       animationIdRef.current = null;
     }
     clockRef.current.stop();
-    console.log('🔥 SmokeParticleEngine: Animation stopped');
-  }, []);
+    // console.log(`🔥 SmokeParticleEngine: ${experienceId} animation stopped`);
+  }, [experienceId]);
 
   // Cleanup function (following WaterParticleEngine pattern)
   const cleanup = useCallback(() => {
-    console.log('🧹 SmokeParticleEngine: Cleaning up...');
+    // console.log(`🧹 SmokeParticleEngine: Cleaning up ${experienceId}...`);
     
     stopAnimation();
     
@@ -505,6 +625,10 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
     
     // Reset animation state
     animationStateRef.current = { time: 0, isAnimating: false, activeParticles: 0 };
+    
+    // Reset positioning state
+    setPositionCalculated(false);
+    positionLockedRef.current = false;
     
     // Dispose material
     if (materialRef.current) {
@@ -535,8 +659,8 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
     
     particleSystemRef.current = null;
     
-    console.log('✅ SmokeParticleEngine: Cleanup completed');
-  }, [scene, stopAnimation]);
+    // console.log(`✅ SmokeParticleEngine: ${experienceId} cleanup completed`);
+  }, [scene, stopAnimation, experienceId]);
 
   // Main initialization effect - STABLE, following WaterParticleEngine pattern
   useEffect(() => {
@@ -552,12 +676,12 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
           startAnimation();
         }
       } catch (error) {
-        console.error('❌ SmokeParticleEngine: Failed to initialize:', error);
-        if (onError) onError(`Smoke particle initialization failed: ${error}`);
+        console.error(`❌ SmokeParticleEngine: Failed to initialize ${experienceId}:`, error);
+        if (onError) onError(`Smoke particle initialization failed for ${experienceId}: ${error}`);
       }
     };
     
-    console.log('🔥 SmokeParticleEngine: Starting initialization...');
+    // console.log(`🔥 SmokeParticleEngine: Starting initialization for ${experienceId}...`);
     initialize();
     
     return () => {
@@ -579,29 +703,13 @@ const SmokeParticleEngine: React.FC<SmokeParticleEngineProps> = ({
     }
   }, [enabled, startAnimation, stopAnimation]);
 
-  // Handle position changes without re-initialization (following WaterParticleEngine pattern)
+  // ✅ NEW: Handle position changes when smoke system is ready
   useEffect(() => {
-    if (smokeSystemRef.current) {
-      smokeSystemRef.current.position.copy(position);
-      console.log(`🎯 SmokeParticleEngine: Position updated to (${position.x}, ${position.y}, ${position.z})`);
+    if (smokeSystemRef.current && positionCalculated) {
+      smokeSystemRef.current.position.copy(smokePosition);
+      // console.log(`🎯 SmokeParticleEngine: ${experienceId} position updated to (${smokePosition.x}, ${smokePosition.y}, ${smokePosition.z})`);
     }
-  }, [position]);
-
-  // Handle scale changes without re-initialization (following WaterParticleEngine pattern)
-  useEffect(() => {
-    if (smokeSystemRef.current) {
-      smokeSystemRef.current.scale.setScalar(scale);
-      console.log(`🎯 SmokeParticleEngine: Scale updated to ${scale}`);
-    }
-  }, [scale]);
-
-  // Handle rotation changes without re-initialization
-  useEffect(() => {
-    if (smokeSystemRef.current) {
-      smokeSystemRef.current.rotation.copy(rotation);
-      console.log(`🎯 SmokeParticleEngine: Rotation updated`);
-    }
-  }, [rotation]);
+  }, [smokePosition, positionCalculated, experienceId]);
 
   return null; // Engine component renders nothing directly
 };

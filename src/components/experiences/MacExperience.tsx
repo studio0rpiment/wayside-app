@@ -51,6 +51,15 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
   console.log(`🔄 MacExperience: Component render (ID: ${renderIdRef.current})`);
 
+    useEffect(() => {
+    console.log('🔧 MacExperience received props:', {
+      hasArPosition: !!arPosition,
+      arPosition: arPosition?.toArray(),
+      isUniversalMode,
+      experienceType: 'mac'
+    });
+  }, [arPosition, isUniversalMode]);
+
   // =================================================================
   // USER TRANSFORM TRACKING
   // =================================================================
