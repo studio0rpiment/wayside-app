@@ -670,19 +670,34 @@ const initialize = async () => {
         muted
       />
 
-      {/* Semi-transparent background for water experiences */}
-      {(experienceType === 'lily' || experienceType === 'lotus' || experienceType === 'cattail' || experienceType === '1968') && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          zIndex: 1015,
-          pointerEvents: 'none'
-        }} />
-      )}
+     {/* Background overlay - Universal Mode takes priority over experience-specific backgrounds */}
+{isUniversalMode ? (
+  // Universal Mode background - darker overlay when not using GPS positioning
+  <div style={{
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)', // Dark blue tint for simulation mode
+    zIndex: 1015,
+    pointerEvents: 'none'
+  }} />
+) : (
+  // Experience-specific backgrounds (when not in Universal Mode)
+  (experienceType === 'lily' || experienceType === 'lotus' || experienceType === 'cattail' || experienceType === '1968') && (
+    <div style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      zIndex: 1015,
+      pointerEvents: 'none'
+    }} />
+  )
+)}
 
       {/* Three.js canvas overlay */}
       <canvas
