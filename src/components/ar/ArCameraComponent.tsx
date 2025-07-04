@@ -19,7 +19,7 @@ import TurnLeftIcon from '@mui/icons-material/TurnLeft';
 import TurnRightIcon from '@mui/icons-material/TurnRight';
 
 
-const SHOW_DEBUG_PANEL = true;
+const SHOW_DEBUG_PANEL = false;
 
 interface ArCameraProps {
   // Core positioning (simplified)
@@ -971,7 +971,7 @@ const initialize = async () => {
 {isInitialized && cameraLookDirection.bearing !== null && (
   <div style={{
     position: 'absolute',
-    bottom: '20px',
+    bottom: '7svh',
     left: '50%',
     width: '90svw',
     

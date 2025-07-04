@@ -55,21 +55,21 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({
     endYear: 2100,
     gridResolution: 50,
     waterSize: 40,
-    particleColor: new THREE.Color().setHSL(210/360, 0.8, 0.7),
+    particleColor: new THREE.Color().setHSL(210/360, 0.8, 0),
     waveSpeed: 0.001,
-    waveAmplitude: 0.1,
+    waveAmplitude: 0.05,
     floodExpansionFactor: 3.0,
-    particleBaseSize: 0.03,
-    particleSizeMultiplier: 0.0
+    particleBaseSize: 0.3,
+    particleSizeMultiplier: 1.0
   });
 
   // =================================================================
   // ENGINE-ONLY REFS - These affect 3D scene only, no UI re-renders
   // =================================================================
   
-  const engineScaleRef = useRef<number>(1);
+  const engineScaleRef = useRef<number>(0.3);
   const engineRotationRef = useRef<THREE.Euler>(
-    new THREE.Euler(THREE.MathUtils.degToRad(-10), THREE.MathUtils.degToRad(-45), THREE.MathUtils.degToRad(0))
+    new THREE.Euler(THREE.MathUtils.degToRad(20), THREE.MathUtils.degToRad(-45), THREE.MathUtils.degToRad(0))
   );
   const floodLevelRef = useRef<number>(0);
   
@@ -419,10 +419,10 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({
       )}
 
       {/* Debug Window */}
-      <DebugWindow 
+      {/* <DebugWindow 
         isOpen={showDebug} 
         onToggle={() => setShowDebug(!showDebug)} 
-      />
+      /> */}
     </>
   );
 };

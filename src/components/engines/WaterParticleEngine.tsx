@@ -6,6 +6,7 @@ import { PositioningSystemSingleton } from '../../utils/coordinate-system/Positi
 import { useGeofenceBasics } from '../../context/GeofenceContext';
 import { debugModeManager } from '../../utils/DebugModeManager';
 import { debugLogger } from '../debug/WaterSliderDebug';
+import { loadShader } from '../../utils/shaderLoader';
 
 // Pond polygon shape
 const KENILWORTH_POND_SHAPE: { x: number; z: number }[] = [
@@ -107,7 +108,7 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
   floodLevel = 0,
   
   // Static water controls
-  particleColor = new THREE.Color().setHSL(210/360, 0.8, 0.7),
+  particleColor,
   particleSize = 0.3,
   opacity = 1.0,
   particleSpacing = 1.0,
@@ -179,7 +180,7 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
   const waterSystemRef = useRef<THREE.Group | null>(null);
   const waterParticlesRef = useRef<THREE.Points | null>(null);
   const waterParticleIndicesRef = useRef<number[]>([]);
-  const materialRef = useRef<THREE.PointsMaterial | null>(null);
+  const materialRef = useRef<THREE.ShaderMaterial | null>(null);
   const animationIdRef = useRef<number | null>(null);
   const clockRef = useRef(new THREE.Clock());
   const initializationRef = useRef<boolean>(false);
@@ -204,7 +205,7 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
     maxFloodRise: maxWaterRise,
     baseParticleSize: particleSize,
     maxParticleSize: particleSize * particleSizeMultiplier,
-    particleColor: particleColor.clone(),
+    particleColor: particleColor,
     gridResolution,
     waterSize,
     waveSpeed,
@@ -386,9 +387,30 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
       const totalScale = currentScale * currentExpansion;
       waterSystemRef.current.scale.setScalar(totalScale);
       
-      // Apply rotation
-      waterSystemRef.current.rotation.copy(currentRotation);
+  const originalRotation = currentRotationRef.current.clone();
+  
+  // Reduce X rotation as scale increases to maintain visual appearance
+  const rotationCompensation = (1- totalScale) * 0.1; // Adjust this multiplier as needed
+  originalRotation.x += rotationCompensation;
+  
+  waterSystemRef.current.rotation.copy(originalRotation);
     }
+
+    if (materialRef.current) {
+  materialRef.current.uniforms.time.value = time;
+  
+  const floodProgress = currentFloodLevel / waterParamsRef.current.maxFloodRise;
+  
+  // Update size based on flood
+  const baseSize = waterParamsRef.current.baseParticleSize * 4;
+  const floodSizeMultiplier = baseSize * (1 + floodProgress * 2);
+  materialRef.current.uniforms.sizeMultiplier.value = floodSizeMultiplier;
+  
+  // Update color based on flood
+  const waterColor = new THREE.Color(0.2, 0.6, 0.9);
+  waterColor.multiplyScalar(1.0 - floodProgress * 0.3);
+  materialRef.current.uniforms.baseColor.value = waterColor;
+}
     
     // Current flood elevation
     const floodProgress = currentFloodLevel / waterParamsRef.current.maxFloodRise;
@@ -432,16 +454,22 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
     waterParticlesRef.current.geometry.attributes.position.needsUpdate = true;
     
     // Update material properties based on flood level
-    if (materialRef.current) {
-      const depthFactor = currentFloodLevel / waterParamsRef.current.maxFloodRise;
+   if (materialRef.current) {
+  const depthFactor = currentFloodLevel / waterParamsRef.current.maxFloodRise;
+  
+  // Keep it muddy - darker/murkier as flood level increases
+      const baseMuddy = 0.2;
+      const floodEffect = depthFactor * 0.08; // Gets murkier with more flood
       
-      // Deeper water = darker blue
-      const blueIntensity = 0.8 + (depthFactor * 0.2);
-      materialRef.current.color.setRGB(0.1, 0.4, blueIntensity);
+    materialRef.current.uniforms.baseColor.value.setRGB(
+  baseMuddy + floodEffect,           // R: Brown component
+  (baseMuddy + 0.08) + floodEffect, // G: Green component  
+  (baseMuddy + 0.2) + floodEffect   // B: Blue component (muddy blue)
+);
       
       // Particles get slightly bigger with more flood
       const floodSizeMultiplier = 1 + (depthFactor * 0.5);
-      materialRef.current.size = waterParamsRef.current.baseParticleSize * 4 * floodSizeMultiplier;
+      materialRef.current.uniforms.sizeMultiplier.value = waterParamsRef.current.baseParticleSize * 4 * floodSizeMultiplier;
     }
   }, [pointInPolygon]);
 
@@ -501,18 +529,32 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
       let particleIndex = 0;
       
       // Create grid covering the traced pond bounds
-      const gridStepsX = Math.ceil(pondWidth / particleSpacing);
-      const gridStepsZ = Math.ceil(pondHeight / particleSpacing);
+    const gridStepsX = Math.ceil(pondWidth / particleSpacing);
+const gridStepsZ = Math.ceil(pondHeight / particleSpacing);
+
+for (let i = 0; i <= gridStepsX; i++) {
+  for (let j = 0; j <= gridStepsZ; j++) {
+    const x = bounds.minX + (i * particleSpacing);
+    const z = bounds.minZ + (j * particleSpacing);
+    
+    // Only create particles inside the traced pond shape
+    if (pointInPolygon(x, z, pondPolygon)) {
+      // ✅ Add random variation to break up grid lines
+      const randomOffsetX = (Math.random() - 0.5) * 0.8; // ±0.15 units
+      const randomOffsetY = (Math.random() - 0.5) * 0.8; // ±0.05 units  
+      const randomOffsetZ = (Math.random() - 0.5) * 0.8; // ±0.15 units
       
-      for (let i = 0; i <= gridStepsX; i++) {
-        for (let j = 0; j <= gridStepsZ; j++) {
-          const x = bounds.minX + (i * particleSpacing);
-          const z = bounds.minZ + (j * particleSpacing);
-          
-          // Only create particles inside the traced pond shape
-          if (pointInPolygon(x, z, pondPolygon)) {
-            waterPositions.push(x, waterParamsRef.current.baseWaterElevation, z);
-            waterSizes.push(waterParamsRef.current.baseParticleSize * 2);
+      waterPositions.push(
+        x + randomOffsetX, 
+        waterParamsRef.current.baseWaterElevation + randomOffsetY, 
+        z + randomOffsetZ
+      );
+      
+      const baseSizeMultiplier = 2; // Your current multiplier
+      const sizeVariation = (Math.random() - 0.5) * 1.2; // ±0.4 variation
+      const finalSize = waterParamsRef.current.baseParticleSize * (baseSizeMultiplier + sizeVariation);
+      
+      waterSizes.push(Math.max(0.1, finalSize)); 
             
             // Color variation based on distance from center
             const distanceFromAnchor = Math.sqrt(x * x + z * z);
@@ -520,12 +562,14 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
             const depthFactor = 1 - Math.min(distanceFromAnchor / maxDistance, 1);
             
             // Deeper areas near anchor = darker blue
-            const blueVariation = 0.8 + depthFactor * 0.4;
-            waterColors.push(
-              0.1 * (0.5 + depthFactor * 0.5),  // R
-              0.4 * (0.7 + depthFactor * 0.3),  // G  
-              1.0 * blueVariation               // B
-            );
+          const muddyBase = 0.15; // Base muddy tone
+          const depthDarkening = depthFactor * 0.1; // How much darker the middle gets
+
+          waterColors.push(
+            muddyBase + depthDarkening,           // R: Brown component (0.15 to 0.25)
+            (muddyBase - 0.05) + depthDarkening, // G: Slightly green-ish (0.12 to 0.22)  
+            (muddyBase - 0.15) + depthDarkening * 0.5  // B: Much less blue (0.08 to 0.13)
+          );
             
             waterParticleIndices.push(particleIndex);
             particleIndex++;
@@ -548,17 +592,36 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
       geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       
       if (onProgress) onProgress(80);
+
+    const vertexShader = await loadShader('/src/shaders/water.vert');
+    const fragmentShader = await loadShader('/src/shaders/water.frag');
       
       // Create material
-      const material = new THREE.PointsMaterial({
-        size: waterParamsRef.current.baseParticleSize * 4,
-        sizeAttenuation: true,
-        transparent: true,
-        alphaTest: 0.5,
-        vertexColors: true,
-        opacity: opacity
-      });
-      materialRef.current = material;
+ // ✅ Simple shader material that matches your working geometry
+const material = new THREE.ShaderMaterial({
+  uniforms: {
+    time: { value: 0.0 },
+    sizeMultiplier: { value: 4.0 }, // Match your original size * 4
+    opacity: { value: 1 },
+    baseColor: { value: new THREE.Color().setHSL(0.08, 0.6, 0) }
+  },
+  vertexShader,
+  fragmentShader,
+  transparent: true,
+  depthWrite: false,
+  vertexColors: true, 
+  blending: THREE.NormalBlending // Better for water effects
+});
+    
+    materialRef.current = material;
+
+    setTimeout(() => {
+  if (materialRef.current) {
+    console.log('🎨 All shader uniforms:', Object.keys(materialRef.current.uniforms));
+    console.log('🎨 Full uniform values:', materialRef.current.uniforms);
+  }
+}, 1000);
+
       
       // Create particle system
       const particleSystem = new THREE.Points(geometry, material);
