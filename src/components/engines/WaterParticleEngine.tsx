@@ -1,12 +1,13 @@
-// engines/WaterParticleEngine.tsx - Reformed to use PositioningSystemSingleton pattern
+// engines/WaterParticleEngine.tsx - Reformed to avoid re-rendering issues
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import * as THREE from 'three';
 import { getAssetPath } from '../../utils/assetPaths';
 import { PositioningSystemSingleton } from '../../utils/coordinate-system/PositioningSystemSingleton';
 import { useGeofenceBasics } from '../../context/GeofenceContext';
 import { debugModeManager } from '../../utils/DebugModeManager';
+import { debugLogger } from '../debug/WaterSliderDebug';
 
-// ✅ MOVED: Pond polygon to component level so both functions can access it
+// Pond polygon shape
 const KENILWORTH_POND_SHAPE: { x: number; z: number }[] = [
   { x: -37.5, z: -61.5 },
   { x: -50.5, z: -50.5 },
@@ -44,31 +45,36 @@ interface WaterParticleEngineProps {
   scene: THREE.Scene;
   enabled: boolean;
   
-  // ✅ NEW: Positioning via singleton (like SmokeParticleEngine)
-  experienceId: string;           // Which experience this water belongs to
-  isUniversalMode?: boolean;      // Universal mode override
-  lockPosition?: boolean;         // Lock position after first render (default: true)
+  // Positioning via singleton
+  experienceId: string;
+  isUniversalMode?: boolean;
+  lockPosition?: boolean;
   
-  // ❌ REMOVED: position?, rotation?, scale? - now handled by singleton
+  // ✅ NEW: Ref-based props to avoid re-renders
+  scaleRef?: React.MutableRefObject<number>;
+  rotationRef?: React.MutableRefObject<THREE.Euler>;
+  floodLevelRef?: React.MutableRefObject<number>;
   
-  // Water-specific controls
-  floodLevel: number; // 0-100 representing 2030-2100 progression
+  // ✅ DEPRECATED: These cause re-renders, replaced by refs above
+  scale?: number;
+  rotation?: THREE.Euler;
+  floodLevel?: number;
+  
+  // Water-specific controls (static)
   particleColor?: THREE.Color;
   particleSize?: number;
   opacity?: number;
   particleSpacing?: number;
-  scale?: number;
-  rotation?: THREE.Euler
-
-  // Animation controls
+  
+  // Animation controls (static)
   waveSpeed?: number;
   waveAmplitude?: number;
   
-  // Performance options
-  gridResolution?: number; // Particle density
-  waterSize?: number; // Coverage area size
+  // Performance options (static)
+  gridResolution?: number;
+  waterSize?: number;
   
-  // Water system parameters
+  // Water system parameters (static)
   maxWaterRise?: number;
   startYear?: number;
   endYear?: number;
@@ -85,29 +91,36 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
   scene,
   enabled,
   
-  // ✅ NEW: Positioning props
+  // Positioning props
   experienceId,
   isUniversalMode = false,
   lockPosition = true,
   
-  // Water controls
-  floodLevel,
+  // ✅ NEW: Ref-based props (no re-renders)
+  scaleRef,
+  rotationRef,
+  floodLevelRef,
+  
+  // ✅ FALLBACK: Legacy props for backward compatibility
+  scale = 1.0,
+  rotation = new THREE.Euler(0, 0, 0),
+  floodLevel = 0,
+  
+  // Static water controls
   particleColor = new THREE.Color().setHSL(210/360, 0.8, 0.7),
   particleSize = 0.3,
   opacity = 1.0,
   particleSpacing = 1.0,
-  scale= 1.0,
-  rotation = new THREE.Euler(0, 0, 0),
   
-  // Animation controls
+  // Static animation controls
   waveSpeed = 0.001,
   waveAmplitude = 1.0,
   
-  // Performance options
-  gridResolution = 50, // Reduced for AR performance
+  // Static performance options
+  gridResolution = 50,
   waterSize = 40,
   
-  // Water system parameters
+  // Static water system parameters
   maxWaterRise = 2,
   startYear = 2030,
   endYear = 2100,
@@ -118,29 +131,51 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
   onError,
   onProgress
 }) => {
-  console.log('🌊 WaterParticleEngine: Received scale prop:', scale);
-
   const componentIdRef = useRef(Math.random().toString(36).substr(2, 9));
-  console.log(`🌊 WaterParticleEngine: Initializing ${experienceId} with singleton positioning (ID: ${componentIdRef.current})`);
+  console.log(`🌊 WaterParticleEngine: Initializing ${experienceId} (ID: ${componentIdRef.current})`);
 
-  // ✅ NEW: Capture universal mode and user position ONCE (like SmokeParticleEngine)
+  // =================================================================
+  // CAPTURED VALUES - Set once, never change
+  // =================================================================
+  
   const capturedUniversalModeRef = useRef<boolean | null>(null);
   const capturedUserPositionRef = useRef<[number, number] | null>(null);
   const positionLockedRef = useRef(false);
 
-  // Get geofence context for initial values
+  // Get geofence context for initial values ONLY
   const { userPosition, isUniversalMode: contextUniversalMode } = useGeofenceBasics();
   
-  // ✅ NEW: Capture values ONCE on first render (like SmokeParticleEngine)
+  // ✅ Capture values ONCE on first render
   if (capturedUniversalModeRef.current === null) {
     capturedUniversalModeRef.current = isUniversalMode || contextUniversalMode;
     capturedUserPositionRef.current = userPosition;
   }
 
-  // ✅ NEW: Debug mode state
+  // =================================================================
+  // INTERNAL REFS - Never cause re-renders
+  // =================================================================
+  
+  // Create internal refs if not provided by parent
+  const internalScaleRef = useRef(scale);
+  const internalRotationRef = useRef(rotation.clone());
+  const internalFloodLevelRef = useRef(floodLevel);
+  
+  // ✅ Use provided refs or fallback to internal refs
+  const currentScaleRef = scaleRef || internalScaleRef;
+  const currentRotationRef = rotationRef || internalRotationRef;
+  const currentFloodLevelRef = floodLevelRef || internalFloodLevelRef;
+  
+  // Update internal refs from props (for backward compatibility)
+  useEffect(() => {
+    if (!scaleRef) internalScaleRef.current = scale;
+    if (!rotationRef) internalRotationRef.current = rotation.clone();
+    if (!floodLevelRef) internalFloodLevelRef.current = floodLevel;
+  }, [scale, rotation, floodLevel, scaleRef, rotationRef, floodLevelRef]);
+
+  // Debug mode state
   const [debugMode, setDebugMode] = useState(false);
 
-  // Refs following WaterParticleEngine pattern - NO STATE!
+  // 3D object refs - NO STATE!
   const waterSystemRef = useRef<THREE.Group | null>(null);
   const waterParticlesRef = useRef<THREE.Points | null>(null);
   const waterParticleIndicesRef = useRef<number[]>([]);
@@ -149,7 +184,7 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
   const clockRef = useRef(new THREE.Clock());
   const initializationRef = useRef<boolean>(false);
   
-  // ✅ NEW: Positioning state
+  // ✅ Positioning state - minimal, UI-only
   const [waterPosition, setWaterPosition] = useState<THREE.Vector3>(new THREE.Vector3(0, 0, -5));
   const [positionCalculated, setPositionCalculated] = useState(false);
 
@@ -159,14 +194,14 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
     isAnimating: false
   });
 
-  // Configuration refs (no re-renders during animation)
+  // ✅ Static water parameters ref
   const waterParamsRef = useRef({
-    minCoverageRadius: 12,        // Current pond radius
-    maxCoverageRadius: 28,        // 2100 resilient marsh scenario
+    minCoverageRadius: 12,
+    maxCoverageRadius: 28,
     startYear,
     endYear,
-    baseWaterElevation: 1.5,      // Base water level
-    maxFloodRise: maxWaterRise,   // Maximum rise by 2100
+    baseWaterElevation: 1.5,
+    maxFloodRise: maxWaterRise,
     baseParticleSize: particleSize,
     maxParticleSize: particleSize * particleSizeMultiplier,
     particleColor: particleColor.clone(),
@@ -177,7 +212,35 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
     floodExpansionFactor
   });
 
-  // ✅ NEW: Calculate position using singleton (like SmokeParticleEngine)
+  // =================================================================
+  // DEBUG LOGGING FOR DEBUG WINDOW
+  // =================================================================
+  
+  useEffect(() => {
+    const currentFloodLevel = currentFloodLevelRef.current;
+    const currentScale = currentScaleRef.current;
+    
+    console.log(`🔍 Engine useEffect triggered: floodLevel = ${currentFloodLevel}, scale = ${currentScale}`);
+    
+    debugLogger.log('Engine Flood Level Ref', currentFloodLevel.toFixed(3));
+    debugLogger.log('Engine Scale Ref', currentScale.toFixed(3));
+    
+    const floodProgress = currentFloodLevel / waterParamsRef.current.maxFloodRise;
+    debugLogger.log('Engine Flood Progress', `${(floodProgress * 100).toFixed(1)}%`);
+    
+    const baseRadius = 1.0;
+    const maxExpansion = 1.8;
+    const currentExpansion = baseRadius + (floodProgress * (maxExpansion - baseRadius));
+    debugLogger.log('Engine Water Expansion', `${currentExpansion.toFixed(3)}x`);
+    
+    const totalScale = currentScale * currentExpansion;
+    debugLogger.log('Engine Total Scale', `${currentScale.toFixed(3)} × ${currentExpansion.toFixed(3)} = ${totalScale.toFixed(3)}`);
+  }, []); // ✅ EMPTY DEPS - only log on mount
+
+  // =================================================================
+  // POSITIONING SYSTEM
+  // =================================================================
+
   const calculateWaterPosition = useCallback(() => {
     const finalUniversalMode = capturedUniversalModeRef.current;
     const finalUserPosition = capturedUserPositionRef.current;
@@ -195,18 +258,9 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
       setWaterPosition(freshPosition);
       setPositionCalculated(true);
       
-      // Lock position after successful positioning
       if (lockPosition) {
         positionLockedRef.current = true;
       }
-
-      console.log(`✅ ${experienceId}: Water position calculated:`, {
-        freshPosition: freshPosition.toArray(),
-        rotation: [positionResult.rotation.x, positionResult.rotation.y, positionResult.rotation.z],
-        scale: positionResult.scale,
-        universalMode: positionResult.isUsingDebugMode,
-        distance: positionResult.distanceFromUser?.toFixed(1) + 'm'
-      });
 
       return {
         success: true,
@@ -214,7 +268,6 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
         result: positionResult
       };
     } else {
-      console.warn(`⚠️ ${experienceId}: No position result from positioning system`);
       return {
         success: false,
         position: null,
@@ -223,7 +276,6 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
     }
   }, [experienceId, lockPosition]);
 
-  // ✅ NEW: Force reposition function (like SmokeParticleEngine)
   const forceReposition = useCallback((currentDebugMode: boolean) => {
     if (!waterSystemRef.current) {
       return;
@@ -239,48 +291,21 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
         isUniversalMode: finalUniversalMode
       },
       {
-        useDebugOverride: currentDebugMode // Force debug override
+        useDebugOverride: currentDebugMode
       }
     );
 
     if (positionResult && waterSystemRef.current) {
       const newPosition = positionResult.relativeToUser.clone();
       setWaterPosition(newPosition);
-      
-      // Update the group position directly
       waterSystemRef.current.position.copy(newPosition);
     }
   }, [experienceId]);
 
-  //for Scaling the entire system
-// ✅ NEW: Apply scale to entire water system
-useEffect(() => {
-  console.log('🔧 Scale effect triggered:', { scale, hasWaterSystem: !!waterSystemRef.current });
-  
-  if (waterSystemRef.current) {
-    console.log('🔧 Before scale:', waterSystemRef.current.scale.toArray());
-    waterSystemRef.current.scale.setScalar(scale);
-    console.log('🔧 After scale:', waterSystemRef.current.scale.toArray());
-    console.log(`🌊 WaterParticleEngine: ${experienceId} scaled to ${scale}x`);
-  }
-}, [scale, experienceId]);
+  // ✅ Apply transforms from refs in animation loop, not React effects
+  // This prevents re-renders while keeping transforms updated
 
-// ✅ ADD: Apply rotation to entire water system
-useEffect(() => {
-  console.log('🔧 Rotation effect triggered:', { 
-    rotation: [rotation.x, rotation.y, rotation.z], 
-    hasWaterSystem: !!waterSystemRef.current 
-  });
-  
-  if (waterSystemRef.current) {
-    console.log('🔧 Before rotation:', waterSystemRef.current.rotation.toArray());
-    waterSystemRef.current.rotation.copy(rotation);
-    console.log('🔧 After rotation:', waterSystemRef.current.rotation.toArray());
-    console.log(`🌊 WaterParticleEngine: ${experienceId} rotated to [${rotation.x.toFixed(2)}, ${rotation.y.toFixed(2)}, ${rotation.z.toFixed(2)}]`);
-  }
-}, [rotation, experienceId]);
-
-  // ✅ NEW: Debug mode change handler (like SmokeParticleEngine)
+  // Debug mode change handler
   useEffect(() => {
     debugModeManager.initialize();
     
@@ -290,7 +315,6 @@ useEffect(() => {
       
       setDebugMode(newDebugMode);
       
-      // Force reposition if debug mode actually changed and water is ready
       if (previousDebugMode !== newDebugMode && waterSystemRef.current) {
         forceReposition(newDebugMode);
       }
@@ -304,7 +328,7 @@ useEffect(() => {
     };
   }, [debugMode, experienceId, forceReposition]);
 
-  // ✅ NEW: Position update effect (only if not locked)
+  // Position update effect - STABLE
   useEffect(() => {
     if (lockPosition && positionLockedRef.current) {
       return;
@@ -317,24 +341,11 @@ useEffect(() => {
     if (!lockPosition) {
       calculateWaterPosition();
     }
-  }, [userPosition, isUniversalMode, contextUniversalMode, lockPosition, experienceId, positionCalculated, calculateWaterPosition]);
+  }, []); // ✅ EMPTY DEPS - calculate once only
 
-  // Create simple pond shape for water mask
-  const createSimplePondShape = useCallback(() => {
-    const radius = 15; // 15 meter radius pond
-    const segments = 16;
-    const points: { x: number; z: number }[] = [];
-    
-    for (let i = 0; i < segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      points.push({
-        x: Math.cos(angle) * radius,
-        z: Math.sin(angle) * radius
-      });
-    }
-    
-    return points;
-  }, []);
+  // =================================================================
+  // WATER PARTICLE UTILITIES
+  // =================================================================
 
   // Point-in-polygon test
   const pointInPolygon = useCallback((x: number, z: number, polygon: { x: number; z: number }[]) => {
@@ -352,241 +363,243 @@ useEffect(() => {
     return inside;
   }, []);
 
-  // Enhanced water particles animation with tidal expansion
-const updateWaterParticles = useCallback((time: number) => {
-  if (!waterParticlesRef.current || !waterParticleIndicesRef.current.length) return;
+  // ✅ Enhanced water particles animation with ref-based updates
+  const updateWaterParticles = useCallback((time: number) => {
+    if (!waterParticlesRef.current || !waterParticleIndicesRef.current.length) return;
 
-  const positions = waterParticlesRef.current.geometry.attributes.position.array as Float32Array;
-  
-  // Calculate current flood progress (0 = 2030, 1 = 2100)
-  const floodProgress = floodLevel / waterParamsRef.current.maxFloodRise;
-  
-  // ✅ NEW: Tidal expansion - pond grows with flood level
-  const baseRadius = 1.0; // Base pond size
-  const maxExpansion = 1.8; // Pond can grow to 1.8x original size by 2100
-  const currentExpansion = baseRadius + (floodProgress * (maxExpansion - baseRadius));
-  
-  // Current flood elevation
-  const currentFloodElevation = waterParamsRef.current.baseWaterElevation + 
-                               (floodProgress * waterParamsRef.current.maxFloodRise);
-  
-  // ✅ FIXED: Use the global pond shape constant
-  const expandedPolygon = KENILWORTH_POND_SHAPE.map(point => ({
-    x: point.x * currentExpansion, // Scale X coordinate
-    z: point.z * currentExpansion  // Scale Z coordinate  
-  }));
-  
-  for (let i = 0; i < waterParticleIndicesRef.current.length; i++) {
-    const particleIndex = waterParticleIndicesRef.current[i];
-    const vertexIndex = particleIndex * 3;
+    const positions = waterParticlesRef.current.geometry.attributes.position.array as Float32Array;
     
-    const x = positions[vertexIndex];
-    const z = positions[vertexIndex + 2];
+    // ✅ Read from refs - always gets current values without re-renders
+    const currentFloodLevel = currentFloodLevelRef.current;
+    const currentScale = currentScaleRef.current;
+    const currentRotation = currentRotationRef.current;
     
-    // ✅ NEW: Check if particle is within expanded boundary
-    const isInExpandedBoundary = pointInPolygon(x, z, expandedPolygon);
-    
-    if (isInExpandedBoundary) {
-      // Wave animation for particles within flood boundary
-      const waveHeight = Math.sin(x * 0.1 + time * 2) * Math.cos(z * 0.1 + time * 2) * waterParamsRef.current.waveAmplitude;
+    // Apply transforms to water system
+    if (waterSystemRef.current) {
+      // Calculate flood-based expansion
+      const floodProgress = currentFloodLevel / waterParamsRef.current.maxFloodRise;
+      const baseRadius = 1.0;
+      const maxExpansion = 1.8;
+      const currentExpansion = baseRadius + (floodProgress * (maxExpansion - baseRadius));
       
-      // Particles rise with flood level
-      positions[vertexIndex + 1] = currentFloodElevation + waveHeight;
-    } else {
-      // ✅ NEW: Particles outside boundary sink below ground (hidden)
-      positions[vertexIndex + 1] = currentFloodElevation - 5; // 5m below flood level
+      // Apply combined scale
+      const totalScale = currentScale * currentExpansion;
+      waterSystemRef.current.scale.setScalar(totalScale);
+      
+      // Apply rotation
+      waterSystemRef.current.rotation.copy(currentRotation);
     }
-  }
-  
-  // Mark attributes for update
-  waterParticlesRef.current.geometry.attributes.position.needsUpdate = true;
-  
-  // Update material properties based on flood level
-  if (materialRef.current) {
-    const depthFactor = floodLevel / waterParamsRef.current.maxFloodRise;
     
-    // Deeper water = darker blue
-    const blueIntensity = 0.8 + (depthFactor * 0.2);
-    materialRef.current.color.setRGB(0.1, 0.4, blueIntensity);
+    // Current flood elevation
+    const floodProgress = currentFloodLevel / waterParamsRef.current.maxFloodRise;
+    const currentFloodElevation = waterParamsRef.current.baseWaterElevation + 
+                                 (floodProgress * waterParamsRef.current.maxFloodRise);
     
-    // Particles get slightly bigger with more flood
-    const floodSizeMultiplier = 1 + (depthFactor * 0.5);
-    materialRef.current.size = waterParamsRef.current.baseParticleSize * 4 * floodSizeMultiplier;
-  }
-  
-  // ✅ NEW: Debug logging (remove after testing)
-  if (Math.random() < 0.01) { // Log occasionally to avoid spam
-    console.log(`🌊 Flood update: Level ${floodLevel.toFixed(2)}, Expansion ${currentExpansion.toFixed(2)}x, Elevation ${currentFloodElevation.toFixed(2)}m`);
-  }
-  
-}, [floodLevel, pointInPolygon, scale]); // ✅ FIXED: Added scale dependency
-
- const createWaterParticleSystem = useCallback(async () => {
-  // Prevent double initialization
-  if (initializationRef.current) {
-    return;
-  }
-  initializationRef.current = true;
-  
-  try {
-    if (onProgress) onProgress(10);
+    // Tidal expansion - pond grows with flood level
+    const baseRadius = 1.0;
+    const maxExpansion = 1.8;
+    const currentExpansion = baseRadius + (floodProgress * (maxExpansion - baseRadius));
     
-    // ✅ Calculate position using singleton BEFORE creating system
-    if (!positionCalculated) {
-      const success = calculateWaterPosition();
-      if (!success) {
-        throw new Error(`Failed to calculate position for ${experienceId}`);
+    // Use the global pond shape constant
+    const expandedPolygon = KENILWORTH_POND_SHAPE.map(point => ({
+      x: point.x * currentExpansion,
+      z: point.z * currentExpansion  
+    }));
+    
+    for (let i = 0; i < waterParticleIndicesRef.current.length; i++) {
+      const particleIndex = waterParticleIndicesRef.current[i];
+      const vertexIndex = particleIndex * 3;
+      
+      const x = positions[vertexIndex];
+      const z = positions[vertexIndex + 2];
+      
+      // Check if particle is within expanded boundary
+      const isInExpandedBoundary = pointInPolygon(x, z, expandedPolygon);
+      
+      if (isInExpandedBoundary) {
+        // Wave animation for particles within flood boundary
+        const waveHeight = Math.sin(x * 0.1 + time * 2) * Math.cos(z * 0.1 + time * 2) * waterParamsRef.current.waveAmplitude;
+        
+        // Particles rise with flood level
+        positions[vertexIndex + 1] = currentFloodElevation + waveHeight;
+      } else {
+        // Particles outside boundary sink below ground (hidden)
+        positions[vertexIndex + 1] = currentFloodElevation - 5;
       }
     }
     
-    // Create main group
-    const waterGroup = new THREE.Group();
-    waterGroup.name = `WaterParticleSystem-${experienceId}`;
-    waterSystemRef.current = waterGroup;
+    // Mark attributes for update
+    waterParticlesRef.current.geometry.attributes.position.needsUpdate = true;
     
-    if (onProgress) onProgress(30);
+    // Update material properties based on flood level
+    if (materialRef.current) {
+      const depthFactor = currentFloodLevel / waterParamsRef.current.maxFloodRise;
+      
+      // Deeper water = darker blue
+      const blueIntensity = 0.8 + (depthFactor * 0.2);
+      materialRef.current.color.setRGB(0.1, 0.4, blueIntensity);
+      
+      // Particles get slightly bigger with more flood
+      const floodSizeMultiplier = 1 + (depthFactor * 0.5);
+      materialRef.current.size = waterParamsRef.current.baseParticleSize * 4 * floodSizeMultiplier;
+    }
+  }, [pointInPolygon]);
+
+  // =================================================================
+  // WATER PARTICLE SYSTEM CREATION
+  // =================================================================
+
+  const createWaterParticleSystem = useCallback(async () => {
+    // Prevent double initialization
+    if (initializationRef.current) {
+      return;
+    }
+    initializationRef.current = true;
     
-    // ✅ TRACED POND SHAPE: Use the global constant
-    console.log('🏞️ Using traced Kenilworth pond shape from satellite image');
-    
-    // ✅ FIXED: Use the global constant instead of local variable
-    const pondPolygon = KENILWORTH_POND_SHAPE;
-    
-    console.log(`🏞️ Traced pond with ${pondPolygon.length} boundary points`);
-    console.log(`🏞️ Pond dimensions: ~60m × ~80m`);
-    
-    if (onProgress) onProgress(50);
-    
-    // Calculate pond bounding box for grid sizing
-    const bounds = pondPolygon.reduce(
-      (acc, point) => ({
-        minX: Math.min(acc.minX, point.x),
-        maxX: Math.max(acc.maxX, point.x),
-        minZ: Math.min(acc.minZ, point.z),
-        maxZ: Math.max(acc.maxZ, point.z)
-      }),
-      { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity }
-    );
-    
-    const pondWidth = bounds.maxX - bounds.minX;
-    const pondHeight = bounds.maxZ - bounds.minZ;
-    
-    console.log(`🏞️ Calculated bounds: ${pondWidth.toFixed(1)}m × ${pondHeight.toFixed(1)}m`);
-    
-    const particleSpacing = 0.5; // ← Control particle density here (1.0=dense, 2.0=sparse)
-    const waterPositions: number[] = [];
-    const waterSizes: number[] = [];
-    const waterColors: number[] = [];
-    const waterParticleIndices: number[] = [];
-    
-    let particleIndex = 0;
-    
-    // Create grid covering the traced pond bounds
-    const gridStepsX = Math.ceil(pondWidth / particleSpacing);
-    const gridStepsZ = Math.ceil(pondHeight / particleSpacing);
-    
-    console.log(`🏞️ Creating ${gridStepsX}×${gridStepsZ} particle grid with ${particleSpacing}m spacing`);
-    
-    for (let i = 0; i <= gridStepsX; i++) {
-      for (let j = 0; j <= gridStepsZ; j++) {
-        const x = bounds.minX + (i * particleSpacing);
-        const z = bounds.minZ + (j * particleSpacing);
-        
-        // ✅ Only create particles inside the traced pond shape
-        if (pointInPolygon(x, z, pondPolygon)) {
-          waterPositions.push(x, waterParamsRef.current.baseWaterElevation, z);
-          waterSizes.push(waterParamsRef.current.baseParticleSize * 2);
-          
-          // Color variation based on distance from center (red circle = anchor)
-          const distanceFromAnchor = Math.sqrt(x * x + z * z);
-          const maxDistance = Math.max(pondWidth, pondHeight) / 2;
-          const depthFactor = 1 - Math.min(distanceFromAnchor / maxDistance, 1);
-          
-          // Deeper areas near anchor = darker blue
-          const blueVariation = 0.8 + depthFactor * 0.4;
-          waterColors.push(
-            0.1 * (0.5 + depthFactor * 0.5),  // R
-            0.4 * (0.7 + depthFactor * 0.3),  // G  
-            1.0 * blueVariation               // B
-          );
-          
-          waterParticleIndices.push(particleIndex);
-          particleIndex++;
+    try {
+      if (onProgress) onProgress(10);
+      
+      // Calculate position using singleton BEFORE creating system
+      if (!positionCalculated) {
+        const success = calculateWaterPosition();
+        if (!success) {
+          throw new Error(`Failed to calculate position for ${experienceId}`);
         }
       }
+      
+      // Create main group
+      const waterGroup = new THREE.Group();
+      waterGroup.name = `WaterParticleSystem-${experienceId}`;
+      waterSystemRef.current = waterGroup;
+      
+      if (onProgress) onProgress(30);
+      
+      const pondPolygon = KENILWORTH_POND_SHAPE;
+      
+      if (onProgress) onProgress(50);
+      
+      // Calculate pond bounding box for grid sizing
+      const bounds = pondPolygon.reduce(
+        (acc, point) => ({
+          minX: Math.min(acc.minX, point.x),
+          maxX: Math.max(acc.maxX, point.x),
+          minZ: Math.min(acc.minZ, point.z),
+          maxZ: Math.max(acc.maxZ, point.z)
+        }),
+        { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity }
+      );
+      
+      const pondWidth = bounds.maxX - bounds.minX;
+      const pondHeight = bounds.maxZ - bounds.minZ;
+      
+      const particleSpacing = 0.5;
+      const waterPositions: number[] = [];
+      const waterSizes: number[] = [];
+      const waterColors: number[] = [];
+      const waterParticleIndices: number[] = [];
+      
+      let particleIndex = 0;
+      
+      // Create grid covering the traced pond bounds
+      const gridStepsX = Math.ceil(pondWidth / particleSpacing);
+      const gridStepsZ = Math.ceil(pondHeight / particleSpacing);
+      
+      for (let i = 0; i <= gridStepsX; i++) {
+        for (let j = 0; j <= gridStepsZ; j++) {
+          const x = bounds.minX + (i * particleSpacing);
+          const z = bounds.minZ + (j * particleSpacing);
+          
+          // Only create particles inside the traced pond shape
+          if (pointInPolygon(x, z, pondPolygon)) {
+            waterPositions.push(x, waterParamsRef.current.baseWaterElevation, z);
+            waterSizes.push(waterParamsRef.current.baseParticleSize * 2);
+            
+            // Color variation based on distance from center
+            const distanceFromAnchor = Math.sqrt(x * x + z * z);
+            const maxDistance = Math.max(pondWidth, pondHeight) / 2;
+            const depthFactor = 1 - Math.min(distanceFromAnchor / maxDistance, 1);
+            
+            // Deeper areas near anchor = darker blue
+            const blueVariation = 0.8 + depthFactor * 0.4;
+            waterColors.push(
+              0.1 * (0.5 + depthFactor * 0.5),  // R
+              0.4 * (0.7 + depthFactor * 0.3),  // G  
+              1.0 * blueVariation               // B
+            );
+            
+            waterParticleIndices.push(particleIndex);
+            particleIndex++;
+          }
+        }
+      }
+      
+      waterParticleIndicesRef.current = waterParticleIndices;
+      
+      if (onProgress) onProgress(70);
+      
+      // Create geometry with only water particles
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(waterPositions);
+      const sizes = new Float32Array(waterSizes);
+      const colors = new Float32Array(waterColors);
+      
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      
+      if (onProgress) onProgress(80);
+      
+      // Create material
+      const material = new THREE.PointsMaterial({
+        size: waterParamsRef.current.baseParticleSize * 4,
+        sizeAttenuation: true,
+        transparent: true,
+        alphaTest: 0.5,
+        vertexColors: true,
+        opacity: opacity
+      });
+      materialRef.current = material;
+      
+      // Create particle system
+      const particleSystem = new THREE.Points(geometry, material);
+      waterParticlesRef.current = particleSystem;
+      waterGroup.add(particleSystem);
+      
+      // Apply singleton-calculated position
+      waterGroup.position.copy(waterPosition);
+      
+      // ✅ Apply initial transforms from refs
+      waterGroup.rotation.copy(currentRotationRef.current);
+      waterGroup.scale.setScalar(currentScaleRef.current);
+     
+      // Add to scene
+      scene.add(waterGroup);
+      
+      if (onProgress) onProgress(100);
+      
+      if (onReady) onReady();
+      
+    } catch (error) {
+      console.error(`❌ WaterParticleEngine: ${experienceId} creation failed:`, error);
+      if (onError) onError(`Failed to create water particle system for ${experienceId}: ${error}`);
     }
-    
-    waterParticleIndicesRef.current = waterParticleIndices;
-    
-    console.log(`🏞️ Created ${particleIndex} particles filling traced Kenilworth pond shape`);
-    
-    if (onProgress) onProgress(70);
-    
-    // Create geometry with only water particles
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(waterPositions);
-    const sizes = new Float32Array(waterSizes);
-    const colors = new Float32Array(waterColors);
-    
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    
-    if (onProgress) onProgress(80);
-    
-    // Create material
-    const material = new THREE.PointsMaterial({
-      size: waterParamsRef.current.baseParticleSize * 4,
-      sizeAttenuation: true,
-      transparent: true,
-      alphaTest: 0.5,
-      vertexColors: true,
-      opacity: opacity
-    });
-    materialRef.current = material;
-    
-    // Create particle system
-    const particleSystem = new THREE.Points(geometry, material);
-    waterParticlesRef.current = particleSystem;
-    waterGroup.add(particleSystem);
-    
-    // ✅ Apply singleton-calculated position
-    waterGroup.position.copy(waterPosition);
-    
-    // ✅ Apply initial rotation and scale
-    waterGroup.rotation.copy(rotation);
-    waterGroup.scale.setScalar(scale);
-    console.log(`🌊 Applied initial scale ${scale} and rotation to water system`);
-   
-    // Add to scene
-    scene.add(waterGroup);
-    
-    if (onProgress) onProgress(100);
-    
-    console.log(`✅ WaterParticleEngine: ${experienceId} traced pond particle system created successfully`);
-    
-    if (onReady) onReady();
-    
-  } catch (error) {
-    console.error(`❌ WaterParticleEngine: ${experienceId} creation failed:`, error);
-    if (onError) onError(`Failed to create water particle system for ${experienceId}: ${error}`);
-  }
-}, [
-  scene,
-  onProgress,
-  onReady,
-  onError,
-  experienceId,
-  waterPosition,
-  positionCalculated,
-  calculateWaterPosition,
-  opacity,
-  pointInPolygon,
-  scale,
-  rotation
-]);
+  }, [
+    scene,
+    onProgress,
+    onReady,
+    onError,
+    experienceId,
+    waterPosition,
+    positionCalculated,
+    calculateWaterPosition,
+    opacity,
+    pointInPolygon
+  ]);
 
-  // Animation loop (following engine pattern)
+  // =================================================================
+  // ANIMATION LOOP
+  // =================================================================
+
   const animate = useCallback(() => {
     if (!animationStateRef.current.isAnimating) return;
 
@@ -600,7 +613,6 @@ const updateWaterParticles = useCallback((time: number) => {
     }
   }, [updateWaterParticles]);
 
-  // Start/stop animation
   const startAnimation = useCallback(() => {
     if (animationStateRef.current.isAnimating) return;
     
@@ -618,7 +630,10 @@ const updateWaterParticles = useCallback((time: number) => {
     clockRef.current.stop();
   }, []);
 
-  // Cleanup function
+  // =================================================================
+  // CLEANUP
+  // =================================================================
+
   const cleanup = useCallback(() => {
     stopAnimation();
     
@@ -663,11 +678,13 @@ const updateWaterParticles = useCallback((time: number) => {
     }
     
     waterParticlesRef.current = null;
-    
-    console.log(`✅ WaterParticleEngine: ${experienceId} cleanup completed`);
   }, [scene, stopAnimation, experienceId]);
 
-  // Main initialization effect - STABLE
+  // =================================================================
+  // EFFECTS - MINIMAL AND STABLE
+  // =================================================================
+
+  // ✅ Main initialization effect - STABLE (empty deps)
   useEffect(() => {
     let isMounted = true;
     
@@ -692,9 +709,9 @@ const updateWaterParticles = useCallback((time: number) => {
       isMounted = false;
       cleanup();
     };
-  }, []); // EMPTY DEPENDENCY ARRAY - initialize once only
+  }, []); // ✅ EMPTY DEPENDENCY ARRAY - initialize once only
 
-  // Handle enabled state changes
+  // ✅ Handle enabled state changes - STABLE
   useEffect(() => {
     if (!waterSystemRef.current) return;
     
@@ -707,14 +724,14 @@ const updateWaterParticles = useCallback((time: number) => {
     }
   }, [enabled, startAnimation, stopAnimation]);
 
-  // ✅ NEW: Handle position changes when water system is ready
+  // ✅ Handle position changes when water system is ready - STABLE
   useEffect(() => {
     if (waterSystemRef.current && positionCalculated) {
       waterSystemRef.current.position.copy(waterPosition);
     }
-  }, [waterPosition, positionCalculated, experienceId]);
+  }, [waterPosition, positionCalculated]);
 
   return null; // Engine component renders nothing directly
 };
 
-export default WaterParticleEngine;
+export default React.memo(WaterParticleEngine);
