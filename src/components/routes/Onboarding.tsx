@@ -14,6 +14,7 @@ import { usePermissions } from '../../context/PermissionsContext';
 import SimpleContentContainer, { ContentContainerProps } from '../common/SimpleContentContainer';
 import ContentConfigHelper from '../../utils/ContentConfigHelper';
 
+import { useGeofenceContext } from '../../context/GeofenceContext';
 import LocationGateModal from '../common/LocationGateModal';
 import { universalModeManager } from '../../utils/UniversalModeManager';
 
@@ -41,15 +42,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     console.log('🟡 currentStep changed from somewhere:', currentStep);
   }, [currentStep]);
   
-  // State to track if the AR experience is ready to be shown
-  const [showARExperience, setShowARExperience] = useState(false);
+  // // State to track if the AR experience is ready to be shown
+  // const [showARExperience, setShowARExperience] = useState(false);
   
-  // State to track which AR experience to show
-  const [currentARExperience, setCurrentARExperience] = useState<string | null>(null);
+  // // State to track which AR experience to show
+  // const [currentARExperience, setCurrentARExperience] = useState<string | null>(null);
   
-  // Track AR step progression
-  const [arStep, setARStep] = useState(1);
+  // // Track AR step progression
+  // const [arStep, setARStep] = useState(1);
   
+// Start tracking the location
+const { startTracking } = useGeofenceContext();
+
   // NEW: State for permission gate modal
   const [showPermissionGate, setShowPermissionGate] = useState(false);
 
@@ -71,6 +75,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       completeOnboarding();
     }
   }, [allPermissionsGranted, completeOnboarding, permissionsState]);
+
+  useEffect(() => {
+  if (allPermissionsGranted) {
+    console.log('🌍 Starting location tracking for Universal Mode detection...');
+    startTracking();
+  }
+}, [allPermissionsGranted, startTracking]);
 
   // Handle requesting permissions
   const handleRequestPermission = useCallback(async (type: PermissionType) => {
@@ -115,21 +126,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     navigate('/map');
   }, [completeOnboarding, onComplete, navigate]);
 
-  // Handle closing the AR experience
-  const handleCloseARExperience = useCallback(() => {
-    setCurrentARExperience(null);
-    setShowARExperience(false);
-  }, []);
+  // // Handle closing the AR experience
+  // const handleCloseARExperience = useCallback(() => {
+  //   setCurrentARExperience(null);
+  //   setShowARExperience(false);
+  // }, []);
 
-  // Handle launching the AR demo experience
-  const handleLaunchAR = useCallback(() => {
-    setShowARExperience(true);
-  }, []);
+  // // Handle launching the AR demo experience
+  // const handleLaunchAR = useCallback(() => {
+  //   setShowARExperience(true);
+  // }, []);
   
-  // Handler for when the AR box is clicked
-  const handleNextARStep = useCallback(() => {
-    // Additional logic can be added here based on the step
-  }, []);
+  // // Handler for when the AR box is clicked
+  // const handleNextARStep = useCallback(() => {
+  //   // Additional logic can be added here based on the step
+  // }, []);
 
   // Handle card changes from swipe gestures
   const handleCardChange = useCallback((index: number) => {

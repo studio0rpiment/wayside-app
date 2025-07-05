@@ -55,23 +55,25 @@ function App() {
     <div className="App">
       <AppThemeProvider>
         <PermissionsProvider> 
-          <Router>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              
-              <Route path="/onboarding" element={<Onboarding onComplete={() => console.log('Onboarding complete')} />} />
+          <GeofenceProvider>
+            <Router>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                
+                <Route path="/onboarding" element={<Onboarding onComplete={() => console.log('Onboarding complete')} />} />
 
-              <Route path="/map" element={
-                <GeofenceProvider>
-                  <GeofenceNotificationSystem>
-                    <Map />
-                  </GeofenceNotificationSystem>
-                </GeofenceProvider>
-              } />
- 
-              <Route path="/debug-sw" element={<ServiceWorkerDebugger />} />
-            </Routes>
-          </Router>
+                <Route path="/map" element={
+                  
+                    <GeofenceNotificationSystem>
+                      <Map />
+                    </GeofenceNotificationSystem>
+                  
+                } />
+  
+                <Route path="/debug-sw" element={<ServiceWorkerDebugger />} />
+              </Routes>
+            </Router>
+          </GeofenceProvider>
         </PermissionsProvider>
       </AppThemeProvider>
     </div>

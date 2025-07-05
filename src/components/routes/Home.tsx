@@ -9,6 +9,7 @@ import VerticalSection from '../sections/vertical/VerticalSection';
 
 import LocationGateModal from '../common/LocationGateModal';
 import { universalModeManager } from '../../utils/UniversalModeManager';
+import { useEnhancedGeofenceManager } from '../../hooks/useEnhancedGeofenceManager';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
