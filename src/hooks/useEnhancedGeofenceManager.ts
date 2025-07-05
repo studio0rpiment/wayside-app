@@ -202,7 +202,8 @@ export function useEnhancedGeofenceManager(
 
     universalModeManager.removeReason(UniversalModeReason.LOCATION_UNAVAILABLE);
 
-    const { coords } = position;
+    const coords = position.coords; // Keep as GeolocationCoordinates object
+const coordsArray: [number, number] = [coords.longitude, coords.latitude]; 
     const timestamp = Date.now();
     
     // debugLog('Raw GPS reading', {
@@ -214,6 +215,26 @@ export function useEnhancedGeofenceManager(
     //   heading: coords.heading,
     //   speed: coords.speed
     // });
+     const kenilworthBounds = {
+    minLon: -76.950, 
+    maxLon: -76.935,
+    minLat: 38.910, 
+    maxLat: 38.916
+  };
+
+
+ const isInsideKenilworth = (
+  coords.longitude >= kenilworthBounds.minLon &&
+  coords.longitude <= kenilworthBounds.maxLon &&
+  coords.latitude >= kenilworthBounds.minLat &&
+  coords.latitude <= kenilworthBounds.maxLat
+);
+
+    if (!isInsideKenilworth) {
+    universalModeManager.addReason(UniversalModeReason.OUTSIDE_KENILWORTH);
+  } else {
+    universalModeManager.removeReason(UniversalModeReason.OUTSIDE_KENILWORTH);
+  }
     
     // Create enhanced position data
     const enhancedPosition: EnhancedPositionData = {
