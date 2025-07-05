@@ -38,18 +38,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   // Track the current step in the onboarding flow
   const [currentStep, setCurrentStep] = useState<number>(0);
+
+
+
   useEffect(() => {
     console.log('🟡 currentStep changed from somewhere:', currentStep);
   }, [currentStep]);
   
-  // // State to track if the AR experience is ready to be shown
-  // const [showARExperience, setShowARExperience] = useState(false);
-  
-  // // State to track which AR experience to show
-  // const [currentARExperience, setCurrentARExperience] = useState<string | null>(null);
-  
-  // // Track AR step progression
-  // const [arStep, setARStep] = useState(1);
+
   
 // Start tracking the location
 const { startTracking } = useGeofenceContext();
@@ -68,6 +64,11 @@ const { startTracking } = useGeofenceContext();
     console.log(`Current step changed to: ${currentStep}`);
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+  console.log('🌍 Starting location tracking on onboarding mount...');
+  startTracking();
+}, []);
   
   // Only mark permissions as complete in context (no auto-navigation)
   useEffect(() => {
@@ -76,12 +77,6 @@ const { startTracking } = useGeofenceContext();
     }
   }, [allPermissionsGranted, completeOnboarding, permissionsState]);
 
-  useEffect(() => {
-  if (allPermissionsGranted) {
-    console.log('🌍 Starting location tracking for Universal Mode detection...');
-    startTracking();
-  }
-}, [allPermissionsGranted, startTracking]);
 
   // Handle requesting permissions
   const handleRequestPermission = useCallback(async (type: PermissionType) => {
@@ -125,22 +120,6 @@ const { startTracking } = useGeofenceContext();
     // onComplete();
     navigate('/map');
   }, [completeOnboarding, onComplete, navigate]);
-
-  // // Handle closing the AR experience
-  // const handleCloseARExperience = useCallback(() => {
-  //   setCurrentARExperience(null);
-  //   setShowARExperience(false);
-  // }, []);
-
-  // // Handle launching the AR demo experience
-  // const handleLaunchAR = useCallback(() => {
-  //   setShowARExperience(true);
-  // }, []);
-  
-  // // Handler for when the AR box is clicked
-  // const handleNextARStep = useCallback(() => {
-  //   // Additional logic can be added here based on the step
-  // }, []);
 
   // Handle card changes from swipe gestures
   const handleCardChange = useCallback((index: number) => {
