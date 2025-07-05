@@ -56,6 +56,10 @@ export function useEnhancedGeofenceManager(
   mapRouteData: any,
   options: EnhancedGeofenceOptions
 ) {
+
+  console.log('🎯 useEnhancedGeofenceManager: Hook started');
+
+
   const {
     proximityThreshold,
     debugMode,

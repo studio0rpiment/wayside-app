@@ -102,6 +102,9 @@ export function createQuaternionFromDeviceOrientation(
 export function useDeviceOrientation(
   options: UseDeviceOrientationOptions = {}
 ): UseDeviceOrientationReturn {
+
+  console.log('🧭 useDeviceOrientation: Hook started');
+
   const {
     enableSmoothing = true,
     fallbackHeading = 0,
@@ -228,12 +231,19 @@ export function useDeviceOrientation(
     // Validate orientation data
     if (alpha === null && beta === null && gamma === null) {
         debugLog('Received null orientation data - sensor may not be available');
+        console.log('🧭 TRIGGERING: Orientation unavailable');
+
+
+        console.log('🧭 Device orientation event:', { alpha, beta, gamma });
         
       universalModeManager.addReason(UniversalModeReason.ORIENTATION_UNAVAILABLE);
 
 
         return;
     }
+
+      console.log('🧭 REMOVING: Orientation available');
+
     universalModeManager.removeReason(UniversalModeReason.ORIENTATION_UNAVAILABLE);
 
 

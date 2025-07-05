@@ -16,9 +16,9 @@ class UniversalModeManager extends EventTarget {
     if (this._initialized) return;
     
     // Check development mode
-    if (process.env.NODE_ENV === 'development' || (window as any).arTestingOverride) {
-      this.addReason(UniversalModeReason.DEVELOPMENT);
-    }
+    // if (process.env.NODE_ENV === 'development' || (window as any).arTestingOverride) {
+    //   this.addReason(UniversalModeReason.DEVELOPMENT);
+    // }
     
     // Check GPS hardware
     if (!('geolocation' in navigator)) {

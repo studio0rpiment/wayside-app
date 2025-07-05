@@ -12,7 +12,7 @@ import { useGeofenceContext, PositionQuality } from '../../context/GeofenceConte
 import UserLocationTracker from './UserLocationTracker';
 
 import SynchronizedMiniMap from './SynchronizedMiniMap';
-import { universalModeManager } from '../../utils/UniversalModeManager';
+import { universalModeManager, UniversalModeReason } from '../../utils/UniversalModeManager';
 
 interface ModalContent {
   title: string;
@@ -214,6 +214,14 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
       return () => clearTimeout(timeout);
     }
   }, [averagedPosition]);
+
+  useEffect(() => {
+  if (!averagedPosition) {
+    console.log('🧪 ExperienceModal: No position available, should this trigger Universal Mode?');
+    // Test manual trigger:
+    universalModeManager.addReason(UniversalModeReason.LOCATION_UNAVAILABLE);
+  }
+}, [averagedPosition]);
 
   // Calculate geofence info using enhanced context and precision data
   const enhancedGeofenceInfo = React.useMemo((): EnhancedGeofenceInfo => {
