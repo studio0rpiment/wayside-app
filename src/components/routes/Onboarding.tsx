@@ -18,6 +18,8 @@ import { useGeofenceContext } from '../../context/GeofenceContext';
 import LocationGateModal from '../common/LocationGateModal';
 import { universalModeManager } from '../../utils/UniversalModeManager';
 
+import OnboardingDebugOverlay from '../debug/OnboardingDebugOverlay'
+
 // Define interface for component props 
 interface OnboardingProps {
   onComplete: () => void;
@@ -361,6 +363,14 @@ const handlePermissionCardNext = useCallback(() => {
         onBypass={handlePermissionGateBypass}
         checkType="permissions"
       />
+
+{process.env.NODE_ENV === 'development' && (
+      <OnboardingDebugOverlay
+        currentStep={currentStep}
+        allPermissionsGranted={allPermissionsGranted ?? false}
+        showPermissionGate={showPermissionGate}
+      />
+    )}
     </div>
   ); 
 };
