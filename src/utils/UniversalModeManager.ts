@@ -2,82 +2,57 @@
 enum UniversalModeReason {
   DEVELOPMENT = 'development',
   NO_GPS_HARDWARE = 'no_gps_hardware',
-  PERMISSIONS_DENIED = 'permissions_denied',
-  OUTSIDE_KENILWORTH_CONFIRMED = 'outside_kenilworth_confirmed'
+  LOCATION_UNAVAILABLE = 'location_unavailable',
+  ORIENTATION_UNAVAILABLE = 'orientation_unavailable',
+  OUTSIDE_KENILWORTH = 'outside_kenilworth'
 }
 
 class UniversalModeManager extends EventTarget {
   private _isUniversal = false;
-  private _reason: UniversalModeReason | null = null;
+  private _reasons = new Set<UniversalModeReason>();
   private _initialized = false;
 
-  // Determine universal mode ONCE on startup
   async initialize(): Promise<void> {
     if (this._initialized) return;
     
-    console.log('🌐 UniversalModeManager: Initializing...');
-    
-    // Check development mode first
+    // Check development mode
     if (process.env.NODE_ENV === 'development' || (window as any).arTestingOverride) {
-      this.setUniversalMode(true, UniversalModeReason.DEVELOPMENT);
-      this._initialized = true;
-      return;
+      this.addReason(UniversalModeReason.DEVELOPMENT);
     }
     
-    // Check hardware capabilities  
+    // Check GPS hardware
     if (!('geolocation' in navigator)) {
-      this.setUniversalMode(true, UniversalModeReason.NO_GPS_HARDWARE);
-      this._initialized = true;
-      return;
+      this.addReason(UniversalModeReason.NO_GPS_HARDWARE);
     }
     
-    // Start in GPS mode - will only change on explicit events
-    this.setUniversalMode(false, null);
     this._initialized = true;
-    
-    console.log('🌐 UniversalModeManager: Initialized in GPS mode');
+    this.updateUniversalMode();
   }
   
-  // Only call this for MAJOR persistent changes
-  setUniversalMode(enabled: boolean, reason: UniversalModeReason | null) {
-    if (this._isUniversal !== enabled) {
-      this._isUniversal = enabled;
-      this._reason = reason;
-      
+  // Simple methods to add/remove reasons
+  addReason(reason: UniversalModeReason) {
+    this._reasons.add(reason);
+    this.updateUniversalMode();
+  }
+  
+  removeReason(reason: UniversalModeReason) {
+    this._reasons.delete(reason);
+    this.updateUniversalMode();
+  }
+  
+  private updateUniversalMode() {
+    const shouldBeUniversal = this._reasons.size > 0;
+    if (this._isUniversal !== shouldBeUniversal) {
+      this._isUniversal = shouldBeUniversal;
       this.dispatchEvent(new CustomEvent('universalModeChanged', {
-        detail: { enabled, reason }
+        detail: { enabled: shouldBeUniversal, reasons: Array.from(this._reasons) }
       }));
-      
-      console.log(`🌐 Universal Mode: ${enabled ? 'ENABLED' : 'DISABLED'} (${reason || 'gps_mode'})`);
-    }
-  }
-  
-  // Public API for external triggers
-  onPermissionsDenied() {
-    this.setUniversalMode(true, UniversalModeReason.PERMISSIONS_DENIED);
-  }
-  
-  onLeftKenilworthPersistent() {
-    this.setUniversalMode(true, UniversalModeReason.OUTSIDE_KENILWORTH_CONFIRMED);
-  }
-  
-  onPermissionsGranted() {
-    // Only switch back if we were in universal mode due to permissions
-    if (this._reason === UniversalModeReason.PERMISSIONS_DENIED) {
-      this.setUniversalMode(false, null);
-    }
-  }
-  
-  onEnteredKenilworth() {
-    // Only switch back if we were in universal mode due to location
-    if (this._reason === UniversalModeReason.OUTSIDE_KENILWORTH_CONFIRMED) {
-      this.setUniversalMode(false, null);
+      console.log(`🌐 Universal Mode: ${shouldBeUniversal ? 'ON' : 'OFF'} - Reasons: [${Array.from(this._reasons).join(', ')}]`);
     }
   }
   
   get isUniversal() { return this._isUniversal; }
-  get reason() { return this._reason; }
-  get isInitialized() { return this._initialized; }
+  get reasons() { return Array.from(this._reasons); }
 }
 
 export const universalModeManager = new UniversalModeManager();

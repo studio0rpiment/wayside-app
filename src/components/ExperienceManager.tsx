@@ -5,6 +5,8 @@ import ArCameraComponent from './ar/ArCameraComponent';
 import { useSystemOptimization } from '../utils/systemOptimization';
 import { useGeofenceContext, PositionQuality } from '../context/GeofenceContext';
 import { PositioningSystemSingleton } from '../utils/coordinate-system/PositioningSystemSingleton';
+import { universalModeManager } from '../utils/UniversalModeManager'
+
 
 // Import all experience components
 import CubeExperience from './experiences/CubeExperience';
@@ -148,25 +150,23 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   // 🆕 Shared AR positioning system - THE SINGLE SOURCE
 
   const positioningReady = PositioningSystemSingleton.getSystemStatus().positioningManagerReady;
+  const [isUniversalMode, setIsUniversalMode] = useState(universalModeManager.isUniversal);
 
 
 
   // 🆕 Universal Mode Detection (auto-detect if not provided)
-  const isUniversalMode = useMemo(() => {
-    // Use prop override if provided
-    if (propIsUniversalMode !== undefined) {
-      return propIsUniversalMode;
-    }
-    
-    // Auto-detect Universal Mode conditions
-    return (
-      process.env.NODE_ENV === 'development' || 
-      (window as any).arTestingOverride ||
-      !('geolocation' in navigator) ||
-      positionQuality === PositionQuality.UNACCEPTABLE ||
-      !isFrozen
-    );
-  }, [propIsUniversalMode, positionQuality, isFrozen]);
+useEffect(() => {
+  const handleUniversalModeChange = (event: CustomEvent) => {
+    setIsUniversalMode(event.detail.enabled);
+  };
+  
+  universalModeManager.addEventListener('universalModeChanged', handleUniversalModeChange as EventListener);
+  universalModeManager.initialize(); // Ensure it's initialized
+  console.log("universal mode manager iniitilized")
+  return () => {
+    universalModeManager.removeEventListener('universalModeChanged', handleUniversalModeChange as EventListener);
+  };
+}, []);
 
   // State management
   const [arInitialized, setArInitialized] = useState(false);

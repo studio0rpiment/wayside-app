@@ -3,6 +3,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePermissions } from '../context/PermissionsContext';
 import { PermissionType } from '../utils/permissions';
 import * as THREE from 'three';
+import { universalModeManager, UniversalModeReason } from '../utils/UniversalModeManager';
+
 
 /**
  * Device orientation data interface
@@ -226,8 +228,14 @@ export function useDeviceOrientation(
     // Validate orientation data
     if (alpha === null && beta === null && gamma === null) {
         debugLog('Received null orientation data - sensor may not be available');
+        
+      universalModeManager.addReason(UniversalModeReason.ORIENTATION_UNAVAILABLE);
+
+
         return;
     }
+    universalModeManager.removeReason(UniversalModeReason.ORIENTATION_UNAVAILABLE);
+
 
     // Create orientation data object with iOS compass heading
     const orientationData: DeviceOrientationData = {
@@ -320,6 +328,9 @@ export function useDeviceOrientation(
     if (!checkDeviceOrientationSupport()) {
       setError('Device orientation not supported on this device/browser');
       setIsAvailable(false);
+        universalModeManager.addReason(UniversalModeReason.ORIENTATION_UNAVAILABLE);
+
+
       return;
     }
 

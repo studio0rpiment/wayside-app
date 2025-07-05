@@ -12,6 +12,7 @@ import { useGeofenceContext, PositionQuality } from '../../context/GeofenceConte
 import UserLocationTracker from './UserLocationTracker';
 
 import SynchronizedMiniMap from './SynchronizedMiniMap';
+import { universalModeManager } from '../../utils/UniversalModeManager';
 
 interface ModalContent {
   title: string;
@@ -73,6 +74,12 @@ function useEnhancedUserPosition() {
     resetGlobalRadius,
     isUniversalMode: contextUniversalMode 
   } = useGeofenceContext();
+
+// console.log('🧪 GeofenceContext Universal Mode:', {
+//   contextUniversalMode,
+//   managerValue: universalModeManager.isUniversal,
+//   managerReasons: universalModeManager.reasons
+// });
 
   const isUniversalMode = FORCE_OUTSIDE_GEOFENCE_FOR_DEBUG ? false : (
     contextUniversalMode || 

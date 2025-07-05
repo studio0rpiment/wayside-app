@@ -4,6 +4,8 @@ import { calculateDistance, checkGeofences } from '../utils/geoUtils';
 import { usePermissions } from '../context/PermissionsContext';
 import { PermissionType } from '../utils/permissions';
 import { GEOFENCE_CONFIG } from '../data/mapRouteData';
+import { universalModeManager, UniversalModeReason } from '../utils/UniversalModeManager';
+
 
 // Enhanced position data with accuracy tracking
 export interface EnhancedPositionData {
@@ -193,6 +195,9 @@ export function useEnhancedGeofenceManager(
 
   // Process new GPS position with enhanced precision handling
   const processNewPosition = useCallback((position: GeolocationPosition) => {
+
+    universalModeManager.removeReason(UniversalModeReason.LOCATION_UNAVAILABLE);
+
     const { coords } = position;
     const timestamp = Date.now();
     
@@ -366,6 +371,8 @@ export function useEnhancedGeofenceManager(
         (error) => {
           console.error('Enhanced geolocation error:', error);
         //   debugLog('Geolocation error', { error: error.message, code: error.code });
+            universalModeManager.addReason(UniversalModeReason.LOCATION_UNAVAILABLE);
+
         },
         {
           enableHighAccuracy: true,
