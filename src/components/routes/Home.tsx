@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import ContentConfigHelper from '../../utils/ContentConfigHelper';
 import { ContentContainerProps } from '../../components/common/ContentContainer';
 import ContentContainer from '../../components/common/ContentContainer';
@@ -7,7 +7,15 @@ import Button from '../../components/common/Button';
 import GradientElement from '../../utils/GradientElement';
 import VerticalSection from '../sections/vertical/VerticalSection';
 
+import LocationGateModal from '../common/LocationGateModal';
+import { universalModeManager } from '../../utils/UniversalModeManager';
+
 const Home: React.FC = () => {
+  const navigate = useNavigate();
+  
+  // LocationGate state
+  const [showLocationGate, setShowLocationGate] = useState(false);
+
   // Fetch configurations
   const headerConfig = ContentConfigHelper.getTemplateById('header') as ContentContainerProps;
   const heroConfig = ContentConfigHelper.getTemplateById('hero') as ContentContainerProps;
@@ -17,25 +25,33 @@ const Home: React.FC = () => {
   const kenConfig = ContentConfigHelper.getTemplateById('kenilworthLogo') as ContentContainerProps;
   const buttonConfig = ContentConfigHelper.getTemplateById('buttonToOnboarding') as ContentContainerProps;
 
-  // Test coordinate system on mount (development only)
+  // Initialize UniversalModeManager
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      // Small delay to let the page load first
-      const timer = setTimeout(() => {
-        import('../../utils/coordinate-system/test-world-system').then(module => {
-          console.log('🏠 Running coordinate system test from Home page...');
-          module.testWorldCoordinateSystem();
-        }).catch(error => {
-          console.log('⚠️ Coordinate system test not available yet:', error.message);
-        });
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
+    universalModeManager.initialize();
   }, []);
 
+  // Handle start experience click
+  const handleStartExperienceClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent Link navigation
+    
+    // First check: Location-based restrictions (before permissions)
+    if (universalModeManager.shouldBlockLocation) {
+      setShowLocationGate(true);
+    } else {
+      // Proceed to onboarding
+      navigate('/onboarding');
+    }
+  };
+
+  const handleLocationGateBypass = () => {
+    setShowLocationGate(false);
+    navigate('/onboarding'); // URL bypass active, proceed
+  };
+
+
+
   return (
-    <div className="home-route" style = {{height: '100svh'}}>
+    <div className="home-route" style={{height: '100svh'}}>
       <GradientElement 
         color="gradient(  var(--color-dark), var(--color-light) , var(--color-dark))" 
         gradientType="aurora"
@@ -46,83 +62,71 @@ const Home: React.FC = () => {
           id="vert1" 
           title="" 
           color='transparent'
-          // color='gradient(var(--color-dark), var(--color-pink), var(--color-blue))'
         >
-          <div style={{ textDecoration: 'none', margin: '1rem 1rem 1rem 1rem', height: '100%', overflow: 'visible',  overflowY: 'scroll',WebkitOverflowScrolling: 'touch', textAlign: "center"}}>
+          <div style={{ textDecoration: 'none', margin: '1rem 1rem 1rem 1rem', height: '100%', overflow: 'visible', overflowY: 'scroll', WebkitOverflowScrolling: 'touch', textAlign: "center"}}>
             <ContentContainer {...headerConfig} />
           </div>
 
           <div style={{ textAlign: "left"}}>
-          <ContentContainer {...heroConfig} />
+            <ContentContainer {...heroConfig} />
           </div>
-
-          {/* <div style={{ display: 'flex', flexDirection: 'row'}}>
-          <ContentContainer {...camMap} />
-          <ContentContainer {...arCam} />
-          </div> */}
+          
+          <div style={{ display: 'flex', flexDirection: 'column', background: 'transparent', margin: '0rem', borderRadius: '1rem', fontWeight:'bold'}}>
+            
+            <div style={{
+              background: 'linear-gradient(45deg, var(--color-blue), var(--color-pink), var(--color-green))',
+              padding: '2px',
+              borderRadius: '1rem',
+              margin: "1rem 1rem 1rem 1rem"
+            }}>
+              {/* Replace Link with div and onClick handler */}
+              <div 
+                onClick={handleStartExperienceClick}
+                style={{ 
+                  textDecoration: 'none',
+                  display: 'block',
+                  background: 'var(--color-dark)',
+                  borderRadius: 'calc(1rem - 2px)',
+                  padding: '1rem',
+                  cursor: 'pointer' // Add cursor pointer
+                }}
+              >
+                <Button {...buttonConfig} />
+              </div>
+            </div>
+          </div>
 
           
-          {/* <div style={{ fontSize: '0.9rem', fontWeight: 'bold'}}>
-          <ContentContainer {...kenConfig} />
-          </div> */}
-          <div style={{ display: 'flex', flexDirection: 'column', background: 'transparent', margin: '0rem', borderRadius: '1rem', fontWeight:'bold'}}
-            >
-          {/* <ContentContainer  {...infoConfig} /> */}
-          
-        <div style={{
-            background: 'linear-gradient(45deg, var(--color-blue), var(--color-pink), var(--color-green))',
-            padding: '2px',
-            borderRadius: '1rem',
-            margin: "1rem 1rem 1rem 1rem"
-          }}>
-            <Link 
-              to="/onboarding" 
-              style={{ 
-                textDecoration: 'none',
-                display: 'block',
-                background: 'var(--color-dark)', // or whatever your background color is
-                borderRadius: 'calc(1rem - 2px)', // slightly smaller to show the gradient border
-                padding: '1rem' // your content padding
-              }}
-            >
 
-            <Button {...buttonConfig} />
-          </Link>
-          </div>
-          </div>
-
-          {/* Development-only coordinate system test button */}
+          {/* Development debug info */}
           {process.env.NODE_ENV === 'development' && (
-            <button 
-              onClick={() => {
-                import('../../utils/coordinate-system/test-world-system').then(module => {
-                  console.clear();
-                  console.log('🧪 Manual coordinate system test triggered...');
-                  module.testWorldCoordinateSystem();
-                }).catch(error => {
-                  console.log('⚠️ Test files not created yet. Create WorldCoordinateSystem.ts and test-world-system.ts first.');
-                });
-              }}
-              style={{
-                position: 'fixed',
-                bottom: '20px',
-                right: '20px',
-                zIndex: 9999,
-                padding: '10px 15px',
-                backgroundColor: 'rgba(0, 100, 200, 0.9)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                fontFamily: 'monospace'
-              }}
-            >
-              🧪 Test Coords
-            </button>
+            <div style={{
+              position: 'fixed',
+              top: '10px',
+              left: '10px',
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              color: 'white',
+              padding: '8px',
+              borderRadius: '4px',
+              fontSize: '10px',
+              fontFamily: 'monospace',
+              zIndex: 9998
+            }}>
+              <div>Universal Mode: {universalModeManager.isUniversal ? 'ON' : 'OFF'}</div>
+              <div>Should Block Location: {universalModeManager.shouldBlockLocation ? 'YES' : 'NO'}</div>
+              <div>Reasons: {universalModeManager.reasons.join(', ') || 'none'}</div>
+            </div>
           )}
         </VerticalSection>
       </GradientElement>
+
+      {/* LocationGate Modal */}
+      <LocationGateModal
+        isOpen={showLocationGate}
+        onClose={() => setShowLocationGate(false)}
+        onBypass={handleLocationGateBypass}
+        checkType="location"
+      />
     </div>
   );
 };

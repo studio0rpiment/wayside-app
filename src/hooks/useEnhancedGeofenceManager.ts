@@ -200,7 +200,7 @@ export function useEnhancedGeofenceManager(
   // Process new GPS position with enhanced precision handling
   const processNewPosition = useCallback((position: GeolocationPosition) => {
 
-    universalModeManager.removeReason(UniversalModeReason.LOCATION_UNAVAILABLE);
+    
 
     const coords = position.coords; // Keep as GeolocationCoordinates object
 const coordsArray: [number, number] = [coords.longitude, coords.latitude]; 
@@ -216,10 +216,10 @@ const coordsArray: [number, number] = [coords.longitude, coords.latitude];
     //   speed: coords.speed
     // });
      const kenilworthBounds = {
-    minLon: -76.950, 
-    maxLon: -76.935,
-    minLat: 38.910, 
-    maxLat: 38.916
+    minLon: -76.938511, 
+    maxLon: -76.950012,
+    minLat: 38.910028, 
+    maxLat: 38.915713
   };
 
 
@@ -234,6 +234,8 @@ const coordsArray: [number, number] = [coords.longitude, coords.latitude];
     universalModeManager.addReason(UniversalModeReason.OUTSIDE_KENILWORTH);
   } else {
     universalModeManager.removeReason(UniversalModeReason.OUTSIDE_KENILWORTH);
+
+    // universalModeManager.confirmGPSModeReady();
   }
     
     // Create enhanced position data
@@ -374,8 +376,10 @@ const coordsArray: [number, number] = [coords.longitude, coords.latitude];
   // Enhanced start tracking with precision monitoring
   const startTracking = useCallback(async () => {
     if (isTracking) {
+       universalModeManager.removeReason(UniversalModeReason.LOCATION_UNAVAILABLE);
     //   debugLog('Already tracking, ignoring start request');
       return true;
+     
     }
     
     if (!isPermissionGranted(PermissionType.LOCATION)) {

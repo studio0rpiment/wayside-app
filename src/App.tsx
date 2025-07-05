@@ -1,7 +1,5 @@
 import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 // Route components
 import Home from './components/routes/Home';
@@ -11,15 +9,11 @@ import ServiceWorkerDebugger from './components/routes/debug-sw.tsx';
 import { PermissionsProvider } from './context/PermissionsContext.tsx';
 import AppThemeProvider from './theme/ThemeProvider';
 import GeofenceNotificationSystem from './components/common/GeofenceNotificationSystem';
-import { registerServiceWorker } from './utils/serviceWorkerRegistration';
- // Adjust path as needed
 
 import './App.css';
 import { GeofenceProvider } from './context/GeofenceContext.tsx';
 import { universalModeManager } from './utils/UniversalModeManager.ts';
 import { debugModeManager } from './utils/DebugModeManager.ts';
-
-// registerServiceWorker();
 
 
 // Wrapper component to provide navigation functionality

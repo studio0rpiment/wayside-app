@@ -245,7 +245,7 @@ export function useDeviceOrientation(
       console.log('🧭 REMOVING: Orientation available');
 
     universalModeManager.removeReason(UniversalModeReason.ORIENTATION_UNAVAILABLE);
-
+    // universalModeManager.confirmGPSModeReady();
 
     // Create orientation data object with iOS compass heading
     const orientationData: DeviceOrientationData = {
