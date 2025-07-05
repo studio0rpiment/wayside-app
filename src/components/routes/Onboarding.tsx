@@ -36,17 +36,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     completeOnboarding 
   } = usePermissions();
 
+
+
   // Track the current step in the onboarding flow
   const [currentStep, setCurrentStep] = useState<number>(0);
 
-
-
-  useEffect(() => {
-    console.log('🟡 currentStep changed from somewhere:', currentStep);
-  }, [currentStep]);
-  
-
-  
 // Start tracking the location
 const { startTracking } = useGeofenceContext();
 
@@ -137,15 +131,30 @@ const { startTracking } = useGeofenceContext();
   }, [currentStep]);
 
   // NEW: Handle permission card next button with gate check
-  const handlePermissionCardNext = useCallback(() => {
-    // Check for permission-based restrictions
-    if (universalModeManager.shouldBlockPermissions) {
-      setShowPermissionGate(true);
-    } else {
-      // All good, proceed to next card
-      goToNextCard();
-    }
-  }, [goToNextCard]);
+const handlePermissionCardNext = useCallback(() => {
+  console.log('🔍 handlePermissionCardNext called');
+  console.log('🔍 allPermissionsGranted:', allPermissionsGranted);
+  
+  // Check 1: Missing permissions
+  if (!allPermissionsGranted) {
+    console.log('⚠️ Permissions not granted - showing modal with permission message');
+    setShowPermissionGate(true);
+    return;
+  }
+  
+  // Check 2: Universal Mode restrictions (location, etc.)
+  console.log('🔍 shouldBlockPermissions:', universalModeManager.shouldBlockPermissions);
+  console.log('🔍 blockReason:', universalModeManager.blockReason);
+  
+  if (universalModeManager.shouldBlockPermissions) {
+    console.log('🚫 Universal Mode blocking - showing modal');
+    setShowPermissionGate(true);
+  } else {
+    console.log('✅ All checks passed - proceeding');
+    goToNextCard();
+  }
+}, [allPermissionsGranted, goToNextCard]);
+
 
   // NEW: Handle permission gate bypass
   const handlePermissionGateBypass = useCallback(() => {
