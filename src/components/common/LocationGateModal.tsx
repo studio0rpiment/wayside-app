@@ -33,7 +33,7 @@ const LocationGateModal: React.FC<LocationGateModalProps> = ({
 
   // If URL bypass is active, proceed immediately
   if (hasUrlBypass) {
-    onBypass();
+    // onBypass();
     return null;
   }
 

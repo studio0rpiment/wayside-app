@@ -26,6 +26,10 @@ interface OnboardingProps {
 }
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
+
+   console.log('🔄 ONBOARDING RENDER - why?')
+
+
   const navigate = useNavigate();
   
   // Get permissions functionality from context
@@ -56,22 +60,59 @@ const { startTracking } = useGeofenceContext();
   );
 
   // Initialize permissions when the component mounts
+  console.log('🔄 About to run initialize effect');
   useEffect(() => {
     console.log(`Current step changed to: ${currentStep}`);
     initialize();
-  }, [initialize]);
+  }, []);
 
-  useEffect(() => {
+  console.log('🔄 About to run location Tracking effect');
+ useEffect(() => {
   console.log('🌍 Starting location tracking on onboarding mount...');
   startTracking();
-}, []);
+}, [startTracking]); 
   
   // Only mark permissions as complete in context (no auto-navigation)
+  console.log('🔄 About to run completeOnboarding effect');
   useEffect(() => {
     if (allPermissionsGranted && permissionsState) {
       completeOnboarding();
     }
   }, [allPermissionsGranted, completeOnboarding, permissionsState]);
+
+// Add this in your Onboarding.tsx, with your other useEffects:
+useEffect(() => {
+  console.log('🔍 Onboarding state check:', {
+    currentStep,
+    allPermissionsGranted,
+    showPermissionGate,
+    shouldBlockLocation: universalModeManager.shouldBlockLocation,
+    shouldBlockPermissions: universalModeManager.shouldBlockPermissions,
+    blockType: universalModeManager.blockType,
+    blockReason: universalModeManager.blockReason
+  });
+}); // No dependencies = logs every render
+
+useEffect(() => {
+  console.log('🌐 Universal Mode listener added');
+  
+  const handleUniversalModeChange = () => {
+    console.log('🌐 Universal Mode CHANGED - new state:', {
+      isUniversal: universalModeManager.isUniversal,
+      reasons: universalModeManager.reasons,
+      blockType: universalModeManager.blockType,
+      blockReason: universalModeManager.blockReason
+    });
+  };
+
+
+  
+  universalModeManager.addEventListener('universalModeChanged', handleUniversalModeChange);
+  
+  return () => {
+    universalModeManager.removeEventListener('universalModeChanged', handleUniversalModeChange);
+  };
+}, []);
 
 
   // Handle requesting permissions
@@ -136,6 +177,18 @@ const { startTracking } = useGeofenceContext();
 const handlePermissionCardNext = useCallback(() => {
   console.log('🔍 handlePermissionCardNext called');
   console.log('🔍 allPermissionsGranted:', allPermissionsGranted);
+
+  const hasUrlBypass = 
+    new URLSearchParams(window.location.search).has('universal') ||
+    new URLSearchParams(window.location.search).has('demo') ||
+    new URLSearchParams(window.location.search).has('access') ||
+    process.env.NODE_ENV === 'development';
+
+  if (hasUrlBypass) {
+    console.log('🔓 URL bypass detected - proceeding without checks');
+    goToNextCard();
+    return;
+  }
   
   // Check 1: Missing permissions
   if (!allPermissionsGranted) {
@@ -148,7 +201,7 @@ const handlePermissionCardNext = useCallback(() => {
   console.log('🔍 shouldBlockPermissions:', universalModeManager.shouldBlockPermissions);
   console.log('🔍 blockReason:', universalModeManager.blockReason);
   
-  if (universalModeManager.shouldBlockPermissions) {
+  if (universalModeManager.shouldBlockApp) {
     console.log('🚫 Universal Mode blocking - showing modal');
     setShowPermissionGate(true);
   } else {
@@ -295,7 +348,7 @@ const handlePermissionCardNext = useCallback(() => {
             </div>
           </SnappingCard>
           
-          {/* Card 2: AR Demo */}
+          {/* Card 2: Instructions */}
           <SnappingCard title="" subtitle="" color="var(--color-dark)" index={2} height="90%">
             <div 
               style={{ 
@@ -356,21 +409,22 @@ const handlePermissionCardNext = useCallback(() => {
         </SwipeableCarousel>
       </GradientElement>
 
-      {/* NEW: Permission Gate Modal */}
+      {/* Permission Gate Modal */}
       <LocationGateModal
         isOpen={showPermissionGate}
         onClose={() => setShowPermissionGate(false)}
         onBypass={handlePermissionGateBypass}
-        checkType="permissions"
+       checkType={(universalModeManager.blockType !== 'none' ? universalModeManager.blockType : 'permissions') as 'location' | 'permissions'}
+
       />
 
-{process.env.NODE_ENV === 'development' && (
+{/* {process.env.NODE_ENV === 'development' && (
       <OnboardingDebugOverlay
         currentStep={currentStep}
         allPermissionsGranted={allPermissionsGranted ?? false}
         showPermissionGate={showPermissionGate}
       />
-    )}
+    )} */}
     </div>
   ); 
 };
