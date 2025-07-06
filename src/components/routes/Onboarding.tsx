@@ -178,17 +178,17 @@ const handlePermissionCardNext = useCallback(() => {
   console.log('🔍 handlePermissionCardNext called');
   console.log('🔍 allPermissionsGranted:', allPermissionsGranted);
 
-  const hasUrlBypass = 
-    new URLSearchParams(window.location.search).has('universal') ||
-    new URLSearchParams(window.location.search).has('demo') ||
-    new URLSearchParams(window.location.search).has('access') ||
-    process.env.NODE_ENV === 'development';
+  // const hasUrlBypass = 
+  //   new URLSearchParams(window.location.search).has('universal') ||
+  //   new URLSearchParams(window.location.search).has('demo') ||
+  //   new URLSearchParams(window.location.search).has('access') ||
+  //   process.env.NODE_ENV === 'development';
 
-  if (hasUrlBypass) {
-    console.log('🔓 URL bypass detected - proceeding without checks');
-    goToNextCard();
-    return;
-  }
+  // if (hasUrlBypass) {
+  //   console.log('🔓 URL bypass detected - proceeding without checks');
+  //   goToNextCard();
+  //   return;
+  // }
   
   // Check 1: Missing permissions
   if (!allPermissionsGranted) {

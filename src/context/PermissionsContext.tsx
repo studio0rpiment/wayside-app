@@ -114,7 +114,7 @@ const initialize = useCallback(async (): Promise<PermissionsState> => {
   setShowOnboarding(needsOnboarding);
   
   return state;
-}, [initialized, requiredPermissions]); // Add dependencies
+}, [initialized, permissionsState, requiredPermissions]); // Add dependencies
 
 //   useEffect(() => {
 //   // Only run if not already initialized
