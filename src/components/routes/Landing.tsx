@@ -6,6 +6,7 @@ import ContentContainer from '../../components/common/ContentContainer';
 import Button from '../../components/common/Button';
 import GradientElement from '../../utils/GradientElement';
 import VerticalSection from '../sections/vertical/VerticalSection';
+import PullupAbout from '../../components/common/PullUpAbout'
 
 const Landing: React.FC = () => {
   // Fetch configurations
@@ -75,6 +76,8 @@ const Landing: React.FC = () => {
          
         </VerticalSection>
       </GradientElement>
+
+      <PullupAbout />
     </div>
   );
 };
