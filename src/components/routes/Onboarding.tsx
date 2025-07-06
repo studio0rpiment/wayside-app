@@ -48,7 +48,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState<number>(0);
 
 // Start tracking the location
-const { startTracking } = useGeofenceContext();
+//  const { startTracking } = useGeofenceContext();
 
   // NEW: State for permission gate modal
   const [showPermissionGate, setShowPermissionGate] = useState(false);
@@ -66,11 +66,11 @@ const { startTracking } = useGeofenceContext();
     initialize();
   }, []);
 
-  console.log('🔄 About to run location Tracking effect');
- useEffect(() => {
-  console.log('🌍 Starting location tracking on onboarding mount...');
-  startTracking();
-}, []); 
+  // console.log('🔄 About to run location Tracking effect');
+//  useEffect(() => {
+//   console.log('🌍 Starting location tracking on onboarding mount...');
+//   startTracking();
+// }, []); 
   
   // Only mark permissions as complete in context (no auto-navigation)
   console.log('🔄 About to run completeOnboarding effect');
