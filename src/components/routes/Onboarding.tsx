@@ -70,7 +70,7 @@ const { startTracking } = useGeofenceContext();
  useEffect(() => {
   console.log('🌍 Starting location tracking on onboarding mount...');
   startTracking();
-}, [startTracking]); 
+}, []); 
   
   // Only mark permissions as complete in context (no auto-navigation)
   console.log('🔄 About to run completeOnboarding effect');
