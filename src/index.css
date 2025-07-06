@@ -201,13 +201,14 @@ div[class*="button-component"] .subtitle {
   white-space: pre-line;
 }
 
-[data-component="hero"] .subtitle,
-.hero-container,
+[data-component="headerLanding"] .subtitle,
+.headerLanding-container,
 *[class ="subtitle"] {
   font-size: 1rem;
-  text-align: left !important;
+  text-align: center !important;
   width: 100% !important;
 }
+
 
 
 

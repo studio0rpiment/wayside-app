@@ -5,6 +5,7 @@ import { HashRouter as Router, Routes, Route, useNavigate } from 'react-router-d
 import Home from './components/routes/Home';
 import Onboarding from './components/routes/Onboarding';
 import Map from './components/routes/Map';
+import Landing from './components/routes/Landing.tsx';
 import ServiceWorkerDebugger from './components/routes/debug-sw.tsx';
 import { PermissionsProvider } from './context/PermissionsContext.tsx';
 import AppThemeProvider from './theme/ThemeProvider';
@@ -58,7 +59,9 @@ function App() {
           <GeofenceProvider>
             <Router>
               <Routes>
-                <Route path="/" element={<Home />} />
+                <Route path="/" element={<Landing />} />
+
+                <Route path="/home" element={<Home />} />
                 
                 <Route path="/onboarding" element={<Onboarding onComplete={() => console.log('Onboarding complete')} />} />
 

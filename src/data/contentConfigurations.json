@@ -31,6 +31,37 @@
         "className": "header-container"
       }
     },
+    {
+      "id": "headerLanding",
+      "name": "Header Section",
+      "description": "Simple header with logo",
+      "configuration": {
+        "subtitle": "A Geo-Landscape AR experience. \n\n Move through real places. Seeing, feeling, and connecting to another." ,
+        "backgroundColor": "transparent",
+        "textColor": "var(--color-light)",
+        "fontSize": "0.8rem",
+        "padding": "0rem",
+        "fullWidth": true,
+        "fullHeight": true,
+        "alignment": "center",
+        "verticalAlignment": "top",
+        "backgroundImage": "",  
+        "hasShadow": true,
+        "borderRadius": "0",
+        "glassmorphism": true,
+        "contentImage": {
+          "src": "/logos/wayside-bw.png",
+          "alt": "Site Logo",
+          "width": "100%",
+          "height": "auto",
+          "position": "above"
+        },
+        "titleClassName": "",
+        "position": "fixed",
+        "zIndex": 50,
+        "className": "headerLanding-container"
+      }
+    },
    
     {
       "id": "hero",
@@ -126,6 +157,44 @@
         },
         
         "className": "split-section py-16"
+      }
+    },
+    {
+      "id": "buttonToHome",
+      "name": "Button",
+      "description": "Button that goes to onboarding",
+      "configuration": {
+        "subtitle": "Kenilworth Aquatic Gardens",
+        "backgroundColor": "transparent",
+        "textColor": "gradient(var(--color-blue), var(--color-pink), var(--color-green))",
+        "textSize": "2rem",
+        "height": "auto",
+        "width": "auto",
+         
+        "fullWidth": false,
+        
+        "padding": "0rem",
+        "borderRadius": "1rem",
+        "hasShadow": true,
+        "targetId": "",
+        "href": "",
+        "openInNewTab": false,
+        "interactive": true,
+        "hoverEffect": "lift",
+        "alignment": "center",
+        "contentImage_HOLDER": {
+          "note": "",
+          "src": "",
+          "alt": "Button icon",
+          "position": "below",
+          "width": "100%",
+          "height": ""
+        },
+        "fontFamily": "'rigby', sans-serif",
+        
+         "backgroundImage": "",
+        "titleClassName": "font-bold",
+        "className": "button-component cursor-pointer"
       }
     },
     {
