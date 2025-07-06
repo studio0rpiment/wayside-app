@@ -177,35 +177,35 @@ const teamMembers = [
           </p>
 
           <p style={{ marginBottom: '20px' }}>
-            The <span style={{ color: `var(${teamMembers[1].color})`, fontWeight: 'bold' }}>
+            The <span style={{ color: `var(${teamMembers[1].color})`, fontWeight: 'bold', textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
               {teamMembers[1].name}
-            </span>, co-founded by <span style={{ color: `var(${teamMembers[2].color})`, fontWeight: 'bold' }}>
+            </span>, co-founded by <span style={{ color: `var(${teamMembers[2].color})`, fontWeight: 'bold', textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
               {teamMembers[2].name}
-            </span> and <span style={{ color: `var(${teamMembers[3].color})`, fontWeight: 'bold' }}>
+            </span> and <span style={{ color: `var(${teamMembers[3].color})`, fontWeight: 'bold', textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
               {teamMembers[3].name}
             </span>, helped shape the voice and visual identity of <em>Wayside.at</em>.
           </p>
 
           <p style={{ marginBottom: '20px' }}>
-            <span style={{ color: `var(${teamMembers[4].color})`, fontWeight: 'bold' }}>
+            <span style={{ color: `var(${teamMembers[4].color})`, fontWeight: 'bold', textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
               {teamMembers[4].name}
             </span>, a longtime collaborator, managed the project from start to finish—keeping timelines on track and ideas in motion.
           </p>
 
           <p style={{ marginBottom: '20px' }}>
-            <span style={{ color: `var(${teamMembers[5].color})`, fontWeight: 'bold' }}>
+            <span style={{ color: `var(${teamMembers[5].color})`, fontWeight: 'bold', textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
               {teamMembers[5].name}
             </span> created the 3D models that bring the experience to life. His technical skill and artistic eye were essential in translating research and site data into responsive, spatial forms.
           </p>
 
           <p style={{ marginBottom: '20px' }}>
-            <span style={{ color: `var(${teamMembers[6].color})`, fontWeight: 'bold' }}>
+            <span style={{ color: `var(${teamMembers[6].color})`, fontWeight: 'bold', textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
               {teamMembers[6].name}
             </span> led AR development and interaction design, building the bespoke interactive platform that makes <em>Wayside.at</em> function seamlessly in real-world space.
           </p>
 
           <p style={{ marginBottom: '0' }}>
-            This team would like to give special thanks to <span style={{ color: 'var(--color-blue)' }}>Julianne Brienza</span>, the Down to Earth Residency, Capital Fringe, Friends of Kenilworth, and <span style={{ color: 'var(--color-blue)' }}>Andrea Dietz</span>.
+            This team would like to give special thanks to <span style={{ color: 'var(--color-blue)', textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>Julianne Brienza</span>, the Down to Earth Residency, Capital Fringe, Friends of Kenilworth, and <span style={{ color: 'var(--color-blue)', textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>Andrea Dietz</span>.
           </p>
         </div>
       
