@@ -81,17 +81,17 @@ const { startTracking } = useGeofenceContext();
   }, [allPermissionsGranted, completeOnboarding, permissionsState]);
 
 // Add this in your Onboarding.tsx, with your other useEffects:
-useEffect(() => {
-  console.log('🔍 Onboarding state check:', {
-    currentStep,
-    allPermissionsGranted,
-    showPermissionGate,
-    shouldBlockLocation: universalModeManager.shouldBlockLocation,
-    shouldBlockPermissions: universalModeManager.shouldBlockPermissions,
-    blockType: universalModeManager.blockType,
-    blockReason: universalModeManager.blockReason
-  });
-}); // No dependencies = logs every render
+// useEffect(() => {
+//   console.log('🔍 Onboarding state check:', {
+//     currentStep,
+//     allPermissionsGranted,
+//     showPermissionGate,
+//     shouldBlockLocation: universalModeManager.shouldBlockLocation,
+//     shouldBlockPermissions: universalModeManager.shouldBlockPermissions,
+//     blockType: universalModeManager.blockType,
+//     blockReason: universalModeManager.blockReason
+//   });
+// }); // No dependencies = logs every render
 
 useEffect(() => {
   console.log('🌐 Universal Mode listener added');
