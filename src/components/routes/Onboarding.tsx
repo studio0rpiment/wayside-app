@@ -66,11 +66,11 @@ const { startTracking } = useGeofenceContext();
     initialize();
   }, []);
 
-  console.log('🔄 About to run location Tracking effect');
- useEffect(() => {
-  console.log('🌍 Starting location tracking on onboarding mount...');
-  startTracking();
-}, []); 
+//   console.log('🔄 About to run location Tracking effect');
+//  useEffect(() => {
+//   console.log('🌍 Starting location tracking on onboarding mount...');
+//   startTracking();
+// }, []); 
   
   // Only mark permissions as complete in context (no auto-navigation)
   console.log('🔄 About to run completeOnboarding effect');
