@@ -79,7 +79,7 @@ class UniversalModeManager extends EventTarget {
      console.log('🌐 Calculating URL bypass (first time)');
      const urlParams = new URLSearchParams(window.location.search);
      this._urlBypass = (
-       urlParams.has('universal') ||
+       urlParams.has('preview') ||
        urlParams.has('demo') ||
        urlParams.has('access') ||
        this._reasons.has(UniversalModeReason.DEVELOPMENT)
