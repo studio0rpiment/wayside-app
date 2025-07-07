@@ -74,20 +74,43 @@ class UniversalModeManager extends EventTarget {
  /**
   * Check for URL parameter bypass - CACHED since URL doesn't change
   */
- private hasUrlBypass(): boolean {
-   if (this._urlBypass === null) {
-     console.log('🌐 Calculating URL bypass (first time)');
-     const urlParams = new URLSearchParams(window.location.search);
-     this._urlBypass = (
-       urlParams.has('preview') ||
-       urlParams.has('demo') ||
-       urlParams.has('access') ||
-       this._reasons.has(UniversalModeReason.DEVELOPMENT)
-     );
-     console.log('🌐 URL bypass result:', this._urlBypass);
-   }
-   return this._urlBypass;
- }
+private hasUrlBypass(): boolean {
+  if (this._urlBypass === null) {
+    console.log('🌐 Calculating URL bypass (first time)');
+    console.log('🌐 Full URL:', window.location.href);
+    console.log('🌐 Hash:', window.location.hash);
+    console.log('🌐 Search:', window.location.search);
+    
+    // Extract query parameters from hash (for hash-based routing)
+    let searchString = '';
+    
+    // Check regular query params first
+    if (window.location.search) {
+      searchString = window.location.search;
+    }
+    // Then check hash for query params (React Router hash mode)
+    else if (window.location.hash && window.location.hash.includes('?')) {
+      // Extract everything after the ? in the hash
+      const hashParts = window.location.hash.split('?');
+      if (hashParts.length > 1) {
+        searchString = '?' + hashParts.slice(1).join('?'); // Rejoin in case of multiple ?
+      }
+    }
+    
+    console.log('🌐 Extracted search string:', searchString);
+    const urlParams = new URLSearchParams(searchString);
+    console.log('🌐 Parsed params:', Object.fromEntries(urlParams));
+    
+    this._urlBypass = (
+      urlParams.has('preview') ||
+      urlParams.has('demo') ||
+      urlParams.has('access') ||
+      this._reasons.has(UniversalModeReason.DEVELOPMENT)
+    );
+    console.log('🌐 URL bypass result:', this._urlBypass);
+  }
+  return this._urlBypass;
+}
 
  /**
   * Check if blocked due to location (pre-permissions check) - CACHED

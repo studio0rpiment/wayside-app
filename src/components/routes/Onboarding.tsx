@@ -17,17 +17,18 @@ import ContentConfigHelper from '../../utils/ContentConfigHelper';
 import LocationGateModal from '../common/LocationGateModal';
 import { universalModeManager } from '../../utils/UniversalModeManager';
 
-import OnboardingDebugOverlay from '../debug/OnboardingDebugOverlay'
-import ContentContainer from '../common/ContentContainer';
-
 // Define interface for component props 
 interface OnboardingProps {
   onComplete: () => void;
 }
 
+interface UniversalModeManager {
+    getBlockInfo(): { hasUrlBypass: boolean };
+}
+
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
-   console.log('🔄 ONBOARDING RENDER - why?')
+
 
 
   const navigate = useNavigate();
@@ -44,6 +45,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
 
 
+
+
   // Track the current step in the onboarding flow
   const [currentStep, setCurrentStep] = useState<number>(0);
 
@@ -56,15 +59,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     [permissionsState?.allGranted]
   );
 
+
+
   // Initialize permissions when the component mounts
-  console.log('🔄 About to run initialize effect');
+  // console.log('🔄 About to run initialize effect');
   useEffect(() => {
     console.log(`Current step changed to: ${currentStep}`);
     initialize();
   }, []);
   
   // Only mark permissions as complete in context (no auto-navigation)
-  console.log('🔄 About to run completeOnboarding effect');
+  // console.log('🔄 About to run completeOnboarding effect');
   useEffect(() => {
     if (allPermissionsGranted && permissionsState) {
       completeOnboarding();
@@ -97,8 +102,10 @@ useEffect(() => {
   };
 
 
+//  console.log("has URL Pass " + getBlockInfo)
   
-  universalModeManager.addEventListener('universalModeChanged', handleUniversalModeChange);
+ console.log(universalModeManager.getBlockInfo().hasUrlBypass)
+ 
   
   return () => {
     universalModeManager.removeEventListener('universalModeChanged', handleUniversalModeChange);
@@ -169,23 +176,35 @@ const handlePermissionCardNext = useCallback(() => {
   console.log('🔍 handlePermissionCardNext called');
   console.log('🔍 allPermissionsGranted:', allPermissionsGranted);
 
+    const blockInfo = universalModeManager.getBlockInfo();
+    const hasUrlBypass = blockInfo.hasUrlBypass;
+
+
+ //check 1 Bypass
+   if (hasUrlBypass) {
+    console.log('🔓 URL bypass active - skipping permission checks');
+    goToNextCard();
+    return;
+  }
   
-  // Check 1: Missing permissions
+
+  
+  // Check 2: Missing permissions
   if (!allPermissionsGranted) {
     console.log('⚠️ Permissions not granted - showing modal with permission message');
     setShowPermissionGate(true);
     return;
   }
   
-  // Check 2: Universal Mode restrictions (location, etc.)
+  // Check 3: Universal Mode restrictions (location, etc.)
   console.log('🔍 shouldBlockPermissions:', universalModeManager.shouldBlockPermissions);
   console.log('🔍 blockReason:', universalModeManager.blockReason);
   
   if (universalModeManager.shouldBlockApp) {
-    console.log('🚫 Universal Mode blocking - showing modal');
+    // console.log('🚫 Universal Mode blocking - showing modal');
     setShowPermissionGate(true);
   } else {
-    console.log('✅ All checks passed - proceeding');
+    // console.log('✅ All checks passed - proceeding');
     goToNextCard();
   }
 }, [allPermissionsGranted, goToNextCard]);

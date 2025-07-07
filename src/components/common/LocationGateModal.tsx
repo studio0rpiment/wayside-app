@@ -260,7 +260,7 @@ const LocationGateModal: React.FC<LocationGateModalProps> = ({
             <div>Universal Mode: {universalModeManager.isUniversal ? 'ON' : 'OFF'}</div>
             <div>Active Reasons: {universalModeManager.reasons.join(', ') || 'none'}</div>
             <div style={{ marginTop: '5px', color: '#4a90e2' }}>
-              Bypass: Add ?universal, ?demo, or ?access to URL
+              Bypass: Add ?preview, ?demo, or ?access to URL
             </div>
           </div>
         )}
