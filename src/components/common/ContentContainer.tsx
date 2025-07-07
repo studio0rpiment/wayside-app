@@ -566,7 +566,8 @@ const contentWrapperStyle: React.CSSProperties = {
        {subtitle && (
   <h4 className={classNames('!text-center text-xl md:text-2xl font-light mb-0 opacity-80', subtitleClassName || 'text-lg')}>
     {typeof subtitle === 'string' && subtitle.includes('<') ? 
-      <span dangerouslySetInnerHTML={{ __html: processEscapedContent(subtitle) }} /> :
+      <span style={{ whiteSpace: 'pre-line' }}
+      dangerouslySetInnerHTML={{ __html: processEscapedContent(subtitle) }} /> :
       subtitle
     }
   </h4>

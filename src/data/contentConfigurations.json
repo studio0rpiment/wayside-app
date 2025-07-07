@@ -36,7 +36,8 @@
       "name": "Header Section",
       "description": "Simple header with logo",
       "configuration": {
-        "subtitle": "A Geo-Landscape AR experience. \n\n Move through real places. Seeing, feeling, and connecting to another." ,
+        "subtitle": "<span style='color: var(--color-light); font-weight: bold; font-size: 1.2rem;'>A Geo-Landscape AR experience. \nMove through real places.</span> " ,
+        "content": "\n<span style='color: var(--color-light); font-weight: bold; font-size: 0.9rem;'>This app transforms information about the park into interactive Augmented Reality experiences. The goal is simple: to connect visitors to the park’s rich history, present challenges, and future prospects in a sensory, open-ended way.</span>",
         "backgroundColor": "transparent",
         "textColor": "var(--color-light)",
         "fontSize": "0.8rem",
@@ -252,7 +253,7 @@
         "hasShadow": true,
         "alignment": "center",
         "contentImage": {
-          "src": "/picto/lock.png",
+          "src": "/picto/map.png",
           "alt": "lock",
           "position": "above",
           "width": "70%",
@@ -296,6 +297,36 @@
         },
         
         "className": "split-section py-16"
+      }
+    },
+    {
+      "id": "sponsors",
+      "name": "sponsorsFooter",
+      "description": "Display the sponsors",
+      "configuration": {
+        "backgroundColor": "transparent",
+        "textColor": "",
+        "width": "auto",
+        "height": "auto",
+        "margin": "0rem 0rem 0rem 0rem",
+        "padding": "0rem",
+        "textAlign": "center",
+        "borderRadius": "0rem",
+        "fullWidth": false,
+        "alignment": "center",
+        "animateIn": true,
+        "animationType": "slide",
+        "scrollTrigger": true,
+        "hasShadow": true,
+        "contentImage": {
+          "src": "/logos/sponsors.png",
+          "alt": "ar-camera",
+          "position": "above",
+          "width": "100%",
+          "className": "sponsors-logo shadow-lg transform transition duration-100 ease-in-out"
+        },
+        
+        "className": ""
       }
     },
        {

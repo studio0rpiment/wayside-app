@@ -154,8 +154,8 @@ export const routePointsData: RoutePointCollection = {
         'iconScale': 1,
         'title': 'Mac',
         'modalContent': {
-          'title': 'Mac',
-          'description': 'In 1968, Ranger Mac made history as the first African American NPS Park Ranger, he went on to inspire many others.',
+          'title': 'Camera',
+          'description': 'Photos document Walter “Ranger Mac” McDowney as he led youth programs and his lasting legacy.',
           'imageUrl': getAssetPath('icons/mac.svg'),
           'experienceRoute': '/mac',
           'buttonText': 'OPEN',
@@ -250,8 +250,8 @@ export const routePointsData: RoutePointCollection = {
         'iconScale': 1,
         'title': 'Volunteers',
         'modalContent': {
-          'title': 'Van Ulteen',
-          'description': 'Local volunteers care for the park today, keeping its community roots strong and growing.',
+          'title': 'Smartphone',
+          'description': 'Social media shares how volunteers care for the park today, keeping community roots strong.',
           'imageUrl': getAssetPath('icons/volunteers.svg'),
           'experienceRoute': '/volunteers',
           'buttonText': 'OPEN',
@@ -265,7 +265,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Medium-dark gray - elevated area
           'orientation': 180,      // Facing south
-          'scale': 1,            // Slightly larger than default
+          'scale': 2,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -294,8 +294,8 @@ export const routePointsData: RoutePointCollection = {
         'iconScale': 1,
         'title': 'Helen Fowler',
         'modalContent': {
-          'title': 'Helen Fowler',
-          'description': 'Helen Fowler brought plants from around the world and helped shape today\'s Kenilworth Gardens.',
+          'title': 'Vintage',
+          'description': 'Historic photographs show Helen Fowler as she ran the ponds and shaped the garden legacy.',
           'imageUrl': getAssetPath('icons/helen_s.svg'),
           'experienceRoute': '/helen_s',
           'buttonText': 'OPEN',
@@ -309,7 +309,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Light-medium gray area
           'orientation': 180,      // Facing south
-          'scale': 1,            // Slightly larger than default
+          'scale': 2,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
@@ -481,7 +481,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [-76.94867670536043, 38.91237400212842],
           'elevation': 0,        // Very dark area - highest elevation (outside main pond)
           'orientation': 180,      // Facing south
-          'scale': 1,            // Slightly larger than default
+          'scale': 2,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           

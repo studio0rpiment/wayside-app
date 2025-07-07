@@ -458,14 +458,14 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
             letterSpacing: '0.5px',
             textTransform: 'uppercase'
           }}>
-            Universal Access
+            OFFSITE ACCESS
           </div>
         )}
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 style={{ margin: 0, fontSize: '24px' }}>
-            {pointData.title}
+            {pointData.modalContent.title}
           </h2>
           <button 
             onClick={onClose}
@@ -486,7 +486,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
           <div style={{ marginBottom: '15px' }}>
             <img 
               src={pointData.modalContent.imageUrl} 
-              alt={pointData.title}
+              alt={pointData.modalContent.title}
               style={{ width: '50%', borderRadius: '8px' }}
             />
           </div>
@@ -592,7 +592,7 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
           }}
         >
           {isUniversalMode 
-            ? `Launch ${pointData.title}`
+            ? `Launch ${pointData.modalContent.title}`
             : enhancedGeofenceInfo.isInside 
               ? (pointData.modalContent.buttonText || `Launch ${pointData.title}`)
               : '📍 Move closer to launch experience'

@@ -21,10 +21,11 @@ const Home: React.FC = () => {
   const headerConfig = ContentConfigHelper.getTemplateById('header') as ContentContainerProps;
   const heroConfig = ContentConfigHelper.getTemplateById('hero') as ContentContainerProps;
   const infoConfig = ContentConfigHelper.getTemplateById('info-card') as ContentContainerProps;
-  const arCam = ContentConfigHelper.getTemplateById('arCam') as ContentContainerProps;
+  const experienceMap = ContentConfigHelper.getTemplateById('experienceMap') as ContentContainerProps;
   const camMap = ContentConfigHelper.getTemplateById('camMap') as ContentContainerProps;
   const kenConfig = ContentConfigHelper.getTemplateById('kenilworthLogo') as ContentContainerProps;
   const buttonConfig = ContentConfigHelper.getTemplateById('buttonToOnboarding') as ContentContainerProps;
+  const sponsorsConfig = ContentConfigHelper.getTemplateById('sponsors') as ContentContainerProps;
 
   // Initialize UniversalModeManager
   useEffect(() => {
@@ -68,8 +69,12 @@ const Home: React.FC = () => {
             <ContentContainer {...headerConfig} />
           </div>
 
-          <div style={{ textAlign: "left"}}>
+          <div>
             <ContentContainer {...heroConfig} />
+          </div>
+
+          <div style={{ textAlign: "left"}}>
+            <ContentContainer {...experienceMap} />
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', background: 'transparent', margin: '0rem', borderRadius: '1rem', fontWeight:'bold'}}>
@@ -88,13 +93,19 @@ const Home: React.FC = () => {
                   display: 'block',
                   background: 'var(--color-dark)',
                   borderRadius: 'calc(1rem - 2px)',
-                  padding: '1rem',
+                  padding: '0rem',
                   cursor: 'pointer' // Add cursor pointer
                 }}
               >
                 <Button {...buttonConfig} />
               </div>
+            
             </div>
+            <div style={{ position: 'relative', bottom:'0svh'}}>
+                <ContentContainer {...sponsorsConfig} />
+
+            </div>
+
           </div>
 
           

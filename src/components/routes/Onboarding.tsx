@@ -18,6 +18,7 @@ import LocationGateModal from '../common/LocationGateModal';
 import { universalModeManager } from '../../utils/UniversalModeManager';
 
 import OnboardingDebugOverlay from '../debug/OnboardingDebugOverlay'
+import ContentContainer from '../common/ContentContainer';
 
 // Define interface for component props 
 interface OnboardingProps {
@@ -168,17 +169,6 @@ const handlePermissionCardNext = useCallback(() => {
   console.log('🔍 handlePermissionCardNext called');
   console.log('🔍 allPermissionsGranted:', allPermissionsGranted);
 
-  // const hasUrlBypass = 
-  //   new URLSearchParams(window.location.search).has('universal') ||
-  //   new URLSearchParams(window.location.search).has('demo') ||
-  //   new URLSearchParams(window.location.search).has('access') ||
-  //   process.env.NODE_ENV === 'development';
-
-  // if (hasUrlBypass) {
-  //   console.log('🔓 URL bypass detected - proceeding without checks');
-  //   goToNextCard();
-  //   return;
-  // }
   
   // Check 1: Missing permissions
   if (!allPermissionsGranted) {
@@ -237,6 +227,8 @@ const handlePermissionCardNext = useCallback(() => {
     fontAnimatesOnScroll: false,
   };
 
+   const camMap = ContentConfigHelper.getTemplateById('camMap') as ContentContainerProps;
+
   const buttonStyle = {
     width: '65vw',
     margin: '1rem auto 0',
@@ -275,6 +267,8 @@ const handlePermissionCardNext = useCallback(() => {
           <SnappingCard title="" subtitle="" color="var(--color-dark)" index={0} height="80%"  >
             <div style={{ }}>
               <SimpleContentContainer {...permConfig1} />
+
+             
             </div>
 
             <button 

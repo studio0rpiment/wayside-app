@@ -86,9 +86,9 @@ const teamMembers = [
           position: 'fixed',
           left: '3svw',
           top: 0,
-          transform: 'translateY(calc(100svh - 5svh))',
+          transform: 'translateY(calc(100svh - 3svh))',
           width: '90svw',
-          height: 'calc(70svh + 5svh)', // Content height + tab height
+          height: 'calc(70svh + 3svh)', // Content height + tab height
           backgroundColor: 'transparent',
           backdropFilter: 'blur(10px)',
           borderRadius: '20px',
@@ -103,14 +103,18 @@ const teamMembers = [
           onClick={() => setIsOpen(true)}
           style={{
             width: '100%',
-            height: '5svh',
+            height: '3svh',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
             userSelect: 'none',
             WebkitUserSelect: 'none',
-            borderRadius: '20px 20px 0 0'
+            borderRadius: '20px 20px 0 0',
+              top: '50%',
+  transform: 'translateY(50%)'
+          
+   
           }}
         >
           <span style={{ 
@@ -225,7 +229,7 @@ const teamMembers = [
             bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.3)',
             zIndex: 998,
-            backdropFilter: 'blur(2px)',
+            backdropFilter: 'blur(5px)',
             pointerEvents: 'none'
           }}
         />

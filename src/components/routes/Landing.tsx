@@ -42,6 +42,7 @@ const Landing: React.FC = () => {
         gradientType="aurora"
         blockSize={150}
         animationDuration="30s"
+      
       >
         <VerticalSection 
           id="vert1" 
@@ -64,20 +65,25 @@ const Landing: React.FC = () => {
           {/* <div style={{ fontSize: '0.9rem', fontWeight: 'bold'}}>
           <ContentContainer {...kenConfig} />
           </div> */}
-          <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--color-dark)', margin: '1rem', borderRadius: '1rem', fontWeight:'bold'}}
+          <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--color-dark)', margin: '1rem', borderRadius: '1rem', fontWeight:'bold', marginBottom: '10svh'}}
             >
           <ContentContainer  {...infoConfig} />
           
-          <Link to="/home" style={{ textDecoration: 'none', border:'1px solid var(--color-light)', borderRadius: '1rem',  "margin": "1rem 1rem 1rem 1rem",  }}>
+          <Link to="/home" style={{ textDecoration: 'none', border:'1px solid var(--color-light)', borderRadius: '1rem',  "margin": "1rem",  }}>
             <Button {...buttonConfig} />
           </Link>
           </div>
+            
+            <div style={{ }}> 
+              <PullupAbout />
 
+            </div>
+            
          
         </VerticalSection>
       </GradientElement>
 
-      <PullupAbout />
+      
     </div>
   );
 };
