@@ -36,7 +36,7 @@ const Landing: React.FC = () => {
   }, []);
 
   return (
-    <div className="landing-route" style = {{height: '100svh'}}>
+    <div className="landing" style = {{height: '100svh'}}>
       <GradientElement 
         color="gradient(  var(--color-dark), var(--color-light) , var(--color-dark))" 
         gradientType="aurora"

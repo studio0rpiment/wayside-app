@@ -1,6 +1,7 @@
 // src/components/common/LocationGateModal.tsx
 import React from 'react';
 import { universalModeManager } from '../../utils/UniversalModeManager';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface LocationGateModalProps {
   isOpen: boolean;
@@ -22,6 +23,9 @@ const LocationGateModal: React.FC<LocationGateModalProps> = ({
   onBypass,
   checkType = 'location'
 }) => {
+
+  const navigate = useNavigate();
+  
   if (!isOpen) return null;
 
   // Check for URL bypass
@@ -97,9 +101,10 @@ const LocationGateModal: React.FC<LocationGateModalProps> = ({
 
   const handlePrimaryButtonClick = () => {
     if (primaryButtonAction === 'retry') {
-      window.location.reload();
-    } else {
       onClose();
+      
+    } else {
+      navigate('/')
     }
   };
 
