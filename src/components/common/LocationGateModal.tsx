@@ -29,15 +29,19 @@ const LocationGateModal: React.FC<LocationGateModalProps> = ({
   if (!isOpen) return null;
 
   // Check for URL bypass
-  const hasUrlBypass = 
-    new URLSearchParams(window.location.search).has('universal') ||
-    new URLSearchParams(window.location.search).has('demo') ||
-    new URLSearchParams(window.location.search).has('access') ||
-    process.env.NODE_ENV === 'development';
+  const blockInfo = universalModeManager.getBlockInfo();
+  const hasUrlBypass = blockInfo.hasUrlBypass;
 
-  // If URL bypass is active, proceed immediately
+  console.log('🔍 LocationGateModal bypass check:', {
+    hasUrlBypass,
+    blockInfo,
+    url: window.location.href
+  });
+
+  // If URL bypass is active, call onBypass and close
   if (hasUrlBypass) {
-    // onBypass();
+    console.log('🔓 LocationGateModal - URL bypass active, calling onBypass');
+    setTimeout(() => onBypass(), 0); // Use setTimeout to avoid React state update issues
     return null;
   }
 

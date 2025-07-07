@@ -147,14 +147,42 @@ useEffect(() => {
   }, [requestPermission, updatePermissionState]);
 
   // Function to handle completion of onboarding and navigation
-  const handleCompleteOnboarding = useCallback(() => {
-    // Mark onboarding as complete in the permissions context
+const handleCompleteOnboarding = useCallback(() => {
+  console.log('🔍 handleCompleteOnboarding called');
+  
+  const blockInfo = universalModeManager.getBlockInfo();
+  const hasUrlBypass = blockInfo.hasUrlBypass;
+  
+  console.log('🔍 Final validation check:', {
+    allPermissionsGranted,
+    hasUrlBypass,
+    shouldBlockLocation: universalModeManager.shouldBlockLocation,
+    shouldBlockPermissions: universalModeManager.shouldBlockPermissions,
+    blockType: universalModeManager.blockType,
+    blockReason: universalModeManager.blockReason
+  });
+  
+  // If URL bypass is active, always allow completion
+  if (hasUrlBypass) {
+    console.log('🔓 URL bypass active - completing onboarding');
     completeOnboarding();
-    
-    // Navigate to the map route
-    // onComplete();
     navigate('/map');
-  }, [completeOnboarding, onComplete, navigate]);
+    return;
+  }
+  
+  // Check for any blocking conditions (location, permissions, etc.)
+  if (universalModeManager.shouldBlockApp) {
+    console.log('🚫 App blocked - showing location gate modal');
+    setShowPermissionGate(true);
+    return;
+  }
+  
+  // All checks passed - complete onboarding
+  console.log('✅ All final checks passed - completing onboarding');
+  completeOnboarding();
+  navigate('/map');
+  
+}, [completeOnboarding, onComplete, navigate]);
 
   // Handle card changes from swipe gestures
   const handleCardChange = useCallback((index: number) => {
