@@ -67,12 +67,12 @@ const Experience1968: React.FC<Experience1968Props> = ({
   const smokeParamsRef = useRef({
     particleCount: 1,
     maxParticleCount: 2000, // Reduced for AR performance
-    emissionRate: 70,
+    emissionRate: 150,
     particleLifetime: 5.0,
     particleSize: 0.03, // Applied via engine sizeMultiplier
     windSpeed: 1.0,
     windDirection: new THREE.Vector3(0.3, 0.8, 0),
-    turbulenceStrength: 0.5,
+    turbulenceStrength: 0.9,
     smokeRiseSpeed: 1.0,
     smokeSpread: 2.0,
     baseColor: new THREE.Color(0.7, 0.7, 0.7),

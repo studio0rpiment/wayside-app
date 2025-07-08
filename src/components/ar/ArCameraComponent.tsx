@@ -19,7 +19,7 @@ import TurnLeftIcon from '@mui/icons-material/TurnLeft';
 import TurnRightIcon from '@mui/icons-material/TurnRight';
 
 
-const SHOW_DEBUG_PANEL = true;
+const SHOW_DEBUG_PANEL = false;
 
 interface ArCameraProps {
   // Core positioning (simplified)
@@ -1021,33 +1021,79 @@ const initialize = async () => {
 )}
 
 
-      <ReformedModelPositioningPanel
-        isCollapsed={isBottomDebugCollapsed}
-        isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
-        data={{
-          cameraLookDirection,
-          manualScaleOffset,
-          frozenUserPosition: frozenUserPosition || null,
-          debugFrozenModelPosition,
-          experienceType,
-          positioningSystemReady,
-          arTestingOverride,
-          globalElevationOffset: getCurrentElevationOffset() || 0
-        }}
-        callbacks={{
-          onElevationAdjust: adjustGlobalElevation,
-          onScaleAdjust: updateScaleOffset,
-          onAnchorAdjust: (direction) => {
-            // Handle anchor adjustments through positioning system
-            console.log(`Anchor adjust: ${direction}`);
-            if (onElevationChanged) onElevationChanged();
-          },
-          onElevationChanged,
-          onMLCorrectionToggle: handleMLCorrectionToggle
-        }}
-        
-        onClose={() => setIsBottomDebugCollapsed(true)}
-      />
+<ReformedModelPositioningPanel
+  isCollapsed={isBottomDebugCollapsed}
+  isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
+  data={{
+    // Model transforms - you'll need to get these from your positioning system
+    accumulatedTransforms: {
+      rotation: { 
+        x: 0, // Get from your model's current rotation
+        y: 0, // Get from your model's current rotation  
+        z: 0  // Get from your model's current rotation
+      },
+      scale: manualScaleOffset || 1.0
+    },
+    
+    // Position data
+    userPosition: frozenUserPosition || null,
+    activeAnchorPosition: [0, 0], // Get from your anchor system
+    adjustedAnchorPosition: null, // Get from your anchor system if adjusted
+    
+    // Model positioning
+    expectedModelPosition: debugFrozenModelPosition || null,
+    modelDistance: debugFrozenModelPosition ? 
+      Math.sqrt(
+        debugFrozenModelPosition.x * debugFrozenModelPosition.x + 
+        debugFrozenModelPosition.z * debugFrozenModelPosition.z
+      ) : null,
+    
+    // System configuration
+    experienceType,
+    coordinateScale: 1.0, // Get from your coordinate system
+    newSystemReady: positioningSystemReady,
+    
+    // Elevation and offsets
+    experienceOffsets: {
+      'default': 0,
+      [experienceType]: 0 // Get from your experience configuration
+    },
+    manualElevationOffset: 0, // Get from your elevation system
+    globalElevationOffset: getCurrentElevationOffset() || 0,
+    
+    // Scale
+    manualScaleOffset: manualScaleOffset || 1.0,
+    
+    // GPS adjustments
+    anchorPosition: [0, 0], // Get original anchor position
+    gpsOffset: { lon: 0, lat: 0 }, // Calculate current offset from original
+    
+    // NEW: Horizontal rotation (ready for integration)
+    // horizontalRotation: 0 // Uncomment when ready to add rotation
+  }}
+  callbacks={{
+    onElevationAdjust: adjustGlobalElevation,
+    onScaleAdjust: updateScaleOffset,
+    onAnchorAdjust: (deltaLon: number, deltaLat: number) => {
+      // Handle fine GPS adjustments
+      console.log(`Anchor adjust: lon ${deltaLon}, lat ${deltaLat}`);
+      if (onElevationChanged) onElevationChanged();
+    },
+    onElevationChanged,
+    onModelScale: (scaleFactor: number) => {
+      // Handle model scaling
+      updateScaleOffset(scaleFactor);
+    },
+    onModelReset: () => {
+      // Reset model to defaults
+      updateScaleOffset(1.0);
+    },
+    // NEW: Ready for horizontal rotation
+    // onHorizontalRotationAdjust: (deltaRotation: number) => {
+    //   console.log(`Horizontal rotation adjust: ${deltaRotation}°`);
+    // }
+  }}
+/>
 
 
       {/* Child components (AR objects will be added here) */}
