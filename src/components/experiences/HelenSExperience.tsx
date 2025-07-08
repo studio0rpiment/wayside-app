@@ -51,6 +51,15 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
   // const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
   // console.log(`🔄 HelenSExperience: Component render (ID: ${renderIdRef.current})`);
 
+    // =================================================================
+    // ENGINE DEFAULT STORAGE
+    // =================================================================
+    
+    const engineDefaultsRef = useRef<{
+    rotation: THREE.Euler;
+    scale: number;
+    } | null>(null);
+
   // =================================================================
   // USER TRANSFORM TRACKING
   // =================================================================
@@ -129,45 +138,66 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
     return true;
   }, [arPosition]);
 
-  const handleModelReset = useCallback((model: THREE.Points) => {
-    console.log('🔄 HelenS: Resetting model (clearing user transforms)');
-    
-    // Clear user transforms
-    userTransformsRef.current = {
-      rotation: new THREE.Euler(0, 0, 0),
-      scale: 1.0,
-      hasUserChanges: false
-    };
-    
-    // Reposition with fresh state
-    positionModelWithSingleSource(model);
-    
-    activeScaleRef.current = model.scale.x;
-    console.log('🔄 HelenS: Reset completed');
-  }, [positionModelWithSingleSource]);
+const handleModelReset = useCallback((model: THREE.Points) => {
+  console.log('🔄 MAC: Resetting model (clearing user transforms)');
+  
+  // Clear user transforms
+  userTransformsRef.current = {
+    rotation: new THREE.Euler(0, 0, 0),
+    scale: 1.0,
+    hasUserChanges: false
+  };
+  
+  // ✅ Reset to captured engine defaults
+  if (engineDefaultsRef.current) {
+    model.rotation.copy(engineDefaultsRef.current.rotation);
+    model.scale.setScalar(engineDefaultsRef.current.scale);
+    console.log('🔄 MAC: Reset to engine defaults:', {
+      rotation: model.rotation.toArray(),
+      scale: model.scale.x
+    });
+  }
+  
+  // Then apply fresh positioning
+  positionModelWithSingleSource(model);
+  
+  activeScaleRef.current = model.scale.x;
+  console.log('🔄 MAC: Reset completed');
+}, [positionModelWithSingleSource]);
 
   // =================================================================
   // ENGINE CALLBACKS (MEMOIZED)
   // =================================================================
 
-  const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
-    console.log('🎯 HelenSExperience: Model loaded from engine');
-    modelRef.current = pointCloud;
-    
-    // Store initial scale
-    activeScaleRef.current = pointCloud.scale.x;
-    
-    // Position the model using single source
-    if (arPosition) {
-      const success = positionModelWithSingleSource(pointCloud);
-      if (success) {
-        setModelPositioned(true);
-         onExperienceReady?.();
-      }
+    const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
+      console.log('🎯 MacExperience: Model loaded from engine');
+      modelRef.current = pointCloud;
+
+        if (!engineDefaultsRef.current) {
+      engineDefaultsRef.current = {
+        rotation: pointCloud.rotation.clone(),
+        scale: pointCloud.scale.x
+      };
+      // console.log('📸 MAC: Captured engine defaults:', {
+      //   rotation: engineDefaultsRef.current.rotation.toArray(),
+      //   scale: engineDefaultsRef.current.scale
+      // });
     }
-    
-    setIsEngineReady(true);
-  }, [arPosition, positionModelWithSingleSource]);
+      
+      // Store initial scale
+      activeScaleRef.current = pointCloud.scale.x;
+      
+      // Position the model using single source
+      if (arPosition) {
+        const success = positionModelWithSingleSource(pointCloud);
+        if (success) {
+          setModelPositioned(true);
+          onExperienceReady?.();
+        }
+      }
+      
+      setIsEngineReady(true);
+    }, [arPosition, positionModelWithSingleSource]);
 
 const handleEngineReady = useCallback(() => {
   console.log('🎉 HelenSExperience: Engine ready');

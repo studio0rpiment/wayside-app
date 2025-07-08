@@ -48,8 +48,17 @@ const BC2200Experience: React.FC<BC2200ExperienceProps> = ({
   isUniversalMode = false 
 }) => {
 
-  const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
-  console.log(`🔄 BC2200Experience: Component render (ID: ${renderIdRef.current})`);
+  // const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
+  // console.log(`🔄 BC2200Experience: Component render (ID: ${renderIdRef.current})`);
+
+    // =================================================================
+    // ENGINE DEFAULT STORAGE
+    // =================================================================
+    
+    const engineDefaultsRef = useRef<{
+    rotation: THREE.Euler;
+    scale: number;
+    } | null>(null);
 
   // =================================================================
   // USER TRANSFORM TRACKING
@@ -130,7 +139,7 @@ const BC2200Experience: React.FC<BC2200ExperienceProps> = ({
   }, [arPosition]);
 
   const handleModelReset = useCallback((model: THREE.Points) => {
-    console.log('🔄 BC2200: Resetting model (clearing user transforms)');
+    console.log('🔄 MAC: Resetting model (clearing user transforms)');
     
     // Clear user transforms
     userTransformsRef.current = {
@@ -139,35 +148,56 @@ const BC2200Experience: React.FC<BC2200ExperienceProps> = ({
       hasUserChanges: false
     };
     
-    // Reposition with fresh state
+    // ✅ Reset to captured engine defaults
+    if (engineDefaultsRef.current) {
+      model.rotation.copy(engineDefaultsRef.current.rotation);
+      model.scale.setScalar(engineDefaultsRef.current.scale);
+      console.log('🔄 MAC: Reset to engine defaults:', {
+        rotation: model.rotation.toArray(),
+        scale: model.scale.x
+      });
+    }
+    
+    // Then apply fresh positioning
     positionModelWithSingleSource(model);
     
     activeScaleRef.current = model.scale.x;
-    console.log('🔄 BC2200: Reset completed');
+    console.log('🔄 MAC: Reset completed');
   }, [positionModelWithSingleSource]);
-
-  // =================================================================
-  // ENGINE CALLBACKS (MEMOIZED)
-  // =================================================================
-
-  const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
-    console.log('🎯 BC2200Experience: Model loaded from engine');
-    modelRef.current = pointCloud;
-    
-    // Store initial scale
-    activeScaleRef.current = pointCloud.scale.x;
-    
-    // Position the model using single source
-    if (arPosition) {
-      const success = positionModelWithSingleSource(pointCloud);
-      if (success) {
-        setModelPositioned(true);
-         onExperienceReady?.();
+  
+    // =================================================================
+    // ENGINE CALLBACKS (MEMOIZED)
+    // =================================================================
+  
+      const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
+        console.log('🎯 MacExperience: Model loaded from engine');
+        modelRef.current = pointCloud;
+  
+          if (!engineDefaultsRef.current) {
+        engineDefaultsRef.current = {
+          rotation: pointCloud.rotation.clone(),
+          scale: pointCloud.scale.x
+        };
+        // console.log('📸 MAC: Captured engine defaults:', {
+        //   rotation: engineDefaultsRef.current.rotation.toArray(),
+        //   scale: engineDefaultsRef.current.scale
+        // });
       }
-    }
-    
-    setIsEngineReady(true);
-  }, [arPosition, positionModelWithSingleSource]);
+        
+        // Store initial scale
+        activeScaleRef.current = pointCloud.scale.x;
+        
+        // Position the model using single source
+        if (arPosition) {
+          const success = positionModelWithSingleSource(pointCloud);
+          if (success) {
+            setModelPositioned(true);
+            onExperienceReady?.();
+          }
+        }
+        
+        setIsEngineReady(true);
+      }, [arPosition, positionModelWithSingleSource]);
 
 const handleEngineReady = useCallback(() => {
   console.log('🎉 BC2200Experience: Engine ready');

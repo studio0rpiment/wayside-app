@@ -48,8 +48,17 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   isUniversalMode = false 
 }) => {
 
-  const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
-  console.log(`🔄 VolunteersExperience: Component render (ID: ${renderIdRef.current})`);
+  // const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
+  // console.log(`🔄 VolunteersExperience: Component render (ID: ${renderIdRef.current})`);
+
+  // =================================================================
+  // ENGINE DEFAULT STORAGE
+  // =================================================================
+  
+    const engineDefaultsRef = useRef<{
+    rotation: THREE.Euler;
+    scale: number;
+    } | null>(null);
 
   // =================================================================
   // USER TRANSFORM TRACKING
@@ -77,13 +86,13 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
   // Volunteers-specific configuration (memoized)
   const volunteersConfig: StaticPointCloudConfig = useMemo(() => ({
     modelName: 'volunteers' as const,
-    knownMaxDim: 8.0,
-    knownCenter: new THREE.Vector3(0, 0, 0),
-    targetScale: 2.0 / 8.0,
+    knownMaxDim: 14.8577,
+    knownCenter: new THREE.Vector3(-1.54509, -1.04058, 4.83324),
+    targetScale: 2.0 / 14.8577,
     pointSize: 1.5,
     pointDensity: 0.8,
     fallbackColor: 0x4a90e2, // Blue for volunteers
-    rotationCorrection: new THREE.Euler(-Math.PI / 2, 0, 0),
+    rotationCorrection: new THREE.Euler(0, 0, 0),
     centerModel: true,
     maxVertices: 100000 // Volunteers can handle more vertices
   }), []);
@@ -129,45 +138,66 @@ const VolunteersExperience: React.FC<VolunteersExperienceProps> = ({
     return true;
   }, [arPosition]);
 
-  const handleModelReset = useCallback((model: THREE.Points) => {
-    console.log('🔄 Volunteers: Resetting model (clearing user transforms)');
-    
-    // Clear user transforms
-    userTransformsRef.current = {
-      rotation: new THREE.Euler(0, 0, 0),
-      scale: 1.0,
-      hasUserChanges: false
-    };
-    
-    // Reposition with fresh state
-    positionModelWithSingleSource(model);
-    
-    activeScaleRef.current = model.scale.x;
-    console.log('🔄 Volunteers: Reset completed');
-  }, [positionModelWithSingleSource]);
-
-  // =================================================================
-  // ENGINE CALLBACKS (MEMOIZED)
-  // =================================================================
-
-  const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
-    console.log('🎯 VolunteersExperience: Model loaded from engine');
-    modelRef.current = pointCloud;
-    
-    // Store initial scale
-    activeScaleRef.current = pointCloud.scale.x;
-    
-    // Position the model using single source
-    if (arPosition) {
-      const success = positionModelWithSingleSource(pointCloud);
-      if (success) {
-        setModelPositioned(true);
-         onExperienceReady?.();
+   const handleModelReset = useCallback((model: THREE.Points) => {
+      console.log('🔄 MAC: Resetting model (clearing user transforms)');
+      
+      // Clear user transforms
+      userTransformsRef.current = {
+        rotation: new THREE.Euler(0, 0, 0),
+        scale: 1.0,
+        hasUserChanges: false
+      };
+      
+      // ✅ Reset to captured engine defaults
+      if (engineDefaultsRef.current) {
+        model.rotation.copy(engineDefaultsRef.current.rotation);
+        model.scale.setScalar(engineDefaultsRef.current.scale);
+        console.log('🔄 MAC: Reset to engine defaults:', {
+          rotation: model.rotation.toArray(),
+          scale: model.scale.x
+        });
       }
-    }
+      
+      // Then apply fresh positioning
+      positionModelWithSingleSource(model);
+      
+      activeScaleRef.current = model.scale.x;
+      console.log('🔄 MAC: Reset completed');
+    }, [positionModelWithSingleSource]);
     
-    setIsEngineReady(true);
-  }, [arPosition, positionModelWithSingleSource]);
+      // =================================================================
+      // ENGINE CALLBACKS (MEMOIZED)
+      // =================================================================
+    
+        const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
+          console.log('🎯 MacExperience: Model loaded from engine');
+          modelRef.current = pointCloud;
+    
+            if (!engineDefaultsRef.current) {
+          engineDefaultsRef.current = {
+            rotation: pointCloud.rotation.clone(),
+            scale: pointCloud.scale.x
+          };
+          // console.log('📸 MAC: Captured engine defaults:', {
+          //   rotation: engineDefaultsRef.current.rotation.toArray(),
+          //   scale: engineDefaultsRef.current.scale
+          // });
+        }
+          
+          // Store initial scale
+          activeScaleRef.current = pointCloud.scale.x;
+          
+          // Position the model using single source
+          if (arPosition) {
+            const success = positionModelWithSingleSource(pointCloud);
+            if (success) {
+              setModelPositioned(true);
+              onExperienceReady?.();
+            }
+          }
+          
+          setIsEngineReady(true);
+        }, [arPosition, positionModelWithSingleSource]);
 
 const handleEngineReady = useCallback(() => {
   console.log('🎉 VolunteersExperience: Engine ready');
@@ -205,7 +235,7 @@ const handleEngineReady = useCallback(() => {
       <StaticPointCloudEngine
         config={volunteersConfig}
         scene={arScene}
-        experienceId="Volunteers"
+        experienceId="volunteers"
         isUniversalMode={isUniversalMode}
         enabled={true}
         onModelLoaded={handleModelLoaded}

@@ -60,6 +60,16 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     });
   }, [arPosition, isUniversalMode]);
 
+
+  // =================================================================
+  // ENGINE DEFAULT STORAGE
+  // =================================================================
+  
+  const engineDefaultsRef = useRef<{
+  rotation: THREE.Euler;
+  scale: number;
+} | null>(null);
+
   // =================================================================
   // USER TRANSFORM TRACKING
   // =================================================================
@@ -138,22 +148,32 @@ const MacExperience: React.FC<MacExperienceProps> = ({
     return true;
   }, [arPosition]);
 
-  const handleModelReset = useCallback((model: THREE.Points) => {
-    console.log('🔄 MAC: Resetting model (clearing user transforms)');
-    
-    // Clear user transforms
-    userTransformsRef.current = {
-      rotation: new THREE.Euler(0, 0, 0),
-      scale: 1.0,
-      hasUserChanges: false
-    };
-    
-    // Reposition with fresh state
-    positionModelWithSingleSource(model);
-    
-    activeScaleRef.current = model.scale.x;
-    console.log('🔄 MAC: Reset completed');
-  }, [positionModelWithSingleSource]);
+const handleModelReset = useCallback((model: THREE.Points) => {
+  console.log('🔄 MAC: Resetting model (clearing user transforms)');
+  
+  // Clear user transforms
+  userTransformsRef.current = {
+    rotation: new THREE.Euler(0, 0, 0),
+    scale: 1.0,
+    hasUserChanges: false
+  };
+  
+  // ✅ Reset to captured engine defaults
+  if (engineDefaultsRef.current) {
+    model.rotation.copy(engineDefaultsRef.current.rotation);
+    model.scale.setScalar(engineDefaultsRef.current.scale);
+    console.log('🔄 MAC: Reset to engine defaults:', {
+      rotation: model.rotation.toArray(),
+      scale: model.scale.x
+    });
+  }
+  
+  // Then apply fresh positioning
+  positionModelWithSingleSource(model);
+  
+  activeScaleRef.current = model.scale.x;
+  console.log('🔄 MAC: Reset completed');
+}, [positionModelWithSingleSource]);
 
   // =================================================================
   // ENGINE CALLBACKS (MEMOIZED)
@@ -162,6 +182,17 @@ const MacExperience: React.FC<MacExperienceProps> = ({
   const handleModelLoaded = useCallback((pointCloud: THREE.Points) => {
     console.log('🎯 MacExperience: Model loaded from engine');
     modelRef.current = pointCloud;
+
+      if (!engineDefaultsRef.current) {
+    engineDefaultsRef.current = {
+      rotation: pointCloud.rotation.clone(),
+      scale: pointCloud.scale.x
+    };
+    // console.log('📸 MAC: Captured engine defaults:', {
+    //   rotation: engineDefaultsRef.current.rotation.toArray(),
+    //   scale: engineDefaultsRef.current.scale
+    // });
+  }
     
     // Store initial scale
     activeScaleRef.current = pointCloud.scale.x;
@@ -254,11 +285,11 @@ const handleEngineReady = useCallback(() => {
           userTransformsRef.current.rotation.z += deltaZ;
           userTransformsRef.current.hasUserChanges = true;
           
-          console.log(`🎮 MAC: Rotation applied and tracked`, {
-            deltaX, deltaY, deltaZ,
-            currentRotation: modelRef.current.rotation.toArray(),
-            userRotation: userTransformsRef.current.rotation.toArray()
-          });
+          // console.log(`🎮 MAC: Rotation applied and tracked`, {
+          //   deltaX, deltaY, deltaZ,
+          //   currentRotation: modelRef.current.rotation.toArray(),
+          //   userRotation: userTransformsRef.current.rotation.toArray()
+          // });
         }
       });
     }

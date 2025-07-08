@@ -1022,32 +1022,32 @@ const initialize = async () => {
 
 
       <ReformedModelPositioningPanel
-  isCollapsed={isBottomDebugCollapsed}
-  isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
-  data={{
-    cameraLookDirection,
-    manualScaleOffset,
-    frozenUserPosition: frozenUserPosition || null,
-    debugFrozenModelPosition,
-    experienceType,
-    positioningSystemReady,
-    arTestingOverride,
-    globalElevationOffset: getCurrentElevationOffset() || 0
-  }}
-  callbacks={{
-    onElevationAdjust: adjustGlobalElevation,
-    onScaleAdjust: updateScaleOffset,
-    onAnchorAdjust: (direction) => {
-      // Handle anchor adjustments through positioning system
-      console.log(`Anchor adjust: ${direction}`);
-      if (onElevationChanged) onElevationChanged();
-    },
-    onElevationChanged,
-    onMLCorrectionToggle: handleMLCorrectionToggle
-  }}
-  
-  onClose={() => setIsBottomDebugCollapsed(true)}
-/>
+        isCollapsed={isBottomDebugCollapsed}
+        isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
+        data={{
+          cameraLookDirection,
+          manualScaleOffset,
+          frozenUserPosition: frozenUserPosition || null,
+          debugFrozenModelPosition,
+          experienceType,
+          positioningSystemReady,
+          arTestingOverride,
+          globalElevationOffset: getCurrentElevationOffset() || 0
+        }}
+        callbacks={{
+          onElevationAdjust: adjustGlobalElevation,
+          onScaleAdjust: updateScaleOffset,
+          onAnchorAdjust: (direction) => {
+            // Handle anchor adjustments through positioning system
+            console.log(`Anchor adjust: ${direction}`);
+            if (onElevationChanged) onElevationChanged();
+          },
+          onElevationChanged,
+          onMLCorrectionToggle: handleMLCorrectionToggle
+        }}
+        
+        onClose={() => setIsBottomDebugCollapsed(true)}
+      />
 
 
       {/* Child components (AR objects will be added here) */}
