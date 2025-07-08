@@ -136,13 +136,13 @@ const WaterRiseExperience: React.FC<WaterRiseExperienceProps> = ({
     // ✅ Reset all refs (no re-renders)
     userTransformsRef.current = {
       rotation: new THREE.Euler(0, 0, 0),
-      scale: engineScaleRef.current,
+      scale: 0.3,
       hasUserChanges: false
     };
     
-    engineScaleRef.current = 0.02;
+    // engineScaleRef.current = 0.02;
     engineRotationRef.current = new THREE.Euler(
-      THREE.MathUtils.degToRad(-10), 
+      THREE.MathUtils.degToRad(20), 
       THREE.MathUtils.degToRad(-45), 
       THREE.MathUtils.degToRad(0)
     );
