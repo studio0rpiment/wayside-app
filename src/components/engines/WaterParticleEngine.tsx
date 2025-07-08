@@ -593,8 +593,8 @@ for (let i = 0; i <= gridStepsX; i++) {
       
       if (onProgress) onProgress(80);
 
-    const vertexShader = await loadShader('/src/shaders/water.vert');
-    const fragmentShader = await loadShader('/src/shaders/water.frag');
+    const vertexShader = await loadShader('shaders/water.vert');
+    const fragmentShader = await loadShader('shaders/water.frag');
       
       // Create material
  // ✅ Simple shader material that matches your working geometry

@@ -485,8 +485,8 @@ velocities[i3 + 2] = (Math.random() - 0.5) * smokeParamsRef.current.smokeSpread 
       
       if (onProgress) onProgress(70);
 
-      const vertexShader = await loadShader('/src/shaders/smoke.vert');
-      const fragmentShader = await loadShader('/src/shaders/smoke.frag');
+      const vertexShader = await loadShader('shaders/smoke.vert');
+      const fragmentShader = await loadShader('shaders/smoke.frag');
 
       
       // Create simplified shader material (no texture loading for now)

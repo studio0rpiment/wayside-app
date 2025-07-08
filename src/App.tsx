@@ -15,6 +15,8 @@ import './App.css';
 import { GeofenceProvider } from './context/GeofenceContext.tsx';
 import { universalModeManager } from './utils/UniversalModeManager.ts';
 import { debugModeManager } from './utils/DebugModeManager.ts';
+import DesktopBlocker from './components/common/DesktopBlocker';
+
 
 
 // Wrapper component to provide navigation functionality
@@ -57,6 +59,7 @@ function App() {
       <AppThemeProvider>
         <PermissionsProvider> 
           <GeofenceProvider>
+             {/* <DesktopBlocker> */}
             <Router>
               <Routes>
                 <Route path="/" element={<Landing />} />
@@ -76,6 +79,7 @@ function App() {
                 <Route path="/debug-sw" element={<ServiceWorkerDebugger />} />
               </Routes>
             </Router>
+            {/* </DesktopBlocker> */}
           </GeofenceProvider>
         </PermissionsProvider>
       </AppThemeProvider>

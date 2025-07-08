@@ -1,13 +1,17 @@
+import { getAssetPath } from './assetPaths'
+
 export async function loadShader(path: string): Promise<string> {
   try {
-    console.log(`🔧 Loading shader from: ${path}`);
-    const response = await fetch(path);
+       const resolvedPath = getAssetPath(path);
+    console.log(`🔧 Loading shader from: ${path} → ${resolvedPath}`);
+    const response = await fetch(resolvedPath);
     
     if (!response.ok) {
       throw new Error(`Failed to load shader: ${response.status} ${response.statusText}`);
     }
     
     const shaderCode = await response.text();
+
     console.log(`✅ Shader loaded successfully from ${path}:`, {
       length: shaderCode.length,
       firstLine: shaderCode.split('\n')[0],
