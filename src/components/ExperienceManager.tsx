@@ -25,6 +25,8 @@ import MapOutlined from '@mui/icons-material/MapOutlined';
 // Define experience types
 export type ExperienceType = 'cube' | 'waterRise' | 'lotus' | 'mac' | '2030-2105' | '1968' | '2200_bc' | 'volunteers' | 'helen_s' | 'lily' | 'cattail';
 
+const ENABLE_GESTURES = true; 
+
 interface ExperienceManagerProps {
   // Modal/overlay props
   isOpen: boolean;
@@ -557,11 +559,11 @@ useEffect(() => {
           arObjectPosition={arObjectPosition || undefined}
           onOrientationUpdate={handleOrientationUpdate}
           onSceneReady={handleArSceneReady} // 🆕 Just notifies when scene is ready
-          onModelRotate={handleModelRotate}
-          onModelScale={handleModelScale}
-          onModelReset={handleModelReset}
-          onSwipeUp={handleSwipeUp}
-          onSwipeDown={handleSwipeDown}
+          onModelRotate={ENABLE_GESTURES ? handleModelRotate : undefined}
+          onModelScale={ENABLE_GESTURES ? handleModelScale : undefined}
+          onModelReset={ENABLE_GESTURES ? handleModelReset : undefined}
+          onSwipeUp={ENABLE_GESTURES ? handleSwipeUp : undefined}
+          onSwipeDown={ENABLE_GESTURES ? handleSwipeDown : undefined}
           onElevationChanged={handleElevationChanged}
           positioningSystemReady={positioningReady}//- ArCamera doesn't need it
         />
