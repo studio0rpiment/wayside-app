@@ -483,18 +483,18 @@ const ExperienceModal: React.FC<ExperienceModalProps> = ({
         
         {/* Image */}
         {pointData.modalContent.imageUrl && (
-          <div style={{ marginBottom: '15px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '15px' }}>
             <img 
               src={pointData.modalContent.imageUrl} 
               alt={pointData.modalContent.title}
-              style={{ width: '50%', borderRadius: '8px' }}
+              style={{ textAlign: 'center',width: '60%', borderRadius: '8px' }}
             />
           </div>
         )}
         
         {/* Description */}
         <div style={{ marginBottom: '15px' }}>
-          <p style={{ fontWeight: 'bold', color: 'var(--color-blue)' }}>
+          <p style={{ fontWeight: 'bold', color: 'var(--color-light)' }}>
             {pointData.modalContent.description}
           </p>
         </div>

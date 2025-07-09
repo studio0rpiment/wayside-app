@@ -168,7 +168,7 @@
         "subtitle": "Kenilworth Aquatic Gardens",
         "backgroundColor": "transparent",
         "textColor": "gradient(var(--color-blue), var(--color-pink), var(--color-green))",
-        "textSize": "2rem",
+        "textSize": "1.6rem",
         "height": "auto",
         "width": "auto",
          
