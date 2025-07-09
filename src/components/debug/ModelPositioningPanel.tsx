@@ -1,5 +1,5 @@
 // src/components/debug/ReformedModelPositioningPanel.tsx
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 export interface ReformedPositioningData {
@@ -15,6 +15,7 @@ export interface ReformedPositioningData {
   adjustedAnchorPosition: [number, number] | null;
   
   // Model positioning
+  arScene?: THREE.Scene;
   expectedModelPosition: THREE.Vector3 | null;
   modelDistance: number | null;
   
@@ -56,16 +57,97 @@ interface ReformedModelPositioningPanelProps {
   data: ReformedPositioningData;
   callbacks: ReformedPositioningCallbacks;
   isVisible?: boolean;
+  arScene?: THREE.Scene; // For scene info only
+  currentTransforms?: {   // NEW: Get transforms from useARInteractions
+    rotation: { x: number; y: number; z: number };
+    scale: number;
+    totalRotations: number;
+    totalScales: number;
+  };
 }
 
 const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps> = ({
   isCollapsed,
   data,
   callbacks,
-  isVisible = true
+  isVisible = true,
+  arScene,
+  currentTransforms // NEW: Receive transforms from interaction hook
 }) => {
   
   if (!isVisible) return null;
+
+  // State for scene discovery (simplified)
+  const [modelFound, setModelFound] = useState(false);
+
+  // ✅ SIMPLE: Just check if model exists in scene (no polling needed)
+  // useEffect(() => {
+  //   if (!arScene) {
+  //     setModelFound(false);
+  //     return;
+  //   }
+    
+  //   let found = false;
+  //   arScene.traverse((object) => {
+  //     if (!found && (
+  //       object instanceof THREE.Points ||
+  //       (object instanceof THREE.Group && object.children.length > 0) ||
+  //       object.userData?.isExperienceModel ||
+  //       (object instanceof THREE.Mesh && object.geometry.attributes.position)
+  //     )) {
+  //       found = true;
+  //     }
+  //   });
+    
+  //   setModelFound(found);
+  //   if (found) {
+  //     console.log('🎯 Panel: Model found in scene');
+  //   }
+  // }, [arScene]);
+
+  
+
+  // ✅ Use transforms from interaction hook (or fallback to props)
+  // Track accumulated scale from button presses
+    const [accumulatedScale, setAccumulatedScale] = useState(1.0);
+    const displayRotation = currentTransforms?.rotation || { x: 0, y: 0, z: 0 };
+    const displayScale = accumulatedScale;
+
+    // Reset accumulated scale when currentTransforms resets (double-tap)
+
+const prevTotalRotationsRef = useRef(-1); // Start at -1 to detect first reset
+
+// Listen for rotation reset (totalRotations goes back to 0)
+// Listen for rotation reset (totalRotations goes back to 0)
+useEffect(() => {
+  if (currentTransforms?.totalRotations !== undefined) {
+    const currentCount = currentTransforms.totalRotations;
+    const prevCount = prevTotalRotationsRef.current;
+    
+    console.log('🔍 Panel: Rotation tracking', {
+      currentCount,
+      prevCount,
+      accumulatedScale,
+      willReset: prevCount > 0 && currentCount === 0 && accumulatedScale !== 1.0
+    });
+    
+    // If totalRotations went from positive back to 0, it was reset
+    if (prevCount > 0 && currentCount === 0 && accumulatedScale !== 1.0) {
+      console.log('🔄 Panel: Detected model reset (totalRotations: 0), resetting scale display too');
+      setAccumulatedScale(1.0);
+      prevTotalRotationsRef.current = -1; // Reset ref for next cycle
+      console.log('✅ Panel: Scale reset to 1.0, ref reset to -1');
+    } else {
+      // Update previous count for normal tracking
+      prevTotalRotationsRef.current = currentCount;
+      console.log('📝 Panel: Updated ref to', currentCount);
+    }
+  }
+}, [currentTransforms?.totalRotations, accumulatedScale]);
+
+useEffect(() => {
+  console.log('🔍 Panel: currentTransforms full object:', currentTransforms);
+}, [currentTransforms]);
 
   // Helper function for formatting numbers with signs
   const formatWithSign = (num: number, decimals: number = 1, totalWidth: number = 10) => {
@@ -126,6 +208,7 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
         bottom: data.experienceType === '2030-2105' ? '11svh' : '2svh',
         left: '50%',
         width: '90vw',
+        
         transform: 'translateX(-50%)',
         backgroundColor: 'rgba(0, 0, 0, 0)',
         backdropFilter: 'blur(20px)',
@@ -138,48 +221,48 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
         textAlign: 'center'
       }}
     >
-      {/* Always visible: Title */}
-      <div style={{ fontSize: '10px', color: 'yellow' }}>🎯 MODEL TRANSFORMS</div>
+      {/* Always visible: Title with model tracking status */}
+      <div style={{ fontSize: '10px', color: 'yellow' }}>
+        MODEL TRANSFORMS 
+      </div>
       
-      {/* Always visible: Rotation values */}
+      {/* Always visible: Rotation values - using transforms from interaction hook */}
       <div>
-        Rot: X:{formatWithSign(data.accumulatedTransforms.rotation.x * 180/Math.PI)}° Y:{formatWithSign(data.accumulatedTransforms.rotation.y * 180/Math.PI)}° Z:{formatWithSign(data.accumulatedTransforms.rotation.z * 180/Math.PI)}° (±180°)
+        Rot: X:{formatWithSign(displayRotation.x * 180/Math.PI)}° Y:{formatWithSign(displayRotation.y * 180/Math.PI)}° Z:{formatWithSign(displayRotation.z * 180/Math.PI)}°
       </div>
 
-      {/* Always visible: Scale */}
-      <div style={{ fontSize: '0.7rem', marginTop: '2px' }}>
-        Scale: {data.accumulatedTransforms.scale.toFixed(2)}x | Manual: {data.manualScaleOffset.toFixed(1)}x
-      </div>
+      {/* Remove the separate scale line - now shown in buttons */}
 
       {/* Collapsible content */}
       {!isCollapsed && (
         <>
-          <div style={{ marginTop: '5px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
+          <div style={{ marginTop: '0px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
           
           {/* User Position in Local Coordinates */}
-          <div style={{ fontSize: '0.5rem', marginBottom: '5px' }}>
-            <span style={{ color: 'cyan' }}>User Local Position: </span>
+          <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.5rem', marginBottom: '0px' }}>
+            <span style={{ color: 'cyan' }}>User Position: </span>
             <span>{getUserLocalPosition()}</span>
-          </div>
+        
 
           {/* Model position section */}
           {data.expectedModelPosition ? (
-            <div style={{ fontSize: '0.5rem', marginBottom: '8px' }}>
+            <div style={{ fontSize: '0.5rem', marginBottom: '0px' }}>
               <div>
                 Model Position: [
                   {data.expectedModelPosition.x.toFixed(1)},
                   {data.expectedModelPosition.y.toFixed(1)}, 
                   {data.expectedModelPosition.z.toFixed(1)}] 
               </div>
-              {data.modelDistance !== null && (
-                <div style={{ marginTop: '2px' }}>
+              {/* {data.modelDistance !== null && (
+                <div style={{ textAlign: 'center', marginTop: '2px' }}>
                   Distance: {(data.modelDistance * 3.28084).toFixed(1)}ft ({data.modelDistance.toFixed(1)}m)
                 </div>
-              )}
+              )} */}
             </div>
           ) : (
             <div style={{ fontSize: '9px', opacity: 0.6, marginBottom: '8px' }}>No model position calculated</div>
           )}
+          </div>
 
           {/* NEW: Horizontal Rotation Section (ready for integration) */}
           {data.horizontalRotation !== undefined && (
@@ -203,16 +286,15 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
 
           {/* GPS calibration section */}
           <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
-            <div style={{ color: 'yellow', fontSize: '0.7rem', marginBottom: '5px' }}>
-              {data.newSystemReady ? 
-                'NEW SYSTEM - ANCHOR ADJUSTMENTS:' : 
+            <div style={{ display: 'flex', justifyContent: 'space-around',color: 'yellow', fontSize: '0.5rem', marginBottom: '5px' }}>
+            
                 `GPS ANCHOR: [${(data.adjustedAnchorPosition || data.anchorPosition)[0].toFixed(6)}, ${(data.adjustedAnchorPosition || data.anchorPosition)[1].toFixed(6)}]`
-              }
-            </div>
+              
+        
             <div style={{ fontSize: '0.5rem', opacity: 0.8, marginBottom: '5px' }}>
               Offset: [{data.gpsOffset.lon.toFixed(8)}, {data.gpsOffset.lat.toFixed(8)}]
             </div>
-
+          </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
               {data.newSystemReady ? (
                 <>
@@ -282,19 +364,56 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
 
           {/* Scale section */}
           <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
-            <div style={{ color: 'yellow', fontSize: '10px', marginBottom: '5px' }}>
-              📏 SCALE: {data.manualScaleOffset.toFixed(1)}x
-            </div>
+            
             
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-              <button onClick={() => callbacks.onScaleAdjust(-0.2)} style={scaleButtonStyle}>-0.2</button>
-              <button onClick={() => callbacks.onScaleAdjust(-0.05)} style={scaleButtonStyle}>-0.05</button>
               <button onClick={() => {
-                callbacks.onScaleAdjust(1.0 - data.manualScaleOffset); // Reset to 1.0
-                if (callbacks.onModelReset) callbacks.onModelReset();
-              }} style={scaleButtonStyle}>1.0</button>
-              <button onClick={() => callbacks.onScaleAdjust(0.05)} style={scaleButtonStyle}>+0.05</button>
-              <button onClick={() => callbacks.onScaleAdjust(0.2)} style={scaleButtonStyle}>+0.2</button>
+                  // const newScale = Math.max(0.1, accumulatedScale - 0.2);
+                  setAccumulatedScale(prev =>  (prev - 0.2));
+
+                if (callbacks.onModelScale) {
+                  callbacks.onModelScale(0.8); // Scale to 80% of current size
+                }
+              }} style={scaleButtonStyle}>-0.2</button>
+              
+              <button onClick={() => {
+                  const newScale = Math.max(0.1, accumulatedScale - 0.05);
+                  setAccumulatedScale(newScale);
+                if (callbacks.onModelScale) {
+                  callbacks.onModelScale(0.95); // Scale to 95% of current size
+                }
+              }} style={scaleButtonStyle}>-0.05</button>
+              
+                  <div style={{
+                    fontSize: '12px',
+                    padding: '4px 12px',
+                    backgroundColor: 'rgba(255,255,0,0.2)',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '60px'
+                  }}>
+                    {displayScale.toFixed(2)}x
+                  </div>
+              
+              <button onClick={() => {
+                  const newScale = Math.max(0.1, accumulatedScale + 0.05);
+                  setAccumulatedScale(newScale);
+                if (callbacks.onModelScale) {
+                  callbacks.onModelScale(1.05); // Scale to 105% of current size
+                }
+              }} style={scaleButtonStyle}>+0.05</button>
+              
+              <button onClick={() => {
+                  const newScale = Math.max(0.1, accumulatedScale + 0.2);
+                  setAccumulatedScale(newScale);
+                if (callbacks.onModelScale) {
+                  callbacks.onModelScale(1.2); // Scale to 120% of current size
+                }
+              }} style={scaleButtonStyle}>+0.2</button>
             </div>
           </div>
 
@@ -306,9 +425,10 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
             fontSize: '8px', 
             opacity: 0.7
           }}>
-            <div>Experience: {data.experienceType}</div>
+            {/* <div>Experience: {data.experienceType}</div>
             <div>System: {data.newSystemReady ? '✅ New' : '🔄 Legacy'}</div>
-            <div>Coordinate Scale: {data.coordinateScale}</div>
+            <div>Scene Tracking: {modelFound ? '✅ Active' : '❌ Searching'}</div> */}
+            {/* <div>Coordinate Scale: {data.coordinateScale}</div> */}
           </div>
         </>
       )}

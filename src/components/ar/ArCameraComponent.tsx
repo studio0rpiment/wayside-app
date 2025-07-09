@@ -19,7 +19,7 @@ import TurnLeftIcon from '@mui/icons-material/TurnLeft';
 import TurnRightIcon from '@mui/icons-material/TurnRight';
 
 
-const SHOW_DEBUG_PANEL = false;
+const SHOW_DEBUG_PANEL = true;
 
 interface ArCameraProps {
   // Core positioning (simplified)
@@ -224,7 +224,7 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
 }, [cameraLookDirection.aimError, cameraLookDirection.bearing, frozenUserPosition]);
 
   //******** HOOKS **********
-  const { attachListeners, detachListeners, isListening } = useARInteractions({
+  const { attachListeners, detachListeners, isListening, currentTransforms } = useARInteractions({
     canvasRef,
     callbacks: {
       onModelRotate,
@@ -1021,9 +1021,13 @@ const initialize = async () => {
 )}
 
 
+// In ArCameraComponent.tsx - CORRECT way to pass currentTransforms
+
 <ReformedModelPositioningPanel
   isCollapsed={isBottomDebugCollapsed}
   isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
+  arScene={renderingEngineRef.current?.getScene() || undefined}
+  currentTransforms={currentTransforms} // ← SEPARATE PROP (not in data object)
   data={{
     // Model transforms - you'll need to get these from your positioning system
     accumulatedTransforms: {
@@ -1079,16 +1083,10 @@ const initialize = async () => {
       console.log(`Anchor adjust: lon ${deltaLon}, lat ${deltaLat}`);
       if (onElevationChanged) onElevationChanged();
     },
-    onElevationChanged,
-    onModelScale: (scaleFactor: number) => {
-      // Handle model scaling
-      updateScaleOffset(scaleFactor);
-    },
-    onModelReset: () => {
-      // Reset model to defaults
-      updateScaleOffset(1.0);
-    },
-    // NEW: Ready for horizontal rotation
+onElevationChanged,
+onModelScale: updateScaleOffset, 
+onModelReset: onModelReset
+// NEW: Ready for horizontal rotation
     // onHorizontalRotationAdjust: (deltaRotation: number) => {
     //   console.log(`Horizontal rotation adjust: ${deltaRotation}°`);
     // }

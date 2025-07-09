@@ -1,5 +1,5 @@
 // src/hooks/useARInteractions.ts
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 
 export interface ARInteractionCallbacks {
   onModelRotate?: (deltaX: number, deltaY: number, deltaZ?: number) => void;
@@ -16,15 +16,28 @@ export interface ARInteractionOptions {
   debugMode?: boolean;
 }
 
+// NEW: Transform state interface
+export interface TransformState {
+  rotation: { x: number; y: number; z: number };
+  scale: number;
+  totalRotations: number; // How many rotation gestures applied
+  totalScales: number;    // How many scale gestures applied
+}
+
 export interface ARInteractionReturn {
   attachListeners: () => void;
   detachListeners: () => void;
   isListening: boolean;
+  
+  // NEW: Current transform values for display
+  currentTransforms: TransformState;
+  resetTransforms: () => void;
 }
 
 /**
  * Custom hook for handling all AR touch interactions
  * Consolidates model gestures and debug panel swipes
+ * NOW TRACKS: Current transform values for display purposes
  */
 export function useARInteractions({
   canvasRef,
@@ -33,7 +46,7 @@ export function useARInteractions({
   debugMode = false
 }: ARInteractionOptions): ARInteractionReturn {
 
-  // Touch state refs
+  // Touch state refs (unchanged)
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const lastTouchX = useRef(0);
@@ -44,28 +57,98 @@ export function useARInteractions({
   const initialTwoFingerAngle = useRef(0);
   const previousTwoFingerAngle = useRef(0);
   
-  // Swipe detection refs
+  // Swipe detection refs (unchanged)
   const swipeStartY = useRef(0);
   const swipeStartTime = useRef(0);
   
-  // State tracking
+  // State tracking (unchanged)
   const isListeningRef = useRef(false);
 
-  // Constants
+  // NEW: Transform tracking state
+  const [currentTransforms, setCurrentTransforms] = useState<TransformState>({
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: 1.0,
+    totalRotations: 0,
+    totalScales: 0
+  });
+
+  // Constants (unchanged)
   const DOUBLE_TAP_DELAY = 300;
   const MIN_SWIPE_DISTANCE = 50;
   const MAX_SWIPE_TIME = 500;
   const MIN_TWO_FINGER_DISTANCE = 100;
   const MULTI_TOUCH_COOLDOWN = 200;
 
-  // Debug logging
+  // Debug logging (unchanged)
   const debugLog = useCallback((message: string, data?: any) => {
     if (debugMode) {
       console.log(`🤏 useARInteractions: ${message}`, data || '');
     }
   }, [debugMode]);
 
-  // Touch start handler
+  // NEW: Reset transforms function
+  const resetTransforms = useCallback(() => {
+    setCurrentTransforms({
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: 1.0,
+      totalRotations: 0,
+      totalScales: 0
+    });
+    debugLog('Transforms reset');
+  }, [debugLog]);
+
+  // NEW: Enhanced rotation callback that tracks values
+  const handleRotationWithTracking = useCallback((deltaX: number, deltaY: number, deltaZ: number = 0) => {
+    // Call the original callback
+    if (callbacks.onModelRotate) {
+      callbacks.onModelRotate(deltaX, deltaY, deltaZ);
+    }
+    
+    // Update our tracking state
+    setCurrentTransforms(prev => ({
+      ...prev,
+      rotation: {
+        x: prev.rotation.x + deltaY, // Note: deltaY affects X rotation
+        y: prev.rotation.y + deltaX, // Note: deltaX affects Y rotation  
+        z: prev.rotation.z + deltaZ
+      },
+      totalRotations: prev.totalRotations + 1
+    }));
+    
+    debugLog('Rotation tracked', { deltaX, deltaY, deltaZ });
+  }, [callbacks.onModelRotate, debugLog]);
+
+  // NEW: Enhanced scale callback that tracks values
+  const handleScaleWithTracking = useCallback((scaleFactor: number) => {
+    // Call the original callback
+    if (callbacks.onModelScale) {
+      callbacks.onModelScale(scaleFactor);
+    }
+    
+    // Update our tracking state
+    setCurrentTransforms(prev => ({
+      ...prev,
+      scale: Math.max(0.1, Math.min(10, prev.scale * scaleFactor)), // Clamp scale
+      totalScales: prev.totalScales + 1
+    }));
+    
+    debugLog('Scale tracked', { scaleFactor });
+  }, [callbacks.onModelScale, debugLog]);
+
+  // NEW: Enhanced reset callback that tracks values
+  const handleResetWithTracking = useCallback(() => {
+    // Call the original callback
+    if (callbacks.onModelReset) {
+      callbacks.onModelReset();
+    }
+    
+    // Reset our tracking state
+    resetTransforms();
+    
+    debugLog('Reset tracked');
+  }, [callbacks.onModelReset, resetTransforms, debugLog]);
+
+  // Touch start handler (unchanged)
   const handleTouchStart = useCallback((event: TouchEvent) => {
     const now = Date.now();
     const timeSince = now - lastTapTime.current;
@@ -94,9 +177,7 @@ export function useARInteractions({
       // Double-tap detection (takes priority over cooldown)
       if (timeSince < DOUBLE_TAP_DELAY && timeSince > 0) {
         debugLog('Double tap detected - reset');
-        if (callbacks.onModelReset) {
-          callbacks.onModelReset();
-        }
+        handleResetWithTracking(); // NEW: Use tracking version
         event.preventDefault();
         lastTapTime.current = 0;
         return;
@@ -138,9 +219,9 @@ export function useARInteractions({
       lastTapTime.current = 0;
       debugLog('More than 2 fingers detected');
     }
-  }, [callbacks.onModelReset, enableDebugSwipes, debugLog]);
+  }, [handleResetWithTracking, enableDebugSwipes, debugLog]);
 
-  // Touch move handler
+  // Touch move handler - MODIFIED to use tracking callbacks
   const handleTouchMove = useCallback((event: TouchEvent) => {
     if (event.touches.length === 1) {
       // Single finger drag: model rotation
@@ -166,9 +247,7 @@ export function useARInteractions({
         
         debugLog('Single finger rotation', { deltaX, deltaY, rotDeltaX, rotDeltaY });
         
-        if (callbacks.onModelRotate) {
-          callbacks.onModelRotate(rotDeltaX, rotDeltaY, 0);
-        }
+        handleRotationWithTracking(rotDeltaX, rotDeltaY, 0); // NEW: Use tracking version
       }
       
       lastTouchX.current = currentX;
@@ -191,18 +270,16 @@ export function useARInteractions({
         
         debugLog('Two finger Z-rotation', { rotationDelta, zRotDelta });
         
-        if (callbacks.onModelRotate) {
-          callbacks.onModelRotate(0, 0, zRotDelta);
-        }
+        handleRotationWithTracking(0, 0, zRotDelta); // NEW: Use tracking version
       }
       
       previousTwoFingerAngle.current = currentAngle;
     }
     
     event.preventDefault();
-  }, [callbacks.onModelRotate, debugLog]);
+  }, [handleRotationWithTracking, debugLog]);
 
-  // Touch end handler
+  // Touch end handler (unchanged)
   const handleTouchEnd = useCallback((event: TouchEvent) => {
     const now = Date.now();
     
@@ -243,7 +320,7 @@ export function useARInteractions({
     }
   }, [callbacks.onDebugSwipeUp, callbacks.onDebugSwipeDown, enableDebugSwipes, debugLog]);
 
-  // Attach event listeners
+  // Attach event listeners (unchanged)
   const attachListeners = useCallback(() => {
     if (!canvasRef.current || isListeningRef.current) {
       debugLog('Cannot attach listeners', { 
@@ -263,7 +340,7 @@ export function useARInteractions({
     debugLog('Touch listeners attached');
   }, [handleTouchStart, handleTouchMove, handleTouchEnd, debugLog]);
 
-  // Detach event listeners
+  // Detach event listeners (unchanged)
   const detachListeners = useCallback(() => {
     if (!canvasRef.current || !isListeningRef.current) {
       debugLog('Cannot detach listeners', { 
@@ -283,7 +360,7 @@ export function useARInteractions({
     debugLog('Touch listeners detached');
   }, [handleTouchStart, handleTouchMove, handleTouchEnd, debugLog]);
 
-  // Auto-attach on canvas ready
+  // Auto-attach on canvas ready (unchanged)
   useEffect(() => {
     if (canvasRef.current && !isListeningRef.current) {
       attachListeners();
@@ -294,7 +371,7 @@ export function useARInteractions({
     };
   }, [attachListeners, detachListeners]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount (unchanged)
   useEffect(() => {
     return () => {
       if (isListeningRef.current) {
@@ -306,45 +383,10 @@ export function useARInteractions({
   return {
     attachListeners,
     detachListeners,
-    isListening: isListeningRef.current
+    isListening: isListeningRef.current,
+    
+    // NEW: Export current transform values
+    currentTransforms,
+    resetTransforms
   };
-}
-
-/**
- * Utility function to check if a touch event is within a specific element
- * Useful for routing touch events to different handlers
- */
-export function isTouchInElement(
-  touch: Touch, 
-  element: HTMLElement
-): boolean {
-  const rect = element.getBoundingClientRect();
-  return (
-    touch.clientX >= rect.left &&
-    touch.clientX <= rect.right &&
-    touch.clientY >= rect.top &&
-    touch.clientY <= rect.bottom
-  );
-}
-
-/**
- * Utility function to calculate distance between two touches
- * Useful for pinch/zoom detection
- */
-export function getTouchDistance(touch1: Touch, touch2: Touch): number {
-  return Math.hypot(
-    touch2.clientX - touch1.clientX,
-    touch2.clientY - touch1.clientY
-  );
-}
-
-/**
- * Utility function to calculate angle between two touches
- * Useful for rotation detection
- */
-export function getTouchAngle(touch1: Touch, touch2: Touch): number {
-  return Math.atan2(
-    touch2.clientY - touch1.clientY,
-    touch2.clientX - touch1.clientX
-  );
 }
