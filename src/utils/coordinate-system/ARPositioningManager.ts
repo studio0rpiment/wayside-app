@@ -5,7 +5,6 @@ import { AnchorManager, WorldAnchor } from './AnchorManager';
 import { mlAnchorCorrections } from './anchorCorrections';
 import { debugModeManager } from '../DebugModeManager';
 
-
 export interface UserPositionInput {
   gpsPosition?: [number, number] | null;
   worldPosition?: THREE.Vector3 | null;
@@ -56,8 +55,8 @@ export class ARPositioningManager {
   private globalDebugPosition: THREE.Vector3 = new THREE.Vector3(0, 0, -5);
 
   private positionCache: Map<string, {
-  result: ExperiencePositionResult;
-  cacheKey: string;
+    result: ExperiencePositionResult;
+    cacheKey: string;
   }> = new Map();
 
   constructor(worldSystem: WorldCoordinateSystem, anchorManager: AnchorManager) {
@@ -75,8 +74,7 @@ export class ARPositioningManager {
     userInput: UserPositionInput,
     options: PositioningOptions = {}
   ): ExperiencePositionResult | null {
-
-//****** */ Check cache first
+    // Check cache first
     const cacheKey = this.generateCacheKey(experienceId, userInput, options);
     const cached = this.positionCache.get(experienceId);
     
@@ -86,8 +84,7 @@ export class ARPositioningManager {
     // Clear old cache entry
     this.positionCache.delete(experienceId);
     
-//***** FIND ANCHOR */    
-
+    // Find anchor
     const anchor = this.anchorManager.getAnchor(experienceId);
     if (!anchor) {
       console.warn(`🎯 ARPositioningManager: No anchor found for ${experienceId}`);
@@ -101,7 +98,7 @@ export class ARPositioningManager {
     // Get anchor world position (with debug override support)
     let anchorWorldPosition: THREE.Vector3;
 
-    // ✅ DEBUG: Check for Universal Mode from user input
+    // Check for Universal Mode from user input
     const isUniversalMode = userInput.isUniversalMode || false;
 
     console.log("🔍 Positioning Debug:", {
@@ -147,10 +144,8 @@ export class ARPositioningManager {
     if (userWorldPosition) {
       relativeToUser = anchorWorldPosition.clone().sub(userWorldPosition);
     } else {
-       
       // No user position available - use anchor position directly
       relativeToUser = anchorWorldPosition.clone();
-  
     }
 
     // Calculate distance
@@ -173,7 +168,7 @@ export class ARPositioningManager {
       clone: () => anchorWorldPosition.clone()
     };
 
-    // ✅ NEW: Cache the result
+    // Cache the result
     this.positionCache.set(experienceId, {
       result,
       cacheKey
@@ -183,26 +178,34 @@ export class ARPositioningManager {
     console.log("🎯 Calculated new position for", experienceId);
 
     return result;
-    }
+  }
 
   /**
- * Generate cache key for position calculation
- */
-    private generateCacheKey(
-      experienceId: string,
-      userInput: UserPositionInput,
-      options: PositioningOptions
-    ): string {
-      const userPos = userInput.gpsPosition || userInput.worldPosition?.toArray() || [0,0,0];
-      const isUniversal = userInput.isUniversalMode || false;
-      const debugOverride = options.useDebugOverride || false;
-      const manualElevation = options.manualElevationOffset || 0;
-      const manualScale = options.manualScale || 1;
-      
-      return `${experienceId}:${userPos.join(',')}:${isUniversal}:${this.debugMode}:${debugOverride}:${manualElevation}:${manualScale}:${this.globalElevationOffset}`;
-    }
+   * Generate cache key for position calculation
+   */
+  private generateCacheKey(
+    experienceId: string,
+    userInput: UserPositionInput,
+    options: PositioningOptions
+  ): string {
+    const userPos = userInput.gpsPosition || userInput.worldPosition?.toArray() || [0,0,0];
+    const isUniversal = userInput.isUniversalMode || false;
+    const debugOverride = options.useDebugOverride || false;
+    const manualElevation = options.manualElevationOffset || 0;
+    const manualScale = options.manualScale || 1;
+    
+    // ✅ ENHANCED: Include coordinate transformation state in cache key
+    const transformState = this.worldSystem.getTransformationSummary();
+    const transformKey = `${transformState.rotation}:${transformState.scale}:${transformState.translation.x}:${transformState.translation.z}`;
+    
+    return `${experienceId}:${userPos.join(',')}:${isUniversal}:${this.debugMode}:${debugOverride}:${manualElevation}:${manualScale}:${this.globalElevationOffset}:${transformKey}`;
+  }
 
-/**
+  // =================================================================
+  // EXISTING METHODS (Anchor Position, Elevation, etc.)
+  // =================================================================
+
+  /**
    * Adjust anchor position by GPS offset
    * This moves the anchor's GPS coordinates and recalculates world position
    */
@@ -231,39 +234,160 @@ export class ARPositioningManager {
     );
 
     if (success) {
-      console.log(`🎯 ARPositioningManager: Anchor ${experienceId} moved by [${deltaLon.toFixed(8)}, ${deltaLat.toFixed(8)}]`);
-      console.log(`🎯 ARPositioningManager: New GPS coordinates: [${newGpsCoordinates[0].toFixed(8)}, ${newGpsCoordinates[1].toFixed(8)}]`);
+      // ✅ ENHANCED: Clear cache when anchors change
+      this.positionCache.clear();
+      console.log(`🎯 ARPositioningManager: Anchor ${experienceId} moved by [${deltaLon.toFixed(8)}, ${deltaLat.toFixed(8)}] - cache cleared`);
     } else {
       console.error(`🎯 ARPositioningManager: Failed to update anchor ${experienceId}`);
     }
 
     return success;
   }
-/**
- * Get current GPS coordinates (after adjustments)
- */
-getCurrentAnchorGps(experienceId: string): [number, number] | null {
-  const anchor = this.anchorManager.getAnchor(experienceId);
-  if (!anchor) return null;
-  
-  return anchor.gpsCoordinates; // These are already updated by adjustAnchorPosition
-}
-/**
- * Reset anchor to original position
- */
-resetAnchorPosition(experienceId: string): boolean {
-  console.log(`🎯 ARPositioningManager: Resetting anchor ${experienceId} to original position`);
-  
-  const success = this.anchorManager.resetAnchorToOriginal(experienceId);
-  
-  if (success) {
-    console.log(`🎯 ARPositioningManager: Anchor ${experienceId} reset to original position`);
-  } else {
-    console.error(`🎯 ARPositioningManager: Failed to reset anchor ${experienceId}`);
+
+  /**
+   * Get current GPS coordinates (after adjustments)
+   */
+  getCurrentAnchorGps(experienceId: string): [number, number] | null {
+    const anchor = this.anchorManager.getAnchor(experienceId);
+    if (!anchor) return null;
+    
+    return anchor.gpsCoordinates; // These are already updated by adjustAnchorPosition
   }
-  
-  return success;
-}
+
+  /**
+   * Reset anchor to original position
+   */
+  resetAnchorPosition(experienceId: string): boolean {
+    console.log(`🎯 ARPositioningManager: Resetting anchor ${experienceId} to original position`);
+    
+    const success = this.anchorManager.resetAnchorToOriginal(experienceId);
+    
+    if (success) {
+      // ✅ ENHANCED: Clear cache when anchors change
+      this.positionCache.clear();
+      console.log(`🎯 ARPositioningManager: Anchor ${experienceId} reset to original position - cache cleared`);
+    } else {
+      console.error(`🎯 ARPositioningManager: Failed to reset anchor ${experienceId}`);
+    }
+    
+    return success;
+  }
+
+  // =================================================================
+  // ✅ NEW: COORDINATE SYSTEM TRANSFORMATION CONTROLS
+  // Place these methods here - after existing anchor methods, before utility methods
+  // =================================================================
+
+  /**
+   * Horizontal rotation controls (X-Z plane)
+   * Delegates to WorldCoordinateSystem and invalidates cache
+   */
+  setHorizontalRotation(degrees: number): void {
+    this.worldSystem.setHorizontalRotation(degrees);
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: Horizontal rotation set to ${degrees}° (X-Z plane), position cache cleared`);
+  }
+
+  getHorizontalRotation(): number {
+    return this.worldSystem.getHorizontalRotation();
+  }
+
+  adjustHorizontalRotation(deltaDegrees: number): void {
+    this.worldSystem.adjustHorizontalRotation(deltaDegrees);
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: Horizontal rotation adjusted by ${deltaDegrees}° (X-Z plane), position cache cleared`);
+  }
+
+  resetHorizontalRotation(): void {
+    this.worldSystem.resetHorizontalRotation();
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: Horizontal rotation reset to default, position cache cleared`);
+  }
+
+  /**
+   * Coordinate scale controls (X-Z plane)
+   * Delegates to WorldCoordinateSystem and invalidates cache
+   */
+  setCoordinateScale(scale: number): void {
+    this.worldSystem.setCoordinateScale(scale);
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: Coordinate scale set to ${scale} (X-Z plane), position cache cleared`);
+  }
+
+  getCoordinateScale(): number {
+    return this.worldSystem.getCoordinateScale();
+  }
+
+  adjustCoordinateScale(delta: number): void {
+    this.worldSystem.adjustCoordinateScale(delta);
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: Coordinate scale adjusted by ${delta} (X-Z plane), position cache cleared`);
+  }
+
+  resetCoordinateScale(): void {
+    this.worldSystem.resetCoordinateScale();
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: Coordinate scale reset to 1.0, position cache cleared`);
+  }
+
+  /**
+   * Translation controls (X-Z plane)
+   * Delegates to WorldCoordinateSystem and invalidates cache
+   */
+  setTranslation(deltaX: number, deltaZ: number): void {
+    this.worldSystem.setTranslation(deltaX, deltaZ);
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: Translation set to [${deltaX}, ${deltaZ}]m (X-Z plane), position cache cleared`);
+  }
+
+  adjustTranslation(deltaX: number, deltaZ: number): void {
+    this.worldSystem.adjustTranslation(deltaX, deltaZ);
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: Translation adjusted by [${deltaX}, ${deltaZ}]m (X-Z plane), position cache cleared`);
+  }
+
+  getTranslation(): { x: number; z: number } {
+    return this.worldSystem.getTranslation();
+  }
+
+  resetTranslation(): void {
+    this.worldSystem.resetTranslation();
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: Translation reset to origin (X-Z plane), position cache cleared`);
+  }
+
+  /**
+   * Combined coordinate system controls
+   */
+  resetAllCoordinateTransformations(): void {
+    this.worldSystem.resetAllTransformations();
+    this.positionCache.clear(); // ✅ Critical: Clear cache when coordinate system changes
+    console.log(`🎯 ARPositioningManager: All coordinate transformations reset, position cache cleared`);
+  }
+
+  getCoordinateTransformationSummary(): {
+    rotation: number;
+    scale: number;
+    translation: { x: number; z: number };
+    isDefault: boolean;
+  } {
+    return this.worldSystem.getTransformationSummary();
+  }
+
+  /**
+   * Coordinate system validation and testing
+   */
+  validateCoordinateSystem(): ReturnType<typeof this.worldSystem.validateCoordinateSystem> {
+    return this.worldSystem.validateCoordinateSystem();
+  }
+
+  testCoordinateTransformation(testGps: [number, number]): ReturnType<typeof this.worldSystem.testCoordinateTransformation> {
+    return this.worldSystem.testCoordinateTransformation(testGps);
+  }
+
+  // =================================================================
+  // EXISTING UTILITY AND API METHODS (remain unchanged)
+  // =================================================================
   
   /**
    * Simplified API for experiences that just want a position
@@ -386,7 +510,8 @@ resetAnchorPosition(experienceId: string): boolean {
    */
   setGlobalElevationOffset(offset: number): void {
     this.globalElevationOffset = offset;
-    console.log(`🎯 Global elevation offset set to ${offset}m`);
+    this.positionCache.clear(); // ✅ Clear cache when elevation changes
+    console.log(`🎯 Global elevation offset set to ${offset}m, position cache cleared`);
   }
 
   getGlobalElevationOffset(): number {
@@ -398,7 +523,8 @@ resetAnchorPosition(experienceId: string): boolean {
    */
   adjustGlobalElevationOffset(delta: number): void {
     this.globalElevationOffset += delta;
-    console.log(`🎯 Global elevation offset adjusted to ${this.globalElevationOffset}m`);
+    this.positionCache.clear(); // ✅ Clear cache when elevation changes
+    console.log(`🎯 Global elevation offset adjusted to ${this.globalElevationOffset}m, position cache cleared`);
   }
 
   /**
@@ -406,7 +532,8 @@ resetAnchorPosition(experienceId: string): boolean {
    */
   setGlobalDebugPosition(position: THREE.Vector3): void {
     this.globalDebugPosition = position.clone();
-    console.log(`🎯 Debug position set to (${position.x}, ${position.y}, ${position.z})`);
+    this.positionCache.clear(); // ✅ Clear cache when debug position changes
+    console.log(`🎯 Debug position set to (${position.x}, ${position.y}, ${position.z}), position cache cleared`);
   }
 
   getGlobalDebugPosition(): THREE.Vector3 {
@@ -414,93 +541,57 @@ resetAnchorPosition(experienceId: string): boolean {
   }
 
   /**
-   *  Event Driven Debug listening
+   * Event Driven Debug listening
    */
-private setupDebugListener(): void {
-  // Import the debug mode manager
-  import('../DebugModeManager').then(({ debugModeManager }) => {
-    // Initialize if not already done
-    debugModeManager.initialize();
-    
-    // Listen for debug mode changes
-    const handleDebugModeChange = (event: CustomEvent) => {
-      const enabled = event.detail.enabled;
-      if (enabled !== this.debugMode) {
-        this.debugMode = enabled;
-        console.log(`🎯 ARPositioningManager debug mode: ${enabled ? 'ON' : 'OFF'}`);
-      }
-    };
-    
-    debugModeManager.addEventListener('debugModeChanged', handleDebugModeChange as EventListener);
-    
-    // Set initial state
-    this.debugMode = debugModeManager.debugMode;
-    console.log(`🎯 ARPositioningManager: Initial debug mode: ${this.debugMode}`);
-  });
-}
-
-
-/**
- * Reset all positioning adjustments
- */
-resetAdjustments(): void {
-  this.globalElevationOffset = -1.5; // Back to default "fix too high" value
-  this.globalDebugPosition = new THREE.Vector3(0, 0, -5);
-  
-  // ✅ NEW: Reset all anchors to original positions from mapRouteData
-  console.log('🎯 ARPositioningManager: Resetting all anchors to original positions...');
-  
-  // Tell AnchorManager to reload from route data
-  this.anchorManager.resetAllAnchorsToOriginal();
-  
-  console.log('🎯 ARPositioningManager: Reset all adjustments to defaults');
-}
+  private setupDebugListener(): void {
+    // Import the debug mode manager
+    import('../DebugModeManager').then(({ debugModeManager }) => {
+      // Initialize if not already done
+      debugModeManager.initialize();
+      
+      // Listen for debug mode changes
+      const handleDebugModeChange = (event: CustomEvent) => {
+        const enabled = event.detail.enabled;
+        if (enabled !== this.debugMode) {
+          this.debugMode = enabled;
+          this.positionCache.clear(); // ✅ Clear cache when debug mode changes
+          console.log(`🎯 ARPositioningManager debug mode: ${enabled ? 'ON' : 'OFF'}, position cache cleared`);
+        }
+      };
+      
+      debugModeManager.addEventListener('debugModeChanged', handleDebugModeChange as EventListener);
+      
+      // Set initial state
+      this.debugMode = debugModeManager.debugMode;
+      console.log(`🎯 ARPositioningManager: Initial debug mode: ${this.debugMode}`);
+    });
+  }
 
   /**
-   * Test positioning system with a specific experience
+   * Reset all positioning adjustments
    */
-  testExperiencePositioning(
-    experienceId: string,
-    testUserGps?: [number, number]
-  ): void {
-    console.log(`🧪 Testing positioning for ${experienceId}...`);
+  resetAdjustments(): void {
+    this.globalElevationOffset = -1.5; // Back to default "fix too high" value
+    this.globalDebugPosition = new THREE.Vector3(0, 0, -5);
     
-    // Use test GPS or origin
-    const userInput: UserPositionInput = {
-      gpsPosition: testUserGps || this.worldSystem.getOrigin()
-    };
-
-    // Test normal positioning
-    const normalResult = this.getExperiencePosition(experienceId, userInput);
-    if (normalResult) {
-      console.log('📍 Normal positioning:', {
-        worldPos: normalResult.worldPosition.toArray(),
-        relativePos: normalResult.relativeToUser.toArray(),
-        distance: normalResult.distanceFromUser?.toFixed(1) + 'm',
-        debugMode: normalResult.isUsingDebugMode
-      });
-    }
-
-    // Test debug positioning
-    const debugResult = this.getExperiencePosition(experienceId, userInput, { useDebugOverride: true });
-    if (debugResult) {
-      console.log('🔧 Debug positioning:', {
-        worldPos: debugResult.worldPosition.toArray(),
-        relativePos: debugResult.relativeToUser.toArray(),
-        debugMode: debugResult.isUsingDebugMode
-      });
-    }
-
-    // Test with elevation adjustment
-    const elevationResult = this.getExperiencePosition(experienceId, userInput, { manualElevationOffset: -2.0 });
-    if (elevationResult) {
-      console.log('📏 With -2m elevation adjustment:', {
-        worldPos: elevationResult.worldPosition.toArray(),
-        relativePos: elevationResult.relativeToUser.toArray()
-      });
-    }
+    // ✅ ENHANCED: Reset coordinate transformations too
+    this.worldSystem.resetAllTransformations();
+    
+    // Reset all anchors to original positions from mapRouteData
+    console.log('🎯 ARPositioningManager: Resetting all anchors to original positions...');
+    this.anchorManager.resetAllAnchorsToOriginal();
+    
+    // ✅ Clear position cache after all resets
+    this.positionCache.clear();
+    
+    console.log('🎯 ARPositioningManager: Reset all adjustments to defaults, position cache cleared');
   }
-/**
+
+  // =================================================================
+  // ML CORRECTIONS AND DEBUG INFO (existing methods)
+  // =================================================================
+  
+  /**
    * Toggle ML corrections (called from debug panel)
    */
   toggleMLCorrections = (enabled: boolean): void => {
@@ -549,20 +640,26 @@ resetAdjustments(): void {
   }
 
   /**
-   * Enhanced debug info with ML correction data
+   * Enhanced debug info with coordinate transformations
    */
   getDebugInfo(experienceId?: string): {
     debugMode: boolean;
     globalElevationOffset: number;
     globalDebugPosition: THREE.Vector3;
     totalAnchors: number;
-    mlSummary: any; // NEW
+    mlSummary: any;
+    coordinateTransformations: {
+      rotation: number;
+      scale: number;
+      translation: { x: number; z: number };
+      isDefault: boolean;
+    }; // ✅ NEW
     experienceInfo?: {
       id: string;
       anchorWorldPos: THREE.Vector3;
       debugPos: THREE.Vector3;
       elevationOffset: number;
-      mlInfo?: any; // NEW
+      mlInfo?: any;
     };
   } {
     const baseDebugInfo = {
@@ -570,7 +667,8 @@ resetAdjustments(): void {
       globalElevationOffset: this.globalElevationOffset,
       globalDebugPosition: this.globalDebugPosition.clone(),
       totalAnchors: this.anchorManager.getAllAnchors().length,
-      mlSummary: this.getMLSummary() // NEW: Add ML summary
+      mlSummary: this.getMLSummary(),
+      coordinateTransformations: this.getCoordinateTransformationSummary() // ✅ NEW
     };
 
     if (experienceId) {
@@ -581,7 +679,7 @@ resetAdjustments(): void {
           anchorWorldPos: anchor.worldPosition.clone(),
           debugPos: this.globalDebugPosition.clone(),
           elevationOffset: this.globalElevationOffset,
-          mlInfo: this.getMLInfo(experienceId) // NEW: Add ML info
+          mlInfo: this.getMLInfo(experienceId)
         };
       }
     }
@@ -589,7 +687,57 @@ resetAdjustments(): void {
     return baseDebugInfo;
   }
 
+  /**
+   * Test positioning system with a specific experience
+   */
+  testExperiencePositioning(
+    experienceId: string,
+    testUserGps?: [number, number]
+  ): void {
+    console.log(`🧪 Testing positioning for ${experienceId}...`);
+    
+    // Use test GPS or origin
+    const userInput: UserPositionInput = {
+      gpsPosition: testUserGps || this.worldSystem.getOrigin()
+    };
 
+    // Test normal positioning
+    const normalResult = this.getExperiencePosition(experienceId, userInput);
+    if (normalResult) {
+      console.log('📍 Normal positioning:', {
+        worldPos: normalResult.worldPosition.toArray(),
+        relativePos: normalResult.relativeToUser.toArray(),
+        distance: normalResult.distanceFromUser?.toFixed(1) + 'm',
+        debugMode: normalResult.isUsingDebugMode
+      });
+    }
 
+    // Test debug positioning
+    const debugResult = this.getExperiencePosition(experienceId, userInput, { useDebugOverride: true });
+    if (debugResult) {
+      console.log('🔧 Debug positioning:', {
+        worldPos: debugResult.worldPosition.toArray(),
+        relativePos: debugResult.relativeToUser.toArray(),
+        debugMode: debugResult.isUsingDebugMode
+      });
+    }
 
+    // Test with elevation adjustment
+    const elevationResult = this.getExperiencePosition(experienceId, userInput, { manualElevationOffset: -2.0 });
+    if (elevationResult) {
+      console.log('📏 With -2m elevation adjustment:', {
+        worldPos: elevationResult.worldPosition.toArray(),
+        relativePos: elevationResult.relativeToUser.toArray()
+      });
+    }
+
+    // ✅ NEW: Test coordinate transformations
+    const transformSummary = this.getCoordinateTransformationSummary();
+    console.log('🌍 Current coordinate transformations:', transformSummary);
+    
+    if (testUserGps) {
+      const transformTest = this.testCoordinateTransformation(testUserGps);
+      console.log('🧪 Coordinate transformation test:', transformTest);
+    }
+  }
 }

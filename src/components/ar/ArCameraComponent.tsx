@@ -19,7 +19,7 @@ import TurnLeftIcon from '@mui/icons-material/TurnLeft';
 import TurnRightIcon from '@mui/icons-material/TurnRight';
 
 
-const SHOW_DEBUG_PANEL = false;
+const SHOW_DEBUG_PANEL = true;
 
 interface ArCameraProps {
   // Core positioning (simplified)
@@ -836,6 +836,8 @@ const initialize = async () => {
             <span style={{ color: 'yellow' }}>🎥 AR CAMERA (REFORMED)</span>
           </div>
 
+              {!debugCollapsed && (
+            <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>    
           {/* Frozen Position Status */}
           <div style={{ 
             marginTop: '5px', 
@@ -906,8 +908,7 @@ const initialize = async () => {
             <div>Render Loop: {renderingEngineRef.current?.isRenderingActive() ? '🔄' : '⏸️'}</div>
           </div>
 
-          {!debugCollapsed && (
-            <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>    
+        
 
             
           {/* Live GPS Comparison */}
@@ -1027,24 +1028,13 @@ const initialize = async () => {
   isCollapsed={isBottomDebugCollapsed}
   isVisible={SHOW_DEBUG_PANEL && positioningSystemReady}
   arScene={renderingEngineRef.current?.getScene() || undefined}
-  currentTransforms={currentTransforms} // ← SEPARATE PROP (not in data object)
+  currentTransforms={currentTransforms} // ← Model gesture transforms from useARInteractions
   data={{
-    // Model transforms - you'll need to get these from your positioning system
-    accumulatedTransforms: {
-      rotation: { 
-        x: 0, // Get from your model's current rotation
-        y: 0, // Get from your model's current rotation  
-        z: 0  // Get from your model's current rotation
-      },
-      scale: manualScaleOffset || 1.0
-    },
-    
-    // Position data
+    // Position data (only what we actually need)
     userPosition: frozenUserPosition || null,
-    activeAnchorPosition: [0, 0], // Get from your anchor system
-    adjustedAnchorPosition: null, // Get from your anchor system if adjusted
+    activeAnchorPosition: [0, 0], // This can be simplified since we use singleton now
     
-    // Model positioning
+    // Model positioning (from your existing debug system)
     expectedModelPosition: debugFrozenModelPosition || null,
     modelDistance: debugFrozenModelPosition ? 
       Math.sqrt(
@@ -1052,44 +1042,47 @@ const initialize = async () => {
         debugFrozenModelPosition.z * debugFrozenModelPosition.z
       ) : null,
     
-    // System configuration
+    // System configuration (minimal now)
     experienceType,
-    coordinateScale: 1.0, // Get from your coordinate system
-    newSystemReady: positioningSystemReady,
     
-    // Elevation and offsets
-    experienceOffsets: {
-      'default': 0,
-      [experienceType]: 0 // Get from your experience configuration
-    },
-    manualElevationOffset: 0, // Get from your elevation system
-    globalElevationOffset: getCurrentElevationOffset() || 0,
-    
-    // Scale
-    manualScaleOffset: manualScaleOffset || 1.0,
-    
-    // GPS adjustments
-    anchorPosition: [0, 0], // Get original anchor position
-    gpsOffset: { lon: 0, lat: 0 }, // Calculate current offset from original
-    
-    // NEW: Horizontal rotation (ready for integration)
-    // horizontalRotation: 0 // Uncomment when ready to add rotation
+    // Legacy model transforms (for the accumulation tracking)
+    accumulatedTransforms: {
+      rotation: { x: 0, y: 0, z: 0 }, // Not used anymore, panel gets from currentTransforms
+      scale: 1.0 // Not used anymore, panel tracks its own accumulated scale
+    }
   }}
   callbacks={{
-    onElevationAdjust: adjustGlobalElevation,
-    onScaleAdjust: updateScaleOffset,
-    onAnchorAdjust: (deltaLon: number, deltaLat: number) => {
-      // Handle fine GPS adjustments
-      console.log(`Anchor adjust: lon ${deltaLon}, lat ${deltaLat}`);
-      if (onElevationChanged) onElevationChanged();
+    // Model scale callbacks (still needed for direct model manipulation)
+    onModelScale: (scaleFactor: number) => {
+      console.log(`Model scale adjustment: ${scaleFactor}x`);
+      updateScaleOffset?.(scaleFactor);
     },
-onElevationChanged,
-onModelScale: updateScaleOffset, 
-onModelReset: onModelReset
-// NEW: Ready for horizontal rotation
-    // onHorizontalRotationAdjust: (deltaRotation: number) => {
-    //   console.log(`Horizontal rotation adjust: ${deltaRotation}°`);
-    // }
+    
+    onModelReset: () => {
+      console.log('Model reset triggered');
+      onModelReset?.();
+    },
+    
+    // Experience re-render triggers (when coordinate system changes)
+    onElevationChanged: () => {
+      console.log('Elevation changed, triggering experience re-render');
+      onElevationChanged?.();
+    },
+    
+    onHorizontalRotationAdjust: (deltaRotation: number) => {
+      console.log(`Coordinate rotation changed by ${deltaRotation}°, triggering experience re-render`);
+      onElevationChanged?.(); // Reuse this callback to trigger re-positioning
+    },
+    
+    onCoordinateScaleAdjust: (deltaScale: number) => {
+      console.log(`Coordinate scale changed by ${deltaScale}, triggering experience re-render`);
+      onElevationChanged?.(); // Reuse this callback to trigger re-positioning
+    },
+    
+    onTranslationAdjust: (deltaX: number, deltaZ: number) => {
+      console.log(`Translation changed by [${deltaX}, ${deltaZ}]m, triggering experience re-render`);
+      onElevationChanged?.(); // Reuse this callback to trigger re-positioning
+    }
   }}
 />
 

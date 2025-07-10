@@ -1,9 +1,10 @@
 // src/components/debug/ReformedModelPositioningPanel.tsx
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { PositioningSystemSingleton } from '../../utils/coordinate-system/PositioningSystemSingleton';
 
 export interface ReformedPositioningData {
-  // Model transforms (from original)
+  // Model transforms (from useARInteractions)
   accumulatedTransforms: {
     rotation: { x: number; y: number; z: number }; // In radians
     scale: number;
@@ -12,7 +13,6 @@ export interface ReformedPositioningData {
   // Position data
   userPosition: [number, number] | null;
   activeAnchorPosition: [number, number];
-  adjustedAnchorPosition: [number, number] | null;
   
   // Model positioning
   arScene?: THREE.Scene;
@@ -21,35 +21,17 @@ export interface ReformedPositioningData {
   
   // System configuration
   experienceType: string;
-  coordinateScale: number;
-  newSystemReady: boolean;
-  
-  // Elevation and offsets
-  experienceOffsets: Record<string, number>;
-  manualElevationOffset: number;
-  globalElevationOffset: number;
-  
-  // Scale
-  manualScaleOffset: number;
-  
-  // GPS adjustments
-  anchorPosition: [number, number];
-  gpsOffset: { lon: number; lat: number };
-  
-  // NEW: Horizontal rotation (ready for integration)
-  horizontalRotation?: number; // In degrees
 }
 
 export interface ReformedPositioningCallbacks {
-  onElevationAdjust: (delta: number) => void;
-  onAnchorAdjust: (deltaLon: number, deltaLat: number) => void;
-  onScaleAdjust: (delta: number) => void;
   onModelScale?: (scaleFactor: number) => void;
   onModelReset?: () => void;
-  onElevationChanged?: () => void;
+  onElevationChanged?: () => void; // Trigger experience re-render
   
-  // NEW: Ready for horizontal rotation
+  // Coordinate transformation callbacks (for triggering re-renders)
   onHorizontalRotationAdjust?: (deltaRotation: number) => void;
+  onCoordinateScaleAdjust?: (deltaScale: number) => void;
+  onTranslationAdjust?: (deltaX: number, deltaZ: number) => void;
 }
 
 interface ReformedModelPositioningPanelProps {
@@ -57,8 +39,8 @@ interface ReformedModelPositioningPanelProps {
   data: ReformedPositioningData;
   callbacks: ReformedPositioningCallbacks;
   isVisible?: boolean;
-  arScene?: THREE.Scene; // For scene info only
-  currentTransforms?: {   // NEW: Get transforms from useARInteractions
+  arScene?: THREE.Scene;
+  currentTransforms?: {   // From useARInteractions
     rotation: { x: number; y: number; z: number };
     scale: number;
     totalRotations: number;
@@ -72,119 +54,188 @@ const ReformedModelPositioningPanel: React.FC<ReformedModelPositioningPanelProps
   callbacks,
   isVisible = true,
   arScene,
-  currentTransforms // NEW: Receive transforms from interaction hook
+  currentTransforms
 }) => {
   
   if (!isVisible) return null;
 
-  // State for scene discovery (simplified)
-  const [modelFound, setModelFound] = useState(false);
+  // Live coordinate transformation data from singleton
+  const [coordinateTransforms, setCoordinateTransforms] = useState({
+    rotation: 0,
+    scale: 1.0,
+    translation: { x: 0, z: 0 },
+    elevation: 0
+  });
 
-  // ✅ SIMPLE: Just check if model exists in scene (no polling needed)
-  // useEffect(() => {
-  //   if (!arScene) {
-  //     setModelFound(false);
-  //     return;
-  //   }
-    
-  //   let found = false;
-  //   arScene.traverse((object) => {
-  //     if (!found && (
-  //       object instanceof THREE.Points ||
-  //       (object instanceof THREE.Group && object.children.length > 0) ||
-  //       object.userData?.isExperienceModel ||
-  //       (object instanceof THREE.Mesh && object.geometry.attributes.position)
-  //     )) {
-  //       found = true;
-  //     }
-  //   });
-    
-  //   setModelFound(found);
-  //   if (found) {
-  //     console.log('🎯 Panel: Model found in scene');
-  //   }
-  // }, [arScene]);
-
-  
-
-  // ✅ Use transforms from interaction hook (or fallback to props)
-  // Track accumulated scale from button presses
-    const [accumulatedScale, setAccumulatedScale] = useState(1.0);
-    const displayRotation = currentTransforms?.rotation || { x: 0, y: 0, z: 0 };
-    const displayScale = accumulatedScale;
-
-    // Reset accumulated scale when currentTransforms resets (double-tap)
-
-const prevTotalRotationsRef = useRef(-1); // Start at -1 to detect first reset
-
-// Listen for rotation reset (totalRotations goes back to 0)
-// Listen for rotation reset (totalRotations goes back to 0)
-useEffect(() => {
-  if (currentTransforms?.totalRotations !== undefined) {
-    const currentCount = currentTransforms.totalRotations;
-    const prevCount = prevTotalRotationsRef.current;
-    
-    console.log('🔍 Panel: Rotation tracking', {
-      currentCount,
-      prevCount,
-      accumulatedScale,
-      willReset: prevCount > 0 && currentCount === 0 && accumulatedScale !== 1.0
-    });
-    
-    // If totalRotations went from positive back to 0, it was reset
-    if (prevCount > 0 && currentCount === 0 && accumulatedScale !== 1.0) {
-      console.log('🔄 Panel: Detected model reset (totalRotations: 0), resetting scale display too');
-      setAccumulatedScale(1.0);
-      prevTotalRotationsRef.current = -1; // Reset ref for next cycle
-      console.log('✅ Panel: Scale reset to 1.0, ref reset to -1');
-    } else {
-      // Update previous count for normal tracking
-      prevTotalRotationsRef.current = currentCount;
-      console.log('📝 Panel: Updated ref to', currentCount);
+  // Update coordinate transforms from singleton
+  const updateTransforms = useCallback(() => {
+    try {
+      const summary = PositioningSystemSingleton.getCoordinateTransformationSummary();
+      const elevation = PositioningSystemSingleton.getGlobalElevationOffset();
+      
+      setCoordinateTransforms({
+        rotation: summary.rotation,
+        scale: summary.scale,
+        translation: summary.translation,
+        elevation: elevation
+      });
+    } catch (error) {
+      console.warn('Could not get coordinate transformation summary:', error);
     }
-  }
-}, [currentTransforms?.totalRotations, accumulatedScale]);
+  }, []);
 
-useEffect(() => {
-  console.log('🔍 Panel: currentTransforms full object:', currentTransforms);
-}, [currentTransforms]);
+  // Update transforms on mount and when data changes
+  useEffect(() => {
+    updateTransforms();
+  }, [updateTransforms, data.experienceType]);
 
-  // Helper function for formatting numbers with signs
+  // Track accumulated scale from model transform buttons
+  const [accumulatedScale, setAccumulatedScale] = useState(1.0);
+  const displayRotation = currentTransforms?.rotation || { x: 0, y: 0, z: 0 };
+  const displayScale = accumulatedScale;
+
+  const prevTotalRotationsRef = useRef(-1);
+
+  // Listen for model transform reset (totalRotations goes back to 0)
+  useEffect(() => {
+    if (currentTransforms?.totalRotations !== undefined) {
+      const currentCount = currentTransforms.totalRotations;
+      const prevCount = prevTotalRotationsRef.current;
+      
+      // If totalRotations went from positive back to 0, it was reset
+      if (prevCount > 0 && currentCount === 0 && accumulatedScale !== 1.0) {
+        console.log('🔄 Panel: Detected model reset, resetting scale display');
+        setAccumulatedScale(1.0);
+        prevTotalRotationsRef.current = -1;
+      } else {
+        prevTotalRotationsRef.current = currentCount;
+      }
+    }
+  }, [currentTransforms?.totalRotations, accumulatedScale]);
+
+  // Coordinate transformation handlers
+  const handleHorizontalRotation = useCallback((deltaRotation: number) => {
+    try {
+      if (deltaRotation === 0) {
+        PositioningSystemSingleton.resetHorizontalRotation();
+        console.log('🔄 Panel: Reset horizontal rotation');
+      } else {
+        PositioningSystemSingleton.adjustHorizontalRotation(deltaRotation);
+        console.log(`🔄 Panel: Adjusted horizontal rotation by ${deltaRotation}°`);
+      }
+      
+      updateTransforms();
+      if (callbacks.onHorizontalRotationAdjust) {
+        callbacks.onHorizontalRotationAdjust(deltaRotation);
+      }
+    } catch (error) {
+      console.error('Error adjusting horizontal rotation:', error);
+    }
+  }, [updateTransforms, callbacks.onHorizontalRotationAdjust]);
+
+  const handleCoordinateScale = useCallback((deltaScale: number) => {
+    try {
+      if (deltaScale === 0) {
+        PositioningSystemSingleton.resetCoordinateScale();
+        console.log('🔄 Panel: Reset coordinate scale');
+      } else {
+        PositioningSystemSingleton.adjustCoordinateScale(deltaScale);
+        console.log(`📏 Panel: Adjusted coordinate scale by ${deltaScale}`);
+      }
+      
+      updateTransforms();
+      if (callbacks.onCoordinateScaleAdjust) {
+        callbacks.onCoordinateScaleAdjust(deltaScale);
+      }
+    } catch (error) {
+      console.error('Error adjusting coordinate scale:', error);
+    }
+  }, [updateTransforms, callbacks.onCoordinateScaleAdjust]);
+
+  const handleTranslation = useCallback((deltaX: number, deltaZ: number, direction: string) => {
+    try {
+      PositioningSystemSingleton.adjustTranslation(deltaX, deltaZ);
+      console.log(`📍 Panel: Adjusted translation ${direction} by [${deltaX}, ${deltaZ}]m`);
+      
+      updateTransforms();
+      if (callbacks.onTranslationAdjust) {
+        callbacks.onTranslationAdjust(deltaX, deltaZ);
+      }
+    } catch (error) {
+      console.error('Error adjusting translation:', error);
+    }
+  }, [updateTransforms, callbacks.onTranslationAdjust]);
+
+  const handleElevationAdjustment = useCallback((delta: number) => {
+    try {
+      PositioningSystemSingleton.adjustGlobalElevationOffset(delta);
+      console.log(`📏 Panel: Applied elevation adjustment ${delta}m`);
+      
+      updateTransforms();
+      if (callbacks.onElevationChanged) {
+        callbacks.onElevationChanged();
+      }
+    } catch (error) {
+      console.error('Error adjusting elevation:', error);
+    }
+  }, [updateTransforms, callbacks.onElevationChanged]);
+
+  // GPS anchor movement using translation
+  const handleAnchorMovement = useCallback((direction: string) => {
+    const moveDistance = 1.0; // 1 meter movement
+    let deltaX = 0, deltaZ = 0;
+    
+    switch (direction.toLowerCase()) {
+      case 'west':
+        deltaX = -moveDistance;
+        break;
+      case 'east':
+        deltaX = moveDistance;
+        break;
+      case 'north':
+        deltaZ = -moveDistance; // Negative Z is north in your coordinate system
+        break;
+      case 'south':
+        deltaZ = moveDistance;
+        break;
+    }
+    
+    handleTranslation(deltaX, deltaZ, direction);
+  }, [handleTranslation]);
+
+  // Helper functions
   const formatWithSign = (num: number, decimals: number = 1, totalWidth: number = 10) => {
     const sign = num >= 0 ? '+' : '';
     return `${sign}${Math.abs(num).toFixed(decimals)}`.padStart(totalWidth, '  ');
   };
 
-  // Helper function to convert GPS to local coordinates for display
   const getUserLocalPosition = () => {
     if (!data.userPosition) return 'No GPS';
     
-    // Calculate local coordinates relative to anchor
     const deltaLon = data.userPosition[0] - data.activeAnchorPosition[0];
     const deltaLat = data.userPosition[1] - data.activeAnchorPosition[1];
     
-    // Approximate conversion to meters (simplified)
     const x = deltaLon * 111320 * Math.cos(data.userPosition[1] * Math.PI / 180);
     const z = deltaLat * 110540;
-    const y = 0; // User at ground level
+    const y = 0;
     
     return `[${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}]`;
   };
 
   const buttonStyle = {
-    fontSize: '20px',
+    fontSize: '1rem',
     padding: '4px 12px',
-    backgroundColor: data.newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(0,255,0,0.2)',
     border: 'none',
     borderRadius: '0.5rem',
     color: 'white',
     cursor: 'pointer'
   };
 
-  const elevButtonStyle = {
-    fontSize: '20px',
+  const xzbuttonStyle = {
+    fontSize: '0.5rem',
     padding: '4px 12px',
-    backgroundColor: data.newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(0,255,0,0.2)',
     border: 'none',
     borderRadius: '0.5rem',
     color: 'white',
@@ -194,7 +245,7 @@ useEffect(() => {
   const scaleButtonStyle = {
     fontSize: '12px',
     padding: '4px 12px',
-    backgroundColor: data.newSystemReady ? 'rgba(0,255,0,0.2)' : 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(0,255,0,0.2)',
     border: 'none',
     borderRadius: '0.5rem',
     color: 'white',
@@ -208,7 +259,6 @@ useEffect(() => {
         bottom: data.experienceType === '2030-2105' ? '11svh' : '2svh',
         left: '50%',
         width: '90vw',
-        
         transform: 'translateX(-50%)',
         backgroundColor: 'rgba(0, 0, 0, 0)',
         backdropFilter: 'blur(20px)',
@@ -221,198 +271,168 @@ useEffect(() => {
         textAlign: 'center'
       }}
     >
-      {/* Always visible: Title with model tracking status */}
+      {/* Always visible: Title */}
       <div style={{ fontSize: '10px', color: 'yellow' }}>
-        MODEL TRANSFORMS 
+        MODEL POSITIONING CONTROLS
       </div>
       
-      {/* Always visible: Rotation values - using transforms from interaction hook */}
+      {/* Always visible: Model rotation values */}
       <div>
-        Rot: X:{formatWithSign(displayRotation.x * 180/Math.PI)}° Y:{formatWithSign(displayRotation.y * 180/Math.PI)}° Z:{formatWithSign(displayRotation.z * 180/Math.PI)}°
+        Model Rot: X:{formatWithSign(displayRotation.x * 180/Math.PI)}° Y:{formatWithSign(displayRotation.y * 180/Math.PI)}° Z:{formatWithSign(displayRotation.z * 180/Math.PI)}°
       </div>
-
-      {/* Remove the separate scale line - now shown in buttons */}
 
       {/* Collapsible content */}
       {!isCollapsed && (
         <>
           <div style={{ marginTop: '0px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}></div>
           
-          {/* User Position in Local Coordinates */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.5rem', marginBottom: '0px' }}>
-            <span style={{ color: 'cyan' }}>User Position: </span>
-            <span>{getUserLocalPosition()}</span>
-        
-
-          {/* Model position section */}
-          {data.expectedModelPosition ? (
-            <div style={{ fontSize: '0.5rem', marginBottom: '0px' }}>
-              <div>
-                Model Position: [
-                  {data.expectedModelPosition.x.toFixed(1)},
-                  {data.expectedModelPosition.y.toFixed(1)}, 
-                  {data.expectedModelPosition.z.toFixed(1)}] 
-              </div>
-              {/* {data.modelDistance !== null && (
-                <div style={{ textAlign: 'center', marginTop: '2px' }}>
-                  Distance: {(data.modelDistance * 3.28084).toFixed(1)}ft ({data.modelDistance.toFixed(1)}m)
-                </div>
-              )} */}
+          {/* User and Model Position */}
+          <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.5rem', marginBottom: '5px' }}>
+            <div>
+              <span style={{ color: 'cyan' }}>User: </span>
+              <span>{getUserLocalPosition()}</span>
             </div>
-          ) : (
-            <div style={{ fontSize: '9px', opacity: 0.6, marginBottom: '8px' }}>No model position calculated</div>
-          )}
-          </div>
-
-          {/* NEW: Horizontal Rotation Section (ready for integration) */}
-          {data.horizontalRotation !== undefined && (
-            <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
-              <div style={{ color: 'yellow', fontSize: '10px', marginBottom: '5px' }}>
-                🔄 HORIZONTAL ROTATION: {data.horizontalRotation.toFixed(1)}°
-              </div>
-              {callbacks.onHorizontalRotationAdjust && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-                  <button onClick={() => callbacks.onHorizontalRotationAdjust!(-90)} style={buttonStyle}>-90°</button>
-                  <button onClick={() => callbacks.onHorizontalRotationAdjust!(-30)} style={buttonStyle}>-30°</button>
-                  <button onClick={() => callbacks.onHorizontalRotationAdjust!(-15)} style={buttonStyle}>-15°</button>
-                  <button onClick={() => callbacks.onHorizontalRotationAdjust!(0)} style={buttonStyle}>RESET</button>
-                  <button onClick={() => callbacks.onHorizontalRotationAdjust!(15)} style={buttonStyle}>+15°</button>
-                  <button onClick={() => callbacks.onHorizontalRotationAdjust!(30)} style={buttonStyle}>+30°</button>
-                  <button onClick={() => callbacks.onHorizontalRotationAdjust!(90)} style={buttonStyle}>+90°</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* GPS calibration section */}
-          <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-around',color: 'yellow', fontSize: '0.5rem', marginBottom: '5px' }}>
             
-                `GPS ANCHOR: [${(data.adjustedAnchorPosition || data.anchorPosition)[0].toFixed(6)}, ${(data.adjustedAnchorPosition || data.anchorPosition)[1].toFixed(6)}]`
-              
-        
-            <div style={{ fontSize: '0.5rem', opacity: 0.8, marginBottom: '5px' }}>
-              Offset: [{data.gpsOffset.lon.toFixed(8)}, {data.gpsOffset.lat.toFixed(8)}]
-            </div>
-          </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-              {data.newSystemReady ? (
-                <>
-                  <button onClick={() => {
-                    console.log('🧪 NEW: Anchor adjustment - WEST');
-                    if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-                  }} style={buttonStyle}>WEST</button>
-                  
-                  <button onClick={() => {
-                    console.log('🧪 NEW: Anchor adjustment - EAST');
-                    if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-                  }} style={buttonStyle}>EAST</button>
-                  
-                  <button onClick={() => {
-                    console.log('🧪 NEW: Anchor adjustment - NORTH');
-                    if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-                  }} style={buttonStyle}>NORTH</button>
-                  
-                  <button onClick={() => {
-                    console.log('🧪 NEW: Anchor adjustment - SOUTH');
-                    if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-                  }} style={buttonStyle}>SOUTH</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => callbacks.onAnchorAdjust(-0.00001, 0)} style={buttonStyle}>WEST</button>
-                  <button onClick={() => callbacks.onAnchorAdjust(0.00001, 0)} style={buttonStyle}>EAST</button>
-                  <button onClick={() => callbacks.onAnchorAdjust(0, 0.00001)} style={buttonStyle}>NORTH</button>
-                  <button onClick={() => callbacks.onAnchorAdjust(0, -0.00001)} style={buttonStyle}>SOUTH</button>
-                </>
-              )}
-            </div>
+            {data.expectedModelPosition && (
+              <div>
+                <span style={{ color: 'orange' }}>Model: </span>
+                <span>[{data.expectedModelPosition.x.toFixed(1)}, {data.expectedModelPosition.y.toFixed(1)}, {data.expectedModelPosition.z.toFixed(1)}]</span>
+              </div>
+            )}
           </div>
 
-          {/* Elevation section */}
+        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
+            <div style={{ color: 'yellow', fontSize: '10px', marginBottom: '5px' }}>
+              🔄 COORDINATE ROTATION: {coordinateTransforms.rotation.toFixed(1)}°
+            </div>
+            
+            {/* Rotation Slider */}
+            <div style={{ margin: '0.5rem', padding: '0 10px' }}>
+              <input
+                type="range"
+                min="-90"
+                max="90"
+                step="1"
+                value={coordinateTransforms.rotation}
+                onChange={(e) => {
+                  const newRotation = parseFloat(e.target.value);
+                  PositioningSystemSingleton.setHorizontalRotation(newRotation);
+                  updateTransforms();
+                  if (callbacks.onHorizontalRotationAdjust) {
+                    callbacks.onHorizontalRotationAdjust(newRotation - coordinateTransforms.rotation);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  height: '8px',
+                  borderRadius: '5px',
+                  background: `linear-gradient(to right, 
+                    #ff4444 0%, 
+                    #ffff44 50%, 
+                    #44ff44 100%)`,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  WebkitAppearance: 'none'
+                }}
+              />
+              
+              {/* Slider labels */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                fontSize: '8px', 
+                marginTop: '2px',
+                opacity: 0.7
+              }}>
+                <span>-90°</span>
+                <span>0°</span>
+                <span>+90°</span>
+              </div>
+            </div>
+            
+            {/* Quick preset buttons */}
+            {/* <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+              <button onClick={() => handleHorizontalRotation(-90)} style={{...buttonStyle, fontSize: '12px'}}>-90°</button>
+              <button onClick={() => handleHorizontalRotation(-45)} style={{...buttonStyle, fontSize: '12px'}}>-45°</button>
+              <button onClick={() => handleHorizontalRotation(0)} style={{...buttonStyle, fontSize: '12px'}}>RESET</button>
+              <button onClick={() => handleHorizontalRotation(45)} style={{...buttonStyle, fontSize: '12px'}}>+45°</button>
+              <button onClick={() => handleHorizontalRotation(90)} style={{...buttonStyle, fontSize: '12px'}}>+90°</button>
+            </div> */}
+          </div>
+
+          {/* Coordinate Scale Section */}
           <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
             <div style={{ color: 'yellow', fontSize: '10px', marginBottom: '5px' }}>
-              {data.newSystemReady ? 
-                `📏 ELEVATION: Global Offset ${data.globalElevationOffset.toFixed(3)}m`
-                     :
-                `📏 ELEVATION: ${((data.experienceOffsets[data.experienceType] || data.experienceOffsets['default'] || 0) + data.manualElevationOffset).toFixed(3)}m (offset: ${data.manualElevationOffset.toFixed(3)}m)`
-              }
+              📏 COORDINATE SCALE: {coordinateTransforms.scale.toFixed(3)}x
             </div>
-            
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
-              <button onClick={() => {
-                callbacks.onElevationAdjust(-0.1);
-                if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-              }} style={elevButtonStyle}>-0.1m</button>
-              
-              <button onClick={() => {
-                callbacks.onElevationAdjust(-0.01);
-                if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-              }} style={elevButtonStyle}>-1cm</button>
-              
-              <button onClick={() => {
-                callbacks.onElevationAdjust(0.01);
-                if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-              }} style={elevButtonStyle}>+1cm</button>
-              
-              <button onClick={() => {
-                callbacks.onElevationAdjust(0.1);
-                if (callbacks.onElevationChanged) callbacks.onElevationChanged();
-              }} style={elevButtonStyle}>+0.1m</button>
+              <button onClick={() => handleCoordinateScale(-0.1)} style={buttonStyle}>-0.1</button>
+              <button onClick={() => handleCoordinateScale(-0.01)} style={buttonStyle}>-0.01</button>
+              <button onClick={() => handleCoordinateScale(0)} style={buttonStyle}>RESET</button>
+              <button onClick={() => handleCoordinateScale(0.01)} style={buttonStyle}>+0.01</button>
+              <button onClick={() => handleCoordinateScale(0.1)} style={buttonStyle}>+0.1</button>
             </div>
           </div>
 
-          {/* Scale section */}
-          <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
+          {/* Translation/GPS Movement Section */}
+          <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '2px' }}>
+            <div style={{ color: 'yellow', fontSize: '10px', marginBottom: '5px' }}>
+              📍 COORDINATE TRANSLATION: [{coordinateTransforms.translation.x.toFixed(1)}, {coordinateTransforms.translation.z.toFixed(1)}]m
+            </div>
             
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+              <button onClick={() => handleAnchorMovement('west')} style={buttonStyle}>WEST</button>
+              <button onClick={() => handleAnchorMovement('east')} style={buttonStyle}>EAST</button>
+              <button onClick={() => handleAnchorMovement('north')} style={buttonStyle}>NORTH</button>
+              <button onClick={() => handleAnchorMovement('south')} style={buttonStyle}>SOUTH</button>
+            </div>
+          </div>
+
+          {/* Elevation Section */}
+          <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
+            <div style={{ color: 'yellow', fontSize: '10px', marginBottom: '5px' }}>
+              ⬆️ ELEVATION OFFSET: {coordinateTransforms.elevation.toFixed(3)}m
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
+              <button onClick={() => handleElevationAdjustment(-0.1)} style={buttonStyle}>-0.1m</button>
+              <button onClick={() => handleElevationAdjustment(-0.01)} style={buttonStyle}>-1cm</button>
+              <button onClick={() => handleElevationAdjustment(0.01)} style={buttonStyle}>+1cm</button>
+              <button onClick={() => handleElevationAdjustment(0.1)} style={buttonStyle}>+0.1m</button>
+            </div>
+          </div>
+
+          {/* Model Scale Section */}
+          <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '5px' }}>
+            <div style={{ color: 'yellow', fontSize: '10px', marginBottom: '5px' }}>
+              🔍 MODEL SCALE: {displayScale.toFixed(2)}x
+            </div>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2px', margin: '0.5rem' }}>
               <button onClick={() => {
-                  // const newScale = Math.max(0.1, accumulatedScale - 0.2);
-                  setAccumulatedScale(prev =>  (prev - 0.2));
-
-                if (callbacks.onModelScale) {
-                  callbacks.onModelScale(0.8); // Scale to 80% of current size
-                }
+                setAccumulatedScale(prev => (prev - 0.2));
+                callbacks.onModelScale?.(0.8);
               }} style={scaleButtonStyle}>-0.2</button>
               
               <button onClick={() => {
-                  const newScale = Math.max(0.1, accumulatedScale - 0.05);
-                  setAccumulatedScale(newScale);
-                if (callbacks.onModelScale) {
-                  callbacks.onModelScale(0.95); // Scale to 95% of current size
-                }
+                setAccumulatedScale(prev => Math.max(0.1, prev - 0.05));
+                callbacks.onModelScale?.(0.95);
               }} style={scaleButtonStyle}>-0.05</button>
               
-                  <div style={{
-                    fontSize: '12px',
-                    padding: '4px 12px',
-                    backgroundColor: 'rgba(255,255,0,0.2)',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: '60px'
-                  }}>
-                    {displayScale.toFixed(2)}x
-                  </div>
+              <button onClick={() => {
+                setAccumulatedScale(1.0);
+                callbacks.onModelReset?.();
+              }} style={scaleButtonStyle}>RESET</button>
               
               <button onClick={() => {
-                  const newScale = Math.max(0.1, accumulatedScale + 0.05);
-                  setAccumulatedScale(newScale);
-                if (callbacks.onModelScale) {
-                  callbacks.onModelScale(1.05); // Scale to 105% of current size
-                }
+                setAccumulatedScale(prev => (prev + 0.05));
+                callbacks.onModelScale?.(1.05);
               }} style={scaleButtonStyle}>+0.05</button>
               
               <button onClick={() => {
-                  const newScale = Math.max(0.1, accumulatedScale + 0.2);
-                  setAccumulatedScale(newScale);
-                if (callbacks.onModelScale) {
-                  callbacks.onModelScale(1.2); // Scale to 120% of current size
-                }
+                setAccumulatedScale(prev => (prev + 0.2));
+                callbacks.onModelScale?.(1.2);
               }} style={scaleButtonStyle}>+0.2</button>
             </div>
           </div>
@@ -425,10 +445,8 @@ useEffect(() => {
             fontSize: '8px', 
             opacity: 0.7
           }}>
-            {/* <div>Experience: {data.experienceType}</div>
-            <div>System: {data.newSystemReady ? '✅ New' : '🔄 Legacy'}</div>
-            <div>Scene Tracking: {modelFound ? '✅ Active' : '❌ Searching'}</div> */}
-            {/* <div>Coordinate Scale: {data.coordinateScale}</div> */}
+            <div>Experience: {data.experienceType}</div>
+            <div>Coord System: {coordinateTransforms.rotation === 45 && coordinateTransforms.scale === 1.0 && coordinateTransforms.translation.x === 0 && coordinateTransforms.translation.z === 0 ? '✅ Default' : '🔧 Modified'}</div>
           </div>
         </>
       )}
@@ -441,7 +459,7 @@ useEffect(() => {
           marginTop: '2px',
           color: 'cyan'
         }}>
-          ⬆ swipe up to expand
+          ⬆ swipe up to expand controls
         </div>
       )}
     </div>
