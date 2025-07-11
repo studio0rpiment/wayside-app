@@ -720,9 +720,9 @@ const initialize = async () => {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          backgroundColor: 'rgba(255, 0, 0, 0.8)',
+          backgroundColor: 'var(--color-pink)',
           color: 'white',
-          padding: '20px',
+          padding: '1rem',
           borderRadius: '8px',
           textAlign: 'center',
           zIndex: 1030,
@@ -743,15 +743,17 @@ const initialize = async () => {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          backdropFilter: 'blur(10px)',
           color: 'white',
-          padding: '20px',
+          padding: '1rem',
           borderRadius: '8px',
           textAlign: 'center',
           zIndex: 1030,
-          maxWidth: '80%'
+          width: '70svw'
+          // maxWidth: '100%'
         }}>
-          <h3>📸 Camera Access Needed</h3>
+          <h3>Camera Access Needed</h3>
           <p>This AR experience needs camera access to work.</p>
           <button
             onClick={async () => {
@@ -764,31 +766,33 @@ const initialize = async () => {
             style={{
               marginTop: '15px',
               padding: '10px 20px',
-              backgroundColor: 'var(--color-blue)',
-              color: 'white',
+              backgroundColor: 'var(--color-pink)',
+              color: 'var(--color-light)',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
-              fontSize: '16px'
+              fontSize: '1.4rem',
+              fontWeight: 'bold'
             }}
           >
-            Allow Camera Access
+            Please Allow Camera Access
           </button>
-          <p style={{ fontSize: '12px', marginTop: '10px', opacity: 0.7 }}>
+          <p style={{ fontSize: '12px', marginTop: '10px', opacity: 1 }}>
             Your camera data stays on your device and is not stored or shared.
           </p>
         </div>
       )}
 
       {/* Loading indicator */}
-    {!isInitialized && !cameraError && (
+    {/* {!isInitialized && !cameraError && (
   <div style={{
     position: 'absolute',
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    color: 'white',
+    backgroundColor: 'rgba(0, 0, 0, 0)',
+    backdropFilter: 'blur(10px)',
+    color: 'var(--color-light)',
     padding: '20px',
     borderRadius: '8px',
     textAlign: 'center',
@@ -796,14 +800,14 @@ const initialize = async () => {
   }}>
     <div style={{ fontSize: '18px', marginBottom: '10px' }}>🎥 {initStatus}</div>
     
-    {/* Show positioning system status */}
+    Show positioning system status
     <div style={{ fontSize: '12px', opacity: 0.8 }}>
       Positioning Ready: {positioningSystemReady ? '✅' : '❌'}<br/>
       User Position: {frozenUserPosition ? '✅' : '❌'}<br/>
       Experience: {experienceType}
     </div>
   </div>
-)}
+)} */}
       
       {/* SIMPLIFIED Debug Panel */}
       {SHOW_DEBUG_PANEL && (
@@ -993,7 +997,7 @@ const initialize = async () => {
     
     transform: 'translateX(-50%)',
     backgroundColor: 'rgba(0, 0, 0, 0)',
-    backdropFilter: 'blur(4px)',
+    backdropFilter: 'blur(10px)',
     color: 'white',
     padding: '12px 20px',
     borderRadius: '8px',
@@ -1009,7 +1013,7 @@ const initialize = async () => {
       <div 
       style={{ 
         fontSize: '14px', 
-        color: 'yellow', 
+        color: 'var(--color-pink)', 
         fontWeight: 'bold' ,
         display: 'flex',
         flexDirection: 'column',
