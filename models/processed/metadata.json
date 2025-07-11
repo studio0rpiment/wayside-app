@@ -1,5 +1,5 @@
 {
-  "generated": "2025-06-11T05:00:49.071Z",
+  "generated": "2025-07-11T21:26:13.784Z",
   "globalMaxDimension": 77.04033279418945,
   "qualityLevels": [
     {
@@ -16,7 +16,7 @@
   "originalQualityMapping": [
     {
       "name": "high",
-      "vertices": 40000,
+      "vertices": 50000,
       "size": 1,
       "outputName": "high"
     },
@@ -29,7 +29,6 @@
   ],
   "experiences": [
     "lily",
-    "lotus",
     "cattail"
   ],
   "stages": [
