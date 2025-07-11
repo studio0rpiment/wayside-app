@@ -19,7 +19,7 @@ import TurnLeftIcon from '@mui/icons-material/TurnLeft';
 import TurnRightIcon from '@mui/icons-material/TurnRight';
 
 
-const SHOW_DEBUG_PANEL = true;
+const SHOW_DEBUG_PANEL = false;
 
 interface ArCameraProps {
   // Core positioning (simplified)

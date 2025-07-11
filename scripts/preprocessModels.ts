@@ -13,12 +13,12 @@ interface QualityLevel {
 
 // CHANGED: Updated quality levels with new output names
 const QUALITY_LEVELS: QualityLevel[] = [
-  { name: 'high', vertices: 40000, size: 1.0, outputName: 'high' },
+  { name: 'high', vertices: 50000, size: 1.0, outputName: 'high' },
   { name: 'low',  vertices: 25000, size: 1.5, outputName: 'low' }
 ];
 
-const EXPERIENCES = ['lily', 'lotus', 'cattail'];
-const STAGES = [1, 2, 3, 4];
+const EXPERIENCES = [ 'lily','cattail' ]; // 'lily','cattail','lotus'
+const STAGES = [1,2,3,4]; //
 
 class ModelPreprocessor {
   private loader = new PLYLoader();
@@ -229,7 +229,7 @@ class ModelPreprocessor {
   
   // 2. Apply unified scaling
   const targetSize = 1; // Standard size for all models
-  const scale = targetSize / this.globalMaxDimension;
+  const scale = (targetSize / this.globalMaxDimension) 
 
   console.log(`📊 Applying scale: ${scale} (targetSize: ${targetSize}, globalMaxDim: ${this.globalMaxDimension})`);
   
