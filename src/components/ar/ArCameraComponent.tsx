@@ -191,33 +191,35 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const turnLeft = bearingDiff > 0;
   
   if (aimError < 40) {
-    return `Close - aim error ${aimError.toFixed(1)}°`;
+    return `Close! ${aimError.toFixed(1)}°`;
   } else if (aimError < 60) {
     return turnLeft ? (
       <span>
-        <TurnLeftIcon fontSize="small" />
-        {` TURN LEFT TO FIND MODEL (${aimError.toFixed(1)}°)`}
+       {`MORE RIGHT `}
+        <TurnRightIcon fontSize="small" />
+        {` (${aimError.toFixed(1)}°)`}
       </span>
     ) : (
       <span>
-        {`TURN RIGHT TO FIND MODEL `}
-        <TurnRightIcon fontSize="small" />
-        {` (${aimError.toFixed(1)}°)`}
+        <TurnLeftIcon fontSize="small" />
+        {` MORE LEFT (${aimError.toFixed(1)}°)`}
+
       </span>
     );
   } else {
     return turnLeft ? (
       <span>
-        <TurnLeftIcon fontSize="small" />
-        <TurnLeftIcon fontSize="small" />
-        {` LOOK AROUND LEFT (${aimError.toFixed(1)}°)`}
-      </span>
-    ) : (
-      <span>
-        {`LOOK AROUND RIGHT `}
+            {`LOOK AROUND RIGHT `}
         <TurnRightIcon fontSize="small" />
         <TurnRightIcon fontSize="small" />
         {` (${aimError.toFixed(1)}°)`}
+      </span>
+    ) : (
+      <span>
+          <TurnLeftIcon fontSize="small" />
+        <TurnLeftIcon fontSize="small" />
+        {` LOOK AROUND LEFT (${aimError.toFixed(1)}°)`}
+  
       </span>
     );
   }
