@@ -190,9 +190,10 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
   const bearingDiff = ((modelBearing - cameraBearing + 540) % 360) - 180;
   const turnLeft = bearingDiff > 0;
   
-  if (aimError < 40) {
-    return `Close! ${aimError.toFixed(1)}°`;
-  } else if (aimError < 60) {
+  // if (aimError < 40) {
+  //   return `Close! ${aimError.toFixed(1)}°`;
+  // } else 
+  if (aimError < 50) {
     return turnLeft ? (
       <span>
        {`MORE RIGHT `}
