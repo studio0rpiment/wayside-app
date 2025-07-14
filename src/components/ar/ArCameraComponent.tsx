@@ -198,12 +198,13 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
       <span>
        {`MORE RIGHT `}
         <TurnRightIcon fontSize="small" />
-        {` (${aimError.toFixed(1)}°)`}
+        {/* {` (${aimError.toFixed(1)}°)`} */}
       </span>
     ) : (
       <span>
         <TurnLeftIcon fontSize="small" />
-        {` MORE LEFT (${aimError.toFixed(1)}°)`}
+        {` MORE LEFT `} 
+        {/* (${aimError.toFixed(1)}°) */}
 
       </span>
     );
@@ -213,13 +214,14 @@ const ArCameraComponent: React.FC<ArCameraProps> = ({
             {`LOOK AROUND RIGHT `}
         <TurnRightIcon fontSize="small" />
         <TurnRightIcon fontSize="small" />
-        {` (${aimError.toFixed(1)}°)`}
+        {/* {` (${aimError.toFixed(1)}°)`} */}
       </span>
     ) : (
       <span>
           <TurnLeftIcon fontSize="small" />
         <TurnLeftIcon fontSize="small" />
-        {` LOOK AROUND LEFT (${aimError.toFixed(1)}°)`}
+        {` LOOK AROUND LEFT `}
+        {/* (${aimError.toFixed(1)}°) */}
   
       </span>
     );
