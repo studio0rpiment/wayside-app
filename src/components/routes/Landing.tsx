@@ -17,6 +17,7 @@ const Landing: React.FC = () => {
   const camMap = ContentConfigHelper.getTemplateById('camMap') as ContentContainerProps;
   const kenConfig = ContentConfigHelper.getTemplateById('kenilworthLogo') as ContentContainerProps;
   const buttonConfig = ContentConfigHelper.getTemplateById('buttonToHome') as ContentContainerProps;
+  const buttonEvent = ContentConfigHelper.getTemplateById('buttonToEvent') as ContentContainerProps;
 
   // Test coordinate system on mount (development only)
   useEffect(() => {
@@ -72,6 +73,12 @@ const Landing: React.FC = () => {
           <Link to="/home" style={{ textDecoration: 'none', border:'1px solid var(--color-light)', borderRadius: '1rem',  "margin": "1rem",  }}>
             <Button {...buttonConfig} />
           </Link>
+
+          <Link to="https://www.eventbrite.com/e/waysideat-launch-party-tickets-1567222738399" target='_blank' style={{ textDecoration: 'none', border:'1px solid var(--color-light)', borderRadius: '1rem',  "margin": "1rem",  }}>
+            <Button {...buttonEvent} />
+          </Link>
+
+
           </div>
             
             <div style={{ }}> 
