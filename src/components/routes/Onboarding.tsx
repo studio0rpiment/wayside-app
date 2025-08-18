@@ -441,13 +441,13 @@ const handlePermissionCardNext = useCallback(() => {
       </GradientElement>
 
       {/* Permission Gate Modal */}
-      <LocationGateModal
+      {/* <LocationGateModal
         isOpen={showPermissionGate}
         onClose={() => setShowPermissionGate(false)}
         onBypass={handlePermissionGateBypass}
        checkType={(universalModeManager.blockType !== 'none' ? universalModeManager.blockType : 'permissions') as 'location' | 'permissions'}
 
-      />
+      /> */}
 
 {/* {process.env.NODE_ENV === 'development' && (
       <OnboardingDebugOverlay

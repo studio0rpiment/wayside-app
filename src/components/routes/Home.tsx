@@ -133,12 +133,12 @@ const Home: React.FC = () => {
       </GradientElement>
 
       {/* LocationGate Modal */}
-      <LocationGateModal
+      {/* <LocationGateModal
         isOpen={showLocationGate}
         onClose={() => setShowLocationGate(false)}
         onBypass={handleLocationGateBypass}
         checkType="location"
-      />
+      /> */}
     </div>
   );
 };
