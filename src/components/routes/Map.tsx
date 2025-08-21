@@ -412,7 +412,7 @@ const handleMapRemoved = useCallback(() => {
         {/* <GeofenceDebugger /> */}
 
         {/* NEW: GPS Precision debugger - positioned to not overlap */}
-        {/* <PrecisionDebugger
+        <PrecisionDebugger
           currentAccuracy={currentAccuracy}
           positionQuality={positionQuality}
           isPositionStable={isPositionStable}
@@ -424,7 +424,7 @@ const handleMapRemoved = useCallback(() => {
           stopTracking={stopTracking}
           getPositionStats={getPositionStats}
           currentRadius={GEOFENCE_CONFIG.DEFAULT_RADIUS}
-        /> */}
+        />
 
      
 
