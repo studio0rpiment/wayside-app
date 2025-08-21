@@ -117,20 +117,33 @@ export class WorldCoordinateSystem {
     const [originLon, originLat] = this.origin;
     const [targetLon, targetLat] = gps;
     
-    // Convert to radians
-    const originLatRad = toRadians(originLat);
-    const dLat = toRadians(targetLat - originLat);
-    const dLon = toRadians(targetLon - originLon);
+    // Convert to radians OLD METHOS
+    // const originLatRad = toRadians(originLat);
+    // const dLat = toRadians(targetLat - originLat);
+    // const dLon = toRadians(targetLon - originLon);
     
-    // Convert to meters using local approximation
-    const cosLat = Math.cos(originLatRad);
+    // // Convert to meters using local approximation
+    // const cosLat = Math.cos(originLatRad);
     
-    const x_original = dLon * EARTH_RADIUS * cosLat;
-    const z_original = -dLat * EARTH_RADIUS; 
-    const y = elevation - this.originElevation;
+    // const x_original = dLon * EARTH_RADIUS * cosLat;
+    // const z_original = -dLat * EARTH_RADIUS; 
+    // const y = elevation - this.originElevation;
 
     // ✅ Apply coordinate transformations in sequence:
     // 1. Scale (affects distances uniformly)
+
+    //*************** */ More accurate local projection
+    const dLat_degrees = targetLat - originLat;
+    const dLon_degrees = targetLon - originLon;
+
+    // Constants for Kenilworth's latitude
+    const metersPerDegreeLat = 110540; // relatively constant globally
+    const metersPerDegreeLon = 111320 * Math.cos(originLat * Math.PI / 180); // ~86,900 at Kenilworth
+
+    const x_original = dLon_degrees * metersPerDegreeLon;
+    const z_original = -dLat_degrees * metersPerDegreeLat; // negative for Three.js coordinates
+    const y = elevation - this.originElevation;
+
     const x_scaled = x_original * this.coordinateScale;
     const z_scaled = z_original * this.coordinateScale;
 
@@ -155,6 +168,12 @@ export class WorldCoordinateSystem {
     // 1. Reverse translation
     const x_untranslated = worldPos.x - this.translationOffset.x;
     const z_untranslated = worldPos.z - this.translationOffset.y;
+
+    const [originLon, originLat] = this.origin;
+
+    // Constants for Kenilworth's latitude
+    const metersPerDegreeLat = 110540; // relatively constant globally
+    const metersPerDegreeLon = 111320 * Math.cos(originLat * Math.PI / 180); // ~86,900 at Kenilworth
     
     // 2. Reverse rotation
     const rotationRadians = -this.horizontalRotation * (Math.PI / 180); // Negative for reverse
@@ -166,13 +185,13 @@ export class WorldCoordinateSystem {
     const z_unscaled = z_unrotated / this.coordinateScale;
     
     // Convert back to GPS
-    const [originLon, originLat] = this.origin;
+   
     const cosLat = Math.cos(toRadians(originLat));
-    const deltaLon = x_unscaled / (EARTH_RADIUS * cosLat);
-    const deltaLat = -z_unscaled / EARTH_RADIUS;
-    
-    const gpsLon = originLon + toDegrees(deltaLon);
-    const gpsLat = originLat + toDegrees(deltaLat);
+    const deltaLon_degrees = x_unscaled / metersPerDegreeLon;
+    const deltaLat_degrees = -z_unscaled / metersPerDegreeLat;
+
+    const gpsLon = originLon + deltaLon_degrees;
+    const gpsLat = originLat + deltaLat_degrees;
     const gpsElevation = this.originElevation + worldPos.y;
     
     return [gpsLon, gpsLat, gpsElevation];
@@ -223,8 +242,8 @@ export class WorldCoordinateSystem {
   }
 
   resetHorizontalRotation(): void {
-    this.horizontalRotation = 45; // Your original test value
-    console.log(`🌍 Horizontal rotation reset to 45° (original test value)`);
+    this.horizontalRotation = 0; // Your original test value
+    console.log(`🌍 Horizontal rotation reset to 0° (original test value)`);
   }
 
   // ===================================================================
