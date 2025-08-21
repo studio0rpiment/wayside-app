@@ -97,27 +97,156 @@ export function testWorldCoordinateSystem() {
   }
   console.log('');
 
+  console.log('✅ Step 6: GPS Conversion Accuracy Test');
+
+// Test GPS conversion with real coordinates from mapRouteData
+const testGPSConversion = () => {
+  // Pick Helen's location as our test user position
+  const testUserPosition: [number, number] = [-76.943401, 38.913326]; // Helen's location
+  
+  console.log(`🧭 Testing GPS conversion accuracy from user at Helen's location:`);
+  console.log(`   User GPS: [${testUserPosition[0]}, ${testUserPosition[1]}]`);
+  
+  // Test round-trip conversion for the user position
+  const userWorldPos = worldSystem.gpsToWorld(testUserPosition, 0);
+  const userBackToGPS = worldSystem.worldToGPS(userWorldPos);
+  
+  // Calculate round-trip error in meters
+  const roundTripErrorLon = (userBackToGPS[0] - testUserPosition[0]) * 111320 * Math.cos(testUserPosition[1] * Math.PI / 180);
+  const roundTripErrorLat = (userBackToGPS[1] - testUserPosition[1]) * 110540;
+  const totalRoundTripError = Math.sqrt(roundTripErrorLon * roundTripErrorLon + roundTripErrorLat * roundTripErrorLat);
+  
+  console.log(`   Round-trip test: ${totalRoundTripError < 0.1 ? '✅' : '⚠️'} Error: ${totalRoundTripError.toFixed(4)}m`);
+  
+  // Test distances to other experiences
+  const testExperiences = ['lily', 'lotus', 'mac', '2030-2105'];
+  let maxDistanceError = 0;
+  let totalTests = 0;
+  let passedTests = 0;
+  
+  console.log(`   Distance accuracy tests:`);
+  
+  testExperiences.forEach(expId => {
+    const result = arPositioningManager.getExperiencePosition(expId, { 
+      gpsPosition: testUserPosition 
+    });
+    
+    if (result && result.anchor) {
+      const anchorGPS = result.anchor.gpsCoordinates;
+      const calculatedDistance = result.distanceFromUser || 0;
+      
+      // Calculate expected distance using improved formula
+      const dLat = (anchorGPS[1] - testUserPosition[1]) * 110540; // meters per degree lat
+      const dLon = (anchorGPS[0] - testUserPosition[0]) * 111320 * Math.cos(testUserPosition[1] * Math.PI / 180); // meters per degree lon at this latitude
+      const expectedDistance = Math.sqrt(dLat * dLat + dLon * dLon);
+      
+      const distanceError = Math.abs(calculatedDistance - expectedDistance);
+      maxDistanceError = Math.max(maxDistanceError, distanceError);
+      
+      const testPassed = distanceError < 1.0; // Accept sub-meter error
+      if (testPassed) passedTests++;
+      totalTests++;
+      
+      console.log(`     ${expId}: ${testPassed ? '✅' : '⚠️'} Calc: ${calculatedDistance.toFixed(1)}m | Expected: ${expectedDistance.toFixed(1)}m | Error: ${distanceError.toFixed(3)}m`);
+    }
+  });
+  
+  return {
+    roundTripError: totalRoundTripError,
+    maxDistanceError,
+    testsPassed: passedTests,
+    totalTests,
+    accuracyRating: (passedTests / totalTests) * 100
+  };
+};
+
+const gpsTestResults = testGPSConversion();
+console.log(`   📊 GPS Accuracy Summary:`);
+console.log(`     Round-trip precision: ${gpsTestResults.roundTripError < 0.1 ? '✅' : '⚠️'} ${gpsTestResults.roundTripError.toFixed(4)}m`);
+console.log(`     Distance accuracy: ${gpsTestResults.testsPassed}/${gpsTestResults.totalTests} tests passed (${gpsTestResults.accuracyRating.toFixed(1)}%)`);
+console.log(`     Max distance error: ${gpsTestResults.maxDistanceError.toFixed(3)}m`);
+console.log('');
+
+console.log('✅ Step 7: Coordinate System Stress Test');
+
+// Test coordinate transformations with various parameters
+const testTransformations = () => {
+  console.log(`🔄 Testing coordinate transformations:`);
+  
+  // Test different transformation settings
+  const transformTests = [
+    { rotation: 0, scale: 1.0, translation: [0, 0] },
+    { rotation: 45, scale: 1.0, translation: [0, 0] },
+    { rotation: 0, scale: 1.5, translation: [0, 0] },
+    { rotation: 0, scale: 1.0, translation: [10, 5] },
+    { rotation: 30, scale: 1.2, translation: [5, -3] }
+  ];
+  
+  let transformationErrors: number[] = [];
+  
+  transformTests.forEach((test, index) => {
+    // Apply transformation
+    worldSystem.setHorizontalRotation(test.rotation);
+    worldSystem.setCoordinateScale(test.scale);
+    worldSystem.setTranslation(test.translation[0], test.translation[1]);
+    
+    // Test round-trip with Helen's location
+    const testPoint: [number, number] = [-76.943401, 38.913326];
+    const worldPos = worldSystem.gpsToWorld(testPoint, 0);
+    const backToGPS = worldSystem.worldToGPS(worldPos);
+    
+    // Calculate error
+    const errorLon = (backToGPS[0] - testPoint[0]) * 111320 * Math.cos(testPoint[1] * Math.PI / 180);
+    const errorLat = (backToGPS[1] - testPoint[1]) * 110540;
+    const totalError = Math.sqrt(errorLon * errorLon + errorLat * errorLat);
+    
+    transformationErrors.push(totalError);
+    
+    const passed = totalError < 0.1;
+    console.log(`     Test ${index + 1}: ${passed ? '✅' : '⚠️'} R:${test.rotation}° S:${test.scale} T:[${test.translation[0]},${test.translation[1]}] Error: ${totalError.toFixed(6)}m`);
+  });
+  
+  // Reset transformations
+  worldSystem.resetAllTransformations();
+  
+  const maxTransformError = Math.max(...transformationErrors);
+  const avgTransformError = transformationErrors.reduce((a, b) => a + b, 0) / transformationErrors.length;
+  
+  console.log(`     📊 Transformation Summary:`);
+  console.log(`       Max error: ${maxTransformError.toFixed(6)}m`);
+  console.log(`       Avg error: ${avgTransformError.toFixed(6)}m`);
+  console.log(`       All tests passed: ${maxTransformError < 0.1 ? '✅' : '⚠️'}`);
+  
+  return {
+    maxError: maxTransformError,
+    avgError: avgTransformError,
+    allPassed: maxTransformError < 0.1
+  };
+};
+
+const transformResults = testTransformations();
+console.log('');
+
   // System validation
-  const systemValid = originTestPass && allAnchors.length === 9 && normalResult && debugResult;
-  
-  console.log('🎯 COMPLETE SYSTEM STATUS:');
-  console.log(`   ✅ Coordinate System: ${originTestPass ? 'READY' : 'FAIL'}`);
-  console.log(`   ✅ Anchor Management: ${allAnchors.length === 9 ? 'READY' : 'FAIL'}`);
-  console.log(`   ✅ AR Positioning: ${normalResult && debugResult ? 'READY' : 'FAIL'}`);
-  console.log(`   ✅ Debug Mode: ${debugResult?.isUsingDebugMode ? 'WORKING' : 'FAIL'}`);
-  console.log(`   ✅ Elevation Control: ${adjustedOffset !== currentOffset ? 'WORKING' : 'FAIL'}`);
-  console.log('');
-  console.log(`🚀 System Ready: ${systemValid ? '✅ ALL SYSTEMS GO' : '⚠️ NEEDS ATTENTION'}`);
-  
-  if (systemValid) {
-    console.log('');
-    console.log('📋 Ready for Experience Integration:');
-    console.log('   • Replace experience positioning code with:');
-    console.log('     arPositioningManager.positionObject(model, experienceId, userInput)');
-    console.log('   • Global elevation offset: -1.5m (adjustable for "too high" fix)');
-    console.log('   • Debug mode: arTestingOverride still works');
-  }
-  console.log('');
+// Update the system validation section
+const gpsConversionValid = gpsTestResults.roundTripError < 0.1 && gpsTestResults.accuracyRating >= 90;
+const transformationValid = transformResults.allPassed;
+
+const systemValid = originTestPass && 
+                   allAnchors.length === 9 && 
+                   normalResult && 
+                   debugResult && 
+                   gpsConversionValid && 
+                   transformationValid;
+
+console.log('🎯 COMPLETE SYSTEM STATUS:');
+console.log(`   ✅ Coordinate System: ${originTestPass ? 'READY' : 'FAIL'}`);
+console.log(`   ✅ Anchor Management: ${allAnchors.length === 9 ? 'READY' : 'FAIL'}`);
+console.log(`   ✅ AR Positioning: ${normalResult && debugResult ? 'READY' : 'FAIL'}`);
+console.log(`   ✅ GPS Conversion: ${gpsConversionValid ? 'READY' : 'FAIL'} (${gpsTestResults.accuracyRating.toFixed(1)}% accuracy)`);
+console.log(`   ✅ Transformations: ${transformationValid ? 'READY' : 'FAIL'} (max error: ${transformResults.maxError.toFixed(4)}m)`);
+console.log(`   ✅ Debug Mode: ${debugResult?.isUsingDebugMode ? 'WORKING' : 'FAIL'}`);
+console.log(`   ✅ Elevation Control: ${adjustedOffset !== currentOffset ? 'WORKING' : 'FAIL'}`);
   
   return {
     worldSystem,

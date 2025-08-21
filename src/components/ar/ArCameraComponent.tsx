@@ -19,7 +19,7 @@ import TurnLeftIcon from '@mui/icons-material/TurnLeft';
 import TurnRightIcon from '@mui/icons-material/TurnRight';
 
 
-const SHOW_DEBUG_PANEL = true;
+const SHOW_DEBUG_PANEL = false;
 
 interface ArCameraProps {
   // Core positioning (simplified)
@@ -1031,7 +1031,7 @@ const initialize = async () => {
 )}
 
 
-// In ArCameraComponent.tsx - CORRECT way to pass currentTransforms
+{/* // In ArCameraComponent.tsx - CORRECT way to pass currentTransforms */}
 
 <ReformedModelPositioningPanel
   isCollapsed={isBottomDebugCollapsed}
