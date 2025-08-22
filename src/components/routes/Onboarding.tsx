@@ -206,8 +206,9 @@ const handleCompleteOnboarding = useCallback(() => {
 
   // NEW: Handle permission card next button with gate check
 const handlePermissionCardNext = useCallback(() => {
-  console.log('🔍 handlePermissionCardNext called');
-  console.log('🔍 allPermissionsGranted:', allPermissionsGranted);
+  // console.log('🔍 handlePermissionCardNext called');
+  // console.log('🔍 allPermissionsGranted:', allPermissionsGranted);
+  goToNextCard();
 
     // const blockInfo = universalModeManager.getBlockInfo();
     // const hasUrlBypass = blockInfo.hasUrlBypass;
