@@ -143,7 +143,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.94241642951967, 38.912939589606665]
+        'coordinates': [-76.94177,38.913078]
       }
     },
     {

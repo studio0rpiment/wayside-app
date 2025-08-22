@@ -186,7 +186,7 @@ const WaterParticleEngine: React.FC<WaterParticleEngineProps> = ({
   const initializationRef = useRef<boolean>(false);
   
   // ✅ Positioning state - minimal, UI-only
-  const [waterPosition, setWaterPosition] = useState<THREE.Vector3>(new THREE.Vector3(0, 0, -5));
+  const [waterPosition, setWaterPosition] = useState<THREE.Vector3>(new THREE.Vector3(0, -3, -15));
   const [positionCalculated, setPositionCalculated] = useState(false);
 
   // Animation state ref (no React state to avoid re-renders)
