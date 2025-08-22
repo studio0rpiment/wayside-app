@@ -119,7 +119,7 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94241642951967, 38.912939589606665], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': 0,        // Light gray area - low elevation
+          'elevation': -2,        // Light gray area - low elevation
           'orientation': 180,      // Facing south
           'scale': 1,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
@@ -143,7 +143,7 @@ export const routePointsData: RoutePointCollection = {
       },
       'geometry': {
         'type': 'Point',
-        'coordinates': [-76.94177, 38.913078]
+        'coordinates': [-76.94241642951967, 38.912939589606665]
       }
     },
     {
