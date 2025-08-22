@@ -7,7 +7,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ScrollProvider } from './context/ScrollContext'
 import { PermissionsProvider } from './context/PermissionsContext.tsx'
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from '@vercel/analytics/react';
 
 console.log('Base URL:', import.meta.env.BASE_URL);
 
