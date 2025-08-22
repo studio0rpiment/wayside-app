@@ -88,7 +88,7 @@ const HelenSExperience: React.FC<HelenSExperienceProps> = ({
     modelName: 'helen_s' as const,
     knownMaxDim: 7.5,
     knownCenter: new THREE.Vector3(0, 0, 0),
-    targetScale: 2.0 / 7.5,
+    targetScale: 10.0 / 7.5,
     pointSize: 1.5,
     pointDensity: 0.8,
     fallbackColor: 0x9b59b6, // Purple for Helen
