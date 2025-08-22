@@ -307,9 +307,9 @@ export const routePointsData: RoutePointCollection = {
         'arAnchor': {
           'coordinates': [-76.94352954626085, 38.91317333662087], // Precise coordinates preserved
           'destination': [0,0],
-          'elevation': -3,        // Light-medium gray area
+          'elevation': -1.5,        // Light-medium gray area
           'orientation': 180,      // Facing south
-          'scale': 9,            // Slightly larger than default
+          'scale': 10,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
