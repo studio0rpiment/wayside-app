@@ -265,7 +265,7 @@ export const routePointsData: RoutePointCollection = {
           'destination': [0,0],
           'elevation': 0,        // Medium-dark gray - elevated area
           'orientation': 180,      // Facing south
-          'scale': 2,            // Slightly larger than default
+          'scale': 5,            // Slightly larger than default
           'heightMapScale': 1.0,   // Scale factor for height adjustments
           'alignToTerrain': true,
           
