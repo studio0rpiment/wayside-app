@@ -111,10 +111,10 @@ export function useEnhancedGeofenceManager(
   const getPositionQuality = useCallback((accuracy: number): PositionQuality => {
     if (accuracy <= 3) return PositionQuality.EXCELLENT;
     if (accuracy <= 8) return PositionQuality.GOOD;
-    if (accuracy <= 15) return PositionQuality.FAIR;
-    if (accuracy <= 50) return PositionQuality.POOR;
+    if (accuracy <= 20) return PositionQuality.FAIR;
+    if (accuracy <= 60) return PositionQuality.POOR;
     return PositionQuality.UNACCEPTABLE;
-  }, []);
+  }, []); 
   
   // Calculate weighted average position from history
   const calculateAveragedPosition = useCallback((history: EnhancedPositionData[]): [number, number] => {
@@ -261,7 +261,7 @@ const coordsArray: [number, number] = [coords.longitude, coords.latitude];
     // });
     
     // Check if accuracy is acceptable
-    if (coords.accuracy > (minAcceptableAccuracy ?? 10)) {
+    if (coords.accuracy > (minAcceptableAccuracy ?? 50)) {
     //   debugLog('Position accuracy too poor, ignoring', {
     //     accuracy: coords.accuracy,
     //     maxAcceptable: minAcceptableAccuracy

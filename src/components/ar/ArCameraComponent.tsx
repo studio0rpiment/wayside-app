@@ -690,7 +690,7 @@ const initialize = async () => {
   }} />
 ) : (
   // Experience-specific backgrounds (when not in Universal Mode)
-  (experienceType === 'lily' || experienceType === 'lotus' || experienceType === 'cattail' || experienceType === '1968') && (
+  (experienceType === 'lily' || experienceType === 'lotus' || experienceType === 'cattail' || experienceType === '1968' || experienceType === 'mac' || experienceType === 'volunteers' || experienceType === 'helen_s' || experienceType === '2200_bc') && (
     <div style={{
       position: 'absolute',
       top: 0,

@@ -152,6 +152,9 @@ const handleCompleteOnboarding = useCallback(() => {
   
   const blockInfo = universalModeManager.getBlockInfo();
   const hasUrlBypass = blockInfo.hasUrlBypass;
+  //************ MOVING THID HERE TO BYPASS FOR THE SATURDAY EVENT */
+  completeOnboarding();
+  navigate('/map');
   
   console.log('🔍 Final validation check:', {
     allPermissionsGranted,
@@ -179,8 +182,8 @@ const handleCompleteOnboarding = useCallback(() => {
   
   // All checks passed - complete onboarding
   console.log('✅ All final checks passed - completing onboarding');
-  completeOnboarding();
-  navigate('/map');
+  // completeOnboarding();
+  // navigate('/map');
   
 }, [completeOnboarding, onComplete, navigate]);
 
@@ -441,13 +444,13 @@ const handlePermissionCardNext = useCallback(() => {
       </GradientElement>
 
       {/* Permission Gate Modal */}
-      {/* <LocationGateModal
+      <LocationGateModal
         isOpen={showPermissionGate}
         onClose={() => setShowPermissionGate(false)}
         onBypass={handlePermissionGateBypass}
        checkType={(universalModeManager.blockType !== 'none' ? universalModeManager.blockType : 'permissions') as 'location' | 'permissions'}
 
-      /> */}
+      />
 
 {/* {process.env.NODE_ENV === 'development' && (
       <OnboardingDebugOverlay

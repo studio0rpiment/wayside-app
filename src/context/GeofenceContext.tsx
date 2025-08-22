@@ -41,7 +41,7 @@ export const GeofenceProvider: React.FC<GeofenceProviderProps> = ({
       
       // Set initial state
       setIsUniversalMode(universalModeManager.isUniversal);
-      setUniversalModeReason(universalModeManager.reason);
+      setUniversalModeReason(universalModeManager.reasons[0] || null);
       
       // Listen for changes
       const handleUniversalModeChange = (event: CustomEvent) => {
@@ -67,8 +67,8 @@ export const GeofenceProvider: React.FC<GeofenceProviderProps> = ({
     autoStart: true,
     
     // Precision settings (unchanged)
-    maxAcceptableAccuracy: 10,
-    minAcceptableAccuracy: 50,
+    maxAcceptableAccuracy: 120,
+    minAcceptableAccuracy: 60,
     positionAveragingWindow: 12,
     requireStablePosition: true,
     stabilityThreshold: 3,
