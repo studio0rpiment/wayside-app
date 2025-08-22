@@ -155,32 +155,32 @@ const handleCompleteOnboarding = useCallback(() => {
   navigate('/map');
   
   
-  const blockInfo = universalModeManager.getBlockInfo();
-  const hasUrlBypass = blockInfo.hasUrlBypass;
+  // const blockInfo = universalModeManager.getBlockInfo();
+  // const hasUrlBypass = blockInfo.hasUrlBypass;
 
-  console.log('🔍 Final validation check:', {
-    allPermissionsGranted,
-    hasUrlBypass,
-    shouldBlockLocation: universalModeManager.shouldBlockLocation,
-    shouldBlockPermissions: universalModeManager.shouldBlockPermissions,
-    blockType: universalModeManager.blockType,
-    blockReason: universalModeManager.blockReason
-  });
+  // console.log('🔍 Final validation check:', {
+  //   allPermissionsGranted,
+  //   hasUrlBypass,
+  //   shouldBlockLocation: universalModeManager.shouldBlockLocation,
+  //   shouldBlockPermissions: universalModeManager.shouldBlockPermissions,
+  //   blockType: universalModeManager.blockType,
+  //   blockReason: universalModeManager.blockReason
+  // });
   
   // If URL bypass is active, always allow completion
-  if (hasUrlBypass) {
-    console.log('🔓 URL bypass active - completing onboarding');
-    completeOnboarding();
-    navigate('/map');
-    return;
-  }
+  // if (hasUrlBypass) {
+  //   console.log('🔓 URL bypass active - completing onboarding');
+  //   completeOnboarding();
+  //   navigate('/map');
+  //   return;
+  // }
   
   // Check for any blocking conditions (location, permissions, etc.)
-  if (universalModeManager.shouldBlockApp) {
-    console.log('🚫 App blocked - showing location gate modal');
-    setShowPermissionGate(true);
-    return;
-  }
+  // if (universalModeManager.shouldBlockApp) {
+  //   console.log('🚫 App blocked - showing location gate modal');
+  //   setShowPermissionGate(true);
+  //   return;
+  // }
   
   // All checks passed - complete onboarding
   console.log('✅ All final checks passed - completing onboarding');
