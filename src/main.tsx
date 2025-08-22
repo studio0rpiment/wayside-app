@@ -7,6 +7,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ScrollProvider } from './context/ScrollContext'
 import { PermissionsProvider } from './context/PermissionsContext.tsx'
+import { Analytics } from "@vercel/analytics/next"
 
 console.log('Base URL:', import.meta.env.BASE_URL);
 
@@ -21,6 +22,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <PermissionsProvider>
       <ScrollProvider>
         <App />
+         <Analytics />
       </ScrollProvider>
     </PermissionsProvider>
   // </React.StrictMode>,
