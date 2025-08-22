@@ -152,7 +152,7 @@ const ExperienceManager: React.FC<ExperienceManagerProps> = ({
   // 🆕 Shared AR positioning system - THE SINGLE SOURCE
 
   const positioningReady = PositioningSystemSingleton.getSystemStatus().positioningManagerReady;
-  const [isUniversalMode, setIsUniversalMode] = useState(false)
+  const [isUniversalMode, setIsUniversalMode] = useState(universalModeManager.isUniversal)
   //useState(universalModeManager.isUniversal);
 
 

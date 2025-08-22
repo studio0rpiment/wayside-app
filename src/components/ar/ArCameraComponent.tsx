@@ -684,7 +684,7 @@ const initialize = async () => {
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.9)', // Dark blue tint for simulation mode
+    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Dark blue tint for simulation mode
     zIndex: 1015,
     pointerEvents: 'none'
   }} />
