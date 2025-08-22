@@ -15,7 +15,7 @@ import SimpleContentContainer, { ContentContainerProps } from '../common/SimpleC
 import ContentConfigHelper from '../../utils/ContentConfigHelper';
 
 import LocationGateModal from '../common/LocationGateModal';
-import { universalModeManager } from '../../utils/UniversalModeManager';
+// import { universalModeManager } from '../../utils/UniversalModeManager';
 
 // Define interface for component props 
 interface OnboardingProps {
@@ -89,28 +89,28 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 //   });
 // }); // No dependencies = logs every render
 
-useEffect(() => {
-  console.log('🌐 Universal Mode listener added');
+// useEffect(() => {
+//   console.log('🌐 Universal Mode listener added');
   
-  const handleUniversalModeChange = () => {
-    console.log('🌐 Universal Mode CHANGED - new state:', {
-      isUniversal: universalModeManager.isUniversal,
-      reasons: universalModeManager.reasons,
-      blockType: universalModeManager.blockType,
-      blockReason: universalModeManager.blockReason
-    });
-  };
+//   const handleUniversalModeChange = () => {
+//     console.log('🌐 Universal Mode CHANGED - new state:', {
+//       isUniversal: universalModeManager.isUniversal,
+//       reasons: universalModeManager.reasons,
+//       blockType: universalModeManager.blockType,
+//       blockReason: universalModeManager.blockReason
+//     });
+//   };
 
 
-//  console.log("has URL Pass " + getBlockInfo)
+// //  console.log("has URL Pass " + getBlockInfo)
   
- console.log(universalModeManager.getBlockInfo().hasUrlBypass)
+//  console.log(universalModeManager.getBlockInfo().hasUrlBypass)
  
   
-  return () => {
-    universalModeManager.removeEventListener('universalModeChanged', handleUniversalModeChange);
-  };
-}, []);
+//   return () => {
+//     universalModeManager.removeEventListener('universalModeChanged', handleUniversalModeChange);
+//   };
+// }, []);
 
 
   // Handle requesting permissions
@@ -209,16 +209,16 @@ const handlePermissionCardNext = useCallback(() => {
   console.log('🔍 handlePermissionCardNext called');
   console.log('🔍 allPermissionsGranted:', allPermissionsGranted);
 
-    const blockInfo = universalModeManager.getBlockInfo();
-    const hasUrlBypass = blockInfo.hasUrlBypass;
+    // const blockInfo = universalModeManager.getBlockInfo();
+    // const hasUrlBypass = blockInfo.hasUrlBypass;
 
 
  //check 1 Bypass
-   if (hasUrlBypass) {
-    console.log('🔓 URL bypass active - skipping permission checks');
-    goToNextCard();
-    return;
-  }
+  //  if (hasUrlBypass) {
+  //   console.log('🔓 URL bypass active - skipping permission checks');
+  //   goToNextCard();
+  //   return;
+  // }
   
 
   
@@ -230,16 +230,16 @@ const handlePermissionCardNext = useCallback(() => {
   }
   
   // Check 3: Universal Mode restrictions (location, etc.)
-  console.log('🔍 shouldBlockPermissions:', universalModeManager.shouldBlockPermissions);
-  console.log('🔍 blockReason:', universalModeManager.blockReason);
+  // console.log('🔍 shouldBlockPermissions:', universalModeManager.shouldBlockPermissions);
+  // console.log('🔍 blockReason:', universalModeManager.blockReason);
   
-  if (universalModeManager.shouldBlockApp) {
-    // console.log('🚫 Universal Mode blocking - showing modal');
-    setShowPermissionGate(true);
-  } else {
-    // console.log('✅ All checks passed - proceeding');
-    goToNextCard();
-  }
+  // if (universalModeManager.shouldBlockApp) {
+  //   // console.log('🚫 Universal Mode blocking - showing modal');
+  //   setShowPermissionGate(true);
+  // } else {
+  //   // console.log('✅ All checks passed - proceeding');
+  //   goToNextCard();
+  // }
 }, [allPermissionsGranted, goToNextCard]);
 
 
@@ -446,13 +446,13 @@ const handlePermissionCardNext = useCallback(() => {
       </GradientElement>
 
       {/* Permission Gate Modal */}
-      <LocationGateModal
+      {/* <LocationGateModal
         isOpen={showPermissionGate}
         onClose={() => setShowPermissionGate(false)}
         onBypass={handlePermissionGateBypass}
        checkType={(universalModeManager.blockType !== 'none' ? universalModeManager.blockType : 'permissions') as 'location' | 'permissions'}
 
-      />
+      /> */}
 
 {/* {process.env.NODE_ENV === 'development' && (
       <OnboardingDebugOverlay
