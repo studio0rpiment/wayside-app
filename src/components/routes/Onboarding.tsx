@@ -149,13 +149,15 @@ useEffect(() => {
   // Function to handle completion of onboarding and navigation
 const handleCompleteOnboarding = useCallback(() => {
   console.log('🔍 handleCompleteOnboarding called');
-  
-  const blockInfo = universalModeManager.getBlockInfo();
-  const hasUrlBypass = blockInfo.hasUrlBypass;
-  //************ MOVING THID HERE TO BYPASS FOR THE SATURDAY EVENT */
+
+    //************ MOVING THID HERE TO BYPASS FOR THE SATURDAY EVENT */
   completeOnboarding();
   navigate('/map');
   
+  
+  const blockInfo = universalModeManager.getBlockInfo();
+  const hasUrlBypass = blockInfo.hasUrlBypass;
+
   console.log('🔍 Final validation check:', {
     allPermissionsGranted,
     hasUrlBypass,
