@@ -27,7 +27,7 @@
     "fs": "^0.0.1-security",
     "gsap": "^3.12.7",
     "mapbox-gl": "^3.11.1",
-    "mixpanel-browser": "^2.68.0",
+    "mixpanel-browser": "^2.69.1",
     "path": "^0.12.7",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.3",
