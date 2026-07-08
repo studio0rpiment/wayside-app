@@ -74,7 +74,7 @@ const Landing: React.FC = () => {
             <Button {...buttonConfig} />
           </Link>
 
-          <Link to="https://www.eventbrite.com/e/waysideat-launch-party-tickets-1567222738399" target='_blank' style={{ textDecoration: 'none', border:'1px solid var(--color-light)', borderRadius: '1rem',  "margin": "1rem",  }}>
+          <Link to="https://segd.glueup.com/event/segd-dc-chapter-kenilworth-gardens-augmented-reality-experience-183183/" target='_blank' style={{ textDecoration: 'none', border:'1px solid var(--color-light)', borderRadius: '1rem',  "margin": "1rem",  }}>
             <Button {...buttonEvent} />
           </Link>
 
