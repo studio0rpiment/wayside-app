@@ -203,7 +203,7 @@
       "name": "Button",
       "description": "Button that goes to EventBright",
       "configuration": {
-        "subtitle": "Saturday, July 9 \n Wayside.at Launch Party",
+        "subtitle": "Thursday, July 9 \n Wayside.at Launch Party",
         "backgroundColor": "transparent",
         "textColor": "gradient(var(--color-green), var(--color-pink), var(--color-blue))",
         "textSize": "1.6rem",
